@@ -203,3 +203,23 @@ void test('loads are counted per day, Monday-start week, month, year and lifetim
   assert.equal(summary.billed, 320);
   assert.equal(summary.lastLoad, '2026-09-16');
 });
+
+void test('a vehicle number misread by the scanner still finds its truck', () => {
+  const trucks = [truck({ id: 1, truck_number: 'ZF0321' })];
+  // The shapes OCR trades: 0/O, 1/I, 5/S, 8/B.
+  for (const printed of ['ZF0321', 'ZFO321', 'ZF032I', 'ZFO32I', 'zf 0321']) {
+    assert.equal(matchTruck(trucks, printed)?.id, 1, `should match ${printed}`);
+  }
+  assert.equal(matchTruck(trucks, 'ZF0322'), null, 'a different truck is not a misread');
+  assert.equal(matchTruck(trucks, ''), null);
+});
+
+void test('two trucks a misread apart are left for a person to choose', () => {
+  // ZF0321 and ZFO32I fold to the same key, so neither can be assumed.
+  const trucks = [
+    truck({ id: 1, truck_number: 'ZF0321' }),
+    truck({ id: 2, truck_number: 'ZFO32I' }),
+  ];
+  assert.equal(matchTruck(trucks, 'ZF0321')?.id, 1, 'an exact match still wins');
+  assert.equal(matchTruck(trucks, 'ZFO32l'), null, 'an ambiguous misread picks neither');
+});

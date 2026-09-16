@@ -284,3 +284,28 @@ export function needsEnhancing(image: Pixels): number {
   const dimness = Math.max(0, (235 - high) / 235);
   return Math.min(1, Math.max(unevenness, dimness));
 }
+
+/**
+ * The size OCR reads a page best at. Tesseract is tuned for about 300 dots per
+ * inch and falls off badly below 150; a letter page at 2750 pixels on its long
+ * edge is 250, which is what the PDF path already renders at. Photographs
+ * arrive at anything from a chat-app thumbnail to a 48-megapixel still, so they
+ * are brought to the same place before they are read.
+ */
+export const OCR_LONG_EDGE = 2750;
+/** Past this there is no detail left to reveal, only pixels to chew through. */
+const MAX_UPSCALE = 3;
+
+/**
+ * How much to scale a page by before reading it: up when the print would
+ * otherwise be too small to resolve, down when the picture is larger than the
+ * reader can use. 1 means leave it alone.
+ */
+export function ocrScale(width: number, height: number): number {
+  const edge = Math.max(width, height);
+  if (edge <= 0) return 1;
+  const scale = OCR_LONG_EDGE / edge;
+  if (scale > 1) return Math.min(scale, MAX_UPSCALE);
+  // Shrinking is only worth doing when there is a real saving in it.
+  return scale < 0.9 ? scale : 1;
+}

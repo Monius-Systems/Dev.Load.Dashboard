@@ -647,13 +647,38 @@ export function matchCustomer(
   return matchCustomerDetailed(customers, ticket)?.customer ?? null;
 }
 
+/**
+ * The pairs OCR trades for one another: a shape it cannot tell apart is read as
+ * whichever the language model liked better. Folding both sides to one letter
+ * makes "ZFO32I" and "ZF0321" the same key.
+ */
+const OCR_SHAPES: Record<string, string> = {
+  O: '0', Q: '0', D: '0', I: '1', L: '1', S: '5', B: '8', Z: '2', G: '6', T: '7',
+};
+
+/** An identifier with the shapes OCR confuses folded together. */
+export const ocrKey = (value: string) =>
+  // normalizeKey has already reduced this to A-Z and 0-9.
+  normalizeKey(value).replace(/[OQDILSBZGT]/g, (shape) => OCR_SHAPES[shape]);
+
+/**
+ * The truck a ticket was hauled by. An exact match on the printed vehicle
+ * number first; failing that, one that differs only where OCR cannot tell two
+ * shapes apart — a vehicle read as "ZFO32I" is truck ZF0321. That fallback is
+ * only taken when it picks out a single truck, so two trucks a misread apart
+ * are left to be chosen by hand rather than guessed between.
+ */
 export function matchTruck(
   trucks: TruckProfile[],
   truckNumber: string | null | undefined,
 ): TruckProfile | null {
   const key = truckNumber ? normalizeKey(truckNumber) : '';
   if (!key) return null;
-  return trucks.find((truck) => normalizeKey(truck.truck_number) === key) ?? null;
+  const exact = trucks.find((truck) => normalizeKey(truck.truck_number) === key);
+  if (exact) return exact;
+  const folded = ocrKey(key);
+  const near = trucks.filter((truck) => ocrKey(truck.truck_number) === folded);
+  return near.length === 1 ? near[0] : null;
 }
 
 /**

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   enhanceDocument,
   needsEnhancing,
+  ocrScale,
   type Pixels,
 } from '../lib/scanner/enhance.ts';
 
@@ -163,4 +164,15 @@ void test('the untouched photograph is available, and is a copy', () => {
   assert.deepEqual(same.data.slice(0, 64), image.data.slice(0, 64));
   same.data[0] = 7;
   assert.notEqual(image.data[0], 7, 'the original pixels must not be written to');
+});
+
+void test('pages are brought to the size the reader works best at', () => {
+  // A chat-app copy is enlarged, a full sensor still is brought down, and a
+  // page already near the target is left alone rather than resampled for nothing.
+  assert.equal(Math.round(960 * ocrScale(720, 960)), 2750, 'a small photo is enlarged');
+  assert.equal(Math.round(4032 * ocrScale(3024, 4032)), 2750, 'a 12MP still is brought down');
+  assert.equal(ocrScale(2100, 2800), 1, 'a page already close is left alone');
+  // Enlarging a thumbnail past a point invents nothing and costs a great deal.
+  assert.equal(ocrScale(200, 260), 3, 'enlargement is capped');
+  assert.equal(ocrScale(0, 0), 1, 'an empty page does not divide by zero');
 });

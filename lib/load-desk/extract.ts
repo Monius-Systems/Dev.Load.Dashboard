@@ -6,7 +6,8 @@ import {
 import { readFieldRegions, type OcrWord } from './field-ocr';
 import { readingRows } from './ocr-lines';
 import { TABLE_OCR_MARKER } from './parser';
-import { enhanceDocument, needsEnhancing } from '../scanner/enhance';
+import { enhanceDocument, needsEnhancing, ocrScale } from '../scanner/enhance';
+import { rectifyPage } from '../scanner/rectify';
 /**
  * Local OCR: ticket bytes never leave the browser. One ticket per PDF page.
  * `progress` hears how much of this file is done (0 to 1) and the current step.
@@ -56,7 +57,9 @@ export async function extractPages(
     };
     /** Full page, label-anchored boxed values, then a pass without table rules. */
     const readCanvas = async (canvas: HTMLCanvasElement, page: number) => {
-      // A photograph is made to look like a scan before anything reads it.
+      // Sized for the reader, then made to look like a scan, before anything
+      // tries to read it.
+      resizeForReading(canvas);
       readAsPaper(canvas);
       pass = { page, step: 'page' };
       const first = await recognize(canvas);
@@ -96,6 +99,11 @@ export async function extractPages(
       try {
         canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
         bitmap.close();
+        // A photograph is a scene with a ticket somewhere in it. Cut it down to
+        // the ticket and straighten it, exactly as the camera in Load Desk
+        // does, before anything tries to read it. Fails safe: a picture no
+        // sheet can be found in is read whole, as it always was.
+        await rectifyPage(canvas);
         tracker.step(1, 'render', 1);
         const text = await readCanvas(canvas, 1);
         tracker.done();
@@ -137,6 +145,28 @@ export async function extractPages(
   } finally {
     await worker.terminate();
   }
+}
+
+/**
+ * Brings a page to the size the reader works best at. A thumbnail is enlarged
+ * so the print has pixels to be recognised in; a full sensor photograph is
+ * brought down so it is not spent chewing through detail that OCR cannot use.
+ */
+function resizeForReading(canvas: HTMLCanvasElement) {
+  const scale = ocrScale(canvas.width, canvas.height);
+  if (scale === 1) return;
+  const width = Math.max(1, Math.round(canvas.width * scale));
+  const height = Math.max(1, Math.round(canvas.height * scale));
+  const scaled = document.createElement('canvas');
+  scaled.width = width;
+  scaled.height = height;
+  const context = scaled.getContext('2d')!;
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(canvas, 0, 0, width, height);
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext('2d')!.drawImage(scaled, 0, 0);
+  scaled.width = scaled.height = 0;
 }
 
 /**
