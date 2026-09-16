@@ -454,3 +454,16 @@ button.hm-row:hover {
     margin-left: 44px;
   }
 }
+
+@media (max-width: 767px) {
+  /* Three rows, not five. Each of these panels already ends in a link to the
+     page that holds the rest, and that page is now a tap away on the bar along
+     the bottom — so the home page summarises instead of repeating them. */
+  .hm-list > li:nth-child(n + 4) {
+    display: none;
+  }
+  /* The little word over each panel's heading; the heading says it already. */
+  .ld-panel-head .ld-step {
+    display: none;
+  }
+}

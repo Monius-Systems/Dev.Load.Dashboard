@@ -154,3 +154,50 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The filters fold away on a phone: the records are what the page is for, and
+   five controls ahead of them meant scrolling past the tools to reach them. */
+.rec-filter-toggle {
+  display: none;
+}
+@media (max-width: 767px) {
+  .rec-filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    align-self: flex-start;
+    min-height: 40px;
+    padding: 0 var(--ui-space-3);
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-fill);
+    color: var(--ui-text);
+    font-size: var(--type-sm);
+    font-weight: var(--type-medium);
+    cursor: pointer;
+  }
+  .rec-filter-toggle svg {
+    width: 15px;
+    height: 15px;
+    color: var(--ui-text-3);
+  }
+  /* How many of them are narrowing the list, while they are out of sight. */
+  .rec-filter-toggle em {
+    display: grid;
+    place-items: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--ui-accent);
+    color: #fff;
+    font-size: 11px;
+    font-style: normal;
+    font-weight: var(--type-semibold);
+  }
+  .rec-filters[data-open='false'] {
+    display: none;
+  }
+  .rec-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

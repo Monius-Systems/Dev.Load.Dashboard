@@ -82,6 +82,38 @@ function ShellNavigation({ initialAccount }: { initialAccount: ShellAccount | nu
   );
 }
 
+/**
+ * The way around on a phone. The sidebar is a drawer there, which puts every
+ * page two taps away behind an icon most people never press; a bar along the
+ * bottom keeps the same five places one thumb-tap away and shows which one you
+ * are on. Hidden on anything with room for the sidebar.
+ */
+function TabBar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { t } = useT();
+  return (
+    <nav className="tabbar" aria-label={t('Sections')}>
+      {shellConfig.navigation.map(({ href, label, icon: Icon, shortLabel }) => {
+        const current = pathname === href;
+        return (
+          <button
+            key={href}
+            type="button"
+            className="tabbar-item"
+            data-current={current || undefined}
+            aria-current={current ? 'page' : undefined}
+            onClick={() => router.push(href)}
+          >
+            <Icon aria-hidden="true" />
+            <span>{t(shortLabel ?? label)}</span>
+          </button>
+        );
+      })}
+    </nav>
+  );
+}
+
 /** The dashboard frame: floating sidebar, top bar and page area. */
 export default function AppShell({
   children,
@@ -210,6 +242,7 @@ export default function AppShell({
               {children}
             </div>
           </div>
+          <TabBar />
         </SidebarInset>
       </SidebarProvider>
     </Toaster>

@@ -8,7 +8,13 @@ import {
 } from 'lucide-react';
 import clientConfig from '@/client.config.json';
 
-export type ShellNavItem = { href: string; label: string; icon: LucideIcon };
+export type ShellNavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** What the bottom bar on a phone calls it, where a tab is a thumb wide. */
+  shortLabel?: string;
+};
 
 // Branding comes from client.config.json; each client deployment has its own.
 // Add a route under app/ and an entry here to give it a place in the sidebar.
@@ -26,9 +32,9 @@ export const shellConfig: {
   pageTitles: { '/account': 'Account' },
   navigation: [
     { href: '/', label: 'Home', icon: LayoutGrid },
-    { href: '/load-desk', label: 'Load Desk', icon: ScanLine },
-    { href: '/records', label: 'Invoices & Tickets', icon: Database },
-    { href: '/customers', label: 'Customers & Clients', icon: Users },
-    { href: '/fleet', label: 'Truck Fleet', icon: Truck },
+    { href: '/load-desk', label: 'Load Desk', icon: ScanLine, shortLabel: 'Scan' },
+    { href: '/records', label: 'Invoices & Tickets', icon: Database, shortLabel: 'Invoices' },
+    { href: '/customers', label: 'Customers & Clients', icon: Users, shortLabel: 'Customers' },
+    { href: '/fleet', label: 'Truck Fleet', icon: Truck, shortLabel: 'Fleet' },
   ],
 };

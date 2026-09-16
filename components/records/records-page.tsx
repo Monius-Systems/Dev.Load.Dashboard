@@ -8,6 +8,7 @@ import {
   Pencil,
   ReceiptText,
   Search,
+  SlidersHorizontal,
   Trash2,
 } from 'lucide-react';
 import {
@@ -110,6 +111,10 @@ export default function RecordsPage() {
   const [customerFilter, setCustomerFilter] = useState('');
   const [truckFilter, setTruckFilter] = useState('');
   const [status, setStatus] = useState('all');
+  // Five filters ahead of the records made a phone scroll past the controls to
+  // reach the thing it came for. They fold away there; on a screen with room
+  // the CSS shows them regardless and this does nothing.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
   const [toDelete, setToDelete] = useState<SavedRecord | null>(null);
 
@@ -163,6 +168,12 @@ export default function RecordsPage() {
   const filtersActive = Boolean(
     query || from || to || customerFilter || truckFilter || status !== 'all',
   );
+  // What the folded-away filters are doing, so a phone can see that something
+  // is narrowing the list without opening them. The search box is always in
+  // view, so it is not counted here.
+  const activeFilterCount = [from, to, customerFilter, truckFilter]
+    .filter(Boolean)
+    .length + (status === 'all' ? 0 : 1);
 
   function chooseTab(next: Tab) {
     setTab(next);
@@ -396,7 +407,17 @@ export default function RecordsPage() {
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <div className="rec-filters">
+          <button
+            type="button"
+            className="rec-filter-toggle"
+            aria-expanded={filtersOpen}
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <SlidersHorizontal aria-hidden="true" />
+            {filtersOpen ? t('Hide filters') : t('Filters')}
+            {activeFilterCount ? <em>{activeFilterCount}</em> : null}
+          </button>
+          <div className="rec-filters" data-open={filtersOpen}>
             <div className="ld-field rec-filter">
               <label htmlFor={`${fieldId}-from`}>{t('Ticket date from')}</label>
               <Input

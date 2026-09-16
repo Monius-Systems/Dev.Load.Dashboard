@@ -1318,3 +1318,97 @@ svg.lucide {
     min-width: 40px;
   }
 }
+
+/* ======================================================= phone bottom bar */
+/* The five places this app goes, along the bottom where a thumb already is.
+   Only on phones: anything with room shows the sidebar instead. */
+.tabbar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .tabbar {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: stretch;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--ui-border);
+    background: color-mix(in srgb, var(--ui-surface-1) 88%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+  }
+  .tabbar-item {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    min-height: 48px;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: var(--ui-radius-sm);
+    background: none;
+    color: var(--ui-text-3);
+    font-size: 10px;
+    font-weight: var(--type-medium);
+    line-height: 1.1;
+    text-align: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--ui-duration) var(--ui-ease);
+  }
+  .tabbar-item svg {
+    width: 22px;
+    height: 22px;
+  }
+  .tabbar-item[data-current] {
+    color: var(--ui-accent-ink);
+  }
+  .tabbar-item[data-current] svg {
+    color: var(--ui-accent-ink);
+  }
+  .tabbar-item span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* The bar floats over the page, so the page ends above it. */
+  .page-content {
+    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+  /* The drawer and its trigger are what the bar replaces. */
+  .breadcrumb [data-sidebar='trigger'] {
+    display: none;
+  }
+}
+
+/* ==================================================== phone page headings */
+/* A page opened on a phone spent its first screen on a heading: an eyebrow,
+   a large title and a paragraph of description, before a single number. The
+   top bar already names the page, so on a phone the heading gets out of the
+   way of the thing the page is for. */
+@media (max-width: 767px) {
+  .page-heading {
+    gap: var(--ui-space-3);
+    margin-bottom: var(--ui-space-5);
+  }
+  .eyebrow {
+    display: none;
+  }
+  h1 {
+    font-size: var(--type-xl);
+  }
+  /* Kept, because it says what the page does — but two lines of it, not five. */
+  .muted {
+    display: -webkit-box;
+    margin-top: 4px;
+    overflow: hidden;
+    font-size: var(--type-sm);
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
