@@ -6,6 +6,7 @@ import {
 import { readFieldRegions, type OcrWord } from './field-ocr';
 import { readingRows } from './ocr-lines';
 import { TABLE_OCR_MARKER } from './parser';
+import { enhanceDocument, needsEnhancing } from '../scanner/enhance';
 /**
  * Local OCR: ticket bytes never leave the browser. One ticket per PDF page.
  * `progress` hears how much of this file is done (0 to 1) and the current step.
@@ -55,6 +56,8 @@ export async function extractPages(
     };
     /** Full page, label-anchored boxed values, then a pass without table rules. */
     const readCanvas = async (canvas: HTMLCanvasElement, page: number) => {
+      // A photograph is made to look like a scan before anything reads it.
+      readAsPaper(canvas);
       pass = { page, step: 'page' };
       const first = await recognize(canvas);
       // Field regions report per region; their many small passes would jitter.
@@ -134,6 +137,31 @@ export async function extractPages(
   } finally {
     await worker.terminate();
   }
+}
+
+/**
+ * How uneven the lighting has to be before it is worth flattening. A page
+ * rendered from a PDF scores zero and is left exactly as it was.
+ */
+const ENHANCE_FROM = 0.08;
+
+/**
+ * Photographs read as photographs: grey paper, a shadow across one corner, and
+ * print only a little darker than the sheet. OCR is built for a flatbed, so the
+ * lighting is divided out first and the range stretched back to black on white.
+ * Without this a phone photo of a ticket can come back with nothing on it at
+ * all — and the table-rule pass below, which calls anything under 160 ink,
+ * would erase a dim photo's paper along with its print.
+ *
+ * This works on the copy the reader holds; the picture that was stored is not
+ * touched.
+ */
+function readAsPaper(canvas: HTMLCanvasElement) {
+  const context = canvas.getContext('2d')!;
+  const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
+  if (needsEnhancing(pixels) <= ENHANCE_FROM) return;
+  const paper = enhanceDocument(pixels, 'auto');
+  context.putImageData(new ImageData(paper.data, paper.width, paper.height), 0, 0);
 }
 
 function removeTableRules(canvas: HTMLCanvasElement) {

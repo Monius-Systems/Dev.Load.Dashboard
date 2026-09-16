@@ -303,6 +303,46 @@
   background: rgb(255 255 255 / 35%);
 }
 
+/* Picking how the page is developed — the same segmented control the phone
+   uses for its own choices, so the selected one is a raised slab rather than a
+   coloured outline. */
+.filters {
+  display: flex;
+  gap: 2px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0;
+  border: 0;
+  border-radius: 12px;
+  padding: 2px;
+  background: rgb(120 120 128 / 32%);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+.filter {
+  flex: 1 1 0;
+  min-height: 32px;
+  border-radius: 10px;
+  background: transparent;
+  color: rgb(255 255 255 / 72%);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition:
+    background 200ms ease,
+    color 200ms ease;
+}
+.filter[data-on] {
+  background: rgb(99 99 106 / 92%);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 40%);
+}
+.filters:disabled .filter,
+.filter:disabled {
+  opacity: 0.5;
+}
+
 .actions {
   display: flex;
   gap: 10px;
