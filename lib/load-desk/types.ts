@@ -123,6 +123,12 @@ export type QueueItem = {
   preview_status: 'ready' | 'loading' | 'missing';
   ocr_text: string;
   note: string;
+  /**
+   * The note says why the ticket came back empty, rather than how it was read.
+   * A ticket from a supplier whose layout is not supported parses to nothing,
+   * and saying so is the difference between a puzzle and an instruction.
+   */
+  note_problem?: boolean;
   ticket: Ticket;
   invoice: InvoiceDraft;
   saved_record_id: number | null;

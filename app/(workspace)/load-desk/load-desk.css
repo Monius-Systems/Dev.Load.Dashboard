@@ -900,6 +900,32 @@ details[open] > .ld-section-summary .ld-section-chevron {
   }
 }
 
+/* What the reader actually saw, for a ticket that came back empty. Folded
+   away, because it is only wanted when something has gone wrong. */
+.ld-scan-text {
+  margin-top: var(--ui-space-2);
+}
+.ld-scan-text summary {
+  cursor: pointer;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ld-scan-text pre {
+  max-height: 260px;
+  margin: var(--ui-space-2) 0;
+  border-radius: var(--ui-radius-sm);
+  padding: var(--ui-space-2);
+  overflow: auto;
+  background: var(--ui-surface-1);
+  box-shadow: inset 0 0 0 1px var(--ui-border);
+  font-size: var(--type-2xs);
+  line-height: var(--type-leading-snug);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* A customer name printed a letter or two off the profile's spelling. */
 .ld-near-match {
   display: flex;

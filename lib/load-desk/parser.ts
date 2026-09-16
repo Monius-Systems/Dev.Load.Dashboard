@@ -90,7 +90,14 @@ function heidelbergSite(text: string): { name: string | null; address: string | 
     block.push(value);
   }
   const city = block.findIndex((line) => /[A-Za-z][ .,]*[A-Z]{2}\s+\d{5}\b/.test(line));
-  const street = city > 0 && /^\d+\s+[A-Za-z]/.test(block[city - 1]) ? city - 1 : -1;
+  // The line above the city is where the load went. Plenty of job sites have
+  // no street number — they are a crossroads ("STRAWBERRY RD AND IN-2") or a
+  // stretch of highway — so a leading number is only asked for when that line
+  // is the *only* one above the city and could as easily be the site's name.
+  const street =
+    city > 0 && (city > 1 || /^\d+\s+[A-Za-z]/.test(block[city - 1]))
+      ? city - 1
+      : -1;
   const nameLines = street >= 0 ? block.slice(0, street) : city < 0 ? block.slice(0, 1) : [];
   const name = nameLines.join(' ').replace(/\s+-\s+/g, ' - ').trim();
   return {

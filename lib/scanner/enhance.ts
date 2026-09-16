@@ -204,22 +204,6 @@ export function enhanceDocument(
   const grey = greyOf(image);
   const { field, cols, rows } = paperField(grey, width, height);
 
-  // Flatten: every pixel against the paper beside it rather than against the
-  // brightest corner of the photograph.
-  const flat = new Uint8ClampedArray(width * height);
-  const histogram = new Uint32Array(256);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const at = y * width + x;
-      const value = Math.min(
-        255,
-        (grey[at] * 255) / paperAt(field, cols, rows, x, y),
-      );
-      flat[at] = value;
-      histogram[flat[at]]++;
-    }
-  }
-
   if (filter === 'bw') {
     // Deciding ink pixel by pixel turns noise into speckle, so the comparison
     // is made against the average of each pixel's neighbours, the way any
@@ -241,6 +225,19 @@ export function enhanceDocument(
       }
     }
     return { data: out, width, height };
+  }
+
+  // Flatten: every pixel against the paper beside it rather than against the
+  // brightest corner of the photograph. Only the grey filters need this, so it
+  // is done after `bw` has already returned.
+  const flat = new Uint8ClampedArray(width * height);
+  const histogram = new Uint32Array(256);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const at = y * width + x;
+      flat[at] = Math.min(255, (grey[at] * 255) / paperAt(field, cols, rows, x, y));
+      histogram[flat[at]]++;
+    }
   }
 
   // Stretch: the darkest print to black and the paper to white. The white

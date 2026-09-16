@@ -71,6 +71,8 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
   const captured = useRef<ImageData | null>(null);
   const [filter, setFilter] = useState<DocumentFilter>('auto');
   const [filtering, setFiltering] = useState(false);
+  // Whether the captured pixels are in hand, so a filter can be re-applied.
+  const [filterable, setFilterable] = useState(false);
   const close = useRef(onClose);
   useEffect(() => { close.current = onClose; }, [onClose]);
   useEffect(() => {
@@ -204,11 +206,26 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
         // Every capture is developed before it is shown: a photograph of paper
         // is not what the reader downstream is built for (see lib/scanner/
         // enhance.ts). The filter row on review can change it afterwards.
-        const sheet = page ?? fit(source, CROP_MAX);
-        const pixels = sheet.getContext('2d')!.getImageData(0, 0, sheet.width, sheet.height);
-        captured.current = pixels;
-        const shown = await renderFiltered(pixels, 'auto');
-        if (disposed || token !== generation) { URL.revokeObjectURL(shown.url); return; }
+        //
+        // Developing is a nicety and a photo is not. The camera has already been
+        // stopped by this point, so anything that fails here must still end at
+        // the review screen with the picture that was taken.
+        let shown: { blob: Blob; url: string };
+        try {
+          const sheet = page ?? fit(source, CROP_MAX);
+          const pixels = sheet.getContext('2d')!.getImageData(0, 0, sheet.width, sheet.height);
+          captured.current = pixels;
+          shown = await renderFiltered(pixels, 'auto');
+          setFilterable(true);
+        } catch {
+          captured.current = null;
+          setFilterable(false);
+          shown = { blob: original, url: URL.createObjectURL(original) };
+        }
+        // Only disposal matters from here. stopCamera() moves the generation on
+        // by design, so comparing the token against it after that point would
+        // throw away every capture that was just taken.
+        if (disposed) { URL.revokeObjectURL(shown.url); return; }
         setResult({ original, corrected: shown.blob, cropped, url: shown.url });
       } catch (e) {
         if (!disposed && token === generation) {
@@ -338,12 +355,12 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
         {result ? <>
           <fieldset className={styles.filters} aria-label="Photo style">
             {FILTER_LABELS.map(({ value, label }) => (
-              <button key={value} type="button" className={styles.filter} data-on={value === filter || undefined} aria-pressed={value === filter} disabled={filtering} onClick={() => void chooseFilter(value)}>{label}</button>
+              <button key={value} type="button" className={styles.filter} data-on={value === filter || undefined} aria-pressed={value === filter} disabled={filtering || !filterable} onClick={() => void chooseFilter(value)}>{label}</button>
             ))}
           </fieldset>
           <p className={styles.status} data-tone={result.cropped ? 'good' : 'warn'}>{result.cropped ? <><Check size={15} />Ready to use</> : <><Sun size={15} />Edges unclear · original photo kept</>}</p>
           <div className={styles.actions}>
-            <button type="button" className={styles.secondary} onClick={() => { captured.current = null; setFilter('auto'); setResult(null); setSession(s => s + 1); }}>Retake</button>
+            <button type="button" className={styles.secondary} onClick={() => { captured.current = null; setFilterable(false); setFilter('auto'); setResult(null); setSession(s => s + 1); }}>Retake</button>
             <button type="button" className={styles.primary} onClick={() => { onUse(new File([result.corrected], `ticket-${Date.now()}.${result.corrected.type === 'image/png' ? 'png' : 'jpg'}`, { type: result.corrected.type })); }}>Use Photo</button>
           </div>
         </> : <>

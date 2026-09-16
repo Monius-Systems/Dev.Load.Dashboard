@@ -113,3 +113,46 @@ void test('browser PDF OCR imports both ticket identities and customers', () => 
     assert.ok(ticket.net_lb);
   }
 });
+
+void test('a job site at a crossroads keeps its name and its location', () => {
+  // A & D's Angelo Iafrate ticket: the site is an intersection, so the line
+  // above the city has no street number. Requiring one dropped both the
+  // project name and the address it was delivered to.
+  const { ticket } = parseTicket(
+    [
+      'BOL 1725335778',
+      'Heidelberg Materials',
+      'Customer: 60350616 ANGELO IAFRATE CONSTRUCTION',
+      'Order : 6100273279',
+      'AWS 210 New Carlisle',
+      'STRAWBERRY RD AND IN-2',
+      'NEW CARLISLE,IN 46552 US',
+      'P.O. : 60343-03',
+    ].join('\n'),
+  );
+  assert.equal(ticket.project_name, 'AWS 210 New Carlisle');
+  assert.equal(
+    ticket.project_address,
+    'STRAWBERRY RD AND IN-2, NEW CARLISLE, IN 46552 US',
+  );
+});
+
+void test('a job site with a street number still reads as before', () => {
+  const { ticket } = parseTicket(
+    [
+      'BOL 1725172271',
+      'Heidelberg Materials',
+      'Customer: 60311596 WITECH COMPANY INC',
+      'Order : 6100208257',
+      'PROJECT PRESTO - New Carlisle',
+      '31480 EDISON RD',
+      'NEW CARLISLE,IN 46552 US',
+      'P.O. : NON UNION',
+    ].join('\n'),
+  );
+  assert.equal(ticket.project_name, 'PROJECT PRESTO - New Carlisle');
+  assert.equal(
+    ticket.project_address,
+    '31480 EDISON RD, NEW CARLISLE, IN 46552 US',
+  );
+});

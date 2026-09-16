@@ -184,6 +184,29 @@ const HAULING_FIELDS: FieldDef[] = [
   { name: 'vehicle_id', label: 'Vehicle' },
 ];
 
+/**
+ * Pixels along the long edge, below which a ticket page cannot be read. A
+ * letter page at 1600px is about 145 dots per inch, which puts a capital in
+ * the 10pt field type around 12 pixels tall — Tesseract's floor, and that is
+ * before the page is photographed at an angle. A copy shared through a chat
+ * app or saved from a screenshot is routinely half of this.
+ */
+const MIN_READABLE_EDGE = 1600;
+
+/** The long edge of an image blob, or null when the browser cannot decode it. */
+async function imageEdge(blob: Blob): Promise<number | null> {
+  if (typeof createImageBitmap !== 'function') return null;
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const edge = Math.max(bitmap.width, bitmap.height);
+    bitmap.close();
+    return edge;
+  } catch {
+    // PDFs and anything else the browser will not decode as an image.
+    return null;
+  }
+}
+
 const makeId = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -315,10 +338,26 @@ async function buildQueueItem(
     note = 'Parsed the ticket text in this file.';
   }
   let ticket = emptyTicket();
+  let noteProblem = false;
   if (ocrText) {
     const parsed = parseTicket(ocrText);
     ticket = parsed.ticket;
-    if (parsed.error) note = parsed.error;
+    if (parsed.error) { note = parsed.error; noteProblem = true; }
+  } else if (extracted) {
+    // The reader ran and came back with nothing at all: a blank page, a photo
+    // too dark or blurred to make out, or a scan of a ticket face-down.
+    note = 'Nothing could be read from this page. Check the original, or enter the fields by hand.';
+    noteProblem = true;
+  }
+  // No ticket number means nothing useful was read. If the picture is simply
+  // too small to have print in it, say so rather than leaving it a mystery:
+  // it is the one cause the person holding the phone can do something about.
+  if (!ticket.ticket_number && type !== 'text/plain') {
+    const edge = await imageEdge(entry.blob);
+    if (edge !== null && edge < MIN_READABLE_EDGE) {
+      note = `This picture is only ${edge} pixels on its long edge, too small for the print on a ticket to be read. Photograph the ticket again with the phone, or upload the original file rather than a screenshot or a copy shared through a chat app.`;
+      noteProblem = true;
+    }
   }
   const item: QueueItem = {
     id: makeId(),
@@ -339,6 +378,7 @@ async function buildQueueItem(
       (extracted ? `#page=${extracted.page}` : ''),
     ocr_text: ocrText,
     note,
+    note_problem: noteProblem,
     ticket,
     invoice: defaultInvoice(),
     preview_status: 'ready',
@@ -2314,6 +2354,35 @@ export default function LoadDesk() {
               onSubmit={(event) => void saveActive(event)}
               onInvalidCapture={openInvalidSection}
             >
+              {/* What the reader made of this page. Until now this was worked
+                  out, stored on the ticket and never shown, so a ticket that
+                  came back empty — an unsupported supplier's layout, a page
+                  nothing could be read from — looked like the app doing
+                  nothing at all. */}
+              {active.note_problem ? (
+                <div className="ld-notice" data-tone="warning" aria-live="polite">
+                  <strong>{t('This ticket was not read')}</strong>
+                  <p>{t(active.note)}</p>
+                  <details className="ld-scan-text">
+                    <summary>{t('What the scan read')}</summary>
+                    {active.ocr_text.trim() ? (
+                      <>
+                        <pre>{active.ocr_text}</pre>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="xs"
+                          onClick={() => void navigator.clipboard?.writeText(active.ocr_text)}
+                        >
+                          {t('Copy text')}
+                        </Button>
+                      </>
+                    ) : (
+                      <p>{t('Nothing at all. The page itself is the problem, not the layout.')}</p>
+                    )}
+                  </details>
+                </div>
+              ) : null}
               <div
                 className="ld-notice"
                 data-tone={issues.length ? 'warning' : 'good'}
