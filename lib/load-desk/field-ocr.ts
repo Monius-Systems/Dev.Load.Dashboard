@@ -22,7 +22,47 @@ type Region = {
    * when readings at two scales agree; otherwise the field stays empty.
    */
   confirmDigits?: number;
+  /**
+   * Just the figure on the row, with the printed label left outside it. Read
+   * on its own the reader can be told there are only digits in there, which
+   * is what stops a 5 coming back as an S. Absent when the label could not be
+   * located, and the whole row is read instead.
+   */
+  valueRect?: Rect;
 };
+
+/** A word that is printed wording rather than a figure that was misread. */
+const isLabel = (word: OcrWord) => {
+  const letters = (word.text.match(/[A-Za-z]/g) ?? []).length;
+  const digits = (word.text.match(/\d/g) ?? []).length;
+  return letters > 0 && letters >= digits;
+};
+
+/**
+ * Where the printed label on a row ends, so the figure after it can be read by
+ * itself. Null when no wording is found on the row — then the row is read whole
+ * as it always was, rather than guessing where to cut it.
+ */
+function labelEnd(
+  words: OcrWord[],
+  rect: Rect,
+  middle: number,
+  pitch: number,
+): number | null {
+  const ends = words
+    .filter(
+      (word) =>
+        Math.abs(center(word) - middle) < pitch * 0.5 &&
+        word.bbox.x1 > rect.x0 &&
+        word.bbox.x0 < rect.x1 &&
+        isLabel(word),
+    )
+    .map((word) => word.bbox.x1);
+  if (!ends.length) return null;
+  const end = Math.max(...ends);
+  // Leave room for the figure; a label running the whole width is not one.
+  return end < rect.x1 - pitch ? end : null;
+}
 
 const center = (word: OcrWord) => (word.bbox.y0 + word.bbox.y1) / 2;
 const height = (word: OcrWord) => word.bbox.y1 - word.bbox.y0;
@@ -115,17 +155,24 @@ function heidelbergRegions(words: OcrWord[], width: number): Region[] {
     todayEnd > ordered.bbox.x1 + pitch * 4
       ? todayEnd + pitch * 0.6
       : ordered.bbox.x0 + pitch * 14;
-  const row = (key: string, middle: number, confirmDigits: number): Region => ({
-    key,
-    mode: 'line',
-    confirmDigits,
-    rect: {
+  const row = (key: string, middle: number, confirmDigits: number): Region => {
+    const rect = {
       x0: ordered.bbox.x0 - pitch * 0.3,
       y0: middle - pitch * 0.5,
       x1,
       y1: middle + pitch * 0.5,
-    },
-  });
+    };
+    const end = labelEnd(words, rect, middle, pitch);
+    return {
+      key,
+      mode: 'line',
+      confirmDigits,
+      rect,
+      ...(end === null
+        ? {}
+        : { valueRect: { ...rect, x0: end + pitch * 0.15 } }),
+    };
+  };
   return [
     row('DISPATCH ROW', center(ordered) - pitch, 5),
     row('ORDERED ROW', center(ordered), 1),
@@ -330,6 +377,28 @@ export function isolateInk(source: HTMLCanvasElement) {
 const trailingNumber = (text: string) =>
   /(?:^|\s)(\d+)$/.exec(text.replace(/[|[\]]/g, ' ').trim())?.[1] ?? null;
 
+/** Reads one rect at two scales; the answer only counts when both agree. */
+async function readAtTwoScales(
+  worker: Worker,
+  source: HTMLCanvasElement,
+  rect: Rect,
+) {
+  const readings: (string | null)[] = [];
+  for (const scale of [2, 3]) {
+    const canvas = prepareRegion(source, { rect }, { scale });
+    const ink = canvas && isolateInk(canvas);
+    if (canvas) canvas.width = canvas.height = 0;
+    if (!ink) return null;
+    const { data } = await worker.recognize(ink);
+    ink.width = ink.height = 0;
+    readings.push(trailingNumber(data.text.split('\n').join(' ')));
+  }
+  // A number crossed by a table rule can read differently at each scale;
+  // an empty field is flagged for review, a wrong one would not be.
+  const [first, second] = readings;
+  return first && first === second ? first : null;
+}
+
 async function readConfirmedNumber(
   worker: Worker,
   psm: { line: string; block: string },
@@ -337,22 +406,25 @@ async function readConfirmedNumber(
   region: Region & { confirmDigits: number },
 ) {
   await worker.setParameters({ tessedit_pageseg_mode: psm.line as never });
-  const readings: (string | null)[] = [];
-  for (const scale of [2, 3]) {
-    const canvas = prepareRegion(source, region, { scale });
-    const ink = canvas && isolateInk(canvas);
-    if (canvas) canvas.width = canvas.height = 0;
-    if (!ink) return '';
-    const { data } = await worker.recognize(ink);
-    ink.width = ink.height = 0;
-    readings.push(trailingNumber(data.text.split('\n').join(' ')));
+  // The figure by itself, with the reader told it is looking at digits. This
+  // is what removes the whole 0/O, 1/I, 5/S, 8/B family of misreadings rather
+  // than repairing them afterwards. The wording on the row is left out of the
+  // crop, because under a digits-only alphabet a label reads as nonsense
+  // figures that could be mistaken for the value.
+  if (region.valueRect) {
+    try {
+      await worker.setParameters({ tessedit_char_whitelist: '0123456789' });
+      const digits = await readAtTwoScales(worker, source, region.valueRect);
+      if (digits && digits.length >= region.confirmDigits) return digits;
+    } finally {
+      // Cleared before anything reads words again, whatever happened above.
+      await worker.setParameters({ tessedit_char_whitelist: '' });
+    }
   }
-  const [first, second] = readings;
-  // A number crossed by a table rule can read differently at each scale;
-  // an empty field is flagged for review, a wrong one would not be.
-  return first && first === second && first.length >= region.confirmDigits
-    ? first
-    : '';
+  // Failing that, the whole row as before: a label that could not be found, a
+  // figure that ran into it, or a crop that came out empty.
+  const whole = await readAtTwoScales(worker, source, region.rect);
+  return whole && whole.length >= region.confirmDigits ? whole : '';
 }
 
 async function readRegion(
