@@ -28,6 +28,14 @@
 -- The tickets have no scanned image behind them, because a scan is a real file
 -- in storage. Opening one says the original is not stored; everything else —
 -- invoices, printing, totals, customers, trucks, the charts — works normally.
+--
+-- READING TICKETS IN THIS WORKSPACE
+--   Uploading a new ticket here sends it to be read, and each workspace reads
+--   on its own OpenAI key. For 'Monius Trucking' that is the server variable
+--   OPENAI_API_KEY_MONIUS_TRUCKING (the workspace id in capitals, with
+--   anything that is not a letter or digit as an underscore). Set it as a
+--   secret on the host, or in .dev.vars locally. Without it, and without a
+--   shared OPENAI_API_KEY, an upload says which variable is missing.
 
 do $$
 declare

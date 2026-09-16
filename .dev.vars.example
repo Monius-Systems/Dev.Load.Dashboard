@@ -10,3 +10,25 @@ AUTH_MODE=supabase
 # key. Never use a service-role or secret key here.
 SUPABASE_URL=https://ivpnwmpyoauymvjtjwmd.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_r-Y7LuRlb_yE5yTWwP3LxA_Zd0ZLqVH
+
+# Reading load tickets. The key is used only on the server, in
+# app/api/extract/route.ts, and is never sent to the browser. Set these as
+# secrets on the host — never in vite.config.ts vars, which are committed.
+#
+# One key per company, so each is billed for reading its own tickets. The name
+# is the workspace id in capitals, with everything that is not a letter or a
+# digit as an underscore:
+#   Monius Trucking      ->  OPENAI_API_KEY_MONIUS_TRUCKING   (the demo)
+#   ad-trucking-chicago  ->  OPENAI_API_KEY_AD_TRUCKING_CHICAGO
+#   smith-hauling        ->  OPENAI_API_KEY_SMITH_HAULING
+#
+# Two workspace ids that differ only in case or punctuation fold to the same
+# name, so keep them distinct — 'Monius Trucking' and 'monius-trucking' would
+# share a key.
+OPENAI_API_KEY_MONIUS_TRUCKING=sk-...
+OPENAI_API_KEY_AD_TRUCKING_CHICAGO=sk-...
+
+# Used by any workspace without one of its own, and by the local preview, which
+# has no workspace. Leave it unset to make every company bring its own key and
+# have an unconfigured one fail loudly rather than spend somebody else's.
+OPENAI_API_KEY=sk-...

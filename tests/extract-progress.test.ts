@@ -18,38 +18,28 @@ void test('page step shares add up to one page', () => {
   assert.ok(Math.abs(total - 1) < 1e-9);
 });
 
-void test('repeated 0-100% recognition passes still move forward', () => {
+void test('a page opening then being read only moves forward', () => {
   const { updates, tracker } = track();
-  for (const status of ['loading tesseract core', 'initializing api']) {
-    tracker.engine(status, 0);
-    tracker.engine(status, 1);
-  }
+  tracker.step(1, 'render', 0);
   tracker.step(1, 'render', 1);
-  tracker.step(1, 'page', 0);
-  tracker.step(1, 'page', 1);
-  tracker.step(1, 'fields', 0.5);
-  tracker.step(1, 'tables', 0);
-  tracker.step(1, 'tables', 1);
+  tracker.step(1, 'read', 0.1);
+  tracker.step(1, 'read', 1);
   const fractions = updates.map((update) => update.fraction);
   for (let index = 1; index < fractions.length; index++) {
     assert.ok(fractions[index] >= fractions[index - 1], `went backwards at ${index}`);
   }
   assert.equal(updates.at(-1)!.fraction, 1);
-  assert.equal(updates.at(-1)!.label, 'Checking weights');
+  assert.equal(updates.at(-1)!.label, 'Reading the ticket');
 });
 
-void test('engine start-up fills only its share and ignores other statuses', () => {
-  const { updates, tracker } = track();
-  tracker.engine('initializing api', 1);
-  assert.ok(Math.abs(updates.at(-1)!.fraction - START_SHARE) < 1e-9);
-  tracker.engine('recognizing text', 0.9);
-  assert.equal(updates.length, 1);
+void test('nothing is reserved before the first page now the reading is remote', () => {
+  assert.equal(START_SHARE, 0);
 });
 
 void test('a later progress event that is lower never lowers the bar', () => {
   const { updates, tracker } = track();
-  tracker.step(1, 'tables', 1);
-  tracker.step(1, 'page', 0);
+  tracker.step(1, 'read', 1);
+  tracker.step(1, 'render', 0);
   assert.equal(updates[1].fraction, updates[0].fraction);
 });
 

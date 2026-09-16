@@ -1,28 +1,21 @@
-// One steady percentage for ticket extraction. Tesseract reports 0-100% for
-// each recognition pass, and every page gets several passes, so its raw numbers
-// restart again and again. This maps each pass onto its share of the file and
-// never lets the result go backwards.
+// One steady percentage for ticket extraction. Each page is opened, then read,
+// and the reading is one request whose progress is not reported from inside.
+// This maps each step onto its share of the file and never lets the result go
+// backwards.
 
-/** Each pass over one page, its share of that page's work, and its label. Shares add up to 1. */
+/** Each step over one page, its share of that page's work, and its label. Shares add up to 1. */
 export const PAGE_STEPS = [
-  ['render', 0.05, 'Opening page'],
-  ['page', 0.45, 'Reading text'],
-  ['fields', 0.3, 'Checking ticket fields'],
-  ['tables', 0.2, 'Checking weights'],
+  ['render', 0.15, 'Opening page'],
+  ['read', 0.85, 'Reading the ticket'],
 ] as const;
 
 export type PageStep = (typeof PAGE_STEPS)[number][0];
 
-/** Loading the OCR engine, once per file, before any page is read. */
-export const START_SHARE = 0.1;
-
-/** Tesseract's start-up statuses, in the order it reports them. */
-const START_STATUSES = [
-  'loading tesseract core',
-  'initializing tesseract',
-  'loading language traineddata',
-  'initializing api',
-];
+/**
+ * Reserved before any page is read. Nothing is loaded up front now that the
+ * reading happens on the server, so the bar starts at the first page.
+ */
+export const START_SHARE = 0;
 
 export type FileProgress = { fraction: number; label: string };
 
@@ -38,15 +31,6 @@ export function createFileProgress(report: (update: FileProgress) => void) {
     report({ fraction: last, label });
   };
   return {
-    /** A Tesseract start-up event. Unknown statuses are ignored. */
-    engine(status: string, progress: number) {
-      const index = START_STATUSES.indexOf(status);
-      if (index < 0) return;
-      emit(
-        (START_SHARE * (index + clamp(progress))) / START_STATUSES.length,
-        'Starting text recognition',
-      );
-    },
     setPages(count: number) {
       pages = Math.max(1, Math.floor(count) || 1);
     },

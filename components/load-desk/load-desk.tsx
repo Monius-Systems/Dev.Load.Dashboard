@@ -69,7 +69,11 @@ import {
   sha256Hex,
   todayIso,
 } from '@/lib/load-desk/format';
-import { extractPages } from '@/lib/load-desk/extract';
+import { extractPages, type ExtractedPage } from '@/lib/load-desk/extract';
+import {
+  ticketFromExtraction,
+  weightDisagreement,
+} from '@/lib/load-desk/ticket-extraction';
 import { batchPercent } from '@/lib/load-desk/extract-progress';
 import { parseTicket } from '@/lib/load-desk/parser';
 import { fillFromSameOrder } from '@/lib/load-desk/same-order';
@@ -322,7 +326,7 @@ async function buildQueueItem(
   entry: Entry,
   kind: SourceKind,
   profiles: ProfileContext,
-  extracted?: { text: string; page: number; total: number },
+  extracted?: ExtractedPage & { total: number },
 ): Promise<QueueItem> {
   const type = guessType(entry.name, entry.blob.type);
   const sha256 = await sha256Hex(entry.blob);
@@ -339,7 +343,21 @@ async function buildQueueItem(
   }
   let ticket = emptyTicket();
   let noteProblem = false;
-  if (ocrText) {
+  if (extracted?.extracted) {
+    // Read by the model behind /api/extract: its thirteen fields become this
+    // ticket directly. Everything it was not asked for stays blank and is
+    // filled in during review, as an unreadable field always has been.
+    ticket = ticketFromExtraction(extracted.extracted);
+    note = 'Read from the ticket image. Check the fields against the original before saving.';
+    const disagreement = weightDisagreement(extracted.extracted);
+    if (disagreement) {
+      note = disagreement;
+      noteProblem = true;
+    } else if (!ticket.ticket_number) {
+      note = 'No ticket number could be read from this page. Check the original, or enter the fields by hand.';
+      noteProblem = true;
+    }
+  } else if (ocrText) {
     const parsed = parseTicket(ocrText);
     ticket = parsed.ticket;
     if (parsed.error) { note = parsed.error; noteProblem = true; }
