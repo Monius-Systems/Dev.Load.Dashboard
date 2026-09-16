@@ -232,6 +232,12 @@ const stringList = (value: unknown, maxItems: number, maxLength: number) =>
   value.length <= maxItems &&
   value.every((item) => text(item, maxLength));
 
+/** Stored addresses are single-spaced, and blank ones are dropped. */
+const cleanAddresses = (value: unknown): string[] =>
+  ((value as string[] | undefined) ?? [])
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+
 export function parseCustomer(value: unknown): Parsed<NewCustomer> {
   if (
     !isObject(value) ||
@@ -239,6 +245,8 @@ export function parseCustomer(value: unknown): Parsed<NewCustomer> {
     !(value.name as string).trim() ||
     !stringList(value.ticket_customer_ids, 20, 60) ||
     !stringList(value.ticket_names, 20, 160) ||
+    // Job-site addresses are optional: profiles saved before them have none.
+    !(value.addresses === undefined || stringList(value.addresses, 40, 200)) ||
     !amount(value.flat_rate) ||
     !(value.rate_type === undefined || value.rate_type === null || isRateType(value.rate_type)) ||
     !(value.fuel_type === undefined || value.fuel_type === null || isFuelType(value.fuel_type)) ||
@@ -255,6 +263,7 @@ export function parseCustomer(value: unknown): Parsed<NewCustomer> {
       name: (value.name as string).trim(),
       ticket_customer_ids: value.ticket_customer_ids as string[],
       ticket_names: value.ticket_names as string[],
+      addresses: cleanAddresses(value.addresses),
       flat_rate: value.flat_rate as number | null,
       rate_type: isRateType(value.rate_type) ? value.rate_type : 'flat',
       fuel_type: isFuelType(value.fuel_type) ? value.fuel_type : 'flat',

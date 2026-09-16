@@ -261,6 +261,32 @@
   min-width: 0;
 }
 
+/* Addresses read off this customer's own tickets, offered for one-click
+   adding under the list they would join. */
+.pf-seen {
+  display: grid;
+  gap: 5px;
+  margin-top: var(--ui-space-2);
+}
+.pf-seen > span {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.pf-seen ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+/* An address is longer than a chip, so it wraps inside the button rather than
+   running off the dialog. */
+.pf-seen button {
+  height: auto;
+  min-height: 24px;
+  padding-block: 3px;
+  text-align: left;
+  white-space: normal;
+}
+
 /* How a client prints in the BILL TO box of an invoice. */
 .pf-billto {
   grid-column: 1 / -1;

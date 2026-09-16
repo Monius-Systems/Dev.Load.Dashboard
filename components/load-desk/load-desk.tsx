@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
   type DragEvent,
+  type ReactNode,
   type SyntheticEvent,
 } from 'react';
 import Image from 'next/image';
@@ -25,6 +26,7 @@ import {
   FileSearch,
   FileText,
   FileUp,
+  MapPin,
   Pencil,
   ReceiptText,
   Trash2,
@@ -72,13 +74,16 @@ import { batchPercent } from '@/lib/load-desk/extract-progress';
 import { parseTicket } from '@/lib/load-desk/parser';
 import { fillFromSameOrder } from '@/lib/load-desk/same-order';
 import {
+  addCustomerAddress,
   clientForBillTo,
+  customerAddresses,
   defaultClient,
   getProfilesSnapshot,
   getServerProfilesSnapshot,
   matchCustomer,
   matchCustomerDetailed,
   subscribeProfiles,
+  normalizeAddress,
   normalizeName,
   saveProfile,
   truckLabel,
@@ -541,6 +546,8 @@ export default function LoadDesk() {
   const newCustomerInput = useRef<HTMLInputElement>(null);
   // Saving a ticket's printed spelling onto the customer it belongs to.
   const [rememberBusy, setRememberBusy] = useState(false);
+  // Saving the destination address onto the chosen customer's profile.
+  const [addressBusy, setAddressBusy] = useState(false);
   const addFileInput = useRef<HTMLInputElement>(null);
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
   const [recordToDelete, setRecordToDelete] = useState<SavedRecord | null>(
@@ -993,6 +1000,10 @@ export default function LoadDesk() {
         scannedName && normalizeName(scannedName) !== normalizeName(name)
           ? [scannedName]
           : [],
+      // The destination this ticket was delivered to starts the customer's
+      // address list, ready to pick on the next ticket whose address is cut
+      // off in the scan.
+      addresses: addCustomerAddress({}, ticket.project_address ?? ''),
       flat_rate: ticket.rate,
       rate_type: rateTypeOf(ticket),
       fuel_charge: ticket.fuel_charge,
@@ -1468,30 +1479,46 @@ export default function LoadDesk() {
     }
   }
 
-  const renderField = (def: FieldDef) => {
+  /** `under` goes below the box, for a field with more than a box to it. */
+  const renderField = (def: FieldDef, under?: ReactNode) => {
     if (!ticket) return null;
     const value = ticket[def.name];
     const numeric = isNumberField(def.name);
-    return (
+    const caption = (
+      <>
+        {t(def.label)}
+        {def.required ? (
+          <span className="ld-required" aria-hidden="true">
+            {' '}
+            *
+          </span>
+        ) : null}
+      </>
+    );
+    const box = (
+      <Input
+        id={under ? `${fieldId}-${def.name}` : undefined}
+        name={def.name}
+        type={def.type ?? (numeric ? 'number' : 'text')}
+        min={numeric ? 0 : undefined}
+        step={def.step}
+        required={def.required}
+        value={value === null ? '' : String(value)}
+        onChange={(event) => setField(def.name, event.target.value)}
+      />
+    );
+    // A label may only wrap the one control it names, so a field with buttons
+    // under it names its box with htmlFor instead.
+    return under ? (
+      <div key={def.name} className="ld-field" data-span={def.span}>
+        <label htmlFor={`${fieldId}-${def.name}`}>{caption}</label>
+        {box}
+        {under}
+      </div>
+    ) : (
       <label key={def.name} className="ld-field" data-span={def.span}>
-        <span>
-          {t(def.label)}
-          {def.required ? (
-            <span className="ld-required" aria-hidden="true">
-              {' '}
-              *
-            </span>
-          ) : null}
-        </span>
-        <Input
-          name={def.name}
-          type={def.type ?? (numeric ? 'number' : 'text')}
-          min={numeric ? 0 : undefined}
-          step={def.step}
-          required={def.required}
-          value={value === null ? '' : String(value)}
-          onChange={(event) => setField(def.name, event.target.value)}
-        />
+        <span>{caption}</span>
+        {box}
       </label>
     );
   };
@@ -1563,6 +1590,7 @@ export default function LoadDesk() {
         name: activeCustomer.name,
         ticket_customer_ids: activeCustomer.ticket_customer_ids,
         ticket_names: [...activeCustomer.ticket_names, printedName],
+        addresses: customerAddresses(activeCustomer),
         flat_rate: activeCustomer.flat_rate,
         rate_type: activeCustomer.rate_type ?? 'flat',
         fuel_charge: activeCustomer.fuel_charge,
@@ -1586,6 +1614,101 @@ export default function LoadDesk() {
           },
     );
   }
+  /**
+   * Destinations saved on the chosen customer's profile. Tickets are scanned
+   * with the left edge cut off often enough that the delivery address on them
+   * cannot be read; where this customer hauls to is known, so it is offered
+   * for one click rather than squinted at or typed out again.
+   */
+  const savedAddresses = customerAddresses(activeCustomer);
+  const typedAddress = normalizeAddress(ticket?.project_address ?? '');
+  const sameAddress = (value: string) =>
+    normalizeName(value) === normalizeName(typedAddress);
+  const addressOnFile = Boolean(typedAddress) && savedAddresses.some(sameAddress);
+
+  /** Keeps this ticket's destination on the customer, to pick on the next one. */
+  async function rememberAddress() {
+    if (!activeCustomer || !typedAddress || addressBusy) return;
+    setAddressBusy(true);
+    const error = await saveProfile(
+      'customer',
+      {
+        name: activeCustomer.name,
+        ticket_customer_ids: activeCustomer.ticket_customer_ids,
+        ticket_names: activeCustomer.ticket_names,
+        addresses: addCustomerAddress(activeCustomer, typedAddress),
+        flat_rate: activeCustomer.flat_rate,
+        rate_type: activeCustomer.rate_type ?? 'flat',
+        fuel_charge: activeCustomer.fuel_charge,
+        fuel_type: activeCustomer.fuel_type ?? 'flat',
+        notes: activeCustomer.notes,
+        created_at: activeCustomer.created_at,
+      },
+      activeCustomer.id,
+    );
+    setAddressBusy(false);
+    toast.add(
+      error
+        ? { title: t('Could not save the address'), description: t(error), type: 'error' }
+        : {
+            title: t('Address saved to {name}', { name: activeCustomer.name }),
+            description: t('Pick it on the next ticket instead of typing it again.'),
+            type: 'success',
+          },
+    );
+  }
+
+  const addressPicker = (
+    <div className="ld-address-picker">
+      {savedAddresses.length ? (
+        <>
+          <span id={`${fieldId}-addresses`}>
+            {t('Saved for {name}', { name: activeCustomer?.name ?? '' })}
+          </span>
+          <ul aria-labelledby={`${fieldId}-addresses`}>
+            {savedAddresses.map((address) => (
+              <li key={address}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="xs"
+                  data-chosen={sameAddress(address) || undefined}
+                  onClick={() => setField('project_address', address)}
+                >
+                  <MapPin data-icon="inline-start" />
+                  <span className="ui-literal">{address}</span>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {activeCustomer && typedAddress && !addressOnFile ? (
+        <Button
+          type="button"
+          variant="link"
+          size="xs"
+          disabled={addressBusy}
+          onClick={() => void rememberAddress()}
+        >
+          {addressBusy
+            ? t('Saving…')
+            : t('Save this address to {name}', { name: activeCustomer.name })}
+        </Button>
+      ) : null}
+      <small className="ld-field-hint">
+        {!activeCustomer
+          ? t('Choose a customer profile below to pick one of its saved addresses.')
+          : savedAddresses.length
+            ? t('Straight from the profile, for a scan whose address is cut off.')
+            : t(
+                '{name} has no saved addresses yet. Save this one to pick it on the next ticket.',
+                { name: activeCustomer.name },
+              )}
+      </small>
+    </div>
+  );
+
   // The client whose details the bill-to matches; null when it has no profile.
   const activeClient = active ? clientForBillTo(clients, active.invoice.bill_to) : null;
   const billToName = active?.invoice.bill_to.name.trim() ?? '';
@@ -2214,13 +2337,20 @@ export default function LoadDesk() {
                 <details className="ld-section ld-collapsible">
                   {sectionSummary('Ticket', ticketDetail)}
                   <div className="ld-fields">
-                    {TICKET_FIELDS.map(renderField)}
+                    {TICKET_FIELDS.map((def) => renderField(def))}
                   </div>
                 </details>
 
                 <details className="ld-section ld-collapsible">
                   {sectionSummary('Customer and Job', jobDetail)}
-                  <div className="ld-fields">{JOB_FIELDS.map(renderField)}</div>
+                  <div className="ld-fields">
+                    {JOB_FIELDS.map((def) =>
+                      renderField(
+                        def,
+                        def.name === 'project_address' ? addressPicker : undefined,
+                      ),
+                    )}
+                  </div>
                 </details>
 
                 <details className="ld-section ld-collapsible">
@@ -2230,7 +2360,7 @@ export default function LoadDesk() {
                     check.tone === 'bad' ? 'bad' : undefined,
                   )}
                   <div className="ld-fields">
-                    {WEIGHT_FIELDS.map(renderField)}
+                    {WEIGHT_FIELDS.map((def) => renderField(def))}
                     <p
                       className="ld-weight"
                       data-tone={check.tone}
@@ -2238,7 +2368,7 @@ export default function LoadDesk() {
                     >
                       {check.text}
                     </p>
-                    {HAULING_FIELDS.map(renderField)}
+                    {HAULING_FIELDS.map((def) => renderField(def))}
                   </div>
                 </details>
 

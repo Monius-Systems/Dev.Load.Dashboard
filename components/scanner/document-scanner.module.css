@@ -1,21 +1,397 @@
-.scanner { position: fixed; inset: 0; width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; padding: 0; background: #080b0f; color: #fff; overscroll-behavior: contain; }
-.scanner[open] { display: flex; flex-direction: column; }
-.scanner::backdrop { background: #080b0f; }
-.header { display: flex; align-items: center; justify-content: space-between; padding: max(12px, env(safe-area-inset-top)) 20px 8px; flex-shrink: 0; font-size: 16px; }
-.scanner button { cursor: pointer; min-height: 48px; min-width: 48px; border: 1px solid #ffffff40; border-radius: 14px; background: #ffffff12; color: white; padding: 10px 20px; font: inherit; font-size: 16px; }
-.header button { border: 0; padding: 12px; }
-.scanner button:focus-visible { outline: 3px solid #79e4c0; outline-offset: 4px; }
-.scanner button:disabled { opacity: .35; cursor: default; }
-.viewport { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.frame { position: relative; max-height: 100%; max-width: 100%; }
-.video { display: block; height: 100%; width: 100%; object-fit: contain; }
-.outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.outline polygon { stroke: #79e4c0; stroke-width: 3; fill: #79e4c010; stroke-linejoin: round; }
-.preview { width: 100%; height: 100%; object-fit: contain; padding: 10px 16px; }
-.footer { flex-shrink: 0; min-height: 136px; text-align: center; padding: 12px 20px max(18px, env(safe-area-inset-bottom)); }
-.footer p, .footer output { display: block; font-size: 16px; margin: 0 0 14px; }
-.footer .shutter { display: inline-flex; justify-content: center; align-items: center; border: 3px solid #fff; border-radius: 50%; height: 62px; width: 62px; padding: 0; }
-.actions { display: flex; gap: 12px; justify-content: center; }
-.actions button { min-width: 120px; }
-.actions .primary { background: #79e4c0; color: #08241d; border-color: #79e4c0; }
-@media (orientation: landscape) and (max-height: 500px) { .header { padding-top: 4px; } .footer { min-height: 105px; padding: 6px 16px; } .footer p { margin-bottom: 6px; } .footer .shutter { height: 48px; width: 48px; } }
+/* The phone scanner. A camera surface, so it is always dark, whatever theme
+   the dashboard is in, and it uses the platform's own type so it reads as part
+   of the phone rather than as a web page inside it. */
+.scanner {
+  /* Room the floating chrome needs; the preview is sized against it below. */
+  --chrome: 248px;
+  --accent: #375dfb;
+  --lock: #34e5a4;
+  --hairline: rgb(255 255 255 / 16%);
+
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  overscroll-behavior: contain;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.scanner[open] {
+  display: block;
+}
+.scanner::backdrop {
+  background: #000;
+}
+
+/* ------------------------------------------------------------------ stage */
+/* The camera fills the screen between the two bars. Its padding is what keeps
+   a detected ticket clear of the controls floating over it. */
+.stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 0 calc(var(--chrome) - 72px);
+}
+
+/* The overlay maps the detector's 0–1 coordinates straight onto this box, so
+   it has to stay exactly the camera's aspect ratio with the video letterboxed
+   inside it. Cropping the video to fill the screen would slide the outline off
+   the ticket. */
+.frame {
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #0a0a0c;
+  box-shadow:
+    0 0 0 0.5px rgb(255 255 255 / 12%),
+    0 24px 60px rgb(0 0 0 / 60%);
+}
+.video {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+.outline {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.outline polygon {
+  fill: rgb(52 229 164 / 5%);
+  stroke: rgb(255 255 255 / 90%);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  transition:
+    fill 220ms ease,
+    stroke 220ms ease,
+    stroke-width 220ms ease;
+}
+/* Locked on: the outline stops being a hint and becomes a confirmation, which
+   is the moment the shutter is about to fire by itself. */
+.outline[data-locked='true'] polygon {
+  fill: rgb(52 229 164 / 9%);
+  stroke: var(--lock);
+  stroke-width: 3.5;
+}
+
+/* Corner marks for where to hold the ticket, faint enough to ignore. */
+.brackets {
+  position: absolute;
+  inset: 14px;
+  pointer-events: none;
+}
+.brackets i {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 2px solid rgb(255 255 255 / 38%);
+}
+.brackets i:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 8px 0 0 0;
+}
+.brackets i:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-left: 0;
+  border-bottom: 0;
+  border-radius: 0 8px 0 0;
+}
+.brackets i:nth-child(3) {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+  border-radius: 0 0 8px 0;
+}
+.brackets i:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  border-right: 0;
+  border-top: 0;
+  border-radius: 0 0 0 8px;
+}
+/* Out of the way once the detector has the ticket. */
+.outline[data-locked='true'] ~ .brackets i {
+  border-color: transparent;
+  transition: border-color 220ms ease;
+}
+
+/* Sized to the photo itself rather than to the space around it, so the
+   rounded corners land on the picture instead of on an invisible box. */
+.preview {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 60%);
+}
+
+/* The shutter firing, over the whole screen. */
+.flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: flash 320ms ease-out forwards;
+}
+@keyframes flash {
+  from {
+    opacity: 0.9;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* ------------------------------------------------------------------ chrome */
+/* Both bars sit over the camera on a scrim that fades out, so they read as
+   glass laid on the picture rather than as panels bolted around it. */
+.header {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: max(10px, env(safe-area-inset-top)) 16px 10px;
+  background: linear-gradient(to bottom, rgb(0 0 0 / 60%), transparent);
+}
+.title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.close {
+  position: absolute;
+  right: 12px;
+  bottom: 6px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  min-width: 0;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(120 120 128 / 36%);
+  color: #fff;
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 24px 20px max(20px, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgb(0 0 0 / 82%) 55%, transparent);
+}
+
+/* The one line of coaching, as a pill on the picture. */
+.hint,
+.status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: 100%;
+  margin: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgb(28 28 30 / 68%);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-wrap: balance;
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+.hint svg,
+.status svg {
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+/* Holding still: the phone is about to take the photo on its own. */
+.hint[data-tone='lock'] {
+  background: rgb(52 229 164 / 20%);
+  box-shadow: inset 0 0 0 0.5px rgb(52 229 164 / 45%);
+  color: #b6ffe6;
+}
+.hint[data-tone='error'],
+.status[data-tone='warn'] {
+  background: rgb(255 159 10 / 20%);
+  box-shadow: inset 0 0 0 0.5px rgb(255 159 10 / 45%);
+  color: #ffd9a3;
+}
+.status[data-tone='good'] {
+  background: rgb(52 229 164 / 20%);
+  box-shadow: inset 0 0 0 0.5px rgb(52 229 164 / 45%);
+  color: #b6ffe6;
+}
+
+/* ----------------------------------------------------------------- buttons */
+.scanner button {
+  cursor: pointer;
+  border: 0;
+  font: inherit;
+  color: #fff;
+  -webkit-tap-highlight-color: transparent;
+}
+.scanner button:focus-visible {
+  outline: 3px solid var(--lock);
+  outline-offset: 4px;
+}
+
+/* The camera shutter every phone owner already knows: a ring with a disc in
+   it that gives way under the thumb. */
+.shutter {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 3px #fff;
+}
+.shutter span {
+  display: block;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.shutter:active span {
+  transform: scale(0.86);
+}
+.shutter:disabled {
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 35%);
+  cursor: default;
+}
+.shutter:disabled span {
+  background: rgb(255 255 255 / 35%);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  width: 100%;
+  max-width: 420px;
+}
+.primary,
+.secondary {
+  flex: 1 1 0;
+  min-height: 50px;
+  padding: 0 22px;
+  border-radius: 14px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.primary:active,
+.secondary:active {
+  transform: scale(0.97);
+}
+.primary {
+  background: var(--accent);
+}
+.secondary {
+  background: rgb(120 120 128 / 36%);
+  box-shadow: inset 0 0 0 0.5px var(--hairline);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+/* ----------------------------------------------------------- small screens */
+/* A phone held sideways has no height to spare, so the controls move to the
+   right edge — the same thing the phone's own camera does when it is turned —
+   and the picture keeps the full height instead of hiding under them. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .scanner {
+    --chrome: 64px;
+  }
+  .stage {
+    padding: 52px 156px 12px 12px;
+  }
+  .header {
+    min-height: 44px;
+    padding-top: max(6px, env(safe-area-inset-top));
+  }
+  .footer {
+    top: 0;
+    left: auto;
+    align-content: center;
+    width: 156px;
+    gap: 14px;
+    padding: 12px max(12px, env(safe-area-inset-right)) 12px 12px;
+    background: linear-gradient(to left, rgb(0 0 0 / 82%) 55%, transparent);
+  }
+  .hint,
+  .status {
+    font-size: 13px;
+  }
+  .shutter {
+    width: 58px;
+    height: 58px;
+  }
+  .shutter span {
+    width: 46px;
+    height: 46px;
+  }
+  /* Stacked, because there is no width left to sit them side by side. */
+  .actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .primary,
+  .secondary {
+    flex: 0 0 auto;
+    min-height: 44px;
+    font-size: 15px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash {
+    animation-duration: 1ms;
+  }
+  .outline polygon,
+  .shutter span,
+  .primary,
+  .secondary {
+    transition-duration: 1ms;
+  }
+}

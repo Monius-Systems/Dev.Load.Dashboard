@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type SyntheticEvent } from 'react';
-import { Coins, Pencil, Plus, ScanLine, StickyNote, Trash2, UserPlus, UserRound, X } from 'lucide-react';
+import { Coins, MapPin, Pencil, Plus, ScanLine, StickyNote, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,8 +45,11 @@ import {
   RATE_UNITS,
 } from '@/lib/load-desk/format';
 import {
+  addCustomerAddress,
+  customerAddresses,
   customerIdFor,
   deleteProfile,
+  normalizeAddress,
   normalizeKey,
   normalizeName,
   saveProfile,
@@ -77,6 +80,8 @@ type Draft = {
   ids: string;
   /** Names this customer's tickets are printed with. */
   names: string[];
+  /** Job-site addresses, ready to pick while reviewing a scan. */
+  addresses: string[];
   rateType: RateType;
   flatRate: string;
   fuelCharge: string;
@@ -89,6 +94,7 @@ const blankDraft = (): Draft => ({
   name: '',
   ids: '',
   names: [],
+  addresses: [],
   rateType: 'flat',
   flatRate: '',
   fuelCharge: '',
@@ -101,6 +107,7 @@ const draftFrom = (customer: CustomerProfile): Draft => ({
   name: customer.name,
   ids: customer.ticket_customer_ids.join(', '),
   names: [...customer.ticket_names],
+  addresses: customerAddresses(customer),
   rateType: customer.rate_type ?? 'flat',
   flatRate: customer.flat_rate === null ? '' : String(customer.flat_rate),
   fuelCharge: customer.fuel_charge === null ? '' : String(customer.fuel_charge),
@@ -132,6 +139,8 @@ export default function CustomersPage() {
   const [saving, setSaving] = useState(false);
   // The printed name being typed into the list of names on tickets.
   const [aliasDraft, setAliasDraft] = useState('');
+  // The job-site address being typed into this customer's list.
+  const [addressDraft, setAddressDraft] = useState('');
   const fieldId = useId();
   const rateUnit = (type: RateType | null | undefined) => t(RATE_UNITS[type ?? 'flat']);
 
@@ -166,9 +175,28 @@ export default function CustomersPage() {
     (a, b) => b.count - a.count,
   );
 
+  /**
+   * Destinations on this customer's own saved tickets that its profile does
+   * not list yet. They were read off paperwork already, so adding one is both
+   * quicker and truer to the ticket than typing the address out again.
+   */
+  const seenAddresses = (() => {
+    if (draft?.id == null) return [];
+    const known = new Set(draft.addresses.map(normalizeName));
+    const found = new Map<string, string>();
+    for (const record of byCustomer.get(draft.id) ?? []) {
+      const address = normalizeAddress(record.ticket.project_address ?? '');
+      const key = normalizeName(address);
+      if (!address || known.has(key) || found.has(key)) continue;
+      found.set(key, address);
+    }
+    return [...found.values()];
+  })();
+
   const edit = (next: Draft) => {
     setFormError(null);
     setAliasDraft('');
+    setAddressDraft('');
     setDraft(next);
   };
 
@@ -215,6 +243,7 @@ export default function CustomersPage() {
         name,
         ticket_customer_ids: ids,
         ticket_names: draft.names,
+        addresses: draft.addresses,
         flat_rate: flatRate,
         rate_type: draft.rateType,
         fuel_charge: fuelCharge,
@@ -267,6 +296,18 @@ export default function CustomersPage() {
   };
   const removeAlias = (value: string) =>
     setDraftField({ names: draft?.names.filter((name) => name !== value) ?? [] });
+
+  /** Keeps a job-site address, ignoring one already on the list. */
+  const addAddress = () => {
+    const value = normalizeAddress(addressDraft);
+    setAddressDraft('');
+    if (!value || !draft) return;
+    setDraftField({ addresses: addCustomerAddress({ addresses: draft.addresses }, value) });
+  };
+  const removeAddress = (value: string) =>
+    setDraftField({
+      addresses: draft?.addresses.filter((address) => address !== value) ?? [],
+    });
 
   const rowActions = (customer: CustomerProfile) => (
     <div className="pf-actions">
@@ -588,6 +629,91 @@ export default function CustomersPage() {
                   <small id={`${fieldId}-names-hint`} className="ld-field-hint">
                     {t(
                       'A ticket matches when its customer name contains one of these or the profile name. A name a letter or two off still matches, so a printer dropping or adding a character is fine.',
+                    )}
+                  </small>
+                </div>
+                <p className="pf-group-title">
+                  <MapPin aria-hidden="true" />
+                  {t('Job sites')}
+                </p>
+                <div className="ld-field" data-span={2}>
+                  <span id={`${fieldId}-addresses-label`}>
+                    {t('Delivery addresses')}
+                  </span>
+                  {draft.addresses.length ? (
+                    <ul className="pf-aliases">
+                      {draft.addresses.map((address) => (
+                        <li key={address} className="pf-alias">
+                          <span className="ui-literal">{address}</span>
+                          <button
+                            type="button"
+                            aria-label={t('Remove {name}', { name: address })}
+                            onClick={() => removeAddress(address)}
+                          >
+                            <X aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="pf-alias-empty">{t('No addresses yet.')}</p>
+                  )}
+                  <div className="pf-alias-add">
+                    <label className="sr-only" htmlFor={`${fieldId}-addresses`}>
+                      {t('Add a delivery address')}
+                    </label>
+                    <Input
+                      id={`${fieldId}-addresses`}
+                      aria-describedby={`${fieldId}-addresses-hint`}
+                      placeholder={t('Street, city, state')}
+                      value={addressDraft}
+                      onChange={(event) => setAddressDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        // Enter adds the address instead of saving the customer.
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addAddress();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="secondary" size="sm" onClick={addAddress}>
+                      <Plus data-icon="inline-start" />
+                      {t('Add')}
+                    </Button>
+                  </div>
+                  {/* Addresses this customer's saved tickets were delivered to.
+                      Adding one from here is quicker, and more faithful to the
+                      paperwork, than typing it out again. */}
+                  {seenAddresses.length ? (
+                    <div className="pf-seen">
+                      <span>{t('Seen on this customer’s tickets')}</span>
+                      <ul>
+                        {seenAddresses.map((address) => (
+                          <li key={address}>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="xs"
+                              onClick={() =>
+                                setDraftField({
+                                  addresses: addCustomerAddress(
+                                    { addresses: draft.addresses },
+                                    address,
+                                  ),
+                                })
+                              }
+                            >
+                              <Plus data-icon="inline-start" />
+                              <span className="ui-literal">{address}</span>
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  <small id={`${fieldId}-addresses-hint`} className="ld-field-hint">
+                    {t(
+                      'Pick one of these in review instead of reading the destination off a scan that is cut off or smudged.',
                     )}
                   </small>
                 </div>

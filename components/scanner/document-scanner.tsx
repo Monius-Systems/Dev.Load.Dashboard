@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
-import { Camera, X } from 'lucide-react';
+import { Check, Lightbulb, RotateCcw, ScanLine, Sun, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { guidance, movement, scannerConfig, StabilityTracker, type Detection, type Quad } from '@/lib/scanner/geometry';
 // The bundler creates this default export; the linter cannot see through the
 // "?worker" suffix, which worker-env.d.ts declares for TypeScript.
@@ -23,6 +23,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
   const dialog = useRef<HTMLDialogElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const polygon = useRef<SVGPolygonElement>(null);
+  const outline = useRef<SVGSVGElement>(null);
   const shutter = useRef<(() => void) | null>(null);
   const [session, setSession] = useState(0);
   const [instruction, setInstruction] = useState('Find ticket');
@@ -85,6 +86,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
       if (video.current) video.current.srcObject = null;
       stability.reset(); previous = smoothed = null;
       polygon.current?.setAttribute('points', '');
+      if (outline.current) outline.current.dataset.locked = 'false';
       if (!disposed) setReady(false);
     }
     function frame(maxSize: number) {
@@ -165,6 +167,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
             previous = current;
           } else { previous = smoothed = null; polygon.current?.setAttribute('points', ''); }
           const acceptable = !!detection && message === 'Hold still...' && detection.sharpness >= scannerConfig.minSharpness;
+          if (outline.current) outline.current.dataset.locked = acceptable ? 'true' : 'false';
           if (stability.update(detection?.corners ?? null, acceptable, performance.now())) { await capture(true, detection); return; }
         }
       } catch { stability.reset(); if (!disposed) setInstruction('Automatic scan unavailable · take a photo'); }
@@ -193,7 +196,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
       }
     }
     const visibility = () => { if (document.hidden) stopCamera(); else if (!reviewed) void startCamera(); };
-    const orientation = () => { stability.reset(); previous = smoothed = null; polygon.current?.setAttribute('points', ''); };
+    const orientation = () => { stability.reset(); previous = smoothed = null; polygon.current?.setAttribute('points', ''); if (outline.current) outline.current.dataset.locked = 'false'; };
     document.addEventListener('visibilitychange', visibility);
     window.addEventListener('orientationchange', orientation);
     window.addEventListener('pagehide', stopCamera);
@@ -210,19 +213,52 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
     };
   }, [session]);
 
+  // An icon for each thing the detector asks for, so the coaching line reads
+  // at a glance from arm's length. Anything unexpected (a worker failure, a
+  // capture that had to be retried) simply has no icon.
+  const hint = error || (capturing ? 'Capturing…' : instruction);
+  const HintIcon = error
+    ? RotateCcw
+    : ({
+        'Find ticket': ScanLine,
+        'Move back': ZoomOut,
+        'Move closer': ZoomIn,
+        'Hold phone straighter': RotateCcw,
+        'More light needed': Lightbulb,
+        'Reduce glare': Sun,
+        'Hold still...': Check,
+      }[hint] ?? null);
+  const tone = error ? 'error' : hint === 'Hold still...' ? 'lock' : undefined;
+
   return createPortal(
     <dialog ref={dialog} className={styles.scanner} aria-label="Scan load ticket" onCancel={event => { event.preventDefault(); close.current(); }}>
-      <header className={styles.header}><span>{result ? 'Review ticket' : 'Scan ticket'}</span><button type="button" aria-label="Close scanner" onClick={onClose}><X size={24} /></button></header>
-      <div className={styles.viewport}>
+      <div className={styles.stage}>
         {result ? <Image unoptimized width={1200} height={1600} className={styles.preview} src={result.url} alt={result.cropped ? 'Cropped and perspective-corrected ticket' : 'Original ticket photo'} /> :
-          <div className={styles.frame} style={{ aspectRatio: aspect, width: `min(100%, calc((100dvh - 210px) * ${aspect}))` }}>
+          <div className={styles.frame} style={{ aspectRatio: aspect, width: `min(100%, calc((100dvh - var(--chrome)) * ${aspect}))` }}>
             <video ref={video} autoPlay playsInline muted className={styles.video} />
-            <svg viewBox="0 0 1000 1000" preserveAspectRatio="none" className={styles.outline} aria-hidden="true"><polygon ref={polygon} points="" vectorEffect="non-scaling-stroke" /></svg>
+            <svg ref={outline} viewBox="0 0 1000 1000" preserveAspectRatio="none" className={styles.outline} data-locked="false" aria-hidden="true"><polygon ref={polygon} points="" vectorEffect="non-scaling-stroke" /></svg>
+            <div className={styles.brackets} aria-hidden="true"><i /><i /><i /><i /></div>
           </div>}
+        {capturing ? <div className={styles.flash} aria-hidden="true" /> : null}
       </div>
+
+      <header className={styles.header}>
+        <span className={styles.title}>{result ? 'Review ticket' : 'Scan ticket'}</span>
+        <button type="button" className={styles.close} aria-label="Close scanner" onClick={onClose}><X size={19} /></button>
+      </header>
+
       <footer className={styles.footer}>
-        {result ? <><p>{result.cropped ? 'Ready to use' : 'Edges unclear · original photo kept'}</p><div className={styles.actions}><button type="button" onClick={() => { setResult(null); setSession(s => s + 1); }}>Retake</button><button type="button" className={styles.primary} onClick={() => { onUse(new File([result.corrected], `ticket-${Date.now()}.${result.corrected.type === 'image/png' ? 'png' : 'jpg'}`, { type: result.corrected.type })); }}>Use Photo</button></div></> :
-          <><output aria-live="polite">{error || (capturing ? 'Capturing…' : instruction)}</output>{error ? <button type="button" onClick={() => setSession(s => s + 1)}>Retry camera</button> : <button type="button" className={styles.shutter} disabled={!ready || capturing} aria-label="Take photo manually" onClick={() => shutter.current?.()}><Camera size={26} /></button>}</>}
+        {result ? <>
+          <p className={styles.status} data-tone={result.cropped ? 'good' : 'warn'}>{result.cropped ? <><Check size={15} />Ready to use</> : <><Sun size={15} />Edges unclear · original photo kept</>}</p>
+          <div className={styles.actions}>
+            <button type="button" className={styles.secondary} onClick={() => { setResult(null); setSession(s => s + 1); }}>Retake</button>
+            <button type="button" className={styles.primary} onClick={() => { onUse(new File([result.corrected], `ticket-${Date.now()}.${result.corrected.type === 'image/png' ? 'png' : 'jpg'}`, { type: result.corrected.type })); }}>Use Photo</button>
+          </div>
+        </> : <>
+          <output className={styles.hint} data-tone={tone} aria-live="polite">{HintIcon ? <HintIcon size={15} /> : null}{hint}</output>
+          {error ? <button type="button" className={styles.secondary} onClick={() => setSession(s => s + 1)}>Retry camera</button> :
+            <button type="button" className={styles.shutter} disabled={!ready || capturing} aria-label="Take photo manually" onClick={() => shutter.current?.()}><span /></button>}
+        </>}
       </footer>
     </dialog>, document.body,
   );

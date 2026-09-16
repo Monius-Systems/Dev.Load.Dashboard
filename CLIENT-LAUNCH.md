@@ -6,8 +6,18 @@ built to be linked from the Monius Systems website's **Client login**.
 
 Where this stands: the database migration is applied and public sign-up is off
 (step 1), and one account has workspace access for testing (step 2). **Nothing
-is published yet.** Steps 3 and 4, the domain, and the Supabase redirect URL
-are yours to run.
+is published yet.** Steps 3 and 4 are yours to run.
+
+The addresses are decided:
+
+| Address | What answers on it |
+|---|---|
+| `https://moniussystems.com` | the Monius Systems website |
+| `https://dashboard.moniussystems.com` | this app, the Load Desk workspace |
+
+Both are already written into the two projects (step 3 and step 4); what is
+left is creating the hosting project, setting the server variables and pointing
+DNS.
 
 ## How access and data work
 
@@ -137,17 +147,27 @@ project and never overwrites the website.
 
 1. Create a new Sites project for this folder and publish it the same way as
    the Monius website.
-2. Set these server variables on the project (values from Supabase → Project
-   Settings → API):
+2. Set these server variables on the project (Supabase values from Supabase →
+   Project Settings → API):
 
    | Name | Value |
    |---|---|
    | `AUTH_MODE` | `supabase` |
    | `SUPABASE_URL` | `https://ivpnwmpyoauymvjtjwmd.supabase.co` |
    | `SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_r-Y7LuRlb_yE5yTWwP3LxA_Zd0ZLqVH` |
+   | `WEBSITE_URL` | `https://moniussystems.com` |
 
-3. In **Supabase → Authentication → URL Configuration**, add the app's address
-   as an allowed redirect URL if you use invite or recovery emails.
+   `WEBSITE_URL` is what lets the website's Client Login sign people in; see
+   step 4 for why its exact spelling matters.
+
+3. Point `dashboard.moniussystems.com` at the project, as the host's custom-domain
+   setup asks. The website keeps `moniussystems.com`. They have to be separate
+   addresses: every route this app serves is at the root (`/login`,
+   `/api/auth/website-login`, `/load-desk`), so it cannot live under a path of
+   the website.
+4. In **Supabase → Authentication → URL Configuration**, add
+   `https://dashboard.moniussystems.com/**` as an allowed redirect URL, for invite
+   and recovery emails.
 
 Build locally before publishing:
 
@@ -169,19 +189,26 @@ login, sets its httpOnly session cookies, and opens the workspace. A failed
 sign-in returns to the website's Client Login with a message. The endpoint
 accepts posts only from the address in `WEBSITE_URL`; anything else gets 403.
 
-1. In the website folder, set the app's address in `app/client-portal.json`
-   and publish the website:
+1. The website folder's `app/client-portal.json` is already set:
 
    ```json
-   { "dashboardUrl": "https://<load-desk-address>" }
+   { "dashboardUrl": "https://dashboard.moniussystems.com" }
    ```
 
-   Only an `https://` address is accepted; anything else keeps the
-   "not available yet" message.
-2. On this app's Sites project, add the server variable `WEBSITE_URL` with the
-   website's exact address, for example `https://<website-address>` (no path).
-   **Signing in from the website does not work until this is set.** It also
-   shows **Back to Monius Systems** on this app's own login page.
+   It is read at **build** time, so the website has to be rebuilt and published
+   again for a change here to reach anyone. Only an `https://` address is
+   accepted; anything else keeps the "not available yet" message.
+2. On this app's Sites project, set `WEBSITE_URL` to `https://moniussystems.com`
+   (step 3). **Signing in from the website does not work until this is set.**
+   It also shows **Back to Monius Systems** on this app's own login page.
+
+   **One address only.** The website's Client Login posts here from the browser,
+   and this app compares that post's `Origin` against `WEBSITE_URL` exactly —
+   one spelling, no others. If the website answers on both
+   `moniussystems.com` and `www.moniussystems.com`, sign-in works from one and
+   is refused with 403 from the other. Pick `https://moniussystems.com` as the
+   real address and have `www` redirect to it, so there is only ever one origin
+   to match.
 
 This app's own `/login` keeps working on its own, for example as a bookmark.
 
@@ -191,7 +218,12 @@ Signing out returns to the website's Client Login too, using the same
 Local development: the website reads `VITE_CLIENT_DASHBOARD_URL` from its
 ignored `.env.local` (`http://127.0.0.1:4319`), and this app reads
 `WEBSITE_URL` from `.dev.vars` (`http://127.0.0.1:4320`). Plain `http://` is
-accepted only for localhost while developing.
+accepted only for localhost while developing. That website override is read
+**in development only**: Vite loads `.env.local` whichever way it is building,
+so without that guard a publish from a developer's own computer would carry
+`http://127.0.0.1:4319` into the live site, where it is refused and the Client
+Login quietly reads "Sign-in isn't available yet". A published build takes the
+address from `client-portal.json` and nowhere else.
 
 The link only opens the sign-in page; access is still decided by Supabase
 membership. If more client dashboards follow, the website can link to a small
@@ -204,6 +236,13 @@ membership. If more client dashboards follow, the website can link to a small
       open the scan, print the invoice, and delete the ticket.
 - [ ] A test account **without** membership sees "has not been given access"
       and every `/api/*` route returns 401 for it.
+- [ ] The **published** website's Client Login shows a real sign-in form, not
+      "Sign-in isn't available yet". Its form posts to
+      `https://dashboard.moniussystems.com/api/auth/website-login` — check the page
+      source if in doubt.
+- [ ] Signing in from the website's Client Login opens the workspace, and doing
+      it from `www.moniussystems.com` either redirects to the real address
+      first or is not reachable at all (see step 4).
 - [ ] Signing out returns to the **website's** Client Login (needs
       `WEBSITE_URL`), and the browser back button does not show workspace data.
 - [ ] Two people saving tickets at the same time get distinct records; reusing

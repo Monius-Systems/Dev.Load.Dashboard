@@ -15,6 +15,14 @@ export type CustomerProfile = {
   /** Customer names as printed on tickets. The profile name also matches. */
   ticket_names: string[];
   /**
+   * Job-site addresses this customer's loads go to, ready to pick in review.
+   * Scanned tickets are often cut off or smudged down the left edge, where the
+   * delivery address is printed; picking the address the customer is known to
+   * haul to beats squinting at the scan or typing it out again. Profiles saved
+   * before addresses existed have none.
+   */
+  addresses?: string[];
+  /**
    * Default rate filled into matching tickets, charged as rate_type (per load,
    * hour or ton). Null means the rate is entered per ticket. The name predates
    * rate types and is kept so saved profiles still read.
@@ -108,6 +116,7 @@ function isCustomer(value: unknown): value is CustomerProfile {
     typeof customer.name === 'string' &&
     isStringList(customer.ticket_customer_ids) &&
     isStringList(customer.ticket_names) &&
+    (customer.addresses === undefined || isStringList(customer.addresses)) &&
     isAmount(customer.flat_rate) &&
     (customer.rate_type === undefined || typeof customer.rate_type === 'string') &&
     (customer.fuel_type === undefined || typeof customer.fuel_type === 'string') &&
@@ -459,6 +468,47 @@ export const normalizeKey = (value: string) =>
 const sameText = (a: string, b: string) =>
   a.replace(/\s+/g, ' ').trim().toLowerCase() ===
   b.replace(/\s+/g, ' ').trim().toLowerCase();
+
+/** An address as it is stored: one line, single spaces, no trailing comma. */
+export const normalizeAddress = (value: string) =>
+  value.replace(/\s+/g, ' ').replace(/[\s,]+$/, '').trim();
+
+/**
+ * A customer's saved job-site addresses, cleaned and without repeats. Profiles
+ * saved before addresses existed have none.
+ */
+export function customerAddresses(
+  customer: Pick<CustomerProfile, 'addresses'> | null | undefined,
+): string[] {
+  const seen = new Set<string>();
+  const addresses: string[] = [];
+  for (const line of customer?.addresses ?? []) {
+    const address = normalizeAddress(line);
+    const key = normalizeName(address);
+    if (!address || seen.has(key)) continue;
+    seen.add(key);
+    addresses.push(address);
+  }
+  return addresses;
+}
+
+/**
+ * The customer's addresses with this one added, or the list unchanged when it
+ * is blank or already there. Comparing with normalizeName means a comma or a
+ * capital letter out of place is the same address, not a second copy of it.
+ */
+export function addCustomerAddress(
+  customer: Pick<CustomerProfile, 'addresses'>,
+  value: string,
+): string[] {
+  const address = normalizeAddress(value);
+  const addresses = customerAddresses(customer);
+  if (!address) return addresses;
+  const key = normalizeName(address);
+  return addresses.some((known) => normalizeName(known) === key)
+    ? addresses
+    : [...addresses, address];
+}
 
 /**
  * The client whose name, address and phone are exactly this bill-to (ignoring

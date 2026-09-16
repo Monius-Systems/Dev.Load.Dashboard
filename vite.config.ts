@@ -26,6 +26,15 @@ export default defineConfig(async () => {
           main: 'vinext/server/fetch-handler',
           compatibility_date: '2026-08-01',
           compatibility_flags: ['nodejs_compat'],
+          // Settings that are the same for every deployment of this app and
+          // are not secret. The Supabase URL and publishable key stay on the
+          // host so one build can serve more than one project, and a
+          // service-role or secret key never belongs in any of them.
+          // `.dev.vars` still wins locally, so AUTH_MODE=local keeps working.
+          vars: {
+            AUTH_MODE: 'supabase',
+            WEBSITE_URL: 'https://moniussystems.com',
+          },
         },
       }),
     ],
