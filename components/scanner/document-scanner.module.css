@@ -1,0 +1,21 @@
+.scanner { position: fixed; inset: 0; width: 100vw; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; padding: 0; background: #080b0f; color: #fff; overscroll-behavior: contain; }
+.scanner[open] { display: flex; flex-direction: column; }
+.scanner::backdrop { background: #080b0f; }
+.header { display: flex; align-items: center; justify-content: space-between; padding: max(12px, env(safe-area-inset-top)) 20px 8px; flex-shrink: 0; font-size: 16px; }
+.scanner button { cursor: pointer; min-height: 48px; min-width: 48px; border: 1px solid #ffffff40; border-radius: 14px; background: #ffffff12; color: white; padding: 10px 20px; font: inherit; font-size: 16px; }
+.header button { border: 0; padding: 12px; }
+.scanner button:focus-visible { outline: 3px solid #79e4c0; outline-offset: 4px; }
+.scanner button:disabled { opacity: .35; cursor: default; }
+.viewport { min-height: 0; flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.frame { position: relative; max-height: 100%; max-width: 100%; }
+.video { display: block; height: 100%; width: 100%; object-fit: contain; }
+.outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.outline polygon { stroke: #79e4c0; stroke-width: 3; fill: #79e4c010; stroke-linejoin: round; }
+.preview { width: 100%; height: 100%; object-fit: contain; padding: 10px 16px; }
+.footer { flex-shrink: 0; min-height: 136px; text-align: center; padding: 12px 20px max(18px, env(safe-area-inset-bottom)); }
+.footer p, .footer output { display: block; font-size: 16px; margin: 0 0 14px; }
+.footer .shutter { display: inline-flex; justify-content: center; align-items: center; border: 3px solid #fff; border-radius: 50%; height: 62px; width: 62px; padding: 0; }
+.actions { display: flex; gap: 12px; justify-content: center; }
+.actions button { min-width: 120px; }
+.actions .primary { background: #79e4c0; color: #08241d; border-color: #79e4c0; }
+@media (orientation: landscape) and (max-height: 500px) { .header { padding-top: 4px; } .footer { min-height: 105px; padding: 6px 16px; } .footer p { margin-bottom: 6px; } .footer .shutter { height: 48px; width: 48px; } }

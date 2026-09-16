@@ -1,0 +1,628 @@
+// Polish wording for the workspace pages (Home, Load Desk, Invoices & Tickets,
+// Customers & Clients, Truck Fleet), keyed by the English text. Wording shared
+// with the shell and account pages lives in pl.ts.
+
+export const PL_PAGES: Record<string, string> = {
+  // Shown until a workspace saves its own company name on the Account page.
+  'Your company': 'Twoja firma',
+  'your company': 'Twojej firmy',
+  // Empty-field hints: these describe the field rather than showing an example,
+  // so no company's real details are suggested to another company.
+  'Your company name, as it should print': 'Nazwa firmy, tak jak ma być drukowana',
+  'Number and street': 'Numer i ulica',
+  'Number as printed on the ticket': 'Numer tak jak na kwicie',
+  'What the crew calls it': 'Jak nazywa go załoga',
+  // Shared across pages
+  Customers: 'Klienci',
+  Customer: 'Klient',
+  'Customer name': 'Nazwa klienta',
+  Clients: 'Płatnicy',
+  Client: 'Płatnik',
+  'Bill to': 'Płatnik',
+  Trucks: 'Ciężarówki',
+  Truck: 'Ciężarówka',
+  'Truck #': 'Nr ciężarówki',
+  'Truck #{number}': 'Ciężarówka nr {number}',
+  Driver: 'Kierowca',
+  Fleet: 'Flota',
+  Active: 'W użyciu',
+  Inactive: 'Nieaktywna',
+  Tickets: 'Kwity',
+  Ticket: 'Kwit',
+  Invoice: 'Faktura',
+  'Invoice {number}': 'Faktura {number}',
+  'Invoice #': 'Nr faktury',
+  'Invoice date': 'Data faktury',
+  'Invoice number': 'Numer faktury',
+  Draft: 'Szkic',
+  Drafts: 'Szkice',
+  Rated: 'Ze stawką',
+  Valid: 'Poprawny',
+  'Needs review': 'Do sprawdzenia',
+  Status: 'Status',
+  'Net tons': 'Tony netto',
+  'Line total': 'Wartość pozycji',
+  Total: 'Razem',
+  Billed: 'Zafakturowano',
+  'Last load': 'Ostatni ładunek',
+  'Loads this month': 'Ładunki w tym miesiącu',
+  'Without a profile': 'Bez profilu',
+  Actions: 'Akcje',
+  Edit: 'Edytuj',
+  Delete: 'Usuń',
+  View: 'Pokaż',
+  Original: 'Oryginał',
+  Notes: 'Notatki',
+  None: 'Brak',
+  Add: 'Dodaj',
+  Close: 'Zamknij',
+  Selected: 'Wybrany',
+  'Edit profile': 'Edytuj profil',
+  'Phone number': 'Numer telefonu',
+
+  // Customer and client dialogs
+  Company: 'Firma',
+  'Address and phone': 'Adres i telefon',
+  'Matching tickets': 'Dopasowanie kwitów',
+  'No printed names yet.': 'Brak nazw z kwitów.',
+  'Add a name printed on tickets': 'Dodaj nazwę drukowaną na kwitach',
+  'Name as printed on the ticket': 'Nazwa tak, jak na kwicie',
+  'Customer number': 'Numer klienta',
+
+  // The default client and what Load Desk is doing elsewhere
+  'Default bill-to client': 'Domyślny płatnik faktur',
+  'No default client': 'Bez domyślnego płatnika',
+  'New invoices start billed to this client. You can change it on any invoice.':
+    'Nowe faktury są domyślnie wystawiane na tego płatnika. Możesz to zmienić na każdej fakturze.',
+  'Default client saved': 'Zapisano domyślnego płatnika',
+  'New invoices start billed to {name}.': 'Nowe faktury będą wystawiane na: {name}.',
+  'New invoices start with no client.': 'Nowe faktury będą bez płatnika.',
+  'Could not save the default client. Please try again.':
+    'Nie udało się zapisać domyślnego płatnika. Spróbuj ponownie.',
+  'Scan ticket': 'Skanuj kwit',
+  'Tickets are ready for review': 'Kwity są gotowe do sprawdzenia',
+  '{tickets} waiting in Load Desk.': 'W Load Desk czeka: {tickets}.',
+  'A ticket matches when its customer name contains one of these or the profile name. A name a letter or two off still matches, so a printer dropping or adding a character is fine.':
+    'Kwit pasuje, gdy nazwa klienta zawiera jedną z nich lub nazwę profilu. Nazwa różniąca się o literę lub dwie też pasuje, więc pominięty lub dodany znak nie przeszkadza.',
+
+  // A printed name that is slightly off the customer's spelling
+  'The ticket prints “{printed}”, a letter or two off {name}.':
+    'Na kwicie widnieje „{printed}”, o literę lub dwie inaczej niż {name}.',
+  'Remember this spelling': 'Zapamiętaj tę pisownię',
+  'Spelling remembered': 'Zapamiętano pisownię',
+  'Tickets printed “{printed}” now match {name} exactly.':
+    'Kwity z nazwą „{printed}” pasują teraz dokładnie do: {name}.',
+  'Could not save the spelling': 'Nie udało się zapisać pisowni',
+  Open: 'Otwórz',
+  Review: 'Sprawdź',
+  'Save changes': 'Zapisz zmiany',
+  'Delete failed': 'Nie udało się usunąć',
+  'Updated {name}': 'Zaktualizowano: {name}',
+  'Added {name}': 'Dodano: {name}',
+  'Deleted {name}': 'Usunięto: {name}',
+  'Tel: {phone}': 'Tel.: {phone}',
+  'Plate {plate}': 'Tablica {plate}',
+  'Upload tickets': 'Prześlij kwity',
+  'Original unavailable': 'Oryginał niedostępny',
+  unnumbered: 'bez numeru',
+  Unnumbered: 'Bez numeru',
+  'No customer': 'Brak klienta',
+  'Deleted ticket {number}': 'Usunięto kwit {number}',
+  'Its line was removed from invoice {number}, and the stored original was deleted.':
+    'Jego pozycję usunięto z faktury {number}, a zapisany oryginał skasowano.',
+  'Delete ticket {number}?': 'Usunąć kwit {number}?',
+  'Delete ticket': 'Usuń kwit',
+  'Fuel charge type': 'Rodzaj dopłaty paliwowej',
+  'Fuel charge (% of rate)': 'Dopłata paliwowa (% stawki)',
+  'Fuel charge %': 'Dopłata paliwowa %',
+  'Rate type': 'Rodzaj stawki',
+  'Rate {unit}': 'Stawka {unit}',
+  Rate: 'Stawka',
+  '+ {amount} fuel': '+ {amount} za paliwo',
+  'Flat rate': 'Stawka ryczałtowa',
+  Hourly: 'Godzinowa',
+  'Per ton': 'Za tonę',
+  'per load': 'za ładunek',
+  'per hour': 'za godzinę',
+  'per ton': 'za tonę',
+  'Flat amount': 'Stała kwota',
+  'Percent of rate': 'Procent stawki',
+  flat: 'ryczałt',
+  'Week': 'Tydzień',
+  'Month': 'Miesiąc',
+  'All time': 'Cały okres',
+
+  // Home
+  'None last week either': 'W zeszłym tygodniu też brak',
+  'None last month either': 'W zeszłym miesiącu też brak',
+  'Same as last week': 'Tyle samo co w zeszłym tygodniu',
+  'Same as last month': 'Tyle samo co w zeszłym miesiącu',
+  '{amount} vs last week': '{amount} względem zeszłego tygodnia',
+  '{amount} vs last month': '{amount} względem zeszłego miesiąca',
+  '{invoices} waiting for a rate': 'Czeka na stawkę: {invoices}',
+  '{tickets} to double-check': 'Do sprawdzenia: {tickets}',
+  'A field OCR could not read, or weights that do not balance.':
+    'Pole, którego OCR nie odczytał, lub wagi, które się nie zgadzają.',
+  '{customers} without a profile': 'Bez profilu: {customers}',
+  'Add a profile to count their loads and fill in flat rates.':
+    'Dodaj profil, aby liczyć ich ładunki i uzupełniać stawki ryczałtowe.',
+  'Set up': 'Skonfiguruj',
+  '{trucks} without a profile': 'Bez profilu: {trucks}',
+  'Add them to track loads per truck.': 'Dodaj je, aby śledzić ładunki każdej ciężarówki.',
+  'Add your trucks': 'Dodaj swoje ciężarówki',
+  'Pick a truck when uploading and its number goes on the invoice.':
+    'Wybierz ciężarówkę przy przesyłaniu, a jej numer trafi na fakturę.',
+  'Add trucks': 'Dodaj ciężarówki',
+  'Add customers and flat rates': 'Dodaj klientów i stawki ryczałtowe',
+  'Tickets for a known customer get its rate filled in.':
+    'Kwity znanego klienta dostają jego stawkę automatycznie.',
+  'Add customers': 'Dodaj klientów',
+  'Upload your first tickets': 'Prześlij pierwsze kwity',
+  'Tickets from the same date go on one invoice.':
+    'Kwity z tego samego dnia trafiają na jedną fakturę.',
+  'Good Morning': 'Dzień dobry',
+  'Good Afternoon': 'Dzień dobry',
+  'Good Evening': 'Dobry wieczór',
+  OVERVIEW: 'PRZEGLĄD',
+  Overview: 'Przegląd',
+  'Loads, invoices and your fleet at {company}.': 'Ładunki, faktury i flota firmy {company}.',
+  'Loading your dashboard…': 'Wczytywanie panelu…',
+  'Getting started': 'Pierwsze kroki',
+  '{done} of {total} Steps Done': 'Ukończono {done} z {total} kroków',
+  done: 'ukończono',
+  'Loads this week': 'Ładunki w tym tygodniu',
+  '{tons} hauled': 'Przewieziono: {tons}',
+  'Billed this month': 'Zafakturowano w tym miesiącu',
+  'Rated loads, by ticket date': 'Ładunki ze stawką, według daty kwitu',
+  'Needs attention': 'Wymaga uwagi',
+  'Draft invoices and tickets to check': 'Szkice faktur i kwity do sprawdzenia',
+  'All caught up': 'Wszystko gotowe',
+  'To do': 'Do zrobienia',
+  'Needs Attention': 'Wymaga uwagi',
+  'Nothing needs attention. Every invoice has a rate and every ticket checks out.':
+    'Nic nie wymaga uwagi. Każda faktura ma stawkę, a każdy kwit jest poprawny.',
+  Latest: 'Najnowsze',
+  'Recent Invoices': 'Ostatnie faktury',
+  'View all': 'Zobacz wszystkie',
+  'No invoices yet.': 'Brak faktur.',
+  'to create one.': 'aby utworzyć pierwszą.',
+  'Top Customers': 'Najwięksi klienci',
+  'Customers appear once tickets are saved.': 'Klienci pojawią się po zapisaniu kwitów.',
+  'No driver set': 'Brak kierowcy',
+  'No trucks yet.': 'Brak ciężarówek.',
+  'to track loads per truck.': 'aby śledzić ładunki każdej ciężarówki.',
+
+  // Customers
+  'Customer no. {number}': 'Nr klienta {number}',
+  'Matches by profile name': 'Dopasowanie po nazwie profilu',
+  'Enter the customer name.': 'Wpisz nazwę klienta.',
+  'Rates must be blank, zero or a positive amount.':
+    'Stawki muszą być puste, zerowe lub dodatnie.',
+  'A customer number here already belongs to {name}. Each number can match one customer.':
+    'Jeden z tych numerów klienta należy już do: {name}. Każdy numer może pasować tylko do jednego klienta.',
+  'Tickets for this customer are rated one by one.':
+    'Kwity tego klienta są wyceniane pojedynczo.',
+  'Matching tickets get {rate} {unit} on the invoice.':
+    'Pasujące kwity dostaną na fakturze {rate} {unit}.',
+  'Edit {name}': 'Edytuj: {name}',
+  'Delete {name}': 'Usuń: {name}',
+  'CUSTOMERS & CLIENTS': 'KLIENCI I PŁATNICY',
+  'Loads hauled for each customer and the rates filled in when a ticket matches, plus the clients you bill.':
+    'Ładunki przewiezione dla każdego klienta i stawki uzupełniane przy dopasowaniu kwitu oraz płatnicy, którym wystawiasz faktury.',
+  'Loads by customer': 'Ładunki według klientów',
+  'Customer Profiles': 'Profile klientów',
+  'Add customer': 'Dodaj klienta',
+  'Loading customers…': 'Wczytywanie klientów…',
+  'No customers yet. Add one, or create a profile from a customer found on saved tickets.':
+    'Brak klientów. Dodaj klienta albo utwórz profil z klienta znalezionego na zapisanych kwitach.',
+  'Per ticket': 'Za kwit',
+  'Rate per ticket': 'Stawka za kwit',
+  'Billed {amount} · Last load {date}': 'Zafakturowano {amount} · Ostatni ładunek {date}',
+  'From saved tickets': 'Z zapisanych kwitów',
+  'Customers Without a Profile': 'Klienci bez profilu',
+  '{loads} not counted under a customer': 'Nieprzypisane do klienta: {loads}',
+  'Customer {number}': 'Klient {number}',
+  'Create profile': 'Utwórz profil',
+  'Edit customer': 'Edytuj klienta',
+  'When a ticket’s customer number or name matches, Load Desk selects this customer and fills in its rate on the invoice.':
+    'Gdy numer lub nazwa klienta na kwicie pasuje, Load Desk wybiera tego klienta i uzupełnia jego stawkę na fakturze.',
+  'Customer numbers on tickets': 'Numery klienta na kwitach',
+  'The number printed after “Customer:”. Separate several with commas.':
+    'Numer drukowany po „Customer:”. Kilka numerów oddziel przecinkami.',
+  'Names printed on tickets': 'Nazwy drukowane na kwitach',
+  'One per line. A ticket matches when its customer name contains one of these or the profile name.':
+    'Jedna w wierszu. Kwit pasuje, gdy nazwa klienta zawiera jedną z nich lub nazwę profilu.',
+  'The rate is multiplied by each ticket’s net tons.':
+    'Stawka jest mnożona przez tony netto z każdego kwitu.',
+  'The rate is multiplied by the hours entered on each ticket.':
+    'Stawka jest mnożona przez godziny wpisane na każdym kwicie.',
+  'The rate is charged once per load.': 'Stawka jest naliczana raz za ładunek.',
+  'Fuel charge per load ($)': 'Dopłata paliwowa za ładunek ($)',
+  'Delete {name}?': 'Usunąć: {name}?',
+  'Saved tickets and their invoices are kept. They stop counting under this customer, and new tickets no longer get its rate.':
+    'Zapisane kwity i ich faktury zostają. Przestaną się liczyć dla tego klienta, a nowe kwity nie dostaną już jego stawki.',
+  'Delete customer': 'Usuń klienta',
+
+  // Clients
+  'Enter the client name.': 'Wpisz nazwę płatnika.',
+  '{name} already has a client profile.': '{name} ma już profil płatnika.',
+  'Choose it as the bill-to on an invoice in Load Desk.':
+    'Wybierz go jako płatnika faktury w Load Desk.',
+  'Edit client {name}': 'Edytuj płatnika: {name}',
+  'Delete client {name}': 'Usuń płatnika: {name}',
+  'Add client': 'Dodaj płatnika',
+  'Loading clients…': 'Wczytywanie płatników…',
+  'No clients yet. Add the companies you bill, then choose one as the bill-to on an invoice in Load Desk.':
+    'Brak płatników. Dodaj firmy, którym wystawiasz faktury, a potem wybierz jedną jako płatnika faktury w Load Desk.',
+  'No address': 'Brak adresu',
+  'Edit client': 'Edytuj płatnika',
+  'The company printed under Bill To on invoices.':
+    'Firma drukowana na fakturach w polu Bill To.',
+  'Client name': 'Nazwa płatnika',
+  'Delete client {name}?': 'Usunąć płatnika {name}?',
+  'Saved invoices keep their bill-to details. The client can no longer be chosen in Load Desk.':
+    'Zapisane faktury zachowują dane płatnika. Nie będzie można go już wybrać w Load Desk.',
+  'Delete client': 'Usuń płatnika',
+
+  // Truck Fleet
+  'Enter the truck number printed on invoices.':
+    'Wpisz numer ciężarówki drukowany na fakturach.',
+  'Truck #{number} already has a profile.': 'Ciężarówka nr {number} ma już profil.',
+  'Updated truck #{number}': 'Zaktualizowano ciężarówkę nr {number}',
+  'Added truck #{number}': 'Dodano ciężarówkę nr {number}',
+  'Choose it in Load Desk before extracting tickets.':
+    'Wybierz ją w Load Desk przed odczytaniem kwitów.',
+  'Inactive trucks are hidden when uploading tickets.':
+    'Nieaktywne ciężarówki są ukryte przy przesyłaniu kwitów.',
+  'Deleted truck #{number}': 'Usunięto ciężarówkę nr {number}',
+  'Edit truck {number}': 'Edytuj ciężarówkę {number}',
+  'Delete truck {number}': 'Usuń ciężarówkę {number}',
+  'TRUCK FLEET': 'FLOTA CIĘŻARÓWEK',
+  'Trucks for {company}. Choose one when uploading tickets and its number goes on the invoice.':
+    'Ciężarówki firmy {company}. Wybierz jedną przy przesyłaniu kwitów, a jej numer trafi na fakturę.',
+  'Add truck': 'Dodaj ciężarówkę',
+  'Loading trucks…': 'Wczytywanie ciężarówek…',
+  'No trucks yet. Add each truck once, then choose it when uploading tickets so invoices get its number.':
+    'Brak ciężarówek. Dodaj każdą ciężarówkę raz, a potem wybieraj ją przy przesyłaniu kwitów, by jej numer trafiał na faktury.',
+  'No nickname or plate': 'Brak nazwy i tablicy',
+  'No details yet': 'Brak szczegółów',
+  'From saved invoices': 'Z zapisanych faktur',
+  'Truck Numbers Without a Profile': 'Numery ciężarówek bez profilu',
+  '{loads} not counted under a truck': 'Nieprzypisane do ciężarówki: {loads}',
+  'Edit truck': 'Edytuj ciężarówkę',
+  'Choose this truck in Load Desk before extracting tickets and its number goes on each invoice.':
+    'Wybierz tę ciężarówkę w Load Desk przed odczytaniem kwitów, a jej numer trafi na każdą fakturę.',
+  'Truck number': 'Numer ciężarówki',
+  Nickname: 'Nazwa',
+  'License plate': 'Tablica rejestracyjna',
+  'Inactive trucks keep their history but are hidden when uploading tickets.':
+    'Nieaktywne ciężarówki zachowują historię, ale są ukryte przy przesyłaniu kwitów.',
+  'Delete truck #{number}?': 'Usunąć ciężarówkę nr {number}?',
+  'Saved tickets and invoices keep their truck number. To keep the truck’s load history on this page, mark it inactive instead.':
+    'Zapisane kwity i faktury zachowują numer ciężarówki. Aby zachować historię ładunków na tej stronie, oznacz ją jako nieaktywną.',
+  'Delete truck': 'Usuń ciężarówkę',
+
+  // Invoices & Tickets
+  'All invoices': 'Wszystkie faktury',
+  'Draft (rate missing)': 'Szkic (brak stawki)',
+  'All tickets': 'Wszystkie kwity',
+  'No ticket dates': 'Brak dat kwitów',
+  'Tickets {date}': 'Kwity {date}',
+  'Tickets {first} – {last}': 'Kwity {first} – {last}',
+  'Edit invoice {number}': 'Edytuj fakturę {number}',
+  'Edit ticket {number}': 'Edytuj kwit {number}',
+  'Invoice {invoice} for ticket {ticket}': 'Faktura {invoice} dla kwitu {ticket}',
+  'Original of ticket {number}': 'Oryginał kwitu {number}',
+  'Delete ticket {number}': 'Usuń kwit {number}',
+  'No rate yet': 'Brak stawki',
+  RECORDS: 'REJESTR',
+  'Every invoice and load ticket saved in Load Desk. Search, filter, edit, reprint an invoice or export what you see.':
+    'Wszystkie faktury i kwity zapisane w Load Desk. Wyszukuj, filtruj, edytuj, drukuj ponownie faktury lub eksportuj to, co widzisz.',
+  Database: 'Baza danych',
+  'Load Tickets': 'Kwity ładunków',
+  Show: 'Pokaż',
+  'Search invoices and tickets': 'Szukaj faktur i kwitów',
+  'Search ticket #, invoice #, customer, destination, truck…':
+    'Szukaj nr kwitu, nr faktury, klienta, celu, ciężarówki…',
+  'Ticket date from': 'Data kwitu od',
+  'Ticket date to': 'Data kwitu do',
+  'All customers': 'Wszyscy klienci',
+  'All trucks': 'Wszystkie ciężarówki',
+  'Showing {shown} of {total}': 'Pokazano: {shown} / {total}',
+  'Clear filters': 'Wyczyść filtry',
+  'Export CSV': 'Eksportuj CSV',
+  'Loading saved records…': 'Wczytywanie zapisanych danych…',
+  'Nothing saved yet. Tickets and their invoices appear here after you save them in':
+    'Nic jeszcze nie zapisano. Kwity i ich faktury pojawią się tutaj po zapisaniu ich w',
+  'No invoices match these filters.': 'Żadna faktura nie pasuje do filtrów.',
+  'No tickets match these filters.': 'Żaden kwit nie pasuje do filtrów.',
+  'Ticket #': 'Nr kwitu',
+  'Ticket date': 'Data kwitu',
+  'Customer · product': 'Klient · produkt',
+  'Origin → destination': 'Skąd → dokąd',
+  'Invoice · truck': 'Faktura · ciężarówka',
+  'Unknown plant': 'Nieznany zakład',
+  'Edited {date}': 'Edytowano {date}',
+  'No product': 'Brak produktu',
+  'No truck #': 'Brak nr ciężarówki',
+  'No rate': 'Brak stawki',
+  'No destination': 'Brak celu',
+  'This permanently removes the saved record and its stored original for everyone in your workspace, and takes its line off invoice {number}. The invoice number can be reused once every ticket on it is deleted.':
+    'Trwale usuwa zapisany rekord i jego oryginał dla wszystkich w obszarze roboczym oraz zdejmuje jego pozycję z faktury {number}. Numer faktury można użyć ponownie po usunięciu wszystkich jej kwitów.',
+
+  // Invoice preview
+  'Tickets on this invoice: {count}.': 'Kwity na tej fakturze: {count}.',
+  'Draft until every line has a rate (and hours on hourly lines).':
+    'Szkic, dopóki każda pozycja nie ma stawki (i godzin przy stawce godzinowej).',
+  'Every line has a rate.': 'Każda pozycja ma stawkę.',
+  'To save a PDF, print and choose Save as PDF.':
+    'Aby zapisać PDF, wydrukuj i wybierz Zapisz jako PDF.',
+  'Print or save PDF': 'Drukuj lub zapisz PDF',
+
+  // Load Desk: ticket fields
+  'Ticket / BOL': 'Kwit / list przewozowy',
+  Date: 'Data',
+  'Time in': 'Godzina wjazdu',
+  'Time out': 'Godzina wyjazdu',
+  'Plant code': 'Kod zakładu',
+  'Plant name': 'Nazwa zakładu',
+  Dispatch: 'Dyspozycja',
+  'Customer ID': 'ID klienta',
+  'Order number': 'Numer zamówienia',
+  Project: 'Projekt',
+  'Destination address': 'Adres docelowy',
+  PO: 'Nr zamówienia (PO)',
+  'Product code': 'Kod produktu',
+  'Product description': 'Opis produktu',
+  'Gross pounds': 'Brutto (lb)',
+  'Tare pounds': 'Tara (lb)',
+  'Net pounds': 'Netto (lb)',
+  'Carrier ID': 'ID przewoźnika',
+  'Carrier name': 'Nazwa przewoźnika',
+  Vehicle: 'Pojazd',
+  Hours: 'Godziny',
+  'Fuel charge ($)': 'Dopłata paliwowa ($)',
+  'Customer and Job': 'Klient i zlecenie',
+  'Weight and Hauling': 'Waga i transport',
+
+  // Load Desk: messages
+  'Enter gross, tare and net pounds to check the balance.':
+    'Wpisz wagę brutto, tarę i netto w funtach, aby sprawdzić bilans.',
+  'Gross minus tare matches net within {difference} lb.':
+    'Brutto minus tara zgadza się z netto z dokładnością do {difference} lb.',
+  'Gross minus tare is {weight} lb, {difference} lb off the net weight.':
+    'Brutto minus tara to {weight} lb, o {difference} lb różni się od wagi netto.',
+  'Text file. Its contents are under Ticket text.':
+    'Plik tekstowy. Jego treść jest w polu Tekst kwitu.',
+  'Loading the stored original…': 'Wczytywanie zapisanego oryginału…',
+  'The original is not stored for this ticket.': 'Oryginał tego kwitu nie jest zapisany.',
+  'Original: {name}': 'Oryginał: {name}',
+  'Original ticket {name}': 'Oryginał kwitu {name}',
+  'This browser cannot preview {name}. It is still stored with the record.':
+    'Ta przeglądarka nie może wyświetlić {name}. Plik jest nadal zapisany z rekordem.',
+  'use PDF, PNG, JPG, TIFF, WebP or text': 'użyj PDF, PNG, JPG, TIFF, WebP lub pliku tekstowego',
+  'the file is empty': 'plik jest pusty',
+  'the file is larger than 20 MB': 'plik jest większy niż 20 MB',
+  'Added {tickets} to invoice {number}': 'Dodano do faktury {number}: {tickets}',
+  'Added {tickets} to the invoice being reviewed': 'Dodano do sprawdzanej faktury: {tickets}',
+  'No tickets were added': 'Nie dodano żadnych kwitów',
+  'No tickets were added.': 'Nie dodano żadnych kwitów.',
+  'Review and save each new ticket.': 'Sprawdź i zapisz każdy nowy kwit.',
+  '{tickets} ready for review on {invoices}, one per ticket date.':
+    'Gotowe do sprawdzenia: {tickets} na fakturach ({invoices}), po jednej na każdą datę kwitu.',
+  '{tickets} ready for review.': 'Gotowe do sprawdzenia: {tickets}.',
+  'No customer on this scan': 'Brak klienta na tym skanie',
+  'The ticket has no customer name or number. Enter them in Customer and Job first.':
+    'Kwit nie ma nazwy ani numeru klienta. Najpierw wpisz je w sekcji Klient i zlecenie.',
+  '{name} already has a customer profile': '{name} ma już profil klienta',
+  'It is now chosen for this ticket.': 'Został wybrany dla tego kwitu.',
+  '{name} already has a customer profile. Choose it from the list.':
+    '{name} ma już profil klienta. Wybierz go z listy.',
+  'Added customer {name}': 'Dodano klienta {name}',
+  'Made from the scanned ticket. Edit it any time on Customers & Clients.':
+    'Utworzono ze zeskanowanego kwitu. Możesz go edytować w każdej chwili na stronie Klienci i płatnicy.',
+  'Enter the client company name.': 'Wpisz nazwę firmy płatnika.',
+  '{name} already has a client profile. Choose it from the list.':
+    '{name} ma już profil płatnika. Wybierz go z listy.',
+  'Added client {name}': 'Dodano płatnika {name}',
+  'This invoice is billed to it, and it can be chosen on future invoices.':
+    'Ta faktura jest wystawiona na niego i można go wybierać na kolejnych fakturach.',
+  'Choose the client this invoice is billed to, or create a new client.':
+    'Wybierz płatnika tej faktury albo utwórz nowego.',
+  'This file is already saved as record {id} (ticket {ticket}). Nothing was added.':
+    'Ten plik jest już zapisany jako rekord {id} (kwit {ticket}). Nic nie dodano.',
+  'Invoice number {number} is already used by another upload. Choose another.':
+    'Numer faktury {number} jest już użyty przy innym przesłaniu. Wybierz inny.',
+  'Saved {label}. Now reviewing ticket {next}.': 'Zapisano {label}. Teraz sprawdzasz kwit {next}.',
+  'Every ticket in the queue is saved ({tickets}).':
+    'Wszystkie kwity w kolejce są zapisane ({tickets}).',
+  'Saved ticket {label}': 'Zapisano kwit {label}',
+  'Invoice {number} is a draft until its rate is complete.':
+    'Faktura {number} jest szkicem, dopóki stawka nie zostanie uzupełniona.',
+  'Invoice {number} created.': 'Utworzono fakturę {number}.',
+  'The original could not be stored in this browser.':
+    'Nie udało się zapisać oryginału w tej przeglądarce.',
+  'Saved changes to {tickets} on invoice {number}.':
+    'Zapisano zmiany na fakturze {number} ({tickets}).',
+  'Changes saved.': 'Zmiany zapisane.',
+  'Updated invoice {number}': 'Zaktualizowano fakturę {number}',
+  'Updated ticket {label}': 'Zaktualizowano kwit {label}',
+  'Saved with your changes: {tickets}.': 'Zapisano z Twoimi zmianami: {tickets}.',
+  'Your changes are saved for everyone in your workspace.':
+    'Twoje zmiany są zapisane dla wszystkich w obszarze roboczym.',
+  'Clear the unreadable saved tickets in this browser? This cannot be undone.':
+    'Wyczyścić nieczytelne zapisane kwity w tej przeglądarce? Tego nie można cofnąć.',
+  '{name} (no client profile)': '{name} (brak profilu płatnika)',
+  'Choose a client': 'Wybierz płatnika',
+  '+ Create new client': '+ Utwórz nowego płatnika',
+  'No address or phone on this client profile.':
+    'Ten profil płatnika nie ma adresu ani telefonu.',
+  'This invoice’s bill-to has no client profile. Choose a client, or create one from it.':
+    'Płatnik tej faktury nie ma profilu. Wybierz płatnika albo utwórz go z tych danych.',
+  'Choose who this invoice is billed to.': 'Wybierz, na kogo wystawiona jest faktura.',
+  'No clients yet. Create one to bill this invoice.':
+    'Brak płatników. Utwórz płatnika, aby wystawić tę fakturę.',
+  'Filled in: {rate}.': 'Uzupełniono: {rate}.',
+  'This customer has no default rate; enter the rate for this ticket.':
+    'Ten klient nie ma domyślnej stawki; wpisz stawkę dla tego kwitu.',
+  'No customer profile matches this ticket.': 'Żaden profil klienta nie pasuje do tego kwitu.',
+  'Choose the customer to use its rate.': 'Wybierz klienta, aby użyć jego stawki.',
+  'Truck #{number} on the invoice': 'Ciężarówka nr {number} na fakturze',
+  'Driver {name}': 'Kierowca {name}',
+  'Truck #{number} on the invoice. Choose a truck profile to change it.':
+    'Ciężarówka nr {number} na fakturze. Wybierz profil ciężarówki, aby to zmienić.',
+  'Choose a truck; its number goes on the invoice.':
+    'Wybierz ciężarówkę; jej numer trafi na fakturę.',
+  'Shared by every ticket on this invoice ({tickets}). Changes to invoice details apply to all of them; rates stay per ticket.':
+    'Wspólne dla wszystkich kwitów na tej fakturze ({tickets}). Zmiany danych faktury dotyczą ich wszystkich; stawki pozostają osobne dla każdego kwitu.',
+  'Weights do not balance': 'Wagi się nie zgadzają',
+  'Extracting file {index} of {total}': 'Odczytywanie pliku {index} z {total}',
+  'Extracting tickets': 'Odczytywanie kwitów',
+  'Nothing entered yet': 'Nic jeszcze nie wpisano',
+  Saved: 'Zapisano',
+  'Save & review next': 'Zapisz i sprawdź następny',
+  'Save ticket & create invoice': 'Zapisz kwit i utwórz fakturę',
+  'Ticket not found': 'Nie znaleziono kwitu',
+  'It may have been deleted. Nothing was opened.': 'Mógł zostać usunięty. Nic nie otwarto.',
+
+  // Load Desk: page
+  'Load Tickets to Invoices': 'Z kwitów do faktur',
+  'Upload tickets, check the extracted fields, then save each one with its original and an invoice.':
+    'Prześlij kwity, sprawdź odczytane pola, a potem zapisz każdy z oryginałem i fakturą.',
+  'Saved tickets': 'Zapisane kwity',
+  '01 · Upload': '01 · Przesyłanie',
+  'New Load Tickets': 'Nowe kwity',
+  'PDF, image or text · 20 MB each': 'PDF, obraz lub tekst · do 20 MB każdy',
+  'Add more tickets': 'Dodaj więcej kwitów',
+  'Drop tickets here': 'Upuść kwity tutaj',
+  'Files added now wait for the next extraction':
+    'Dodane teraz pliki poczekają na następny odczyt',
+  'Drop or click to add files to the list below':
+    'Upuść lub kliknij, aby dodać pliki do listy poniżej',
+  'or click to choose one or several files': 'lub kliknij, aby wybrać jeden lub kilka plików',
+  'Ready to extract: {files}': 'Gotowe do odczytu: {files}',
+  Clear: 'Wyczyść',
+  'Remove {name}': 'Usuń {name}',
+  'Tickets from the same date go on one invoice, dated that day. Tickets from different dates get separate invoices.':
+    'Kwity z tego samego dnia trafiają na jedną fakturę z tą datą. Kwity z różnych dni dostają osobne faktury.',
+  'Truck for these tickets': 'Ciężarówka dla tych kwitów',
+  'No truck profile': 'Bez profilu ciężarówki',
+  'Its truck number goes on every invoice from this upload.':
+    'Jej numer trafi na każdą fakturę z tego przesłania.',
+  'Add trucks in': 'Dodaj ciężarówki na stronie',
+  'to choose one here.': 'aby wybrać jedną tutaj.',
+  'Extract tickets': 'Odczytaj kwity',
+  Ledger: 'Rejestr',
+  'Saved Tickets': 'Zapisane kwity',
+  'All invoices & tickets': 'Wszystkie faktury i kwity',
+  'Ledger CSV': 'Rejestr CSV',
+  'Clear saved tickets': 'Wyczyść zapisane kwity',
+  'Loading saved tickets…': 'Wczytywanie zapisanych kwitów…',
+  'No tickets saved yet. In this local preview they stay in this browser.':
+    'Brak zapisanych kwitów. W tym podglądzie lokalnym zostają w tej przeglądarce.',
+  'No tickets saved yet.': 'Brak zapisanych kwitów.',
+  '02 · Review': '02 · Sprawdzanie',
+  'Ticket {index} of {total}': 'Kwit {index} z {total}',
+  'Ticket queue': 'Kolejka kwitów',
+  'Previous ticket': 'Poprzedni kwit',
+  'Next ticket': 'Następny kwit',
+  'Ticket {index}: {name}': 'Kwit {index}: {name}',
+  saved: 'zapisany',
+  'unsaved changes': 'niezapisane zmiany',
+  '{saved} of {total} saved': 'Zapisano {saved} z {total}',
+  'Clear queue': 'Wyczyść kolejkę',
+  'Not found': 'Nie znaleziono',
+  'Unsaved changes': 'Niezapisane zmiany',
+  'Saved as record {id}': 'Zapisano jako rekord {id}',
+  'To review: {items}': 'Do sprawdzenia: {items}',
+  'Ready to save': 'Gotowe do zapisu',
+  'Check before saving': 'Sprawdź przed zapisem',
+  'All checks pass.': 'Wszystkie kontrole zaliczone.',
+  'Add tickets to this invoice': 'Dodaj kwity do tej faktury',
+  'They join invoice {number}, whatever their ticket dates.':
+    'Trafią na fakturę {number}, niezależnie od dat kwitów.',
+  'They join the invoice being reviewed, whatever their ticket dates.':
+    'Trafią na sprawdzaną fakturę, niezależnie od dat kwitów.',
+  'e.g. 1001': 'np. 1001',
+  'Enter your first invoice number. The ones after it follow in order.':
+    'Wpisz numer pierwszej faktury. Kolejne będą numerowane po nim.',
+  'Customer profile': 'Profil klienta',
+  'No customer profile': 'Bez profilu klienta',
+  '+ Create new customer': '+ Utwórz nowego klienta',
+  'Check the name below, then save the customer.':
+    'Sprawdź nazwę poniżej, a potem zapisz klienta.',
+  'No customer profile matches this ticket. Choose + Create new customer to add it from the scan.':
+    'Żaden profil klienta nie pasuje do tego kwitu. Wybierz + Utwórz nowego klienta, aby dodać go ze skanu.',
+  'New customer': 'Nowy klient',
+  'Scanned as {name}': 'Zeskanowano jako {name}',
+  'customer number {number}': 'numer klienta {number}',
+  'Tickets with the scanned name or number will match this customer.':
+    'Kwity z zeskanowaną nazwą lub numerem będą pasować do tego klienta.',
+  'Save customer': 'Zapisz klienta',
+  'Truck profile': 'Profil ciężarówki',
+  'Bill to client': 'Płatnik faktury',
+  'Manage clients': 'Zarządzaj płatnikami',
+  'New client': 'Nowy płatnik',
+  'Address line 1': 'Adres, wiersz 1',
+  'Address line 2': 'Adres, wiersz 2',
+  'Save client': 'Zapisz płatnika',
+  'Ticket saved': 'Kwit zapisany',
+  'Ready to save?': 'Gotowe do zapisu?',
+  'Saving updates the saved tickets on this invoice ({tickets}) for everyone in your workspace.':
+    'Zapis zaktualizuje zapisane kwity na tej fakturze ({tickets}) dla wszystkich w obszarze roboczym.',
+  'Saving updates this saved ticket for everyone in your workspace.':
+    'Zapis zaktualizuje ten kwit dla wszystkich w obszarze roboczym.',
+  'Change any field to edit this ticket or its invoice, then save the changes.':
+    'Zmień dowolne pole, aby edytować ten kwit lub jego fakturę, a potem zapisz zmiany.',
+  'The original file is stored with this record. Without a rate the invoice stays a draft.':
+    'Oryginalny plik jest zapisywany z tym rekordem. Bez stawki faktura pozostaje szkicem.',
+  'Preview invoice': 'Podgląd faktury',
+  'Source ticket': 'Kwit źródłowy',
+  'This permanently removes the saved record and its stored original for everyone in your workspace, and takes its line off invoice {number}. The same file can then be uploaded again; the invoice number can be reused once every ticket on it is deleted.':
+    'Trwale usuwa zapisany rekord i jego oryginał dla wszystkich w obszarze roboczym oraz zdejmuje jego pozycję z faktury {number}. Ten sam plik można potem przesłać ponownie; numer faktury można użyć ponownie po usunięciu wszystkich jej kwitów.',
+
+  // Ticket checks and line totals
+  'Rate is missing; invoice remains a draft': 'Brak stawki; faktura pozostaje szkicem',
+  'Hours are missing for the hourly rate; invoice remains a draft':
+    'Brak godzin dla stawki godzinowej; faktura pozostaje szkicem',
+  'Net tons do not match net pounds / 2,000': 'Tony netto nie zgadzają się z funtami netto / 2000',
+  'ticket number': 'numer kwitu',
+  'ticket date': 'data kwitu',
+  'customer name': 'nazwa klienta',
+  'net weight': 'waga netto',
+  product: 'produkt',
+  'Draft until a rate is added.': 'Szkic, dopóki nie dodasz stawki.',
+  'Enter the hours to work out the total.': 'Wpisz godziny, aby obliczyć wartość.',
+  'Enter the net weight to work out the total.': 'Wpisz wagę netto, aby obliczyć wartość.',
+
+  // Extraction progress
+  Starting: 'Rozpoczynanie',
+  'Starting text recognition': 'Uruchamianie rozpoznawania tekstu',
+  'Opening page': 'Otwieranie strony',
+  'Reading text': 'Odczytywanie tekstu',
+  'Checking ticket fields': 'Sprawdzanie pól kwitu',
+  'Checking weights': 'Sprawdzanie wag',
+  Done: 'Gotowe',
+
+  // Storage messages
+  'A ticket you changed no longer exists. Reload and try again.':
+    'Zmieniony kwit już nie istnieje. Odśwież stronę i spróbuj ponownie.',
+  'Browser storage is unavailable, so profiles cannot be saved here.':
+    'Pamięć przeglądarki jest niedostępna, więc nie można tu zapisać profili.',
+  'Browser storage is unavailable, so tickets cannot be saved here.':
+    'Pamięć przeglądarki jest niedostępna, więc nie można tu zapisać kwitów.',
+  'Saved tickets in this browser could not be read and were left untouched.':
+    'Nie udało się odczytać kwitów zapisanych w tej przeglądarce; pozostawiono je bez zmian.',
+  'Your session has ended. Sign in again to see customers and trucks.':
+    'Sesja wygasła. Zaloguj się ponownie, aby zobaczyć klientów i ciężarówki.',
+  'Your session has ended. Sign in again to see saved tickets.':
+    'Sesja wygasła. Zaloguj się ponownie, aby zobaczyć zapisane kwity.',
+  'Your session has ended. Sign in again.': 'Sesja wygasła. Zaloguj się ponownie.',
+  'Allow pop-ups to open the original.': 'Zezwól na wyskakujące okna, aby otworzyć oryginał.',
+  'Could not open original storage.': 'Nie udało się otworzyć magazynu oryginałów.',
+  'Original storage failed.': 'Zapis oryginału nie powiódł się.',
+  'Original storage was aborted.': 'Zapis oryginału został przerwany.',
+  'This browser cannot store original files.': 'Ta przeglądarka nie może zapisywać oryginałów.',
+  'Could not write to browser storage. Nothing was changed.':
+    'Nie udało się zapisać w pamięci przeglądarki. Nic nie zmieniono.',
+};

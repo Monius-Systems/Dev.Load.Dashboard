@@ -1,0 +1,204 @@
+Cl IR Hil
+« Plant: U857
+BOL 1725441484
+Heidelberg
+THORNTON
+Materials
+322 8. Williams St.
+THORNTON,IL 60476
+9/3/2026 Time In: INDOT 2472 MDOT 91-006 Q982104
+Time Out: 14:14 IDOT 50312-04
+Total:
+Customer: 60311115 K FIVE CONST CORE
+Order : 6100307876
+2026 Markham Plant
+16222 Western Ave
+MARKHAM,IL 60428 US
+P.O. : Markham HMA Plant 2026
+Product 56001224 032CM16 3/8" CHIP
+:
+UNIT TOTALS Pounds Tons
+Mater: ross 72620 36.31
+Freight: are 27360 * 13.68 *
+Tax: et 45260 22.63
+Fee / Fuel 22.63 Ton
+Other Chrg, No
+*P.T. Scale: 3
+P/D Status: Plckup
+—_—rr—— Reference Ticket Number:
+rdered:
+23,433.13 Carrier :
+Receive
+Vehicle :ZF0321
+Remainin, -23,433.13
+Z FORCE
+Today: 1,125.77 Loads: 50
+License:
+Trailers :
+Welghmaster: Perez, Carlos (Thornton)
+Inv Ship To:
+See terms, liability limitation and health hazard warning below
+Received:
+LIMITED WARRAHN IY AND REMEDIES
+Notwithstanding eny prcvision In any pur order or cther document of Bu yer, this sala Is subject of to the following Limited Materials Warranty viarrarts that et the
+and Remedies, which Buyer Is deemed to acce) Ft and agree to by accaptanct of dailvery or use goods. Heidelberg
+time of delivery, the goods wil conform to the appl licable specications THE FORE set fo th GOING inthe WARRANT Quotation, YS Acknowledgement EXCLUSIVE of AND Order, IN LIEU or O FALL OTHER WARR.
+sales document signed by Heidelberg Materials r this delivery.
+MERCHANTABILITY
+WHETHER WRITTEN, ORAL OR PURP IMPLIED, OSE), IN Ifthe FACT OR do IN LAW conform (INCLUDI to 1 1G s limited IMPLIED WARRANTIES shen dellverad OF snd Materials AND is notified In wi
+FITNESS FOR APARTICULAR geods nt warranty Heldsiberg
+30 of dellvery, Buyer's scls and exclusive remedy and Heidelber, Materials sole liabliity, whether in contract, tort, arr
+Within days other at lts sole cr non<enform! Ta ass, FOB Heidel
+|agal theary, | for Heidelberg Materials, opticn, to either () repair replace the
+strict or any
+Materials nt with ll freight allowed to the jobsite, or g i) refund the SP £ rice ptid NCIDEN for t OR CONSE GUE NTIAL DAMAGES. Materia
+HEIDELBERG MATERIALS WILLNOT BE LIABLE FO! DELAY, CIAL, TAL, Holdslberg
+liaillity, whether under contract, which tert such gncluding negli is based. nce), warranty, strict ll bility, or any other legal theory, shail not exceed the price of the
+goods or portion thereof on lisbllity
+GHS Ha i dWaminge
+Ij;
+" DANGER i" af i i ! I i il fi i) y sil 0
+3
+May causs cancer.
+i May causs damags fo organs (lung)through prolonged of repeated exposure
+Causes skin Irritation and sarious eys |rritation.
+before Do not handle rt | safety precautions have keen read and understood.
+PREVENTION: Obtain spacial Instructions u se. a
+exposed bocly parts ater ‘handling. Waar pr ctective gloves, clothl ig, evs protaction and fac protection.
+i" Nash any contamineted
+RESPOMSE: If xpossif or concern: Get medical advicedattention. Ion sk n Wash for ssveral with plenty minutes. of water. Remove Take contact off |f clothing and easy to do.
+Rinse continucusly with vu ter lenses, present
+immediately and wash It afore reuse. Ifin eyes:
+STORAGE: Restrict or control access to toc) kplle areas (stors locked up). E ngultnent hazard To prevent burial contains or suffocation, materlal without an effective
+confined such a silo, bulk truck or other storage cor ainer or vessel thet stores or
+Ho not enter a space, as
+" orocedurs for suring safety. cortents/cont ainer In accordance with and International
+DISPOSAL: Dispose of local, regione national, regulations.
+,
+SUPPLEMENTAL INFORMATION: afore handling product dstermine appr xpriate ventilation or respiratory protection. Repeated
+nhalstion of respirable sry stalline silica (quartz) may cause lung cancer. He ith risk is dependent upon work duration and | javals of
+octential silica exposurs inthe viorkpisce.
+speed, directional and caution signs; Give right >f way to loaded mobile.
+WHILE IN VEHICLE: Obey
+sauipment; Stay clear of other from vehicles’ other bind areas; S ot If on cr 3ck check
+<eep safe fol lowing distancs raising truck vehicles; brakes, grade, wheels; Always
+overhead clearance before bed,
+Never traval vith truck bed ralssd; Never stop un der a conveyor, near plant : tructures, In vehicle or where while your vehicle
+restrict traffic; Leava clearance between your vehicle anc others; Remal 1 your being
+Wii
+oaded for safety; Dump overloads nly at specified locations. Do net park ¢ ose to stockpile face.
+LEAVING CAB: Wear hard hat and safety glasses; Use designated station tc safely access truck bed;
+atch for moving vehicies; Never viaik or stan
+oetvieen back of truck und stockpile. unsafe conditions or Incidents to site
+UNSAFE CONDITIONS: Report any management Immediately.
+NOTE: Your eigneture acknowledges receipt of thes requirement and your agreements to ebide by thess rulea
+Se05DS before using thie product evellable at www.Heldelbergmaterie e.ue 972-663-6600
+as
+[IL TNL uum mn LIN
+--- TABLE OCR PASS ---
+'T
+[Bail
+oo I! [ | | (i IIT, HT)
+I— Plant: U857
+| BOL 1725441484 ll
+-
+Heidelberg |
+THORNTON
+ha | Materials 322 8. Williams St. im
+THORNTON,IL 60476
+9/3/2026 Time In: INDOT 2472 MDOT 91-006 Q982104
+Time Out: 14:14 IDOT 50312-04
+Total:
+Customer: 60311115 K FIVE CONST CORE
+Order : 6100307876
+2026 Markham Plant
+Il
+ih
+16222 Western Ave
+MARKHAM,IL 60428 US
+P.O. : Markham HMA Plant 2026
+Product 56001224 032CM16 3/8" CHIP
+:
+I
+cs TOTALS “Pounds Tons
+UNIT
+Material: Gross 72620 36.31
+Freight: Tare 27360 * 13.68 *
+Tax: Net 45260 22.63
+Fee / Fuel: 22.63 Ton
+Other Chrg: No
+— *P.T. Scale:
+P/D Status: Plckup
+Reference Ticket Number:
+| Ordered: u.uu
+Carrier :
+Receive 23,433.13
+Vehicle :ZF0321
+Remainin, -23,433.13
+~--Z FORCE
+Today: Lies. Loads:
+License:
+|
+i
+Trailers :
+Welghmaster: Perez, Carlos (Thornton)
+Inv Ship To:
+See terms, liability limitation and health hazard warning below
+Received:
+_
+— —
+s
+LIMITED WARRAHN IY AND REMEDIES
+Notwithstanding eny prcvision In any pur order or cther document of Bu yer, this sala Is subject of to the following Limited Materials Warranty viarrarts that et the
+and Remedies, which Buyer Is deemed to acce) Ft and agree to by accaptanct of dailvery or use goods. Heidelberg
+time of dellvery, the goods will cenform to the app! licable specications THE FORE set fo th GOING inthe WARRANTY Quotation, Acknowledgement IS EXCLUSIVE of AND Order, IN LIEU or Of ¥ ALL OTHER WARR, |
+sales document signed by Heidelberg Materials IN FACT for this OR delivery. IN LAW IG IMi P WARRANTIES OF AND
+ORAL OR IMPLIED, (INCLUDI LIED MERCHANTABILITY
+WHETHER WRITTEN, wel
+FITNESS FOR APARTICULAR PURP scls OSE), and exclusive Ifthe goods do not and conform tof Is Materials lim: tad warranty sole liabliity, when whether dellverad in and Heldelberg arr Materials is notified In |
+30 of dellvery, Buyer's remedy Heidelber, contract, tort,
+Within days other at lts sole cr non<enform! Ta g6ods, FOB Heidel
+|agal theary, | for Heidelberg Materials, opticn, to either () repair replace the
+strict or any
+Materials nt with ll freight allowed to the jobsite, or g i) refund the SP £ rice ptid NCIDEN for t OR CONSE GUE NTIAL DAMAGES. Materia
+HEIDELBERG MATERIALS WILLNOT BE LIABLE FO! DELAY, CIAL, TAL, Holdslberg
+liaillity, whether under contract, which tert such gncluding negli is based. nce), warranty, strict ll bility, or any other legal theory, shail not exceed the price of the
+goods or portion thereof on lisbllity
+GHS Ha dWaming
+i
+" DANGER a i ! I i HL. il
+3
+May causs cancer.
+i May causs damags fo organs (lung)through prolonged of repeated exposure
+Causes skin Irritation and sarious eys |rritation.
+before Do not handle rt | safety precautions have keen read and understood.
+PREVENTION: Obtain spacial Instructions u se. a
+exposed kacy parts afer har nding VVear pr ctective gloves, clothl ig, evs protaction and fac protection.
+" ash any contaminated
+RESPONSE: If expose: or concerned Get macical advioaattention. if on sk n: Wash for ssveral wih plenty minutes. of viater. Remove Take contact off |f clothing and easy to do.
+Rinse continucusly with vu ter lenses, present
+immediately and wash It afore reuse. Ifin eyes:
+STORAGE: Restrict or control access to toc) kplle areas (stors locked up). E ngultnent hazard To prevent burial contains or suffocation, meterlal without an effective
+confined such a silo, bulk truck or other storage cor :ainer or vesss! thet stores or
+Ho not enter a space, as
+" orocedurs for ng st y:
+DISPOSAL: Dispos ‘of cortents/container In accordance with local, regione , netlonal, and international regulations.
+SUPPLEMENTAL INFORMATION: afore handling product dstermine appr xpriate ventilation or respiratory protection. Repeated
+nhalstion of respirable sry stalline silica (quartz) may cause lung cancer. He ith risk is dependent upon work duration and | javals of
+octential silica exposurs inthe viorkpisce.
+speed, directional and caution signs; Give right >f way to loaded mobile.
+WHILE IN VEHICLE: Obey
+squipment; Stay clear af other vehicles’ bind area:
+“oep safe fol lowing distance fom other vehicles; Set brakes, |fon grads, ct sck wheels; Alvays check
+overhead clearance vith truck before bed raising truck Never bed, un der a conveyor, near : or where your vehicle
+Never traval ralssd; stop plant tructures,
+clearance between your vehicle anc others; Remal 1 In your vehicle while being
+Wii restrict traffic; Leava
+oaded for safety; Dump overloads nly at specified locations. Do net park ¢ ose to stockpile face.
+LEAVING CAB: Wear har hat and safety gasses; Use designated station tc safely access truck bed;
+atch for moving vehicies; Never viaik or stan
+oetvieen back of truck und stockpile. unsafe conditions or Incidents to
+UNSAFE CONDITIONS: Report any site management Immediately.
+NOTE: Your eigneture acknowledges receipt of thes requirement and your agreements to ebide by thess rulea
+Se05DS before using thie product evellable at www.Heldelbergmaterie e.ue 972-663-6600
+[IL TNL as uum mn LIN I

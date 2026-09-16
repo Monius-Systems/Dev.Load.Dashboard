@@ -1,0 +1,1130 @@
+/* ================================================================ Load Desk */
+.ld-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-8);
+}
+.ld-stats dt,
+.ld-summary dt {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.ld-stats dd {
+  margin-top: 2px;
+  font-size: var(--type-xl);
+  font-weight: var(--type-semibold);
+  letter-spacing: var(--type-tracking-metric);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text);
+}
+.ld-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: var(--ui-space-5);
+  align-items: start;
+  margin-bottom: var(--ui-space-5);
+}
+.ld-panel {
+  min-width: 0;
+  padding: var(--ui-space-6);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow-panel);
+}
+/* Hover border: the edge of the block under the cursor lights up blue near the
+   pointer. AppShell moves one shared ring over that block and sets
+   --spot-x/--spot-y on the ring only, so the block's contents are never
+   restyled while the mouse moves. Only a thin ring over the edge is drawn. */
+@media (hover: hover) and (pointer: fine) {
+  .panel-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    box-sizing: border-box;
+    padding: 1.5px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 300ms var(--ui-ease);
+    background: radial-gradient(
+      280px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+      color-mix(in srgb, var(--ui-accent) 90%, transparent),
+      transparent 70%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  .panel-ring[data-active='true'] {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel-ring {
+    transition: none;
+  }
+}
+.ld-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  margin-bottom: var(--ui-space-5);
+}
+.ld-step {
+  margin-bottom: 4px;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.ld-hint {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+
+/* Upload */
+.ld-drop {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: var(--ui-space-10) var(--ui-space-5);
+  border: 1.5px dashed var(--ui-border-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition:
+    border-color var(--ui-duration) var(--ui-ease),
+    background-color var(--ui-duration) var(--ui-ease);
+}
+.ld-drop:hover:not(:disabled),
+.ld-drop[data-dragging='true'] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-faint);
+}
+.ld-drop:disabled {
+  opacity: 0.6;
+}
+.ld-drop strong {
+  font-size: var(--type-md);
+  font-weight: var(--type-semibold);
+  color: var(--ui-text);
+}
+.ld-drop-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 4px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-ink);
+}
+.ld-drop-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.ld-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-4);
+}
+.ld-actions-flush {
+  margin-top: 0;
+}
+.ld-status {
+  min-height: 1.4em;
+  margin-top: var(--ui-space-3);
+  font-size: var(--type-sm);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text-2);
+}
+.ld-status[data-tone='error'] {
+  color: var(--ui-danger);
+}
+/* A saved ticket with unsaved changes. */
+.ld-queue-tab[data-changed='true'] {
+  box-shadow: inset 0 0 0 1.5px var(--ui-warning);
+  color: var(--ui-warning);
+}
+/* Extraction progress: label and percentage, bar, then the current step. */
+.ld-progress {
+  margin-top: var(--ui-space-4);
+  padding: var(--ui-space-3) var(--ui-space-4);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+  gap: var(--ui-space-2);
+}
+.ld-progress-head {
+  order: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  width: 100%;
+}
+.ld-progress-label {
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.ld-progress-value {
+  font-size: var(--type-sm);
+  font-weight: var(--type-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text);
+}
+.ld-progress [data-slot='progress-track'] {
+  order: 2;
+  height: 8px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-fill-strong);
+}
+.ld-progress [data-slot='progress-indicator'] {
+  border-radius: inherit;
+  background: var(--ui-accent);
+  transition: width 300ms var(--ui-ease);
+}
+.ld-progress-detail {
+  order: 3;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-progress [data-slot='progress-indicator'] {
+    transition: none;
+  }
+}
+
+/* Saved tickets */
+.ld-records {
+  display: grid;
+  gap: 2px;
+  max-height: 380px;
+  margin: 0 calc(-1 * var(--ui-space-3));
+  overflow-y: auto;
+}
+.ld-record {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--ui-space-3);
+  padding: 10px var(--ui-space-3) 6px;
+  border-radius: var(--ui-radius-sm);
+  transition: background-color var(--ui-duration) var(--ui-ease);
+}
+.ld-record:hover {
+  background: var(--ui-surface-2);
+}
+.ld-record-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ld-record-main strong {
+  font-size: var(--type-base);
+  font-weight: var(--type-medium);
+  font-variant-numeric: tabular-nums;
+}
+.ld-record-meta {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+  overflow-wrap: break-word;
+}
+.ld-record-meta span {
+  white-space: nowrap;
+}
+.ld-record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  grid-column: 1 / -1;
+  margin-left: -8px;
+}
+.ld-record-actions .ld-danger {
+  color: var(--ui-danger);
+}
+.ld-chip {
+  align-self: start;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-warning-soft);
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  white-space: nowrap;
+  color: var(--ui-warning);
+}
+.ld-chip[data-tone='good'] {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.ld-empty {
+  padding: var(--ui-space-8) var(--ui-space-3);
+  font-size: var(--type-sm);
+  text-align: center;
+  color: var(--ui-text-3);
+}
+
+/* Review */
+.ld-review {
+  padding: 0;
+  overflow: hidden;
+}
+.ld-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-4);
+  padding: var(--ui-space-5) var(--ui-space-6);
+  border-bottom: 1px solid var(--ui-separator);
+}
+.ld-queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.ld-queue-tab {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-fill);
+  font-size: var(--type-xs);
+  font-weight: var(--type-medium);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-2);
+  transition:
+    background-color var(--ui-duration) var(--ui-ease),
+    color var(--ui-duration) var(--ui-ease);
+}
+.ld-queue-tab:hover {
+  background: var(--ui-fill-strong);
+  color: var(--ui-text);
+}
+.ld-queue-tab svg {
+  width: 14px;
+  height: 14px;
+}
+.ld-queue-tab[data-saved='true'] {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.ld-queue-tab[aria-current='true'] {
+  background: var(--ui-text);
+  color: var(--ui-surface);
+}
+.ld-queue-tab[data-saved='true'][aria-current='true'] {
+  background: var(--ui-success);
+  color: #fff;
+}
+.ld-queue-count {
+  margin: 0 var(--ui-space-2);
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.ld-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--ui-separator);
+}
+.ld-summary > div {
+  min-width: 0;
+  padding: 14px var(--ui-space-6);
+  border-right: 1px solid var(--ui-separator);
+}
+.ld-summary > div:last-child {
+  border-right: 0;
+}
+.ld-summary dd {
+  margin-top: 4px;
+  font-size: var(--type-md);
+  font-weight: var(--type-semibold);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.ld-review-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+}
+.ld-form {
+  min-width: 0;
+  padding: var(--ui-space-5) var(--ui-space-6) var(--ui-space-6);
+}
+.ld-notice {
+  padding: 10px 12px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-fill);
+  font-size: var(--type-sm);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-2);
+}
+.ld-notice[data-tone='warning'] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.ld-notice[data-tone='good'] {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.ld-notice strong {
+  font-weight: var(--type-semibold);
+}
+.ld-notice ul {
+  margin-top: 2px;
+  padding-left: 18px;
+  list-style: disc;
+}
+.ld-panel > .ld-notice {
+  margin-bottom: var(--ui-space-4);
+}
+.ld-fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.ld-section {
+  margin-top: var(--ui-space-5);
+  padding-top: var(--ui-space-5);
+  border-top: 1px solid var(--ui-separator);
+}
+.ld-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.ld-section h3 {
+  margin-bottom: var(--ui-space-3);
+  font-size: var(--type-sm);
+  font-weight: var(--type-semibold);
+  color: var(--ui-text);
+}
+/* Collapsible review sections: closed until clicked; the header shows the
+   section's key values so it can stay closed most of the time. */
+.ld-collapsible {
+  margin-top: var(--ui-space-3);
+  padding-top: var(--ui-space-3);
+}
+.ld-section-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  margin: calc(var(--ui-space-2) * -1);
+  padding: var(--ui-space-2);
+  border-radius: var(--ui-radius-sm);
+  list-style: none;
+  cursor: pointer;
+  transition: background-color var(--ui-duration) var(--ui-ease);
+}
+.ld-section-summary::-webkit-details-marker {
+  display: none;
+}
+.ld-section-summary:hover {
+  background: var(--ui-fill);
+}
+.ld-section-summary:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.ld-section .ld-section-summary h3 {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+.ld-section-detail {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ld-section-detail[data-tone='bad'] {
+  color: var(--ui-danger);
+}
+.ld-section-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--ui-text-3);
+  transition: transform var(--ui-duration) var(--ui-ease);
+}
+details[open] > .ld-section-summary {
+  margin-bottom: var(--ui-space-3);
+}
+details[open] > .ld-section-summary .ld-section-chevron {
+  transform: rotate(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld-section-summary,
+  .ld-section-chevron {
+    transition: none;
+  }
+}
+.ld-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ui-space-3) 14px;
+}
+.ld-field {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+  font-size: var(--type-xs);
+  font-weight: var(--type-medium);
+  color: var(--ui-text-2);
+}
+.ld-field[data-span='2'] {
+  grid-column: span 2;
+}
+/* A field that starts its own row, under the fields before it. */
+.ld-field[data-new-row] {
+  grid-column-start: 1;
+}
+.ld-field[data-span='2'][data-new-row] {
+  grid-column: 1 / span 2;
+}
+/* The new client form opened from the Bill to client menu. */
+.ld-new-client {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: var(--ui-space-4);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+  box-shadow: inset 0 0 0 1px var(--ui-border);
+}
+.ld-new-client-title {
+  font-size: var(--type-sm);
+  font-weight: var(--type-semibold);
+  color: var(--ui-text);
+}
+.ld-new-client .ld-actions {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+.ld-required {
+  color: var(--ui-danger);
+}
+.ld-select,
+.ld-textarea,
+.ld-output {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  font: inherit;
+  font-size: var(--type-sm);
+  font-weight: var(--type-regular);
+  color: var(--ui-text);
+}
+.ld-select {
+  height: 32px;
+  padding: 0 6px;
+}
+.ld-output {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 10px;
+  border-color: transparent;
+  background: var(--ui-fill);
+  font-variant-numeric: tabular-nums;
+}
+.ld-textarea {
+  display: block;
+  min-height: 180px;
+  margin-top: var(--ui-space-2);
+  padding: var(--ui-space-2);
+  font-family: var(--font-mono);
+  font-size: var(--type-xs);
+  line-height: 1.45;
+  resize: vertical;
+  background: var(--ui-surface);
+}
+.ld-select:focus-visible,
+.ld-textarea:focus-visible {
+  border-color: var(--ring);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ui-focus);
+}
+.ld-textarea:disabled,
+.ld-select:disabled {
+  opacity: 0.6;
+}
+.ld-select[data-slot='select-trigger'] {
+  display: flex;
+  padding: 0 8px 0 10px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color var(--ui-duration) var(--ui-ease),
+    box-shadow var(--ui-duration) var(--ui-ease);
+}
+.ld-select[data-slot='select-trigger']:hover:not(:disabled) {
+  border-color: var(--ui-border-strong);
+}
+.ld-select[data-slot='select-trigger'][data-popup-open] {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px var(--ui-focus);
+}
+.ld-weight {
+  grid-column: 1 / -1;
+  padding: 7px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-fill);
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
+}
+.ld-weight[data-tone='good'] {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.ld-weight[data-tone='bad'] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.ld-save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  margin-top: var(--ui-space-6);
+  padding: var(--ui-space-4);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+}
+.ld-save > div:first-child {
+  flex: 1 1 260px;
+}
+.ld-save strong {
+  display: block;
+  font-size: var(--type-base);
+  font-weight: var(--type-medium);
+}
+.ld-save p {
+  margin-top: 2px;
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
+}
+.ld-aside {
+  display: grid;
+  align-content: start;
+  gap: var(--ui-space-6);
+  min-width: 0;
+  padding: var(--ui-space-5);
+  border-left: 1px solid var(--ui-separator);
+  background: var(--ui-surface-2);
+}
+.ld-aside h3 {
+  margin-bottom: var(--ui-space-2);
+  font-size: var(--type-sm);
+  font-weight: var(--type-semibold);
+}
+.ld-aside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+}
+.ld-aside-head h3 {
+  margin-bottom: 0;
+}
+.ld-aside-note {
+  margin-top: 6px;
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text-3);
+  overflow-wrap: anywhere;
+}
+.ld-aside-note code {
+  font-family: var(--font-mono);
+}
+.ld-preview {
+  overflow: hidden;
+  border-radius: var(--ui-radius-md);
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--ui-border);
+}
+.ld-preview iframe {
+  display: block;
+  width: 100%;
+  height: 460px;
+  border: 0;
+}
+.ld-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  object-fit: contain;
+}
+.ld-preview-empty {
+  padding: var(--ui-space-6);
+  background: var(--ui-surface);
+  font-size: var(--type-sm);
+  text-align: center;
+  color: var(--ui-text-3);
+}
+.ld-reviewed {
+  margin-top: var(--ui-space-3);
+}
+/* Add tickets to the invoice under review. */
+.ld-add-tickets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  margin-bottom: var(--ui-space-4);
+}
+.ld-add-tickets .ld-progress {
+  flex-basis: 100%;
+}
+/* Invoice preview: the whole page, scaled to fit, with no scrolling. */
+.ld-invoice-fit {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-fill);
+}
+.ld-invoice-fit-box {
+  position: relative;
+  overflow: hidden;
+}
+.ld-invoice-fit-page {
+  width: max-content;
+  transform-origin: top left;
+}
+
+@media (max-width: 1100px) {
+  .ld-grid,
+  .ld-review-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ld-aside {
+    border-top: 1px solid var(--ui-separator);
+    border-left: 0;
+  }
+}
+@media (max-width: 720px) {
+  .ld-panel {
+    padding: var(--ui-space-4);
+  }
+  .ld-review {
+    padding: 0;
+  }
+  .ld-review-head,
+  .ld-form,
+  .ld-aside {
+    padding-inline: var(--ui-space-4);
+  }
+  .ld-fields,
+  .ld-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ld-summary > div {
+    padding-inline: var(--ui-space-4);
+  }
+  .ld-summary > div:nth-child(2n) {
+    border-right: 0;
+  }
+  .ld-summary > div:not(:nth-last-child(-n + 2)) {
+    border-bottom: 1px solid var(--ui-separator);
+  }
+  /* An odd last cell takes the whole row. */
+  .ld-summary > div:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+  .ld-summary > div:nth-last-child(2):nth-child(even) {
+    border-bottom: 1px solid var(--ui-separator);
+  }
+  .ld-stats {
+    gap: var(--ui-space-5);
+  }
+}
+@media (max-width: 460px) {
+  .ld-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ld-field[data-span='2'],
+  .ld-field[data-span='2'][data-new-row] {
+    grid-column: auto;
+  }
+}
+
+/* Files waiting to be extracted */
+.ld-pending {
+  margin-top: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+}
+.ld-pending-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  margin-bottom: 6px;
+  font-size: var(--type-sm);
+}
+.ld-pending-head strong {
+  font-weight: var(--type-medium);
+}
+.ld-pending ul {
+  display: grid;
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+.ld-pending li {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+  padding: 3px 4px 3px 8px;
+  border-radius: var(--ui-radius-sm);
+  font-size: var(--type-sm);
+}
+.ld-pending li:hover {
+  background: var(--ui-fill);
+}
+.ld-pending li > svg {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  color: var(--ui-text-3);
+}
+.ld-pending-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ui-text);
+}
+.ld-pending-size {
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-3);
+}
+.ld-pending .ld-hint {
+  display: block;
+  margin-top: 6px;
+}
+
+.ld-section-note {
+  margin: -4px 0 var(--ui-space-3);
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text-3);
+}
+
+/* Profiles in Load Desk */
+.ld-field-hint {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-regular);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text-3);
+}
+.ld-field-hint a {
+  color: var(--ui-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* A customer name printed a letter or two off the profile's spelling. */
+.ld-near-match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--ui-space-2);
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-2);
+  font-size: var(--type-2xs);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text-2);
+}
+.ld-near-match span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* The phone's way in: photograph the ticket instead of picking a file. */
+.ld-scan-button {
+  width: 100%;
+  margin-bottom: var(--ui-space-3);
+}
+.ld-truck-pick {
+  max-width: 420px;
+  margin-top: var(--ui-space-4);
+}
+
+/* ================================================================== Invoice */
+/* Paper, not UI: black on white in every theme. The sheet is a US Letter page
+   turned sideways (11 x 8.5 in) with 0.4 in margins, exactly as it prints. */
+.invoice-sheet {
+  box-sizing: border-box;
+  width: 11in;
+  min-height: 8.5in;
+  padding: 0.4in;
+  background: #fff;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 14%);
+  font-family: Arial, Helvetica, sans-serif;
+  color: #000;
+}
+/* The details column is only as wide as its text, so it sits against the
+   right margin. */
+.invoice-head {
+  display: grid;
+  /* Invoice number, date, truck and Bill To on the left; the word INVOICE
+     centred; the company name on the right.
+
+     The middle column never shrinks below the word INVOICE. It is one
+     unbreakable word at 40px, so a column narrower than that does not wrap it
+     or clip it — the letters simply run over whatever is beside them.
+     min-content is exactly the width of those letters. */
+  grid-template-columns: auto minmax(min-content, 1fr) max-content;
+  column-gap: 16px;
+  align-items: start;
+}
+.invoice-seller {
+  display: grid;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: center;
+}
+.invoice-seller strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+/* Every piece of text on the invoice stays on a single line. */
+.invoice-seller > *,
+.invoice-billto > div > * {
+  white-space: nowrap;
+}
+.invoice-word {
+  font-size: 40px;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  /* Letter spacing also trails the last letter; cancel it so the word, and
+     the draft note under it, center on the letters. */
+  margin-right: -0.32em;
+  line-height: 1;
+  text-align: center;
+}
+.invoice-details {
+  display: grid;
+  grid-column: 1;
+  justify-items: start;
+}
+.invoice-meta {
+  display: grid;
+  gap: 8px;
+}
+/* Each value sits right after its title; the titles share a width so the
+   values line up under each other. */
+.invoice-meta div {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 14px;
+}
+.invoice-meta dt {
+  min-width: 88px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.invoice-meta dd {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+.invoice-meta .invoice-value {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.invoice-meta .invoice-value[data-long='true'] {
+  font-size: 15px;
+}
+/* Bill To sits under the truck number; its label shares the titles' width so
+   the client lines up with the values above. */
+.invoice-billto {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-top: 16px;
+}
+.invoice-billto > span {
+  min-width: 88px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.invoice-billto > div {
+  display: grid;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+}
+/* The one line on the invoice allowed to wrap. A long client name would
+   otherwise hold this column open and squeeze the columns to its left; a
+   client billed to two lines is ordinary on an invoice, letters running
+   through the invoice number is not. */
+.invoice-billto strong {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+/* The client's name stays on one line. A long one is set smaller so it fits
+   the column rather than widening it, the same way a long invoice number is.
+   The steps are chosen so the longest name at each size still clears the word
+   INVOICE beside it (see billToFit in invoice-sheet.tsx). */
+.invoice-billto strong[data-fit='medium'] {
+  font-size: 15px;
+}
+.invoice-billto strong[data-fit='small'] {
+  /* No smaller than the address lines beneath it: a company name set smaller
+     than its own street address reads as a mistake rather than a fit. */
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  /* Last resort. Every name of a plausible length fits on one line by the time
+     it reaches this size. One longer and wider than any of them is allowed to
+     break here — and only here — rather than print off the edge of the page,
+     where it would be lost. It breaks only if the room genuinely is not there:
+     with no fixed width, the column keeps taking what it can first. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* The draft note sits centered under the INVOICE heading. */
+.invoice-draft {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #9c2f2f;
+}
+.invoice-table {
+  width: 100%;
+  margin-top: 22px;
+  border: 2px solid #000;
+  border-collapse: collapse;
+  /* Columns size to their text; ticket lines shrink to fit rather than wrap. */
+  table-layout: auto;
+  font-size: 11px;
+}
+.invoice-table th,
+.invoice-table td {
+  height: 21px;
+  padding: 0 5px;
+  border: 1px solid #000;
+  text-align: center;
+  white-space: nowrap;
+}
+.invoice-table th {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 12px;
+  font-weight: 700;
+}
+/* Ticket lines are bold, as on the reference. The sheet picks a font size at
+   which the longest value in each column still fits on one line. */
+.invoice-table tbody tr.invoice-line td {
+  font-size: var(--invoice-line-size, 11px);
+  font-weight: 700;
+}
+.invoice-table td:nth-child(n + 6) {
+  text-align: right;
+}
+.invoice-table th:nth-child(6),
+.invoice-table td:nth-child(6) {
+  border-left: 3px double #000;
+}
+.invoice-bottom {
+  display: flex;
+  justify-content: flex-end;
+}
+.invoice-grand-total {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 2px solid #000;
+  font-weight: 700;
+}
+.invoice-grand-total dt {
+  font-size: 12px;
+}
+.invoice-grand-total dd {
+  min-width: 72px;
+  font-size: 14px;
+  text-align: right;
+}
+
+.ld-print-root {
+  display: none;
+}
+@media print {
+  /* US Letter, landscape. The margins are the sheet's padding on screen. */
+  @page {
+    size: letter landscape;
+    margin: 0.4in;
+  }
+  body > *:not(.ld-print-root) {
+    display: none !important;
+  }
+  body > .ld-print-root {
+    display: block;
+  }
+  .ld-print-root .invoice-sheet {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  /* Invoices longer than a page continue with the column headings repeated. */
+  .invoice-table thead {
+    display: table-header-group;
+  }
+  .invoice-table tr,
+  .invoice-head,
+  .invoice-bottom {
+    break-inside: avoid;
+  }
+}

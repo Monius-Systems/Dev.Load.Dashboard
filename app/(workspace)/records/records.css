@@ -1,0 +1,156 @@
+/* ======================================================= Invoices & tickets */
+.rec-toolbar {
+  display: grid;
+  gap: var(--ui-space-3);
+  margin-bottom: var(--ui-space-4);
+}
+.rec-search {
+  position: relative;
+}
+.rec-search svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 15px;
+  height: 15px;
+  color: var(--ui-text-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.rec-search input {
+  height: 36px;
+  padding-left: 32px;
+}
+.rec-filters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+.rec-filter {
+  min-width: 0;
+}
+.rec-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
+}
+.rec-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+.rec-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--type-base);
+  font-weight: var(--type-medium);
+  text-align: left;
+  color: var(--ui-accent-ink);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.rec-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pf-table td.rec-wrap {
+  min-width: 140px;
+  max-width: 260px;
+  white-space: normal;
+}
+.rec-stack > span,
+.rec-stack > .rec-link {
+  display: block;
+}
+.rec-table-tickets {
+  min-width: 940px;
+}
+/* Nine columns: tighter cells so actions stay in view on a laptop. */
+.pf-table.rec-table-tickets th,
+.pf-table.rec-table-tickets td {
+  padding-inline: 8px;
+}
+.pf-table.rec-table-tickets th:first-child,
+.pf-table.rec-table-tickets td:first-child {
+  padding-left: var(--ui-space-6);
+}
+.pf-table.rec-table-tickets th:last-child,
+.pf-table.rec-table-tickets td:last-child {
+  padding-right: var(--ui-space-6);
+}
+.pf-table.rec-table-tickets .pf-name {
+  min-width: 120px;
+}
+.pf-table.rec-table-tickets td.rec-wrap {
+  min-width: 130px;
+}
+.pf-card-head .ld-chip {
+  margin-left: 2px;
+}
+.rec-card-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.rec-card-facts > div {
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-fill);
+}
+.rec-card-facts dt {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.rec-card-facts dd {
+  margin-top: 2px;
+  font-size: var(--type-base);
+  font-weight: var(--type-semibold);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  color: var(--ui-text);
+}
+
+/* Laptop widths: drop the least useful column; below that, use cards. */
+.rec-compact-only {
+  display: none;
+}
+@media (max-width: 1420px) {
+  .rec-panel .rec-wide-only {
+    display: none;
+  }
+  .rec-panel .rec-compact-only {
+    display: inline-flex;
+  }
+}
+@media (max-width: 1340px) {
+  .rec-panel .pf-table-wrap {
+    display: none;
+  }
+  .rec-panel .pf-cards {
+    display: grid;
+  }
+}
+@media (max-width: 1100px) {
+  .rec-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .rec-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 460px) {
+  .rec-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,0 +1,483 @@
+/* ============================================ Customer and company profiles */
+.pf-section {
+  margin-bottom: var(--ui-space-5);
+}
+.pf-notice {
+  margin-bottom: var(--ui-space-5);
+}
+.pf-table-wrap {
+  margin: 0 calc(-1 * var(--ui-space-6));
+  overflow-x: auto;
+}
+.pf-table {
+  width: 100%;
+  min-width: 860px;
+  border-collapse: collapse;
+  font-size: var(--type-sm);
+}
+.pf-table th,
+.pf-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--ui-separator);
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.pf-table th:first-child,
+.pf-table td:first-child {
+  padding-left: var(--ui-space-6);
+}
+.pf-table th:last-child,
+.pf-table td:last-child {
+  padding-right: var(--ui-space-6);
+}
+.pf-table thead th {
+  padding-block: 10px;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.pf-table tbody tr {
+  transition: background-color var(--ui-duration) var(--ui-ease);
+}
+.pf-table tbody tr:hover {
+  background: var(--ui-surface-2);
+}
+.pf-table tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.pf-table tbody tr[data-inactive='true'] {
+  color: var(--ui-text-3);
+}
+.pf-table strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.pf-table small {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.pf-name {
+  min-width: 200px;
+  font-weight: var(--type-regular);
+  white-space: normal;
+}
+.pf-name strong {
+  font-size: var(--type-base);
+}
+.pf-name strong svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ui-text-3);
+}
+.pf-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+.pf-num strong {
+  justify-content: flex-end;
+}
+.pf-num[data-empty='true'] strong,
+.pf-muted {
+  color: var(--ui-text-3);
+}
+.pf-date {
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-2);
+}
+.pf-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+.pf-actions .ld-danger {
+  color: var(--ui-danger);
+}
+.pf-chip {
+  margin-left: 4px;
+  background: var(--ui-fill-strong);
+  color: var(--ui-text-2);
+}
+.pf-footnote {
+  margin-top: var(--ui-space-4);
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.pf-footnote a {
+  color: var(--ui-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.pf-suggestions {
+  display: grid;
+  gap: 2px;
+  margin: 0 calc(-1 * var(--ui-space-3));
+}
+.pf-suggestions li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  padding: 10px var(--ui-space-3);
+  border-radius: var(--ui-radius-sm);
+}
+.pf-suggestions li:hover {
+  background: var(--ui-surface-2);
+}
+.pf-suggestions strong {
+  display: block;
+  font-size: var(--type-base);
+  font-weight: var(--type-medium);
+  overflow-wrap: anywhere;
+}
+.pf-suggestions small {
+  display: block;
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.pf-form {
+  display: grid;
+  gap: var(--ui-space-4);
+  min-width: 0;
+}
+.ld-fields.pf-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.pf-textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  font: inherit;
+  font-size: var(--type-sm);
+  font-weight: var(--type-regular);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text);
+  resize: vertical;
+}
+.pf-textarea:focus-visible {
+  border-color: var(--ring);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ui-focus);
+}
+/* A labelled group of fields inside an add or edit dialog. */
+.pf-group-title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--ui-space-2);
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.pf-group-title:first-child {
+  margin-top: 0;
+}
+.pf-group-title svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* The names a customer's tickets are printed with, as removable chips. */
+.pf-aliases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+.pf-alias {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 999px;
+  background: var(--ui-surface-2);
+  font-size: var(--type-xs);
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+.pf-alias button {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  color: var(--ui-text-3);
+  cursor: pointer;
+  transition:
+    color var(--ui-duration) var(--ui-ease),
+    background var(--ui-duration) var(--ui-ease);
+}
+.pf-alias button:hover {
+  background: var(--ui-fill-strong);
+  color: var(--ui-text);
+}
+.pf-alias button svg {
+  width: 11px;
+  height: 11px;
+}
+/* Touch screens: removing a printed name is a thumb-sized target. */
+@media (pointer: coarse) {
+  .pf-alias {
+    padding: 4px 4px 4px 12px;
+  }
+  .pf-alias button {
+    width: 26px;
+    height: 26px;
+  }
+  .pf-alias button svg {
+    width: 13px;
+    height: 13px;
+  }
+}
+.pf-alias-empty {
+  margin-bottom: 2px;
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.pf-alias-add {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.pf-alias-add input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* How a client prints in the BILL TO box of an invoice. */
+.pf-billto {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.pf-billto figcaption {
+  margin-bottom: var(--ui-space-2);
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.pf-billto-paper {
+  display: grid;
+  gap: 1px;
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  line-height: 1.3;
+  color: #000;
+}
+.pf-billto-paper > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-billto-label {
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.pf-billto-paper strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+.pf-check {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.pf-check input {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  accent-color: var(--ui-accent);
+}
+.pf-check small {
+  display: block;
+  font-size: var(--type-xs);
+  font-weight: var(--type-regular);
+  color: var(--ui-text-3);
+}
+
+/* Phone-width cards replace the wide table. */
+.pf-cards {
+  display: none;
+}
+.pf-card {
+  display: grid;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-4) 0;
+  border-bottom: 1px solid var(--ui-separator);
+}
+.pf-card:first-child {
+  padding-top: 0;
+}
+.pf-card:last-child {
+  border-bottom: 0;
+}
+.pf-card[data-inactive='true'] {
+  color: var(--ui-text-3);
+}
+.pf-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.pf-card-head > div:first-child {
+  min-width: 0;
+}
+.pf-card-head strong {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-md);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+.pf-card-head small,
+.pf-card-foot {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+  overflow-wrap: anywhere;
+}
+.pf-period-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.pf-period-grid > div {
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-fill);
+}
+.pf-period-grid dt {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.pf-period-grid dd {
+  margin-top: 2px;
+  font-size: var(--type-lg);
+  font-weight: var(--type-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text);
+}
+.pf-period-grid [data-empty='true'] dd {
+  color: var(--ui-text-3);
+}
+.pf-period-grid dd small {
+  display: block;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-regular);
+  color: var(--ui-text-3);
+}
+
+/* A customer's tons over a chosen timeline, in its card. */
+.pf-chart {
+  display: grid;
+  gap: var(--ui-space-2);
+  min-width: 0;
+  margin: 0;
+  padding: var(--ui-space-3);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-fill);
+}
+.pf-chart-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+}
+.pf-chart-total {
+  font-size: var(--type-sm);
+  font-weight: var(--type-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text);
+}
+.pf-chart-period {
+  width: 9.5rem;
+}
+.pf-chart-plot {
+  min-width: 0;
+}
+.pf-chart-note {
+  font-size: var(--type-2xs);
+  color: var(--ui-text-3);
+}
+
+@media (max-width: 720px) {
+  .pf-table-wrap {
+    display: none;
+  }
+  .pf-cards {
+    display: grid;
+  }
+}
+
+/* Customers and clients side by side; stacked when there is not room for both. */
+.pf-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--ui-space-5);
+  align-items: start;
+  margin-bottom: var(--ui-space-5);
+}
+/* A column of sections, such as customer profiles with the customers found on
+   tickets that have no profile underneath. */
+.pf-column {
+  display: grid;
+  gap: var(--ui-space-5);
+  min-width: 0;
+}
+.pf-pair .pf-section {
+  margin-bottom: 0;
+  container-type: inline-size;
+}
+/* A section too narrow for its wide table shows the cards, as on phones. */
+@container (max-width: 760px) {
+  .pf-pair .pf-table-wrap {
+    display: none;
+  }
+  .pf-pair .pf-cards {
+    display: grid;
+  }
+}
+@media (max-width: 1100px) {
+  .pf-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 460px) {
+  .ld-fields.pf-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
