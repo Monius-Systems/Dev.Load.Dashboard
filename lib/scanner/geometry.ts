@@ -40,9 +40,35 @@ export type Detection = {
   corners: Quad; confidence: number; area: number; sharpness: number;
   brightness: number; darkFraction: number; glareFraction: number; perspective: number;
 };
+/**
+ * Whether the bottom of the sheet runs off the bottom of the frame. On these
+ * tickets everything that is billed — the number, the date, the customer, the
+ * weights — is printed in the top half, and the rest of the page is the
+ * printed warranty. Held close enough to read, the bottom leaves the frame.
+ */
+export const clippedAtBottom = (q: Quad) =>
+  q.some(p => p.y > 1 - scannerConfig.frameMargin);
+
+/**
+ * Whether enough of the sheet is in view to photograph. Its top, left and right
+ * edges have to be inside the frame — those bound the part that is read. The
+ * bottom is allowed to run off, so filling the frame with the top half of a
+ * ticket is a good photograph rather than one the scanner refuses to take.
+ */
+export const withinFrame = (q: Quad) =>
+  q.every(
+    p =>
+      p.x > scannerConfig.frameMargin &&
+      p.x < 1 - scannerConfig.frameMargin &&
+      p.y > scannerConfig.frameMargin,
+  );
+
 export function guidance(d: Detection | null, sourceWidth: number, sourceHeight: number): string {
   if (!d || d.confidence < scannerConfig.minConfidence) return 'Find ticket';
-  if (d.corners.some(p => p.x < scannerConfig.frameMargin || p.y < scannerConfig.frameMargin || p.x > 1 - scannerConfig.frameMargin || p.y > 1 - scannerConfig.frameMargin) || d.area > scannerConfig.maxArea) return 'Move back';
+  if (!withinFrame(d.corners)) return 'Move back';
+  // Too close only means anything when the whole sheet is in the frame; a
+  // ticket deliberately filling it from the top cannot be "too big".
+  if (!clippedAtBottom(d.corners) && d.area > scannerConfig.maxArea) return 'Move back';
   const size = dimensions(d.corners.map(p => ({ x: p.x * sourceWidth, y: p.y * sourceHeight })) as Quad);
   if (d.area < scannerConfig.usefulArea || Math.min(size.width, size.height) < scannerConfig.minShortEdge) return 'Move closer';
   if (d.perspective > 2.0) return 'Hold phone straighter';

@@ -1,4 +1,5 @@
 import { sellerAddressLines, sellerName } from './business.ts';
+import { watchForChanges } from './live.ts';
 import { apiJson, dataMode, type DataMode } from './data-mode.ts';
 import { lineTotal } from './format.ts';
 import type { BillTo, FuelType, RateType, SavedRecord, Ticket } from './types.ts';
@@ -247,12 +248,26 @@ async function loadProfiles() {
   );
 }
 
+/** One catch-up at a time; a slow answer must not stack up behind itself. */
+let reloading = false;
+async function reloadProfiles() {
+  if (reloading || snapshot.mode === 'local') return;
+  reloading = true;
+  try {
+    await loadProfiles();
+  } finally {
+    reloading = false;
+  }
+}
+
 export function subscribeProfiles(listener: () => void) {
   listeners.add(listener);
   if (!loading) {
     loading = true;
     void loadProfiles();
   }
+  // A customer or truck added on one device reaches the others.
+  const stopWatching = watchForChanges(() => void reloadProfiles());
   const onStorage = (event: StorageEvent) => {
     if (snapshot.mode !== 'local') return;
     if (event.key !== PROFILES_KEY && event.key !== null) return;
@@ -261,6 +276,7 @@ export function subscribeProfiles(listener: () => void) {
   window.addEventListener('storage', onStorage);
   return () => {
     listeners.delete(listener);
+    stopWatching();
     window.removeEventListener('storage', onStorage);
   };
 }

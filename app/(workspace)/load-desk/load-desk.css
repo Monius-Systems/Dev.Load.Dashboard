@@ -944,10 +944,23 @@ details[open] > .ld-section-summary .ld-section-chevron {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-/* The phone's way in: photograph the ticket instead of picking a file. */
+/* The phone's way in: photograph the ticket instead of picking a file. It is
+   the only way in there, so it is the size of one — a filing cabinet to drop
+   files into is a desk idea, and a driver holding a ticket wants the camera. */
 .ld-scan-button {
   width: 100%;
+  min-height: 56px;
   margin-bottom: var(--ui-space-3);
+  border-radius: var(--ui-radius-md);
+  font-size: var(--type-lg);
+  font-weight: var(--type-semibold);
+}
+.ld-scan-button svg {
+  width: 20px;
+  height: 20px;
+}
+.ld-drop[data-phone-hidden] {
+  display: none;
 }
 .ld-truck-pick {
   max-width: 420px;

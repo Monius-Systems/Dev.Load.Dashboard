@@ -2037,7 +2037,6 @@ export default function LoadDesk() {
               )}
               <Button
                 type="button"
-                variant="outline"
                 className="ld-scan-button"
                 onClick={() => setScannerOpen(true)}
               >
@@ -2057,6 +2056,7 @@ export default function LoadDesk() {
           <button
             type="button"
             className="ld-drop"
+            data-phone-hidden={isPhone || undefined}
             data-dragging={dragging}
             onClick={() => fileInput.current?.click()}
             onDragOver={(event) => {

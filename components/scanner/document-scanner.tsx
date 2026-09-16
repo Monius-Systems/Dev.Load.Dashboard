@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { Check, Lightbulb, RotateCcw, ScanLine, Sun, X, ZoomIn, ZoomOut } from 'lucide-react';
-import { guidance, movement, scannerConfig, StabilityTracker, type Detection, type Quad } from '@/lib/scanner/geometry';
+import { guidance, movement, scannerConfig, StabilityTracker, withinFrame, type Detection, type Quad } from '@/lib/scanner/geometry';
 import { enhanceDocument, type DocumentFilter } from '@/lib/scanner/enhance';
 // The bundler creates this default export; the linter cannot see through the
 // "?worker" suffix, which worker-env.d.ts declares for TypeScript.
@@ -13,13 +13,6 @@ import ScannerWorker from '@/lib/scanner/scanner.worker.ts?worker';
 import styles from './document-scanner.module.css';
 
 type Result = { original: Blob; corrected: Blob; url: string; cropped: boolean };
-/** What each filter is called on the review screen, in the order they read. */
-const FILTER_LABELS: { value: DocumentFilter; label: string }[] = [
-  { value: 'auto', label: 'Auto' },
-  { value: 'grey', label: 'Grey' },
-  { value: 'bw', label: 'B&W' },
-  { value: 'original', label: 'Photo' },
-];
 type Reply = { id: number; detection?: Detection | null; image?: ImageData; error?: string; ready?: boolean };
 type PhotoCapture = { takePhoto(): Promise<Blob> };
 type PhotoCaptureConstructor = new (track: MediaStreamTrack) => PhotoCapture;
@@ -69,10 +62,6 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
   const [aspect, setAspect] = useState(3 / 4);
   // The captured page as pixels, so a filter can be tried without re-shooting.
   const captured = useRef<ImageData | null>(null);
-  const [filter, setFilter] = useState<DocumentFilter>('auto');
-  const [filtering, setFiltering] = useState(false);
-  // Whether the captured pixels are in hand, so a filter can be re-applied.
-  const [filterable, setFilterable] = useState(false);
   const close = useRef(onClose);
   useEffect(() => { close.current = onClose; }, [onClose]);
   useEffect(() => {
@@ -172,7 +161,8 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
             const analysis = canvas(Math.round(source.width * scale), Math.round(source.height * scale));
             analysis.getContext('2d')!.drawImage(source, 0, 0, analysis.width, analysis.height);
             const detected = (await process(analysis.getContext('2d')!.getImageData(0, 0, analysis.width, analysis.height), 'detect')).detection;
-            const inside = detected?.corners.every(p => p.x > scannerConfig.frameMargin && p.y > scannerConfig.frameMargin && p.x < 1 - scannerConfig.frameMargin && p.y < 1 - scannerConfig.frameMargin);
+            // The same rule the preview used: the bottom may run off frame.
+            const inside = detected ? withinFrame(detected.corners) : false;
             const matches = !live || (detected && movement(live.corners, detected.corners) < 0.12);
             const advice = detected ? guidance(detected, source.width, source.height) : '';
             if (!detected || detected.confidence < scannerConfig.minConfidence) reason = 'Ticket edges not found in the photo';
@@ -216,10 +206,8 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
           const pixels = sheet.getContext('2d')!.getImageData(0, 0, sheet.width, sheet.height);
           captured.current = pixels;
           shown = await renderFiltered(pixels, 'auto');
-          setFilterable(true);
         } catch {
           captured.current = null;
-          setFilterable(false);
           shown = { blob: original, url: URL.createObjectURL(original) };
         }
         // Only disposal matters from here. stopCamera() moves the generation on
@@ -302,21 +290,6 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
   // An icon for each thing the detector asks for, so the coaching line reads
   // at a glance from arm's length. Anything unexpected (a worker failure, a
   // capture that had to be retried) simply has no icon.
-  /** Re-develops the capture already in hand. The old URL is revoked by the
-   *  effect that watches `result`, so it must not be revoked here too. */
-  async function chooseFilter(next: DocumentFilter) {
-    const pixels = captured.current;
-    if (!pixels || filtering || next === filter) return;
-    setFiltering(true);
-    setFilter(next);
-    const shown = await renderFiltered(pixels, next);
-    setResult(current => {
-      if (!current) { URL.revokeObjectURL(shown.url); return current; }
-      return { ...current, corrected: shown.blob, url: shown.url };
-    });
-    setFiltering(false);
-  }
-
   const hint = error || (capturing ? 'Capturing…' : instruction);
   const COACHING: Record<string, typeof ScanLine> = {
     'Find ticket': ScanLine,
@@ -353,14 +326,9 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
 
       <footer className={styles.footer}>
         {result ? <>
-          <fieldset className={styles.filters} aria-label="Photo style">
-            {FILTER_LABELS.map(({ value, label }) => (
-              <button key={value} type="button" className={styles.filter} data-on={value === filter || undefined} aria-pressed={value === filter} disabled={filtering || !filterable} onClick={() => void chooseFilter(value)}>{label}</button>
-            ))}
-          </fieldset>
           <p className={styles.status} data-tone={result.cropped ? 'good' : 'warn'}>{result.cropped ? <><Check size={15} />Ready to use</> : <><Sun size={15} />Edges unclear · original photo kept</>}</p>
           <div className={styles.actions}>
-            <button type="button" className={styles.secondary} onClick={() => { captured.current = null; setFilterable(false); setFilter('auto'); setResult(null); setSession(s => s + 1); }}>Retake</button>
+            <button type="button" className={styles.secondary} onClick={() => { captured.current = null; setResult(null); setSession(s => s + 1); }}>Retake</button>
             <button type="button" className={styles.primary} onClick={() => { onUse(new File([result.corrected], `ticket-${Date.now()}.${result.corrected.type === 'image/png' ? 'png' : 'jpg'}`, { type: result.corrected.type })); }}>Use Photo</button>
           </div>
         </> : <>

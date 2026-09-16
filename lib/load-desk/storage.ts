@@ -1,3 +1,4 @@
+import { watchForChanges } from './live.ts';
 import { apiJson, dataMode, type DataMode } from './data-mode';
 import { staleTicketDates, withInvoiceDate } from './invoice-dates';
 import { applyRecordEdit, type RecordEdit } from './record-input';
@@ -137,12 +138,26 @@ async function load() {
   }
 }
 
+/** One catch-up at a time; a slow answer must not stack up behind itself. */
+let reloading = false;
+async function reload() {
+  if (reloading || snapshot.mode === 'local') return;
+  reloading = true;
+  try {
+    await load();
+  } finally {
+    reloading = false;
+  }
+}
+
 export function subscribeRecords(listener: () => void) {
   listeners.add(listener);
   if (!loading) {
     loading = true;
     void load();
   }
+  // A ticket saved on a phone shows up here without anyone reloading.
+  const stopWatching = watchForChanges(() => void reload());
   const onStorage = (event: StorageEvent) => {
     if (snapshot.mode !== 'local') return;
     if (event.key !== RECORDS_KEY && event.key !== null) return;
@@ -151,6 +166,7 @@ export function subscribeRecords(listener: () => void) {
   window.addEventListener('storage', onStorage);
   return () => {
     listeners.delete(listener);
+    stopWatching();
     window.removeEventListener('storage', onStorage);
   };
 }
