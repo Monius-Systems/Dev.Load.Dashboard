@@ -405,6 +405,9 @@ export default function AppShell({
         }
       >
         <div className="workspace-backdrop" aria-hidden="true" />
+        {/* The floor under the screen: what a phone's bounce pulls into at the
+            foot of a page. See .page-floor. */}
+        <div className="page-floor" aria-hidden="true" />
         <Diagnostics />
         <a className="skip-link" href="#workspace-content">
           {t('Skip to content')}

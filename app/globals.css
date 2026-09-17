@@ -374,6 +374,11 @@ html[lang='pl']
   min-width: 0;
   background: transparent;
 }
+/* The floor under a phone's screen; nothing anywhere else. See the phone
+   block near the end of this file. */
+.page-floor {
+  display: none;
+}
 /* Dot grid behind the whole workspace, fading out toward the edges. */
 .workspace-backdrop {
   --dot-color: #d4d4d4;
@@ -1823,6 +1828,32 @@ svg.lucide {
   html {
     background: var(--strip, var(--ui-accent));
   }
+  /* The white under the bottom edge of the screen.
+   *
+   * Pulling past the end of a page shows what is behind the page, and behind
+   * the page is the blue everything is painted on — a flash of it under the
+   * white, every time the bounce is given its head. The sheet cannot reach it:
+   * the bounce goes past the end of the document, and anything hung below the
+   * end of the document is either clipped away or scrollable, and neither is
+   * any use.
+   *
+   * What does reach it is a fixed box parked a screen below the screen. Fixed
+   * boxes ride with the page through a bounce on a phone, and they are never
+   * part of what can be scrolled to, so this is out of sight and out of the
+   * way until the moment the bounce asks for it — and then it is the white the
+   * page ends in rather than the blue behind it. */
+  .page-floor {
+    display: block;
+    position: fixed;
+    top: 100%;
+    right: 0;
+    left: 0;
+    z-index: 0;
+    height: 100vh;
+    background: var(--ui-surface-2);
+    pointer-events: none;
+  }
+
   /* The canvas behind it all is the band's blue, on every page. The sheet is
      the only thing that is not: it runs to both edges and covers the page from
      its curve down to the bottom of the screen, so what the blue shows is the
