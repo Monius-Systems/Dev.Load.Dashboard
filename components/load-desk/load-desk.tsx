@@ -2207,8 +2207,13 @@ export default function LoadDesk() {
    * has, and on a phone it follows the block held at the top of the sheet: it
    * is for reaching the next ticket, not for checking this one, so it travels
    * with the page rather than standing over it.
+   *
+   * Null until there is a ticket open: this is worked out on every render of
+   * the page, including the one where the queue is empty and the review is not
+   * on the screen at all, and the summary below reads straight off the ticket.
    */
-  const queueRow = (
+  const queueRow =
+    active && ticket ? (
     <>
           <div className="ld-review-head">
             <div>
@@ -2292,7 +2297,7 @@ export default function LoadDesk() {
             </div>
           </dl>
     </>
-  );
+    ) : null;
 
   /**
    * What the ticket still needs, or that it needs nothing. The phone keeps it

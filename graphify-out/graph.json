@@ -83574,6 +83574,18 @@
       "type": "external"
     },
     {
+      "id": "ref_scanner_worker_ts_worker",
+      "label": "ref_scanner_worker_ts_worker",
+      "_origin": "semantic",
+      "community": 114,
+      "community_name": "document-scanner.tsx",
+      "external": true,
+      "file_type": "concept",
+      "norm_label": "ref_scanner_worker_ts_worker",
+      "source_file": "",
+      "type": "external"
+    },
+    {
       "id": "ref_crypto",
       "label": "ref_crypto",
       "_origin": "semantic",
@@ -84038,17 +84050,6 @@
       "external": true,
       "file_type": "concept",
       "norm_label": "ref_base_ui_react_switch",
-      "source_file": "",
-      "type": "external"
-    },
-    {
-      "id": "ref_scanner_worker_ts_worker",
-      "label": "ref_scanner_worker_ts_worker",
-      "community": 114,
-      "community_name": "document-scanner.tsx",
-      "external": true,
-      "file_type": "concept",
-      "norm_label": "ref_scanner_worker_ts_worker",
       "source_file": "",
       "type": "external"
     }
@@ -86931,7 +86932,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/load-desk/load-desk.tsx",
-      "source_location": "L2456",
+      "source_location": "L2461",
       "weight": 1.0
     },
     {
@@ -86943,7 +86944,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/load-desk/load-desk.tsx",
-      "source_location": "L2461",
+      "source_location": "L2466",
       "weight": 1.0
     },
     {
@@ -86955,7 +86956,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/load-desk/load-desk.tsx",
-      "source_location": "L2494",
+      "source_location": "L2499",
       "weight": 1.0
     },
     {
@@ -86967,7 +86968,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/load-desk/load-desk.tsx",
-      "source_location": "L2554",
+      "source_location": "L2559",
       "weight": 1.0
     },
     {
@@ -86979,7 +86980,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/load-desk/load-desk.tsx",
-      "source_location": "L2959",
+      "source_location": "L2964",
       "weight": 1.0
     },
     {
@@ -86991,7 +86992,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/load-desk/load-desk.tsx",
-      "source_location": "L3150",
+      "source_location": "L3155",
       "weight": 1.0
     },
     {
@@ -283551,5 +283552,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "84a4c274eafb092db8826952d084663c69d98393"
+  "built_at_commit": "721ec3622971556eee438f97b809f4e002b54643"
 }
