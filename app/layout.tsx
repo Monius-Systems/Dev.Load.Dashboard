@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import { shellConfig } from '@/lib/shell-config';
 import AppCursor from '@/components/shell/app-cursor';
 import './globals.css';
 
@@ -9,10 +10,27 @@ import './globals.css';
  * env(safe-area-inset-*) as zero, so a header can never reach the top however
  * it is laid out.
  */
+/**
+ * The colour iOS paints behind the clock and the battery, matching the top of
+ * the home page's header so the two read as one field.
+ *
+ * Set here as well as from the shell, because a home-screen app reads
+ * theme-color once when it launches: a value written later by script reaches
+ * every browser that watches for it, but not that strip. The app opens on the
+ * home page, so this is the colour that matters there.
+ */
+const statusBarColour = (() => {
+  const hex = shellConfig.accentColor.replace('#', '');
+  const channel = (at: number) =>
+    Math.round(parseInt(hex.slice(at, at + 2), 16) * 0.52 + 255 * 0.48);
+  return `rgb(${channel(0)}, ${channel(2)}, ${channel(4)})`;
+})();
+
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: statusBarColour,
 };
 
 export const metadata: Metadata = {

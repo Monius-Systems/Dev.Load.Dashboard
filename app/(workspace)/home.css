@@ -491,6 +491,11 @@ button.hm-row:hover {
   .hm-grid {
     display: flex;
     flex-direction: column;
+    /* As a grid this is align-items: start, which keeps rows from stretching
+       down. Turned on its side that same line stops the cards reaching across,
+       and each one comes out as wide as whatever happens to be inside it — a
+       chart with one customer in its legend ended up three quarters width. */
+    align-items: stretch;
   }
   .hm-grid > :first-child {
     order: 2;
