@@ -301,7 +301,13 @@ export default function HomePage() {
           </dl>
         ) : null}
         <div className="hm-actions">
-          <Link href="/load-desk" className={buttonVariants()}>
+          {/* On a phone this is the camera, not the page the camera is on:
+              ?scan=1 has Load Desk open the scanner as it arrives, so a ticket
+              is one tap from here rather than two. */}
+          <Link
+            href={isPhone ? '/load-desk?scan=1' : '/load-desk'}
+            className={buttonVariants()}
+          >
             {isPhone ? <ScanLine /> : <FileUp />}
             {isPhone ? t('Scan ticket') : t('Upload tickets')}
           </Link>

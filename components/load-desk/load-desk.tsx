@@ -664,7 +664,22 @@ export default function LoadDesk() {
     null,
   );
   const fileInput = useRef<HTMLInputElement>(null);
-  const [scannerOpen, setScannerOpen] = useState(false);
+  /**
+   * "Scan ticket" on the home page lands here with ?scan=1 and the camera comes
+   * straight up: from the home screen that button is the scanner, not the page
+   * the scanner is on.
+   *
+   * Read as the state's first value rather than in an effect, so the scanner is
+   * there in the first paint instead of a frame of Load Desk first. Reading the
+   * URL here does not disagree with the server's blank render either: the
+   * scanner is only ever mounted on a phone, and useIsPhone says no until its
+   * own effect has run, which is after hydration.
+   */
+  const [scannerOpen, setScannerOpen] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      new URLSearchParams(window.location.search).has('scan'),
+  );
   const isPhone = useIsPhone();
   /**
    * Which part of the ticket a phone is being asked about. The four sections
