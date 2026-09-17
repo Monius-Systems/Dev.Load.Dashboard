@@ -2684,89 +2684,88 @@ export default function LoadDesk() {
               </div>
             </div>
 
-            <div className="ld-review-head">
-              <div>
-                <p className="ld-step">{t('02 · Review')}</p>
-                <h2 id="ld-review-title">
-                  {t('Ticket {index} of {total}', { index: activeIndex + 1, total: queue.length })}
-                </h2>
-              </div>
-              <nav className="ld-queue" aria-label={t('Ticket queue')}>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t('Previous ticket')}
-                  disabled={activeIndex <= 0}
-                  onClick={() => setActiveIndex(activeIndex - 1)}
-                >
-                  <ChevronLeft />
-                </Button>
-                {queue.map((item, index) => {
-                  const changed = hasChanges(item);
-                  const saved = item.saved_record_id !== null && !changed;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      className="ld-queue-tab"
-                      aria-current={index === activeIndex ? 'true' : undefined}
-                      data-saved={saved}
-                      data-changed={changed}
-                      aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${saved ? `, ${t('saved')}` : changed ? `, ${t('unsaved changes')}` : ''}`}
-                      onClick={() => setActiveIndex(index)}
-                    >
-                      {saved ? <Check aria-hidden="true" /> : index + 1}
-                    </button>
-                  );
-                })}
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={t('Next ticket')}
-                  disabled={activeIndex >= queue.length - 1}
-                  onClick={() => setActiveIndex(activeIndex + 1)}
-                >
-                  <ChevronRight />
-                </Button>
-                <span className="ld-queue-count">
-                  {t('{saved} of {total} saved', { saved: savedInQueue, total: queue.length })}
-                </span>
-                {savedInQueue === queue.length && !unsavedEdits ? (
-                  <Button variant="secondary" size="sm" onClick={clearQueue}>
-                    {t('Clear queue')}
-                  </Button>
-                ) : null}
-              </nav>
-            </div>
-
-            <dl className="ld-summary">
-              <div>
-                <dt>{t('Ticket')}</dt>
-                <dd>{ticket.ticket_number ?? t('Not found')}</dd>
-              </div>
-              <div>
-                <dt>{t('Customer')}</dt>
-                <dd>{ticket.customer_name ?? t('Not found')}</dd>
-              </div>
-              <div>
-                <dt>{t('Net tons')}</dt>
-                <dd>{tons ? t('{tons} Tons', { tons }) : t('Not found')}</dd>
-              </div>
-              <div>
-                <dt>{t('Status')}</dt>
-                <dd>
-                  {activeSaved
-                    ? activeChanged
-                      ? t('Unsaved changes')
-                      : t('Saved as record {id}', { id: active.saved_record_id ?? '' })
-                    : issues.length
-                      ? t('To review: {items}', { items: plural(issues.length, 'item') })
-                      : t('Ready to save')}
-                </dd>
-              </div>
-            </dl>
-
             <div className="ld-review-body">
+              <div className="ld-review-head">
+                <div>
+                  <p className="ld-step">{t('02 · Review')}</p>
+                  <h2 id="ld-review-title">
+                    {t('Ticket {index} of {total}', { index: activeIndex + 1, total: queue.length })}
+                  </h2>
+                </div>
+                <nav className="ld-queue" aria-label={t('Ticket queue')}>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t('Previous ticket')}
+                    disabled={activeIndex <= 0}
+                    onClick={() => setActiveIndex(activeIndex - 1)}
+                  >
+                    <ChevronLeft />
+                  </Button>
+                  {queue.map((item, index) => {
+                    const changed = hasChanges(item);
+                    const saved = item.saved_record_id !== null && !changed;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="ld-queue-tab"
+                        aria-current={index === activeIndex ? 'true' : undefined}
+                        data-saved={saved}
+                        data-changed={changed}
+                        aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${saved ? `, ${t('saved')}` : changed ? `, ${t('unsaved changes')}` : ''}`}
+                        onClick={() => setActiveIndex(index)}
+                      >
+                        {saved ? <Check aria-hidden="true" /> : index + 1}
+                      </button>
+                    );
+                  })}
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t('Next ticket')}
+                    disabled={activeIndex >= queue.length - 1}
+                    onClick={() => setActiveIndex(activeIndex + 1)}
+                  >
+                    <ChevronRight />
+                  </Button>
+                  <span className="ld-queue-count">
+                    {t('{saved} of {total} saved', { saved: savedInQueue, total: queue.length })}
+                  </span>
+                  {savedInQueue === queue.length && !unsavedEdits ? (
+                    <Button variant="secondary" size="sm" onClick={clearQueue}>
+                      {t('Clear queue')}
+                    </Button>
+                  ) : null}
+                </nav>
+              </div>
+
+              <dl className="ld-summary">
+                <div>
+                  <dt>{t('Ticket')}</dt>
+                  <dd>{ticket.ticket_number ?? t('Not found')}</dd>
+                </div>
+                <div>
+                  <dt>{t('Customer')}</dt>
+                  <dd>{ticket.customer_name ?? t('Not found')}</dd>
+                </div>
+                <div>
+                  <dt>{t('Net tons')}</dt>
+                  <dd>{tons ? t('{tons} Tons', { tons }) : t('Not found')}</dd>
+                </div>
+                <div>
+                  <dt>{t('Status')}</dt>
+                  <dd>
+                    {activeSaved
+                      ? activeChanged
+                        ? t('Unsaved changes')
+                        : t('Saved as record {id}', { id: active.saved_record_id ?? '' })
+                      : issues.length
+                        ? t('To review: {items}', { items: plural(issues.length, 'item') })
+                        : t('Ready to save')}
+                  </dd>
+                </div>
+              </dl>
               <form
                 className="ld-form"
                 onSubmit={(event) => void saveActive(event)}
