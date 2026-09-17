@@ -1301,12 +1301,24 @@ details[open] > .ld-section-summary .ld-section-chevron {
   }
   /* The review is the page on a phone, not a card on it: the sheet is already
      a card, and one inside another is a border and a shadow around every field
-     for nothing. */
+     for nothing. The sheet's own margin is the only inset the fields need —
+     the form's would put them 36px from the edge of a 390px screen. */
   .ld-review {
     padding: 0;
     border-radius: 0;
     background: none;
     box-shadow: none;
+  }
+  .ld-review .ld-form,
+  .ld-review .ld-review-head {
+    padding: 0;
+  }
+  /* One step is on the screen at a time, so the rule and the space that
+     separated it from the step above have nothing to separate it from. */
+  .ld-fieldset[data-phone-step] > [data-step] {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
   }
   /* Which ticket, how it stands, and how far through it you are — kept at the
      top of the screen while the fields move under it. */
@@ -1327,7 +1339,7 @@ details[open] > .ld-section-summary .ld-section-chevron {
   }
   .ld-mobile-head-row > strong {
     margin-right: auto;
-    font-size: var(--type-lg);
+    font-size: 20px;
     font-weight: var(--type-semibold);
     letter-spacing: -0.01em;
   }
@@ -1341,8 +1353,33 @@ details[open] > .ld-section-summary .ld-section-chevron {
     margin-left: 0;
     margin-right: calc(-1 * var(--ui-space-2));
   }
+  /* The chip on the head line carries a tick, so it is a row and not a word,
+     and the untoned one — nobody has checked this yet — reads as quiet rather
+     than as a warning. */
+  .ld-mobile-head-row .ld-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    align-self: center;
+    padding: 4px 10px;
+    background: var(--ui-fill);
+    font-size: var(--type-xs);
+    color: var(--ui-text-2);
+  }
+  .ld-mobile-head-row .ld-chip[data-tone='good'] {
+    background: var(--ui-success-soft);
+    color: var(--ui-success);
+  }
+  .ld-mobile-head-row .ld-chip[data-tone='warning'] {
+    background: var(--ui-warning-soft);
+    color: var(--ui-warning);
+  }
+  .ld-mobile-head-row .ld-chip svg {
+    width: 13px;
+    height: 13px;
+  }
   .ld-mobile-step {
-    font-size: var(--type-sm);
+    font-size: 15px;
     font-weight: var(--type-medium);
     color: var(--ui-text-3);
   }
@@ -1388,6 +1425,13 @@ details[open] > .ld-section-summary .ld-section-chevron {
     border-radius: var(--ui-radius-md);
     font-size: var(--type-base);
   }
+  /* While a finger is carrying the page sideways, the page is transformed and
+     anything fixed inside it is fixed to the page rather than to the screen —
+     which would send this to the bottom of a very tall box for the length of
+     the gesture. It steps out instead, and is back before the finger is off. */
+  html[data-swiping] .ld-step-nav {
+    visibility: hidden;
+  }
   /* Fields a thumb can hit, and text a phone will not zoom into on focus. */
   .ld-review .ld-field {
     gap: 6px;
@@ -1406,7 +1450,7 @@ details[open] > .ld-section-summary .ld-section-chevron {
   }
   .ld-review .ld-field > label,
   .ld-review .ld-field > span {
-    font-size: var(--type-sm);
+    font-size: var(--type-base);
     font-weight: var(--type-medium);
     color: var(--ui-text-2);
   }
@@ -1422,7 +1466,7 @@ details[open] > .ld-section-summary .ld-section-chevron {
   .ld-run {
     grid-column: 1 / -1;
     margin-top: var(--ui-space-2);
-    font-size: var(--type-2xs);
+    font-size: var(--type-xs);
     font-weight: var(--type-semibold);
     letter-spacing: var(--type-tracking-caps);
     text-transform: uppercase;
@@ -1439,19 +1483,29 @@ details[open] > .ld-section-summary .ld-section-chevron {
     margin-bottom: var(--ui-space-4);
   }
   .ld-check-row .ld-notice {
-    display: flex;
-    align-items: center;
-    gap: var(--ui-space-2);
     flex: 1;
-    min-height: 46px;
+    min-width: 0;
     margin: 0;
     padding: var(--ui-space-2) var(--ui-space-3);
     font-size: var(--type-sm);
   }
-  .ld-check-row .ld-notice svg {
+  /* Passing is one line with a tick on it; anything to fix keeps the shape a
+     list needs. */
+  .ld-check-row .ld-notice[data-tone='good'] {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    min-height: 46px;
+  }
+  .ld-check-row .ld-notice[data-tone='good'] svg {
     width: 16px;
     height: 16px;
     flex-shrink: 0;
+  }
+  /* Beside a list, the way to the picture sits at its top rather than its
+     middle. */
+  .ld-check-row:has(.ld-notice[data-tone='warning']) {
+    align-items: flex-start;
   }
   .ld-check-row .ld-view-ticket {
     flex-shrink: 0;
