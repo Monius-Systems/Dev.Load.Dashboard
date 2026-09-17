@@ -1595,12 +1595,19 @@ svg.lucide {
  * Desk's page grey and the strip went from the scanner's black to near-white. */
 @media (max-width: 767px) {
   .page-heading {
-    position: relative;
+    /* The floor, as on the home page: it stays where it is while the page
+       moves and the sheet travels up over it. Sticky rather than fixed so it
+       still takes up its own height in the flow, and clamped by .page-enter,
+       whose bottom edge is the sheet's own — which is what stops it sliding
+       out from under the sheet at the end of the page. */
+    position: sticky;
+    top: 0;
+    z-index: 0;
     margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5)) 0;
     /* The extra radius at the foot is the strip the sheet sits on top of, so
        the gap under the figures reads the same as it always did. */
     padding: calc(var(--phone-topbar) + var(--ui-space-4)) var(--ui-space-5)
-      calc(var(--ui-space-5) + var(--ui-radius-xl));
+      calc(var(--ui-space-6) + var(--ui-radius-xl));
     background: var(--ui-accent);
     color: #fff;
   }
