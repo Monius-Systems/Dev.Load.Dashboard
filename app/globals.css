@@ -1752,6 +1752,19 @@ svg.lucide {
   .section-pane[data-role='next'] {
     transform: translate3d(100%, 0, 0);
   }
+  /* The rest of the bar, built and parked. Nothing moves it — a swipe only
+     ever carries the two next to you — so it is kept unlit as well as out of
+     the way: laid out, measured, ready to be shown, and costing no paint until
+     the bar jumps to it. */
+  .section-pane[data-role='far'] {
+    visibility: hidden;
+  }
+  .section-pane[data-side='before'] {
+    transform: translate3d(-100%, 0, 0);
+  }
+  .section-pane[data-side='after'] {
+    transform: translate3d(100%, 0, 0);
+  }
   /* The section on the screen is the page, in the page's own flow, scrolled by
      the document like any other: a swipe moves it by transform and puts it
      back, and nothing about how it is laid out changes. */

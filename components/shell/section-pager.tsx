@@ -51,24 +51,50 @@ const ORDER = shellConfig.navigation
 export default function SectionPager({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const pager = useRef<HTMLDivElement>(null);
-  // The neighbours are a phone's: on a wider screen there is no swipe to make
-  // them worth their memory. False for the server's render and the first one
-  // here, so what is hydrated is what was sent.
-  const [near, setNear] = useState(false);
+  /** The sections that have been on the screen already, this session. */
+  const seen = useRef(new Set<string>());
+  /**
+   * How much of the row is alive, and when.
+   *
+   * 0 — the section asked for, and nothing else. What the server sends and
+   *     what is hydrated, so the first paint costs exactly what it used to.
+   * 1 — the two either side, a moment later: what a swipe moves.
+   * 2 — the rest of the bar, once the page is quiet: what the bar itself jumps
+   *     to. A tap on a section that was never mounted has to build it while
+   *     you watch, and that is the flick the bar had; built in advance and
+   *     parked, a tap is a page that is already there.
+   *
+   * A wider screen stops at 0: there is no swipe and no bar to jump from.
+   */
+  const [reach, setReach] = useState(0);
   useEffect(() => {
     const phone = window.matchMedia('(max-width: 767px)');
-    const read = () => setNear(phone.matches);
+    let slower = 0;
+    const read = () => {
+      window.clearTimeout(slower);
+      if (!phone.matches) {
+        setReach(0);
+        return;
+      }
+      setReach(1);
+      slower = window.setTimeout(() => setReach(2), 1200);
+    };
     read();
     phone.addEventListener('change', read);
-    return () => phone.removeEventListener('change', read);
+    return () => {
+      window.clearTimeout(slower);
+      phone.removeEventListener('change', read);
+    };
   }, []);
 
   const here = ORDER.indexOf(pathname);
   const known = here >= 0;
-  const window_ =
-    known && near
-      ? [ORDER[here - 1], pathname, ORDER[here + 1]].filter(Boolean)
-      : [pathname];
+  const window_ = !known
+    ? [pathname]
+    : // Stage two is the whole bar, not two either side: the bar can jump from
+      // one end of the row to the other, and everything it can reach has to be
+      // standing there when it does.
+      ORDER.filter((path, index) => reach > 1 || Math.abs(index - here) <= reach);
 
   /**
    * The moment the route catches up with the swipe: the panes change which one
@@ -88,9 +114,14 @@ export default function SectionPager({ children }: { children: ReactNode }) {
     // top as well; this is the one that happens before anything is drawn.)
     if (!window.matchMedia('(max-width: 767px)').matches) return;
     window.scrollTo(0, 0);
-    // And a section opened by a tap rather than carried in by a finger is
-    // given the entrance one gets; a finger has been moving it all along.
-    if (document.documentElement.dataset.swiping) return;
+    // And a section being shown for the first time is given the entrance one
+    // gets. A section that was already mounted — every one of them, once the
+    // row is alive — is simply shown: it has nothing to arrive from, and
+    // fading in a page that is already there is the flick, not the polish.
+    // A finger gets no entrance either; it has been moving it all along.
+    const fresh = !seen.current.has(pathname);
+    seen.current.add(pathname);
+    if (!fresh || document.documentElement.dataset.swiping) return;
     const live = box.querySelector<HTMLElement>('[data-role="current"]');
     if (!live) return;
     live.dataset.appear = 'true';
@@ -105,13 +136,23 @@ export default function SectionPager({ children }: { children: ReactNode }) {
     <div className="section-pager" ref={pager}>
       {window_.map((path) => {
         const current = path === pathname;
-        const role = current ? 'current' : ORDER.indexOf(path) < here ? 'prev' : 'next';
+        const index = ORDER.indexOf(path);
+        // Only the two next to this one are what a swipe moves; the rest of
+        // the row waits off the side of the screen, laid out and unlit.
+        const role = current
+          ? 'current'
+          : index === here - 1
+            ? 'prev'
+            : index === here + 1
+              ? 'next'
+              : 'far';
         return (
           <div
             key={path}
             className="section-pane"
             data-section={path}
             data-role={role}
+            data-side={role === 'far' ? (index < here ? 'before' : 'after') : undefined}
             aria-hidden={current ? undefined : true}
             // A section nobody is looking at is not in the way of anything:
             // not the pointer, not the keyboard, not a screen reader.
