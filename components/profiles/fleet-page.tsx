@@ -226,7 +226,7 @@ export default function FleetPage() {
             )}
           </p>
         </div>
-        <dl className="ld-stats">
+        <dl className="ld-stats pf-stats">
           <div>
             <dt>{t('Trucks')}</dt>
             <dd>{trucks.length}</dd>

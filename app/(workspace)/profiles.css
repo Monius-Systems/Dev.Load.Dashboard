@@ -525,6 +525,16 @@
     padding: 7px 8px;
   }
 
+  /* The figures on the band come down to the two that say what the page is a
+     list of. The ones after them are a month's loads — which the chart under
+     each customer already draws — and, on Customers, a count of the tickets
+     nobody has put a profile to, which is a thing to go and do rather than a
+     number to read at a glance. Both are still on the band on a wider screen,
+     where there is room across for all of them. */
+  .pf-stats > div:nth-child(n + 3) {
+    display: none;
+  }
+
   /* Customers. The chart is drawn on a phone as it is on a desk, empty or
      not: axes, grid and the line along the bottom say "no loads this month"
      in the shape the answer will take when there are some. */

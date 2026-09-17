@@ -343,7 +343,7 @@ export default function CustomersPage() {
             )}
           </p>
         </div>
-        <dl className="ld-stats">
+        <dl className="ld-stats pf-stats">
           <div>
             <dt>{t('Customers')}</dt>
             <dd>{customers.length}</dd>
