@@ -670,6 +670,20 @@ button.hm-row:hover {
     padding: calc(var(--ui-radius-xl) + var(--ui-space-1)) var(--ui-space-5)
       var(--phone-bottombar);
     background: var(--ui-surface-2);
+    /* And it carries on well past the bottom edge of the screen, so pulling
+       the page up past its end rubber-bands into more of the sheet rather than
+       into the blue behind it.
+       It is a shadow rather than more height on purpose: height below the
+       screen is height you can scroll to, and a short page would have had a
+       dead white screenful under it. A shadow is painted and nothing more — no
+       layout, no scroll. Three copies of the sheet's own box, each a third of
+       a screen further down, so the run stays unbroken as long as the sheet is
+       at least 30vh tall — which it is on any page, the band would have to
+       take the other 70. */
+    box-shadow:
+      0 30vh 0 var(--ui-surface-2),
+      0 60vh 0 var(--ui-surface-2),
+      0 90vh 0 var(--ui-surface-2);
   }
   /* The notch, the way a sheet drawn up over something is marked. Clear of the
      corner curve, then a gap before the first card.
