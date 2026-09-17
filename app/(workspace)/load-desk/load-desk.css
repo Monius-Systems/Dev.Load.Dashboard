@@ -1317,3 +1317,18 @@ details[open] > .ld-section-summary .ld-section-chevron {
     width: 100%;
   }
 }
+
+@media (max-width: 767px) {
+  /* Load Desk. Reviewing a ticket, the heading and the four-cell summary took
+     the whole first screen before a single field. The step bar underneath says
+     which part of the ticket is being asked about, and the four cells restate
+     what the fields already show — so both go, and the queue of tickets that
+     was beside them stays, because that is how you get to the next one. */
+  .ld-review-head > div:first-child,
+  .ld-summary {
+    display: none;
+  }
+  .ld-review-head {
+    padding-top: var(--ui-space-3);
+  }
+}

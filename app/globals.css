@@ -1338,7 +1338,7 @@ svg.lucide {
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
     align-items: stretch;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    padding: 8px 4px calc(10px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--ui-border);
     background: color-mix(in srgb, var(--ui-surface-1) 88%, transparent);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
@@ -1347,14 +1347,14 @@ svg.lucide {
   .tabbar-item {
     display: grid;
     justify-items: center;
-    gap: 3px;
-    min-height: 48px;
-    padding: 6px 2px;
+    gap: 4px;
+    min-height: 58px;
+    padding: 8px 2px;
     border: 0;
     border-radius: var(--ui-radius-sm);
     background: none;
     color: var(--ui-text-3);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: var(--type-medium);
     line-height: 1.1;
     text-align: center;
@@ -1363,8 +1363,8 @@ svg.lucide {
     transition: color var(--ui-duration) var(--ui-ease);
   }
   .tabbar-item svg {
-    width: 22px;
-    height: 22px;
+    width: 25px;
+    height: 25px;
   }
   .tabbar-item[data-current] {
     color: var(--ui-accent-ink);
@@ -1380,7 +1380,7 @@ svg.lucide {
   }
   /* The bar floats over the page, so the page ends above it. */
   .page-content {
-    padding-bottom: calc(76px + env(safe-area-inset-bottom));
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
   }
   /* The drawer and its trigger are what the bar replaces. */
   .breadcrumb [data-sidebar='trigger'] {
@@ -1493,5 +1493,36 @@ svg.lucide {
   .page-content::-webkit-scrollbar,
   [data-slot='dialog-content']::-webkit-scrollbar {
     display: none;
+  }
+}
+
+/* ============================================ the account, top right, on a phone */
+.topbar-account {
+  display: none;
+}
+@media (max-width: 767px) {
+  .topbar-account {
+    display: block;
+    margin-left: auto;
+  }
+  /* Just the face: the name and the chevron belong to the sidebar's version. */
+  .topbar-account .account-profile-copy,
+  .topbar-account .account-profile > svg {
+    display: none;
+  }
+  .topbar-account .account-profile {
+    gap: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  .topbar-account .profile-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+  }
+  /* Its menu opens downward from the corner it hangs in. */
+  .topbar-account .account-menu {
+    max-width: calc(100vw - 2rem);
   }
 }

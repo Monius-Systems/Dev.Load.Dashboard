@@ -235,6 +235,13 @@ export default function AppShell({
               <strong>{title}</strong>
             </div>
             <DeskActivity />
+            {/* The way to the account on a phone. The sidebar holds it on a
+                screen with room, but there the sidebar is a drawer and the
+                bar along the bottom replaced its trigger — leaving nowhere to
+                reach Account or sign out from. */}
+            <div className="topbar-account">
+              <AccountMenu initial={initialAccount} />
+            </div>
           </header>
           <div className="page-content" id="workspace-content" tabIndex={-1}>
             {/* Keyed by page, so each page's entrance animation plays when it opens. */}

@@ -467,3 +467,14 @@ button.hm-row:hover {
     display: none;
   }
 }
+
+@media (max-width: 767px) {
+  /* Home. Four customers' lines over a month, in a strip the width of a hand,
+     is a picture nobody can read — and touching it leaves a tooltip stranded
+     over the top of it. The panel keeps its heading and its counts, which are
+     the part that is legible at this size. */
+  .hm-chart .recharts-wrapper,
+  .hm-chart .recharts-surface {
+    display: none;
+  }
+}
