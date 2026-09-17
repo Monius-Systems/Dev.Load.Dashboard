@@ -1710,41 +1710,21 @@ svg.lucide {
 }
 
 /* ==================================================== phone: swiping pages */
-/* A drag across the page moves along the bar at the bottom. The page leaving is
-   a copy of itself, animated in script (see hooks/use-page-swipe.ts); this is
-   the other half — the page arriving, coming in from the side the drag came
-   from, over the top of that copy.
- *
- * It replaces the entrance the page would otherwise play, stagger and all: one
- * movement, everything on the page together, because it is a page sliding in
- * and not a page being built. */
+/* A drag across the page moves along the bar at the bottom. Both pages are real
+   and both move with the finger — the one being left as a copy of itself, the
+   one being opened in the page area behind it — and all of that is done in
+   script, where the finger is (see hooks/use-page-swipe.ts). What is here is
+   the little the stylesheet owns: the gesture the browser must leave alone, and
+   holding back the entrance animation of a page that is being carried in by
+   hand rather than arriving on its own. */
 @media (max-width: 767px) {
   /* Sideways is the shell's gesture on a phone; up and down stays the page's,
      and a pinch stays the browser's. */
   .page-content {
     touch-action: pan-y pinch-zoom;
   }
-  html[data-swipe] .page-enter > * {
-    animation: ui-swipe-in 280ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
-  html[data-swipe='prev'] .page-enter > * {
-    animation-name: ui-swipe-in-back;
-  }
-}
-@keyframes ui-swipe-in {
-  from {
-    transform: translate3d(100%, 0, 0);
-  }
-  to {
-    transform: none;
-  }
-}
-@keyframes ui-swipe-in-back {
-  from {
-    transform: translate3d(-100%, 0, 0);
-  }
-  to {
-    transform: none;
+  html[data-swiping] .page-enter > * {
+    animation: none;
   }
 }
 
