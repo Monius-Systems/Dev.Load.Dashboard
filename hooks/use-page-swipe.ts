@@ -129,6 +129,7 @@ export function usePageSwipe(pages: string[], current: string) {
       const copy = page.cloneNode(true) as HTMLElement;
       copy.removeAttribute('id');
       copy.setAttribute('aria-hidden', 'true');
+      copy.classList.add('page-swipe-copy');
       copy.style.cssText = `position:fixed;left:0;right:0;top:${-window.scrollY}px;z-index:4;pointer-events:none;background:var(--ui-accent);transform:translate3d(${dx}px,0,0)`;
       document.body.appendChild(copy);
       ghost = copy;

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { shellConfig } from '@/lib/shell-config';
 import AppCursor from '@/components/shell/app-cursor';
+import Upright from '@/components/shell/upright';
 import './globals.css';
 
 /**
@@ -75,6 +76,7 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <AppCursor />
+        <Upright />
       </body>
     </html>
   );

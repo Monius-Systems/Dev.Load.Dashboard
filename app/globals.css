@@ -1813,3 +1813,43 @@ svg.lucide {
   white-space: pre-wrap;
 }
 
+
+/* ============================================ a phone, held the tall way */
+/* The app is laid out for one column and a bar along the bottom; on its side a
+   phone has no room for either. There is no way to hold a browser upright from
+   a page — see components/shell/upright.tsx — so it asks.
+ *
+ * Short, wide and touched: a phone on its side. A tablet in landscape is taller
+ * than this, and a laptop window of the same shape is pointed at rather than
+ * touched, so neither is stopped. */
+.upright {
+  display: none;
+}
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  .upright {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-8);
+    background: var(--ui-accent);
+    color: #fff;
+    text-align: center;
+  }
+  .upright svg {
+    width: 30px;
+    height: 30px;
+    opacity: 0.9;
+  }
+  .upright strong {
+    font-size: var(--type-lg);
+    font-weight: var(--type-semibold);
+  }
+  .upright span {
+    font-size: var(--type-sm);
+    color: rgb(255 255 255 / 82%);
+  }
+}
