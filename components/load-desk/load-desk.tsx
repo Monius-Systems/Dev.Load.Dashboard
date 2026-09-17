@@ -97,7 +97,9 @@ import {
 } from '@/lib/load-desk/profiles';
 import type { RecordEdit } from '@/lib/load-desk/record-input';
 import {
+  batchInvoiceFor,
   findInvoiceClash,
+  needsReview,
   invoiceLines,
   groupByTicketDate,
   nextInvoiceNumber,
@@ -412,6 +414,54 @@ async function buildQueueItem(
     applyCustomer(item, matchCustomer(profiles.customers, ticket)),
     profiles.truck,
   );
+}
+
+/**
+ * Keeps a ticket the moment it has been read, on the invoice for its own date.
+ *
+ * A driver photographs a ticket at the plant with one hand and closes the app;
+ * nobody is entering rates on a weighbridge. Until now the ticket lived in the
+ * tab and a reload threw it away. Now the picture and the fields are saved
+ * straight into that date's batch, unreviewed, and whoever does the invoicing
+ * picks the batch up later — on the phone, or on the desk.
+ *
+ * Returns the item as a saved one. If it cannot be filed — no signal in a yard,
+ * a session that has ended — the item is handed back exactly as it was, so it
+ * stays in the queue to be saved by hand rather than being lost.
+ */
+async function fileInBatch(
+  item: QueueItem,
+  records: SavedRecord[],
+): Promise<{ item: QueueItem; error: string | null }> {
+  const batch = batchInvoiceFor(records, item.ticket.ticket_date);
+  const result = await saveRecord(
+    {
+      saved_at: new Date().toISOString(),
+      ticket: item.ticket,
+      invoice: { ...item.invoice, invoice_number: batch.invoice_number },
+      source: item.source,
+      ocr_text: item.ocr_text,
+      customer_profile_id: item.customer_profile_id,
+      truck_id: item.truck_id,
+      invoice_batch_id: batch.batch_id,
+      // Nobody has checked it yet; that is the whole point of filing it here.
+      reviewed_at: null,
+    },
+    item.original,
+  );
+  if ('error' in result) return { item, error: result.error };
+  return {
+    item: {
+      ...item,
+      invoice: result.record.invoice,
+      batch_id: batch.batch_id,
+      saved_record_id: result.record.id,
+      from_saved: true,
+      baseline: null,
+      note: 'Kept in this date’s batch. Check the fields against the picture when you invoice it.',
+    },
+    error: null,
+  };
 }
 
 function nextUnsaved(queue: QueueItem[], from: number) {
@@ -827,12 +877,14 @@ export default function LoadDesk() {
             (update) => show(update.fraction, update.label),
           );
           for (const page of pages) {
-            added.push(
-              await buildQueueItem(entry, kind, profileContext, {
-                ...page,
-                total: pages.length,
-              }),
-            );
+            const built = await buildQueueItem(entry, kind, profileContext, {
+              ...page,
+              total: pages.length,
+            });
+            // Kept before anyone is asked to look at it.
+            const filed = await fileInBatch(built, getRecordsSnapshot().records);
+            if (filed.error) failures.push(`${entry.name}: ${t(filed.error)}`);
+            added.push(filed.item);
           }
         }
       } catch (error) {
@@ -1870,6 +1922,15 @@ export default function LoadDesk() {
         })
       : t('Choose a truck; its number goes on the invoice.');
 
+  // One batch per ticket date, newest first, with how many of its tickets
+  // nobody has checked yet. This is the pile the invoicing is done from.
+  const batchesByDate = groupByTicketDate(records, (record) => record.ticket.ticket_date)
+    .map((group) => ({
+      ...group,
+      waiting: group.items.filter(needsReview).length,
+    }))
+    .reverse();
+
   const batchItems = active
     ? queue.filter((item) => item.batch_id === active.batch_id)
     : [];
@@ -2170,8 +2231,8 @@ export default function LoadDesk() {
         <section className="ld-panel" aria-labelledby="ld-saved-title">
           <div className="ld-panel-head">
             <div>
-              <p className="ld-step">{t('Ledger')}</p>
-              <h2 id="ld-saved-title">{t('Saved Tickets')}</h2>
+              <p className="ld-step">{t('By ticket date')}</p>
+              <h2 id="ld-saved-title">{t('Batches')}</h2>
             </div>
             <div className="ld-actions ld-actions-flush">
               <Link
@@ -2206,16 +2267,27 @@ export default function LoadDesk() {
             </div>
           ) : null}
           {!store.ready ? (
-            <p className="ld-empty">{t('Loading saved tickets…')}</p>
+            <p className="ld-empty">{t('Loading batches…')}</p>
           ) : records.length === 0 ? (
             <p className="ld-empty">
               {store.mode === 'local'
-                ? t('No tickets saved yet. In this local preview they stay in this browser.')
-                : t('No tickets saved yet.')}
+                ? t('Nothing photographed yet. In this local preview batches stay in this browser.')
+                : t('Nothing photographed yet. A ticket goes into its date’s batch as soon as it is read.')}
             </p>
           ) : (
+            batchesByDate.map((batch) => (
+            <section key={batch.date ?? 'undated'} className="ld-batch">
+              <div className="ld-batch-head">
+                <strong>{batch.date ? date(batch.date) : t('No date read')}</strong>
+                <span>
+                  {plural(batch.items.length, 'ticket')}
+                  {batch.waiting
+                    ? ` · ${t('{count} to check', { count: batch.waiting })}`
+                    : ` · ${t('all checked')}`}
+                </span>
+              </div>
             <ul className="ld-records">
-              {records.map((record) => {
+              {batch.items.map((record) => {
                 const valid = validateTicket(record.ticket).length === 0;
                 return (
                   <li key={record.id} className="ld-record">
@@ -2274,6 +2346,8 @@ export default function LoadDesk() {
                 );
               })}
             </ul>
+            </section>
+            ))
           )}
         </section>
       </div>

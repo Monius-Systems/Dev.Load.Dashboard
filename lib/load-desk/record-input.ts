@@ -139,7 +139,10 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
     !optionalId(value.customer_profile_id) ||
     !optionalId(value.truck_id) ||
     !text(value.invoice_batch_id, 64) ||
-    !(value.invoice_batch_id as string)
+    !(value.invoice_batch_id as string) ||
+    !(value.reviewed_at === undefined ||
+      value.reviewed_at === null ||
+      (text(value.reviewed_at, 40) && !Number.isNaN(Date.parse(value.reviewed_at as string))))
   ) {
     return { error: 'The ticket record is not valid.' };
   }
@@ -154,6 +157,8 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
       customer_profile_id: (value.customer_profile_id as number | null | undefined) ?? null,
       truck_id: (value.truck_id as number | null | undefined) ?? null,
       invoice_batch_id: value.invoice_batch_id as string,
+      // Absent means nobody has checked it yet; see SavedRecord.reviewed_at.
+      reviewed_at: (value.reviewed_at as string | null | undefined) ?? null,
     },
   };
 }
@@ -224,6 +229,8 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
     customer_profile_id: edit.customer_profile_id,
     truck_id: edit.truck_id,
     edited_at: editedAt,
+    // Saving the fields after looking at them is the review.
+    reviewed_at: editedAt,
   };
 }
 

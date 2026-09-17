@@ -157,6 +157,36 @@ export function invoiceGroups(records: SavedRecord[]): InvoiceGroup[] {
     );
 }
 
+/** Photographed and read, but nobody has checked it against the picture yet. */
+export const needsReview = (record: SavedRecord) => !record.reviewed_at;
+
+/** The date a ticket is filed under; undated scans have a batch of their own. */
+export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
+  record.ticket.ticket_date?.trim() || 'undated';
+
+/**
+ * The invoice a ticket photographed for `ticketDate` belongs on: the one the
+ * other tickets of that date are already on, or a new draft named for the date.
+ *
+ * A draft number rather than the next real one on purpose. The next number in
+ * the series is claimed when the batch is actually invoiced, so a week of
+ * scanning does not burn a run of invoice numbers that were never sent, and
+ * nextInvoiceNumber already knows to skip anything starting "DRAFT".
+ */
+export function batchInvoiceFor(
+  records: SavedRecord[],
+  ticketDate: string | null,
+): { invoice_number: string; batch_id: string } {
+  const date = ticketDate?.trim() || 'undated';
+  const existing = records.find((record) => batchDate(record) === date);
+  return existing
+    ? {
+        invoice_number: existing.invoice.invoice_number,
+        batch_id: recordBatch(existing),
+      }
+    : { invoice_number: `DRAFT-${date}`, batch_id: `batch-${date}` };
+}
+
 export const ticketStatus = (record: SavedRecord) =>
   validateTicket(record.ticket).length ? 'needs_review' : 'valid';
 

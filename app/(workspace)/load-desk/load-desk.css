@@ -1214,3 +1214,27 @@ details[open] > .ld-section-summary .ld-section-chevron {
     break-inside: avoid;
   }
 }
+
+/* A day's tickets, kept together. One batch per ticket date: photographed at
+   the plant, invoiced later from whichever device is to hand. */
+.ld-batch + .ld-batch {
+  margin-top: var(--ui-space-4);
+}
+.ld-batch-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  padding: 0 2px var(--ui-space-2);
+  border-bottom: 1px solid var(--ui-border);
+  margin-bottom: var(--ui-space-2);
+}
+.ld-batch-head strong {
+  font-size: var(--type-base);
+  font-weight: var(--type-semibold);
+}
+.ld-batch-head span {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}

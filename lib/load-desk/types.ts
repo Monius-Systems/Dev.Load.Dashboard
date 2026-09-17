@@ -161,4 +161,12 @@ export type SavedRecord = {
   invoice_batch_id?: string;
   /** When the ticket or its invoice was last changed after saving. */
   edited_at?: string;
+  /**
+   * When somebody checked this ticket's fields against the picture. Absent or
+   * null means it is still waiting: photographed at the plant, read, and kept
+   * in its date's batch for whoever gets to the invoicing. A driver with one
+   * hand on a ticket is not filling in rates, and the ticket must not be lost
+   * because of it.
+   */
+  reviewed_at?: string | null;
 };
