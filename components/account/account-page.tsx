@@ -123,40 +123,51 @@ export default function AccountPage() {
 
   return (
     <div className="ac-page">
-      {error && !local ? (
-        <div className="ld-notice pf-notice" data-tone="warning" role="alert">
-          {t(error)}
-        </div>
+      {/* The hero is this page's band, the way every other page opens on one:
+          it is already an eyebrow, a name, a line under it and a row of facts.
+          On a wider screen it is the card it always was. */}
+      {ready ? (
+        <ProfileHero
+          key={`hero-${account?.id ?? mode}`}
+          account={account}
+          local={local}
+          canEdit={canEdit}
+          onEdit={() => setEditing(true)}
+        />
       ) : null}
 
-      {!ready ? (
-        <section className="ld-panel">
-          <p className="ld-empty">{t('Loading your account…')}</p>
-        </section>
-      ) : (
-        <>
-          <ProfileHero
-            key={`hero-${account?.id ?? mode}`}
-            account={account}
-            local={local}
-            canEdit={canEdit}
-            onEdit={() => setEditing(true)}
-          />
-          <DetailsDialog
-            open={editing}
-            onOpenChange={setEditing}
-            account={account}
-            local={local}
-            canEdit={canEdit}
-          />
-          <div className="ac-pair">
-            <WorkspacePanel local={local} canEdit={canEdit} />
-            <LanguagePanel />
+      {/* Everything below the band rides in one sheet, as on every page. On a
+          phone it is the panel that slides up over the band; on a wider screen
+          it is display:contents and lays out as if it were not here. */}
+      <div className="page-sheet">
+        {error && !local ? (
+          <div className="ld-notice pf-notice" data-tone="warning" role="alert">
+            {t(error)}
           </div>
-          <InvoiceAddressPanel canEdit={canEdit} />
-          <SecurityPanel local={local} signedIn={signedIn} />
-        </>
-      )}
+        ) : null}
+
+        {!ready ? (
+          <section className="ld-panel">
+            <p className="ld-empty">{t('Loading your account…')}</p>
+          </section>
+        ) : (
+          <>
+            <DetailsDialog
+              open={editing}
+              onOpenChange={setEditing}
+              account={account}
+              local={local}
+              canEdit={canEdit}
+            />
+            <div className="ac-pair">
+              <WorkspacePanel local={local} canEdit={canEdit} />
+              <LanguagePanel />
+            </div>
+            <InvoiceAddressPanel canEdit={canEdit} />
+            <SecurityPanel local={local} signedIn={signedIn} />
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -529,3 +529,118 @@
     margin-left: 0;
   }
 }
+
+/* ================================================== account, on a phone */
+/* The same shape as every other page: a filled band at the top, the sheet
+   drawn up over it, and the account on the bar cut out of the blue.
+ *
+ * The hero becomes that band rather than a card sitting on one — it already
+ * carries what the other bands carry, an eyebrow, a name, a line under it and
+ * a row of facts. The recipe is .page-heading's in globals.css, written out
+ * again here because the hero is a .ld-panel and that card is defined in a
+ * stylesheet loaded after globals: extending the selector there would lose. */
+@media (max-width: 767px) {
+  /* The band and the sheet have to be the page's own children for the sheet to
+     be able to take the rest of the screen, so this grid steps out from
+     between them. Its gap goes with it; the sheet carries its own. */
+  .ac-page {
+    display: contents;
+  }
+  /* An element with no box of its own does not animate, so the page's
+     entrance would have been lost with the grid. The band and the sheet take
+     the animation it was given instead — the same one, off the same rule in
+     globals.css, rather than a second copy of it written out here. */
+  .page-enter > .ac-page > * {
+    animation: inherit;
+  }
+  /* And the gap it kept between the panels comes back as margins, now that
+     the panels are the sheet's own children. A general sibling combinator so
+     the dialog sitting among them — which renders nothing here, its content
+     goes to a portal — cannot break the run. */
+  .ac-page
+    > .page-sheet
+    > :is(.ld-panel, .ac-pair, .ld-notice)
+    ~ :is(.ld-panel, .ac-pair, .ld-notice) {
+    margin-top: var(--ui-space-5);
+  }
+  .ac-hero {
+    /* The floor: it stays where it is while the page moves and the sheet
+       travels up over it. */
+    position: sticky;
+    top: 0;
+    z-index: 0;
+    /* The wash is drawn with an inset ::before, which the card clipped. The
+       band has no wash and nothing else to clip. */
+    overflow: visible;
+    margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5)) 0;
+    border-radius: 0;
+    /* The extra radius at the foot is the strip the sheet sits on top of. */
+    padding: calc(var(--phone-topbar) + var(--ui-space-4)) var(--ui-space-5)
+      calc(var(--ui-space-6) + var(--ui-radius-xl));
+    background: var(--ui-accent);
+    box-shadow: none;
+    color: #fff;
+  }
+  /* A tint of the accent over white was the wash; over the accent it is haze. */
+  .ac-hero::before {
+    display: none;
+  }
+  .ac-hero-copy h1,
+  .ac-hero-copy .eyebrow {
+    color: #fff;
+  }
+  .ac-hero-detail {
+    color: rgb(255 255 255 / 82%);
+  }
+  /* The photo's double ring was the card it sat on; on the band it is one
+     line of white, and the initials behind it are white too. */
+  .ac-avatar {
+    background: rgb(255 255 255 / 20%);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 32%);
+    color: #fff;
+  }
+  /* The buttons take the band's own pair, as the home page's do: the one you
+     came for in white, the other in the white the figures are panelled in.
+     By position rather than by variant — the variants are utility classes with
+     no attribute to match on — and "Edit profile" is always the last of them,
+     with "Remove" in front of it only once there is a photo to remove. */
+  .ac-hero-actions [data-slot='button']:last-child {
+    background: #fff;
+    color: var(--ui-accent-ink);
+  }
+  .ac-hero-actions [data-slot='button']:not(:last-child) {
+    background: rgb(255 255 255 / 16%);
+    color: #fff;
+  }
+  /* The facts become the panelled row of figures the other bands carry, two
+     to a line: five of them across one line on a phone is unreadable, and
+     five down the page is a bandful of nothing else. */
+  .ac-hero-facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    margin-top: var(--ui-space-5);
+    border-top: 0;
+    border-radius: var(--ui-radius-md);
+    padding: var(--ui-space-1) 0;
+    background: rgb(255 255 255 / 12%);
+  }
+  .ac-hero-facts > div {
+    padding: var(--ui-space-2) var(--ui-space-3);
+    border-left: 0;
+  }
+  /* Hairlines, in the grid rather than on the items: between the columns and
+     between the rows, so nothing rules off the outside edge. */
+  .ac-hero-facts > div:nth-child(2n) {
+    border-left: 1px solid rgb(255 255 255 / 18%);
+  }
+  .ac-hero-facts > div:nth-child(n + 3) {
+    border-top: 1px solid rgb(255 255 255 / 18%);
+  }
+  .ac-hero-facts dt {
+    color: rgb(255 255 255 / 76%);
+  }
+  .ac-hero-facts dd {
+    color: #fff;
+  }
+}
