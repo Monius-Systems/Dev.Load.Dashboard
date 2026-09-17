@@ -634,8 +634,8 @@ button.hm-row:hover {
   .page-sheet {
     display: block;
     position: relative;
-    /* Above the band it slides over, and under the account, which stays on
-       top of both. */
+    /* The top of the three: over the band it slides across, and over the
+       account pinned to that band, which is 5. */
     z-index: 6;
     /* Pulled up onto the blue by exactly its own corner radius, so the curve
        has blue behind it to read against. Sitting flush at the header's bottom

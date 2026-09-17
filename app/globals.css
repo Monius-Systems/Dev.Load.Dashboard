@@ -1670,14 +1670,15 @@ svg.lucide {
     position: relative;
   }
   .topbar {
-    /* Fixed, and over the sheet rather than under it: the account holds the
-       same corner whatever the page is doing, rather than riding off the top
-       with the band or disappearing under the sheet on its way up. */
+    /* Three layers at the top of every page, bottom to top: the band, then the
+       account, then the sheet. Fixed, so the account holds its corner rather
+       than riding off the top with the band — and between the two, so the
+       sheet passes over it on its way up. */
     position: fixed;
     top: 0;
     right: 0;
     left: 0;
-    z-index: 7;
+    z-index: 5;
     min-height: 0;
     justify-content: flex-end;
     /* A little below the clock rather than level with it. */
