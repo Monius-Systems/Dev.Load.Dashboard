@@ -1759,16 +1759,11 @@ svg.lucide {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
-  /* Put down for the length of a gesture, and picked up again after it. A
-     blurred bar over a moving page is blurred again every frame, and the
-     sheet's shadow is three screenfuls of it that nothing can see while the
-     page is in motion. The bar keeps its own colour, opaque, so the swap is
-     not something you can catch. */
-  html[data-swiping] .tabbar {
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
-    background: var(--ui-surface-1);
-  }
+  /* The bar along the bottom keeps its frost through a swipe: the sections
+     sliding under it are exactly what it is there to be frosted over, and it
+     costs what it costs. (The sheet's shadow is put down instead — three
+     screenfuls of it, and nothing can see any of them while the page is in
+     motion.) */
   html[data-swiping] .page-sheet {
     box-shadow: none;
   }
