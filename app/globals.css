@@ -1607,3 +1607,26 @@ svg.lucide {
     padding-top: var(--phone-topbar);
   }
 }
+
+/* ========================== the strip behind the clock, in Safari on a phone */
+/* Safari is not a home-screen app: the status bar belongs to the browser, and
+   the apple-mobile-web-app-* tags are ignored. What Safari does do is take the
+   colour for that strip from the root element's background — which is why it
+   has been showing --ui-surface-2, the page grey.
+ *
+ * So the root carries the colour the page wants up there: the head of the home
+ * page's gradient on the home page, the ordinary page colour everywhere else.
+ * body keeps its own background, so only the strip and the overscroll change.
+ * Once html has a background of its own it is html's, not body's, that paints
+ * the canvas behind them both. */
+@media (max-width: 767px) {
+  html {
+    background: var(--ui-surface-2);
+  }
+  html:has(.hm-stats) {
+    background: color-mix(in srgb, var(--ui-accent) 52%, #ffffff);
+  }
+  body {
+    background: var(--ui-surface-2);
+  }
+}
