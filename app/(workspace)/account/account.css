@@ -599,48 +599,49 @@
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 32%);
     color: #fff;
   }
-  /* The buttons take the band's own pair, as the home page's do: the one you
-     came for in white, the other in the white the figures are panelled in.
-     By position rather than by variant — the variants are utility classes with
-     no attribute to match on — and "Edit profile" is always the last of them,
-     with "Remove" in front of it only once there is a photo to remove. */
-  .ac-hero-actions [data-slot='button']:last-child {
+  /* "Edit profile" takes the white the home band gives the button you came
+     for. By attribute rather than by variant: the variants are utility
+     classes, with nothing to match on. */
+  .ac-hero-actions [data-slot='button'] {
     background: #fff;
     color: var(--ui-accent-ink);
   }
-  .ac-hero-actions [data-slot='button']:not(:last-child) {
-    background: rgb(255 255 255 / 16%);
-    color: #fff;
-  }
-  /* The facts become the panelled row of figures the other bands carry, two
-     to a line: five of them across one line on a phone is unreadable, and
-     five down the page is a bandful of nothing else. */
+  /* The facts, in the panel of white the other bands give their figures — but
+     as a list of label and value, a line each, rather than the row of columns
+     the other pages carry. Five of these do not divide a phone's width into
+     anything readable, and two of them are a workspace name and a date that
+     need the room; down the page each one gets the whole line, its name on
+     the left and what it says on the right. */
   .ac-hero-facts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: block;
     gap: 0;
     margin-top: var(--ui-space-5);
     border-top: 0;
     border-radius: var(--ui-radius-md);
-    padding: var(--ui-space-1) 0;
+    padding: 0 var(--ui-space-3);
     background: rgb(255 255 255 / 12%);
   }
   .ac-hero-facts > div {
-    padding: var(--ui-space-2) var(--ui-space-3);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ui-space-4);
+    padding: var(--ui-space-2) 0;
     border-left: 0;
   }
-  /* Hairlines, in the grid rather than on the items: between the columns and
-     between the rows, so nothing rules off the outside edge. */
-  .ac-hero-facts > div:nth-child(2n) {
-    border-left: 1px solid rgb(255 255 255 / 18%);
-  }
-  .ac-hero-facts > div:nth-child(n + 3) {
+  /* A hairline between the lines, and none along the top or the bottom of the
+     panel, where its own edge already is. */
+  .ac-hero-facts > div + div {
     border-top: 1px solid rgb(255 255 255 / 18%);
   }
   .ac-hero-facts dt {
+    flex-shrink: 0;
     color: rgb(255 255 255 / 76%);
   }
   .ac-hero-facts dd {
+    margin-top: 0;
+    min-width: 0;
+    text-align: right;
     color: #fff;
   }
 }

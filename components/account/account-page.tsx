@@ -43,7 +43,6 @@ import {
   changePassword,
   initialAccountSnapshot,
   MIN_PASSWORD,
-  removeAvatar,
   saveAccountProfile,
   signOut,
   subscribeAccount,
@@ -214,20 +213,6 @@ function ProfileHero({
     });
   }
 
-  async function clearPhoto() {
-    if (photoBusy) return;
-    setPhotoBusy(true);
-    setPhotoError(null);
-    const message = await removeAvatar();
-    setPhotoBusy(false);
-    if (message) return setPhotoError(message);
-    toast.add({
-      title: t('Photo removed'),
-      description: t('Your initials show instead.'),
-      type: 'success',
-    });
-  }
-
   return (
     <section className="ld-panel ac-hero" aria-labelledby="ac-hero-name">
       <div className="ac-hero-main">
@@ -266,17 +251,8 @@ function ProfileHero({
         </div>
         {canEdit ? (
           <div className="ac-hero-actions">
-            {photo ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={photoBusy}
-                onClick={() => void clearPhoto()}
-              >
-                {photoBusy ? t('Saving…') : t('Remove')}
-              </Button>
-            ) : null}
+            {/* Changing the photo is the camera on the photo itself; there is
+                no undoing it from here, only another photo. */}
             <Button type="button" variant="secondary" size="sm" onClick={onEdit}>
               <Pencil data-icon="inline-start" />
               {t('Edit profile')}
