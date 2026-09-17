@@ -10,27 +10,28 @@ import { useRouter } from 'next/navigation';
  * the one before, and the ends do not wrap — a pull past either end stretches
  * against the hand and lets go, the way a phone says "that is the end".
  *
- * ── How three pages exist when the router only renders one ──
+ * What moves are three live sections, mounted and parked a screen apart by
+ * SectionPager: this reads where they are, writes where they should be, and
+ * touches nothing else. There is no picture of a page anywhere in it — the page
+ * arriving is the page, with its own data, rendered long before the finger went
+ * down — so there is no moment when one is exchanged for the other.
  *
- * A section is a route, and a route renders one page. Dragging between two
- * pages means both of them are on the screen at once, so the neighbours are
- * kept as copies: the page is photographed — cloneNode — while it is on screen
- * and idle, and the copy is parked off the side of the screen in a pane of its
- * own, ready, before any finger goes down. Dragging moves the live page and the
- * two panes together; the route is not touched until the gesture is over and
- * the destination's pane is already covering the screen, so the change of route
- * happens behind a picture of itself and is never seen.
+ * The route follows. When the spring has landed and the section is already
+ * where it belongs, the address is changed to match; React finds the same pane
+ * by its key and keeps it, and the only thing that happens at that moment is
+ * that a different pane is called the current one (see SectionPager, which
+ * takes the hand-written transforms off in the same paint).
  *
- * Everything the finger touches is a transform on three elements, written from
- * one animation frame. No React render takes place between touchdown and the
- * settle: the gesture holds its state in this closure and writes to the DOM.
+ * Between touchdown and the settle, no React render happens at all: the gesture
+ * keeps its state in this closure and writes transforms from one animation
+ * frame, on three elements, in properties the compositor owns.
  *
  * ── Never halfway ──
  *
  * A gesture has exactly three ends — back where it started, one section on, one
- * section back — and each of them normalises the DOM explicitly when its spring
- * lands. Every frame carries the token of the gesture that scheduled it, so a
- * frame from a gesture that has ended cannot write anything.
+ * section back — and each normalises the panes when its spring lands. Every
+ * frame carries the token of the gesture that scheduled it, so a frame from a
+ * gesture that is over cannot write anything.
  */
 
 /* ------------------------------------------------------------------ feel */
@@ -44,6 +45,8 @@ const SIDEWAYS = 1.2;
 const COMMIT = 0.22;
 /** Or how fast it is moving when it is let go, in pixels a second. */
 const FLICK = 500;
+/** A finger still for this long has thrown nothing, however fast it was. */
+const STILL = 80;
 /** The spring that finishes the journey: firm, and just short of a bounce. */
 const STIFFNESS = 380;
 const DAMPING = 38;
@@ -53,11 +56,11 @@ const REST = 0.4;
 const RESTING = 40;
 /** How hard a pull past the end of the row gives — iOS's own curve. */
 const BAND = 0.55;
-/** The depth the page arriving comes up out of. Barely there on purpose. */
+/** The depth the section arriving comes up out of. Barely there on purpose. */
 const DEPTH = 0.985;
 const FADE = 0.92;
 /** A spring is never given a step longer than this, however late the frame is. */
-const MAX_STEP = 1 / 60;
+const MAX_STEP = 1 / 120;
 
 /** iOS's resistance: the further it is pulled, the less it gives. */
 function band(distance: number, width: number) {
@@ -82,76 +85,42 @@ function scrollsSideways(from: EventTarget | null, until: HTMLElement) {
 
 export function usePageSwipe(pages: string[], current: string) {
   const router = useRouter();
-  // Where we are is read when a drag starts rather than depended on. The
-  // gesture is set up once and kept: the copies of the neighbouring sections
-  // are gathered over a session, and an effect that re-ran on every navigation
-  // would throw them away every time — and could take the listeners out from
-  // under a finger that is still down.
+  // Where we are is read when a drag starts rather than depended on: an effect
+  // that re-ran on every navigation could take the listeners out from under a
+  // finger that is still down.
   const where = useRef(current);
-  const engine = useRef<{ look: () => void; photograph: () => void } | null>(null);
+  useEffect(() => {
+    where.current = current;
+  }, [current]);
 
   useEffect(() => {
-    const page = document.getElementById('workspace-content');
-    if (!page || !window.matchMedia('(max-width: 767px)').matches) return;
+    const pager = document.querySelector<HTMLElement>('.section-pager');
+    if (!pager || !window.matchMedia('(max-width: 767px)').matches) return;
     const root = document.documentElement;
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
 
-    /* ------------------------------------------------- the two neighbours */
-    /** A copy of each section as it last stood, taken while it was idle. */
-    const shots = new Map<string, HTMLElement>();
-    const pane = (side: 'prev' | 'next') => {
-      const box = document.createElement('div');
-      box.className = 'page-swipe-pane';
-      box.dataset.side = side;
-      box.setAttribute('aria-hidden', 'true');
-      box.style.transform = `translate3d(${side === 'prev' ? '-100%' : '100%'}, 0, 0)`;
-      document.body.appendChild(box);
-      return box;
+    /* ------------------------------------------------------- the three panes */
+    type Panes = {
+      live: HTMLElement;
+      prev: HTMLElement | null;
+      next: HTMLElement | null;
+      before: string | null;
+      after: string | null;
     };
-    const panes = { prev: pane('prev'), next: pane('next') };
-
-    /** Where the row stands from here: what is either side, and their panes. */
-    let before: string | null = null;
-    let after: string | null = null;
-    const look = () => {
-      // Not while the destination's own picture is the thing on the screen:
-      // moving it out of its pane now would take the screen with it.
-      if (committing) return;
-      const here = pages.indexOf(where.current);
-      before = here > 0 ? pages[here - 1] : null;
-      after = here >= 0 ? (pages[here + 1] ?? null) : null;
-      // The copy itself is moved into the pane, not copied again: a section is
-      // only ever on one side of where you are standing.
-      const fill = (box: HTMLElement, path: string | null) => {
-        const shot = path ? shots.get(path) : null;
-        if (shot) {
-          if (shot.parentElement !== box) box.replaceChildren(shot);
-        } else {
-          box.replaceChildren();
-        }
+    let held: Panes | null = null;
+    /** Read once, when a finger goes down. Nothing below reads the DOM again. */
+    const hold = (): Panes | null => {
+      const live = pager.querySelector<HTMLElement>('[data-role="current"]');
+      if (!live) return null;
+      const prev = pager.querySelector<HTMLElement>('[data-role="prev"]');
+      const next = pager.querySelector<HTMLElement>('[data-role="next"]');
+      return {
+        live,
+        prev,
+        next,
+        before: prev?.dataset.section ?? null,
+        after: next?.dataset.section ?? null,
       };
-      fill(panes.prev, before);
-      fill(panes.next, after);
-    };
-
-    /** Photograph this section, once it has settled, for the next time over. */
-    let shooting = 0;
-    let dead = false;
-    const photograph = () => {
-      window.clearTimeout(shooting);
-      shooting = window.setTimeout(() => {
-        if (dead || committing) return;
-        const path = where.current;
-        const shot = page.cloneNode(true) as HTMLElement;
-        shot.removeAttribute('id');
-        shots.set(path, shot);
-        // Only the row's worth is kept; the oldest goes when there are more.
-        if (shots.size > pages.length) {
-          const oldest = shots.keys().next().value;
-          if (oldest && oldest !== path) shots.delete(oldest);
-        }
-        look();
-      }, 450);
     };
 
     /* ---------------------------------------------------------- the frame */
@@ -163,20 +132,27 @@ export function usePageSwipe(pages: string[], current: string) {
     let committing = false;
 
     /**
-     * The three of them, from one write. Only transform and opacity, and every
-     * frame writes the same three properties, so nothing here can make Safari
-     * lay anything out again.
+     * The three of them, from one write. Only transform and opacity, and the
+     * same properties every frame, so nothing here can make Safari lay
+     * anything out again.
      */
     const paint = () => {
       frame = 0;
-      page.style.transform = `translate3d(${x}px, 0, 0)`;
+      const panes = held;
+      if (!panes) return;
+      panes.live.style.transform = `translate3d(${x}px, 0, 0)`;
       const going = x < 0 ? panes.next : panes.prev;
       const other = x < 0 ? panes.prev : panes.next;
       const near = Math.min(1, Math.abs(x) / width);
-      const size = DEPTH + (1 - DEPTH) * near;
-      going.style.transform = `translate3d(${x + (x < 0 ? width : -width)}px, 0, 0) scale(${size})`;
-      going.style.opacity = `${FADE + (1 - FADE) * near}`;
-      other.style.transform = `translate3d(${x < 0 ? -width : width}px, 0, 0)`;
+      if (going) {
+        const size = DEPTH + (1 - DEPTH) * near;
+        going.style.transform = `translate3d(${x + (x < 0 ? width : -width)}px, 0, 0) scale(${size})`;
+        going.style.opacity = `${FADE + (1 - FADE) * near}`;
+      }
+      if (other) {
+        other.style.transform = `translate3d(${x < 0 ? -width : width}px, 0, 0)`;
+        other.style.opacity = '';
+      }
     };
     const draw = () => {
       if (!frame) frame = requestAnimationFrame(paint);
@@ -189,26 +165,30 @@ export function usePageSwipe(pages: string[], current: string) {
       if (frame) cancelAnimationFrame(frame);
       frame = 0;
       x = 0;
-      page.style.transform = '';
-      page.style.willChange = '';
-      for (const box of [panes.prev, panes.next]) {
-        box.style.transform = `translate3d(${box.dataset.side === 'prev' ? '-100%' : '100%'}, 0, 0)`;
-        box.style.opacity = '';
+      const panes = held;
+      if (panes) {
+        for (const pane of [panes.live, panes.prev, panes.next]) {
+          if (!pane) continue;
+          // Emptied rather than set: the stylesheet parks each pane by the
+          // part it is playing, and the part may have changed since.
+          pane.style.transform = '';
+          pane.style.opacity = '';
+          pane.style.willChange = '';
+        }
       }
+      held = null;
       delete root.dataset.swiping;
     };
 
     /* --------------------------------------------------------- the spring */
     /**
-     * Critically damped enough to have no bounce in it, and given the speed the
-     * finger let go at, so a flick carries its own momentum into the landing
-     * and a slow release is set down gently.
+     * Damped just short of a bounce, and given the speed the finger let go at,
+     * so a flick carries its own momentum into the landing and a slow release
+     * is set down gently.
      */
     const settle = (to: number, speed: number, then?: () => void) => {
       const mine = ++token;
       if (calm.matches) {
-        // Dragging is the finger's own movement and stays; the flight after it
-        // lets go is animation, and is not played.
         x = to;
         paint();
         then?.();
@@ -219,11 +199,11 @@ export function usePageSwipe(pages: string[], current: string) {
       let last = performance.now();
       const tick = (now: number) => {
         if (mine !== token) return;
-        let step = Math.min((now - last) / 1000, MAX_STEP * 3);
+        let step = Math.min((now - last) / 1000, MAX_STEP * 6);
         last = now;
         // Small fixed steps: a long frame cannot make the spring overshoot.
         while (step > 0) {
-          const slice = Math.min(step, MAX_STEP / 2);
+          const slice = Math.min(step, MAX_STEP);
           step -= slice;
           const force = -STIFFNESS * (x - to) - DAMPING * velocity;
           velocity += (force / MASS) * slice;
@@ -242,21 +222,19 @@ export function usePageSwipe(pages: string[], current: string) {
       requestAnimationFrame(tick);
     };
 
-    /** The route, once the destination is already the thing on the screen. */
+    /**
+     * The address, once the section is already the thing on the screen. The
+     * pane it lands in is the pane that was arriving: React is given the same
+     * key, keeps the subtree, and changes only which pane is called current.
+     */
     const arrive = (path: string) => {
       committing = true;
       router.push(path);
       const gave = performance.now();
       const land = () => {
-        // Held until the section is really the one rendered, so the swap of one
-        // page for another happens behind its own picture.
         if (where.current === path || performance.now() - gave > 900) {
           normalise();
-          // In this order: both of these stand back while a commit is on the
-          // screen, and the commit is over.
           committing = false;
-          look();
-          photograph();
           return;
         }
         requestAnimationFrame(land);
@@ -277,19 +255,23 @@ export function usePageSwipe(pages: string[], current: string) {
       if (committing || event.touches.length !== 1) return;
       if (document.querySelector('dialog[open]')) return;
       const touch = event.touches[0];
-      // Cached once: nothing in the loop below reads the layout back.
+      // Cached here: nothing in the loop below reads the layout back.
       width = window.innerWidth;
       if (touch.clientX < EDGE || touch.clientX > width - EDGE) return;
-      if (scrollsSideways(event.target, page)) return;
-      look();
+      // Read fresh every time: which pane is playing which part changes with
+      // the address, and a gesture must not start from a stale answer.
+      const taken = hold();
+      if (!taken) return;
+      if (scrollsSideways(event.target, taken.live)) return;
+      held = taken;
       startX = lastX = touch.clientX;
       startY = touch.clientY;
       lastAt = performance.now();
       speed = 0;
       tracking = true;
       dragging = false;
-      // A settle still running is taken over from wherever it has got to,
-      // rather than fought with or waited for.
+      // A settle still running is taken over from where it has got to, rather
+      // than fought with or waited for.
       if (running) {
         token++;
         running = false;
@@ -300,7 +282,7 @@ export function usePageSwipe(pages: string[], current: string) {
     };
 
     const move = (event: TouchEvent) => {
-      if (!tracking || event.touches.length !== 1) return;
+      if (!tracking || !held || event.touches.length !== 1) return;
       const touch = event.touches[0];
       const dx = touch.clientX - startX;
       if (!dragging) {
@@ -311,17 +293,20 @@ export function usePageSwipe(pages: string[], current: string) {
         // finger comes up.
         if (Math.abs(dx) <= Math.abs(dy) * SIDEWAYS) {
           tracking = false;
+          held = null;
           return;
         }
         dragging = true;
         startX = touch.clientX - Math.sign(dx) * DEAD;
-        page.style.willChange = 'transform';
         root.dataset.swiping = 'true';
+        for (const pane of [held.live, held.prev, held.next]) {
+          if (pane) pane.style.willChange = 'transform';
+        }
       }
       const travel = touch.clientX - startX;
       // Past either end of the row there is nothing to bring on, so the pull
       // stretches instead.
-      const free = travel < 0 ? after !== null : before !== null;
+      const free = travel < 0 ? held.after !== null : held.before !== null;
       x = free ? travel : band(travel, width);
       const at = performance.now();
       const gap = at - lastAt;
@@ -348,12 +333,13 @@ export function usePageSwipe(pages: string[], current: string) {
     const up = () => {
       if (!tracking) return;
       tracking = false;
-      if (!dragging) return;
+      if (!dragging || !held) {
+        held = null;
+        return;
+      }
       dragging = false;
-      // Held still before letting go, however fast it was going before that:
-      // a finger that has stopped has thrown nothing.
-      if (performance.now() - lastAt > 80) speed = 0;
-      const showing = x < 0 ? after : x > 0 ? before : null;
+      if (performance.now() - lastAt > STILL) speed = 0;
+      const showing = x < 0 ? held.after : x > 0 ? held.before : null;
       const toward = x < 0 ? -1 : 1;
       const far = Math.abs(x) > width * COMMIT;
       const thrown = Math.sign(speed) === toward && Math.abs(speed) > FLICK;
@@ -365,62 +351,50 @@ export function usePageSwipe(pages: string[], current: string) {
       settle(0, speed, normalise);
     };
 
+    // A drag the system takes away — a call arriving, a gesture of its own —
+    // is a drag that ends where it started.
     const off = () => {
       if (!tracking && !dragging) return;
       tracking = dragging = false;
-      settle(0, speed, normalise);
+      if (held) settle(0, speed, normalise);
     };
 
     const resize = () => {
       width = window.innerWidth;
-      if (!running && !dragging) normalise();
+      if (!running && !dragging && !committing) normalise();
     };
 
-    page.addEventListener('touchstart', down, { passive: true });
-    page.addEventListener('touchmove', move, { passive: true });
-    page.addEventListener('touchend', up, { passive: true });
-    page.addEventListener('touchcancel', off, { passive: true });
+    pager.addEventListener('touchstart', down, { passive: true });
+    pager.addEventListener('touchmove', move, { passive: true });
+    pager.addEventListener('touchend', up, { passive: true });
+    pager.addEventListener('touchcancel', off, { passive: true });
     window.addEventListener('orientationchange', resize);
     window.addEventListener('resize', resize);
-
-    engine.current = { look, photograph };
-    look();
-    photograph();
-
     return () => {
-      dead = true;
-      engine.current = null;
-      window.clearTimeout(shooting);
       token++;
       if (frame) cancelAnimationFrame(frame);
-      page.removeEventListener('touchstart', down);
-      page.removeEventListener('touchmove', move);
-      page.removeEventListener('touchend', up);
-      page.removeEventListener('touchcancel', off);
+      pager.removeEventListener('touchstart', down);
+      pager.removeEventListener('touchmove', move);
+      pager.removeEventListener('touchend', up);
+      pager.removeEventListener('touchcancel', off);
       window.removeEventListener('orientationchange', resize);
       window.removeEventListener('resize', resize);
-      panes.prev.remove();
-      panes.next.remove();
-      page.style.transform = '';
-      page.style.willChange = '';
       delete root.dataset.swiping;
     };
-  }, [pages, router]);
+  }, [router]);
 
-  // Arriving somewhere: the neighbours either side of it are fetched, their
-  // panes are filled from whatever has been photographed before, and this
-  // section is photographed in its turn once it has settled. All of it while
-  // nothing is happening, so a gesture has nothing left to prepare.
+  // The section either side is fetched while nothing is happening, so the
+  // address change at the end of a swipe is a render and not a wait.
   useEffect(() => {
-    where.current = current;
     const here = pages.indexOf(current);
     if (here < 0 || !window.matchMedia('(max-width: 767px)').matches) return;
-    for (const near of [pages[here - 1], pages[here + 1]]) {
-      try {
-        if (near) router.prefetch(near);
-      } catch {}
-    }
-    engine.current?.look();
-    engine.current?.photograph();
+    const soon = window.setTimeout(() => {
+      for (const near of [pages[here - 1], pages[here + 1]]) {
+        try {
+          if (near) router.prefetch(near);
+        } catch {}
+      }
+    }, 400);
+    return () => window.clearTimeout(soon);
   }, [pages, current, router]);
 }

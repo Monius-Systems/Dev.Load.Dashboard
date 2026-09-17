@@ -13,13 +13,8 @@ import {
 } from 'react';
 import Image from 'next/image';
 import DocumentScanner from '@/components/scanner/document-scanner';
-import {
-  clearScannerRequest,
-  scannerRequested,
-} from '@/lib/scanner/hand-off';
 import { useIsPhone } from '@/hooks/use-phone';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   Camera,
   Check,
@@ -664,6 +659,8 @@ export default function LoadDesk() {
     uploadStatus,
     extraction,
     saveStatus,
+    scannerOpen,
+    editRequest,
     truckChoice,
     addingTo,
   } = desk;
@@ -696,22 +693,13 @@ export default function LoadDesk() {
   );
   const fileInput = useRef<HTMLInputElement>(null);
   /**
-   * "Scan ticket" on the home page arrives here asking for the camera, and it
-   * comes straight up: from the home screen that button is the scanner, not
-   * the page the scanner is on. See lib/scanner/hand-off.ts.
-   *
-   * Read as the state's first value rather than in an effect, so the scanner is
-   * up in the first paint instead of a frame of Load Desk first. It does not
-   * disagree with the server's blank render either: the scanner is only ever
-   * mounted on a phone, and useIsPhone says no until its own effect has run,
-   * which is after hydration.
+   * The camera is the session's, not this page's: "Scan ticket" on the home
+   * page opens it from there (lib/scanner/hand-off.ts), and this page is
+   * mounted whether or not it is the one on the screen. Read the same way as
+   * the rest of the session, so there is no effect to run and nothing to miss.
    */
-  const [scannerOpen, setScannerOpen] = useState(scannerRequested);
-  /** Closing it also drops the request, so coming back does not reopen it. */
-  const closeScanner = () => {
-    clearScannerRequest();
-    setScannerOpen(false);
-  };
+  const setScannerOpen = (value: boolean) => setDeskField('scannerOpen', value);
+  const closeScanner = () => setScannerOpen(false);
   const isPhone = useIsPhone();
   /**
    * Which part of the ticket a phone is being asked about. The four sections
@@ -728,9 +716,6 @@ export default function LoadDesk() {
     setStep(0);
   }
   const reviewPanel = useRef<HTMLElement>(null);
-  const router = useRouter();
-  // "Edit" on Invoices & tickets opens this page with ?edit=<saved ticket id>.
-  const editRequest = useRef<string | null>(null);
 
   const active = queue[activeIndex] ?? null;
   const ticket = active?.ticket ?? null;
@@ -2166,12 +2151,9 @@ export default function LoadDesk() {
 
   // Reads the latest records and queue without re-running the effect below.
   const openEditRequest = useEffectEvent(() => {
-    editRequest.current ??=
-      new URLSearchParams(window.location.search).get('edit') ?? '';
-    if (!editRequest.current) return;
-    const id = Number(editRequest.current);
-    editRequest.current = '';
-    router.replace('/load-desk');
+    const id = editRequest;
+    if (id === null) return;
+    setDeskField('editRequest', null);
     const record = records.find((item) => item.id === id);
     if (record) {
       editSaved(record);
@@ -2183,9 +2165,12 @@ export default function LoadDesk() {
       });
     }
   });
+  // Asked for as a request rather than answered on the way in: this page is
+  // mounted whether or not it is the one on the screen, so there is no arrival
+  // to catch. Invoices & Tickets asks (requestEdit), and this hears it.
   useEffect(() => {
-    if (store.ready) openEditRequest();
-  }, [store.ready]);
+    if (store.ready && editRequest !== null) openEditRequest();
+  }, [store.ready, editRequest]);
 
   // Reloading or closing the tab would lose unsaved changes to saved tickets.
   const unsavedEdits = queue.some(hasChanges);

@@ -2,6 +2,7 @@
 
 import { useId, useState } from 'react';
 import Link from 'next/link';
+import { setDeskField } from '@/lib/load-desk/desk-session';
 import {
   Download,
   FileSearch,
@@ -243,7 +244,8 @@ export default function RecordsPage() {
   const invoiceActions = (group: InvoiceGroup) => (
     <div className="pf-actions">
       <Link
-        href={`/load-desk?edit=${group.records[0].id}`}
+        href="/load-desk"
+        onClick={() => setDeskField('editRequest', group.records[0].id)}
         className={buttonVariants({ variant: 'ghost', size: 'sm' })}
         aria-label={t('Edit invoice {number}', { number: group.invoice.invoice_number })}
       >
@@ -264,7 +266,8 @@ export default function RecordsPage() {
   const ticketActions = (record: SavedRecord) => (
     <div className="pf-actions">
       <Link
-        href={`/load-desk?edit=${record.id}`}
+        href="/load-desk"
+        onClick={() => setDeskField('editRequest', record.id)}
         className={buttonVariants({ variant: 'ghost', size: 'icon-sm' })}
         aria-label={t('Edit ticket {number}', { number: ticketNumber(record) })}
         title={t('Edit')}

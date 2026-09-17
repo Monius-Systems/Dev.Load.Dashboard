@@ -1727,11 +1727,14 @@ svg.lucide {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
-  /* The section either side, parked a screen away and left there. Contained,
-     so what is in one costs the page around it nothing; asking for its own
-     layer, so it is drawn once and afterwards only moved; and never hidden, so
-     the first frame of a gesture has nothing to draw for the first time. */
-  .page-swipe-pane {
+  /* The section either side, parked a screen away and left there. These are
+     live pages, not pictures of them (see SectionPager) — the same components
+     the router would mount, with the same data — so what arrives under a finger
+     needs nothing done to it when it gets there.
+     Contained, so what is in one costs the page around it nothing; asking for
+     its own layer, so it is drawn once and afterwards only moved; and inert, so
+     nothing in it can be tapped, tabbed to or read out while it waits. */
+  .section-pane:not([data-role='current']) {
     position: fixed;
     inset: 0;
     z-index: 4;
@@ -1739,8 +1742,20 @@ svg.lucide {
     contain: strict;
     pointer-events: none;
     background: var(--ui-accent);
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .section-pane[data-role='prev'] {
+    transform: translate3d(-100%, 0, 0);
+  }
+  .section-pane[data-role='next'] {
     transform: translate3d(100%, 0, 0);
-    will-change: transform, opacity;
+  }
+  /* The section on the screen is the page, in the page's own flow, scrolled by
+     the document like any other: a swipe moves it by transform and puts it
+     back, and nothing about how it is laid out changes. */
+  .section-pane[data-role='current'] {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
@@ -1765,22 +1780,17 @@ svg.lucide {
   html[data-swiping] :is(.page-heading, .ac-hero) {
     position: static;
   }
-  /* A page arrives one quiet way on a phone, however it was opened: the whole
-     page together, lifting a little as it comes up. The staggered entrance a
-     wide screen plays — each card a beat after the one above it — reads as the
-     page being assembled in front of you on a small screen, and a phone shows
-     a page, it does not build one. */
-  .page-enter > * {
+  /* A section opened by a tap on the bar arrives one quiet way: the whole page
+     together, lifting a little as it comes up. The staggered entrance a wide
+     screen plays — each card a beat after the one above it — reads as the page
+     being assembled in front of you on a small screen, and a phone shows a
+     page, it does not build one.
+     Put on the pane, because the pane is the thing that is arriving; a section
+     carried in by a finger has been moving all along and is never given it. */
+  .section-pane[data-appear] {
     animation: ui-page-appear 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
   }
-  /* The beats of that stagger, taken off one by one: they are set on rules of
-     their own, which this would otherwise lose to. */
   .page-enter > *:nth-child(n) {
-    animation-delay: 0s;
-  }
-  /* Except a page that a finger has just carried in, which has been moving all
-     along and has nothing to arrive from. */
-  html[data-swiping] .page-enter > * {
     animation: none;
   }
 }

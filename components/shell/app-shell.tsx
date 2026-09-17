@@ -22,6 +22,7 @@ import { adoptSessionAccount } from '@/lib/account';
 import type { ShellAccount } from '@/lib/account-display';
 import { useCompanyName } from '@/components/shell/use-company-name';
 import { usePageSwipe } from '@/hooks/use-page-swipe';
+import SectionPager from '@/components/shell/section-pager';
 import { useT } from '@/lib/i18n/use-t';
 import { companyInitials } from '@/lib/load-desk/business';
 import { shellConfig } from '@/lib/shell-config';
@@ -189,15 +190,6 @@ export default function AppShell({
   useEffect(() => {
     if (!window.matchMedia('(max-width: 767px)').matches) return;
     window.scrollTo(0, 0);
-    // And the sheet sits where it is drawn to sit, whatever was happening when
-    // the page changed: a gesture interrupted by a tap on the bar would
-    // otherwise leave the page area carrying the last transform it was given.
-    // Not while a swipe is in hand — it owns the page area until it lets go,
-    // and normalises it itself (hooks/use-page-swipe.ts).
-    if (document.documentElement.dataset.swiping) return;
-    document
-      .getElementById('workspace-content')
-      ?.style.removeProperty('transform');
   }, [pathname]);
 
   /**
@@ -440,12 +432,10 @@ export default function AppShell({
               </div>
             )}
           </header>
-          <div className="page-content" id="workspace-content" tabIndex={-1}>
-            {/* Keyed by page, so each page's entrance animation plays when it opens. */}
-            <div key={pathname} className="page-enter">
-              {children}
-            </div>
-          </div>
+          {/* The page area is three sections wide on a phone and one on a
+              desk; the router's own render is what anything outside the bar —
+              the account page — is shown with. See SectionPager. */}
+          <SectionPager>{children}</SectionPager>
           <TabBar />
         </SidebarInset>
       </SidebarProvider>

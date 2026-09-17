@@ -303,11 +303,10 @@ export default function HomePage() {
         ) : null}
         <div className="hm-actions">
           {/* On a phone this is the camera, not the page the camera is on:
-              Load Desk opens the scanner as it arrives, so a ticket is one tap
-              from here rather than two. Both the note and the ?scan=1 — see
-              lib/scanner/hand-off.ts for which of them answers when. */}
+              the tap opens it (lib/scanner/hand-off.ts) and Load Desk arrives
+              underneath it, so a ticket is one tap from here rather than two. */}
           <Link
-            href={isPhone ? '/load-desk?scan=1' : '/load-desk'}
+            href="/load-desk"
             className={buttonVariants()}
             onClick={isPhone ? requestScanner : undefined}
           >

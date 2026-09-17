@@ -36,6 +36,17 @@ export type DeskSession = {
   uploadStatus: DeskStatus;
   extraction: DeskExtraction;
   saveStatus: DeskStatus;
+  /**
+   * Whether the camera is up. Here rather than in the page's own state because
+   * the page is mounted whether or not you are looking at it — the section
+   * either side of the one on screen is kept alive so it can be swiped to — so
+   * "open the scanner" has to be something said to the session, not something
+   * a page can only hear as it is created. Home's Scan ticket says it, and the
+   * camera is up before the page it belongs to is the one on screen.
+   */
+  scannerOpen: boolean;
+  /** A saved ticket that Invoices & Tickets has asked to be opened for editing. */
+  editRequest: number | null;
   /** The truck chosen for the next upload. */
   truckChoice: string;
   /** The upload whose invoice tickets are being added to, while they extract. */
@@ -50,6 +61,8 @@ const EMPTY: DeskSession = {
   uploadStatus: null,
   extraction: null,
   saveStatus: null,
+  scannerOpen: false,
+  editRequest: null,
   truckChoice: '',
   addingTo: null,
 };
