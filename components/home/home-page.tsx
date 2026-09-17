@@ -21,6 +21,7 @@ import InvoiceDialog, {
 import LoadsChart from '@/components/home/loads-chart';
 import { useProfiles, useRecords } from '@/components/profiles/profile-ui';
 import { useIsPhone } from '@/hooks/use-phone';
+import { requestScanner } from '@/lib/scanner/hand-off';
 import type { Translator } from '@/lib/i18n/translate';
 import { useT } from '@/lib/i18n/use-t';
 import { sellerDisplayName } from '@/lib/load-desk/business';
@@ -302,11 +303,13 @@ export default function HomePage() {
         ) : null}
         <div className="hm-actions">
           {/* On a phone this is the camera, not the page the camera is on:
-              ?scan=1 has Load Desk open the scanner as it arrives, so a ticket
-              is one tap from here rather than two. */}
+              Load Desk opens the scanner as it arrives, so a ticket is one tap
+              from here rather than two. Both the note and the ?scan=1 — see
+              lib/scanner/hand-off.ts for which of them answers when. */}
           <Link
             href={isPhone ? '/load-desk?scan=1' : '/load-desk'}
             className={buttonVariants()}
+            onClick={isPhone ? requestScanner : undefined}
           >
             {isPhone ? <ScanLine /> : <FileUp />}
             {isPhone ? t('Scan ticket') : t('Upload tickets')}
