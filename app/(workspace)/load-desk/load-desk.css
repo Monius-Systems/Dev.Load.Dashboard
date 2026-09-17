@@ -1468,7 +1468,12 @@ details[open] > .ld-section-summary .ld-section-chevron {
      figures so 11 is as wide as 22, and the value starts at the left edge like
      any other value rather than floating in the middle of the box. */
   .ld-review .ld-field :is(input[type='date'], input[type='time']) {
-    display: block;
+    /* A flex box, and the value is a flex item on its centre line. With the
+       native appearance turned off the browser draws the value in an inner box
+       of its own and leaves it at the top of the field, which is why the date
+       and the two times sat above the line every other field sits on. */
+    display: flex;
+    align-items: center;
     -webkit-appearance: none;
     appearance: none;
     font: inherit;
@@ -1480,6 +1485,7 @@ details[open] > .ld-section-summary .ld-section-chevron {
   .ld-review
     .ld-field
     :is(input[type='date'], input[type='time'])::-webkit-date-and-time-value {
+    flex: 1;
     margin: 0;
     padding: 0;
     font: inherit;
@@ -1495,6 +1501,7 @@ details[open] > .ld-section-summary .ld-section-chevron {
     .ld-field
     :is(input[type='date'], input[type='time'])::-webkit-datetime-edit-fields-wrapper {
     padding: 0;
+    align-self: center;
     font: inherit;
     font-size: 16px;
     font-variant-numeric: tabular-nums;
@@ -1738,21 +1745,20 @@ details[open] > .ld-section-summary .ld-section-chevron {
      same work. Which ticket you are on is the filled one, and the ones already
      saved carry a tick instead of a number, so nothing is lost by colouring
      them all alike. */
-  .page-heading[data-review] .ld-queue {
-    /* Lighter than the check panel's green. That one is drawn for dark text on
-       a pale panel; filled in behind the band it comes out nearly as dark as
-       the blue itself, which is what made the selector hard to pick out. */
-    --ld-band-green: #6ee7b7;
-  }
+  /* The same pale green the Saved pill wears, which is what a row of tickets
+     on the blue should read as: one set of pills, all of a piece with the pill
+     on the line above. */
   .page-heading[data-review] .ld-queue-tab {
-    background: color-mix(in srgb, var(--ld-band-green) 24%, transparent);
-    color: var(--ld-band-green);
-  }
-  /* The one you are on is the filled one, and it is dark text on the light
-     green rather than the other way round. */
-  .page-heading[data-review] .ld-queue-tab[aria-current='true'] {
-    background: var(--ld-band-green);
+    background: var(--ui-success-soft);
     color: var(--ui-success);
+  }
+  /* Which one you are on cannot then be a second colour, so it is a ring —
+     white, because that is the one thing on the band with nothing else
+     wearing it. */
+  .page-heading[data-review] .ld-queue-tab[aria-current='true'] {
+    background: var(--ui-success-soft);
+    color: var(--ui-success);
+    box-shadow: 0 0 0 2px #fff;
   }
   .page-heading[data-review] .ld-queue [data-slot='button'] {
     color: rgb(255 255 255 / 80%);
