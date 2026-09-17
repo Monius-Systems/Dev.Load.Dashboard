@@ -26,6 +26,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Download,
   FileSearch,
   FileText,
@@ -874,11 +875,17 @@ export default function LoadDesk() {
   /**
    * Callers set busy first; this clears it. With a target, the tickets join
    * that ticket's invoice; otherwise each ticket date gets its own invoice.
+   *
+   * `open` is whether to put the first of them up for review when it is done.
+   * Without it the tickets are read and filed exactly the same way, and simply
+   * wait in their date's batch until someone asks for them — which is what
+   * "Review later" on a phone does with a photo taken beside a truck.
    */
   async function addToQueue(
     entries: Entry[],
     kind: SourceKind,
     target: QueueItem | null = null,
+    open = true,
   ) {
     const start = queue.length;
     const added: QueueItem[] = [];
@@ -892,6 +899,7 @@ export default function LoadDesk() {
           file: entry.name,
           percent: batchPercent(index, entries.length, fraction),
           label,
+          quiet: !open,
         });
       show(0, 'Starting');
       try {
@@ -1040,8 +1048,11 @@ export default function LoadDesk() {
         new Set(
           grouped.map((item) => item.invoice.invoice_number.trim().toLowerCase()),
         ).size;
-      const summary =
-        invoices > 1
+      const summary = !open
+        ? t('{tickets} filed to check later. Open the batch below when you are ready.', {
+            tickets: plural(added.length, 'ticket'),
+          })
+        : invoices > 1
           ? t('{tickets} ready for review on {invoices}, one per ticket date.', {
               tickets: plural(added.length, 'ticket'),
               invoices: plural(invoices, 'invoice'),
@@ -1053,8 +1064,11 @@ export default function LoadDesk() {
       });
     }
     setQueue((current) => [...current, ...grouped]);
-    setActiveIndex(start);
     setSaveStatus(null);
+    // Filed either way — they are in their date's batch already, marked as
+    // nobody having checked them. This is only whether to ask about them now.
+    if (!open) return;
+    setActiveIndex(start);
     requestAnimationFrame(() =>
       reviewPanel.current?.scrollIntoView({
         behavior: 'smooth',
@@ -1079,13 +1093,13 @@ export default function LoadDesk() {
     setAddingTo(null);
   }
 
-  async function extractPending() {
+  async function extractPending(open = true) {
     if (busy || !pending.length) return;
     setBusy(true);
     const entries = pending.map((file) => ({ blob: file, name: file.name }));
     setPending([]);
     if (fileInput.current) fileInput.current.value = '';
-    await addToQueue(entries, 'upload');
+    await addToQueue(entries, 'upload', null, open);
   }
 
   function chooseCustomer(value: string) {
@@ -2044,14 +2058,22 @@ export default function LoadDesk() {
    * Reading a ticket, over the whole screen on a phone. It is the only thing
    * happening, it takes a few seconds, and a bar tucked inside a card halfway
    * down a page reads as though the app has simply stopped.
+   *
+   * Unless it was sent off to the side by "Review later", which is the whole
+   * point of that button: then it is a line along the bottom, and the page
+   * stays where it was — ready for the next photograph.
    */
   const phoneExtracting =
     isPhone && extraction ? (
-      <output className="ld-extracting" aria-live="polite">
+      <output
+        className="ld-extracting"
+        data-quiet={extraction.quiet || undefined}
+        aria-live="polite"
+      >
         <Progress value={extraction.percent} className="ld-progress">
           <div className="ld-progress-head">
             <ProgressLabel className="ld-progress-label">
-              {t('Reading the ticket')}
+              {extraction.quiet ? t('Reading it off to the side') : t('Reading the ticket')}
             </ProgressLabel>
             <ProgressValue className="ld-progress-value" />
           </div>
@@ -2315,6 +2337,20 @@ export default function LoadDesk() {
                 {t('Extract tickets')}
                 <ChevronRight data-icon="inline-end" />
               </Button>
+              {/* Beside a truck there is another ticket to photograph, not
+                  thirty boxes to check. This reads the picture and files it in
+                  its date's batch without asking anything; the batch below
+                  says how many are waiting, and opens them when there is time. */}
+              {isPhone ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => void extractPending(false)}
+                  disabled={busy || !pending.length}
+                >
+                  <Clock data-icon="inline-start" />
+                  {t('Review later')}
+                </Button>
+              ) : null}
             </div>
             {addingTo ? null : extractionProgress}
             <p
@@ -2383,6 +2419,22 @@ export default function LoadDesk() {
                       ? ` · ${t('{count} to check', { count: batch.waiting })}`
                       : ` · ${t('all checked')}`}
                   </span>
+                  {/* What "Review later" is later. The first ticket nobody has
+                      checked opens with the rest of its invoice behind it, the
+                      same as Edit on any one of them. */}
+                  {batch.waiting ? (
+                    <Button
+                      variant="secondary"
+                      size="xs"
+                      onClick={() => {
+                        const first = batch.items.find(needsReview);
+                        if (first) editSaved(first);
+                      }}
+                    >
+                      <Pencil />
+                      {t('Review batch')}
+                    </Button>
+                  ) : null}
                 </div>
               <ul className="ld-records">
                 {batch.items.map((record) => {
