@@ -1623,10 +1623,27 @@ svg.lucide {
   html {
     background: var(--ui-surface-2);
   }
-  html:has(.hm-stats) {
+  html[data-page='home'] {
     background: color-mix(in srgb, var(--ui-accent) 52%, #ffffff);
   }
   body {
     background: var(--ui-surface-2);
   }
+}
+
+/* The ?diag=1 read-out. Sits over everything, and is never rendered without it. */
+.shell-diagnostics {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 999;
+  margin: 0;
+  padding: 10px 12px;
+  background: #101828;
+  color: #d1fadf;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }

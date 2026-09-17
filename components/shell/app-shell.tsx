@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -25,8 +25,11 @@ import { useT } from '@/lib/i18n/use-t';
 import { companyInitials } from '@/lib/load-desk/business';
 import { shellConfig } from '@/lib/shell-config';
 
-
-function ShellNavigation({ initialAccount }: { initialAccount: ShellAccount | null }) {
+function ShellNavigation({
+  initialAccount,
+}: {
+  initialAccount: ShellAccount | null;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
@@ -51,9 +54,7 @@ function ShellNavigation({ initialAccount }: { initialAccount: ShellAccount | nu
       </SidebarHeader>
       <SidebarContent>
         <div className="client-card">
-          <span className="client-avatar">
-            {companyInitials(companyName)}
-          </span>
+          <span className="client-avatar">{companyInitials(companyName)}</span>
           <span className="client-card-copy">
             <strong title={companyName}>{companyName}</strong>
           </span>
@@ -80,6 +81,41 @@ function ShellNavigation({ initialAccount }: { initialAccount: ShellAccount | nu
       </SidebarFooter>
     </Sidebar>
   );
+}
+
+/**
+ * A read-out of what the phone is actually doing, for when a screenshot cannot
+ * tell a browser tab from a home-screen app. Only ever rendered with ?diag=1 on
+ * the address, so it costs nothing the rest of the time.
+ */
+function Diagnostics() {
+  const panel = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    const node = panel.current;
+    if (!node || !new URLSearchParams(window.location.search).has('diag'))
+      return;
+    // After a frame, so the colours reported are the settled ones rather than
+    // whatever was on the element before the shell had finished its own work.
+    const frame = requestAnimationFrame(() => {
+      const probe = document.createElement('div');
+      probe.style.cssText =
+        'position:fixed;top:0;height:env(safe-area-inset-top)';
+      document.body.appendChild(probe);
+      const inset = Math.round(probe.getBoundingClientRect().height);
+      probe.remove();
+      node.textContent = [
+        `standalone (display-mode): ${window.matchMedia('(display-mode: standalone)').matches}`,
+        `standalone (navigator): ${String((navigator as { standalone?: boolean }).standalone)}`,
+        `safe-area-inset-top: ${inset}px`,
+        `theme-color: ${document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content ?? 'none'}`,
+        `html background: ${getComputedStyle(document.documentElement).backgroundColor}`,
+        `viewport: ${window.innerWidth} x ${window.innerHeight}`,
+      ].join('\n');
+      node.hidden = false;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return <pre ref={panel} className="shell-diagnostics" hidden />;
 }
 
 /**
@@ -158,19 +194,31 @@ export default function AppShell({
     // The mix is done here rather than in the stylesheet: a browser serialises
     // color-mix() as color(srgb …), and theme-color is read by a parser that
     // predates it. Plain rgb() is understood everywhere.
-    const [red = 0, green = 0, blue = 0] = (measured.match(/[\d.]+/g) ?? []).map(Number);
-    const onWhite = (channel: number) => Math.round(channel * 0.52 + 255 * 0.48);
+    const [red = 0, green = 0, blue = 0] = (
+      measured.match(/[\d.]+/g) ?? []
+    ).map(Number);
+    const onWhite = (channel: number) =>
+      Math.round(channel * 0.52 + 255 * 0.48);
     const colour =
       pathname === '/'
         ? `rgb(${onWhite(red)}, ${onWhite(green)}, ${onWhite(blue)})`
         : measured;
-    let meta = document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    let meta = document.head.querySelector<HTMLMetaElement>(
+      'meta[name="theme-color"]',
+    );
     if (!meta) {
       meta = document.createElement('meta');
       meta.name = 'theme-color';
       document.head.appendChild(meta);
     }
     meta.content = colour;
+    // And the page itself is named on the root element. The strip behind the
+    // clock takes its colour from the root's background, and keying that off
+    // the page rather than off something the page renders means it is right on
+    // the first paint — :has(.hm-stats) only became true once the records had
+    // loaded, so the strip spent the first moment grey and Safari had already
+    // decided by then.
+    document.documentElement.dataset.page = pathname === '/' ? 'home' : 'inner';
   }, [pathname]);
 
   // Design tokens derive their accent tints from --primary on the root element.
@@ -191,7 +239,8 @@ export default function AppShell({
   // is set on that ring alone (it has no children), so moving the mouse never
   // restyles a block's contents. Mouse and trackpad only; one update per frame.
   useEffect(() => {
-    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+      return;
     const ring = document.createElement('div');
     ring.className = 'panel-ring';
     ring.setAttribute('aria-hidden', 'true');
@@ -209,7 +258,9 @@ export default function AppShell({
       const event = latest;
       const target = event?.target;
       const block =
-        event && target instanceof Element ? target.closest<HTMLElement>('.ld-panel') : null;
+        event && target instanceof Element
+          ? target.closest<HTMLElement>('.ld-panel')
+          : null;
       if (!event || !block) return hide();
       const box = block.getBoundingClientRect();
       if (block !== current) {
@@ -260,6 +311,7 @@ export default function AppShell({
         }
       >
         <div className="workspace-backdrop" aria-hidden="true" />
+        <Diagnostics />
         <a className="skip-link" href="#workspace-content">
           {t('Skip to content')}
         </a>
