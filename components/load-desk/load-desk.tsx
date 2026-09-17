@@ -1705,7 +1705,7 @@ export default function LoadDesk() {
   const renderFields = (defs: FieldDef[], under?: (def: FieldDef) => ReactNode) =>
     defs.flatMap((def) => {
       const field = renderField(def, under?.(def));
-      if (!def.group) return field ? [field] : [];
+      if (!isPhone || !def.group) return field ? [field] : [];
       return [
         <p key={`run-${def.group}`} className="ld-run">
           {t(def.group)}
@@ -2202,6 +2202,142 @@ export default function LoadDesk() {
     return () => window.removeEventListener('beforeunload', warn);
   }, [unsavedEdits]);
 
+  /**
+   * The way round the other tickets. On a desk it heads the panel, as it
+   * always has; on a phone it goes with what scrolls, because it is for
+   * reaching the next ticket rather than for checking this one.
+   */
+  const queueRow = (
+    <>
+          <div className="ld-review-head">
+            <div>
+              <p className="ld-step">{t('02 · Review')}</p>
+              <h2 id="ld-review-title">
+                {t('Ticket {index} of {total}', { index: activeIndex + 1, total: queue.length })}
+              </h2>
+            </div>
+            <nav className="ld-queue" aria-label={t('Ticket queue')}>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t('Previous ticket')}
+                disabled={activeIndex <= 0}
+                onClick={() => setActiveIndex(activeIndex - 1)}
+              >
+                <ChevronLeft />
+              </Button>
+              {queue.map((item, index) => {
+                const changed = hasChanges(item);
+                const saved = item.saved_record_id !== null && !changed;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="ld-queue-tab"
+                    aria-current={index === activeIndex ? 'true' : undefined}
+                    data-saved={saved}
+                    data-changed={changed}
+                    aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${saved ? `, ${t('saved')}` : changed ? `, ${t('unsaved changes')}` : ''}`}
+                    onClick={() => setActiveIndex(index)}
+                  >
+                    {saved ? <Check aria-hidden="true" /> : index + 1}
+                  </button>
+                );
+              })}
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t('Next ticket')}
+                disabled={activeIndex >= queue.length - 1}
+                onClick={() => setActiveIndex(activeIndex + 1)}
+              >
+                <ChevronRight />
+              </Button>
+              <span className="ld-queue-count">
+                {t('{saved} of {total} saved', { saved: savedInQueue, total: queue.length })}
+              </span>
+              {savedInQueue === queue.length && !unsavedEdits ? (
+                <Button variant="secondary" size="sm" onClick={clearQueue}>
+                  {t('Clear queue')}
+                </Button>
+              ) : null}
+            </nav>
+          </div>
+
+          <dl className="ld-summary">
+            <div>
+              <dt>{t('Ticket')}</dt>
+              <dd>{ticket.ticket_number ?? t('Not found')}</dd>
+            </div>
+            <div>
+              <dt>{t('Customer')}</dt>
+              <dd>{ticket.customer_name ?? t('Not found')}</dd>
+            </div>
+            <div>
+              <dt>{t('Net tons')}</dt>
+              <dd>{tons ? t('{tons} Tons', { tons }) : t('Not found')}</dd>
+            </div>
+            <div>
+              <dt>{t('Status')}</dt>
+              <dd>
+                {activeSaved
+                  ? activeChanged
+                    ? t('Unsaved changes')
+                    : t('Saved as record {id}', { id: active.saved_record_id ?? '' })
+                  : issues.length
+                    ? t('To review: {items}', { items: plural(issues.length, 'item') })
+                    : t('Ready to save')}
+              </dd>
+            </div>
+          </dl>
+    </>
+  );
+
+  /**
+   * What the ticket still needs, or that it needs nothing. The phone keeps it
+   * in the block at the top of the sheet; the desk keeps it at the head of the
+   * form, where it has always been.
+   */
+  const checkRow = (
+          <div className="ld-check-row">
+            <div
+              className="ld-notice"
+              data-tone={issues.length ? 'warning' : 'good'}
+              aria-live="polite"
+            >
+              {issues.length ? (
+                <>
+                  <strong>{t('Check before saving')}</strong>
+                  <ul>
+                    {issues.map((issue) => (
+                      <li key={issue}>{t(issue)}</li>
+                    ))}
+                  </ul>
+                </>
+              ) : isPhone ? (
+                <>
+                  <Check aria-hidden="true" />
+                  {t('All checks pass')}
+                </>
+              ) : (
+                t('All checks pass.')
+              )}
+            </div>
+            {/* And a tap away from every step, rather than a scroll to
+                the bottom of the form. */}
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="ld-view-ticket"
+              onClick={() => setViewingTicket(true)}
+            >
+              <FileSearch data-icon="inline-start" />
+              {t('View ticket')}
+            </Button>
+          </div>
+  );
+
   return (
     <>
       {phoneExtracting}
@@ -2557,215 +2693,109 @@ export default function LoadDesk() {
                 that holds at the top of the sheet while the fields scroll
                 under it. The queue of other tickets is not part of it: it is
                 for getting to the next ticket, not for checking this one. */}
-            <div className="ld-review-sticky">
-            <div className="ld-mobile-head">
-              <div className="ld-mobile-head-top">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setActiveIndex(-1)}
-                >
-                  <ChevronLeft data-icon="inline-start" />
-                  {t('Tickets')}
-                </Button>
-                <strong>{t('Review')}</strong>
-              </div>
-              <div className="ld-mobile-head-row">
-                <strong>
-                  {t('Ticket {index} of {total}', {
-                    index: activeIndex + 1,
-                    total: queue.length,
-                  })}
-                </strong>
-                <span
-                  className="ld-chip"
-                  data-tone={
-                    activeChanged
-                      ? 'warning'
-                      : activeSaved && !activeUnchecked
-                        ? 'good'
-                        : undefined
-                  }
-                >
-                  {activeChanged ? (
-                    t('Unsaved')
-                  ) : activeSaved && !activeUnchecked ? (
-                    <>
-                      <Check aria-hidden="true" />
-                      {t('Saved')}
-                    </>
-                  ) : (
-                    t('To check')
-                  )}
-                </span>
-                {savedInQueue === queue.length && !unsavedEdits ? (
+            {/* On a phone everything the reviewer keeps referring to is one
+                block that does not move, with the fields scrolling under it.
+                A desk has room for the ticket and its photograph at once and
+                keeps the review it always had. */}
+            {isPhone ? (
+              <div className="ld-review-sticky">
+              <div className="ld-mobile-head">
+                <div className="ld-mobile-head-top">
                   <Button
                     type="button"
                     variant="ghost"
-                    size="icon-sm"
-                    aria-label={t('Clear queue')}
-                    title={t('Clear queue')}
-                    onClick={clearQueue}
+                    size="sm"
+                    onClick={() => setActiveIndex(-1)}
                   >
-                    <X />
+                    <ChevronLeft data-icon="inline-start" />
+                    {t('Tickets')}
                   </Button>
-                ) : null}
-              </div>
-              <p className="ld-mobile-step">
-                {t('Step {number} of {total}', {
-                  number: atStep + 1,
-                  total: STEPS.length,
-                })}{' '}
-                · {t(STEPS[atStep])}
-              </p>
-              <span className="ld-steps-track" aria-hidden="true">
-                {STEPS.map((name, index) => (
-                  <i key={name} data-done={index <= atStep || undefined} />
-                ))}
-              </span>
-              </div>
-
-              {/* The picture, where the checking starts: a stamp of it here,
-                  and the whole of it over the screen when it is tapped. Laid
-                  out at full width in the form it put a screen between one
-                  field and the next. */}
-              <button
-                type="button"
-                className="ld-thumb"
-                onClick={() => setViewingTicket(true)}
-              >
-                <span className="ld-thumb-shot">
-                  <SourcePreview item={active} />
-                </span>
-                <span className="ld-thumb-copy">
-                  <strong>{t('Original ticket')}</strong>
-                  <small>
-                    {active.source.file_name} · {fileSize(active.source.size)}
-                  </small>
-                </span>
-                <FileSearch aria-hidden="true" />
-              </button>
-
-              <div className="ld-check-row">
-                <div
-                  className="ld-notice"
-                  data-tone={issues.length ? 'warning' : 'good'}
-                  aria-live="polite"
-                >
-                  {issues.length ? (
-                    <>
-                      <strong>{t('Check before saving')}</strong>
-                      <ul>
-                        {issues.map((issue) => (
-                          <li key={issue}>{t(issue)}</li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    <>
-                      <Check aria-hidden="true" />
-                      {t('All checks pass')}
-                    </>
-                  )}
+                  <strong>{t('Review')}</strong>
                 </div>
-                {/* And a tap away from every step, rather than a scroll to
-                    the bottom of the form. */}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="ld-view-ticket"
-                  onClick={() => setViewingTicket(true)}
-                >
-                  <FileSearch data-icon="inline-start" />
-                  {t('View ticket')}
-                </Button>
-              </div>
-            </div>
-
-            <div className="ld-review-body">
-              <div className="ld-review-head">
-                <div>
-                  <p className="ld-step">{t('02 · Review')}</p>
-                  <h2 id="ld-review-title">
-                    {t('Ticket {index} of {total}', { index: activeIndex + 1, total: queue.length })}
-                  </h2>
-                </div>
-                <nav className="ld-queue" aria-label={t('Ticket queue')}>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t('Previous ticket')}
-                    disabled={activeIndex <= 0}
-                    onClick={() => setActiveIndex(activeIndex - 1)}
+                <div className="ld-mobile-head-row">
+                  <strong>
+                    {t('Ticket {index} of {total}', {
+                      index: activeIndex + 1,
+                      total: queue.length,
+                    })}
+                  </strong>
+                  <span
+                    className="ld-chip"
+                    data-tone={
+                      activeChanged
+                        ? 'warning'
+                        : activeSaved && !activeUnchecked
+                          ? 'good'
+                          : undefined
+                    }
                   >
-                    <ChevronLeft />
-                  </Button>
-                  {queue.map((item, index) => {
-                    const changed = hasChanges(item);
-                    const saved = item.saved_record_id !== null && !changed;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="ld-queue-tab"
-                        aria-current={index === activeIndex ? 'true' : undefined}
-                        data-saved={saved}
-                        data-changed={changed}
-                        aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${saved ? `, ${t('saved')}` : changed ? `, ${t('unsaved changes')}` : ''}`}
-                        onClick={() => setActiveIndex(index)}
-                      >
-                        {saved ? <Check aria-hidden="true" /> : index + 1}
-                      </button>
-                    );
-                  })}
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={t('Next ticket')}
-                    disabled={activeIndex >= queue.length - 1}
-                    onClick={() => setActiveIndex(activeIndex + 1)}
-                  >
-                    <ChevronRight />
-                  </Button>
-                  <span className="ld-queue-count">
-                    {t('{saved} of {total} saved', { saved: savedInQueue, total: queue.length })}
+                    {activeChanged ? (
+                      t('Unsaved')
+                    ) : activeSaved && !activeUnchecked ? (
+                      <>
+                        <Check aria-hidden="true" />
+                        {t('Saved')}
+                      </>
+                    ) : (
+                      t('To check')
+                    )}
                   </span>
                   {savedInQueue === queue.length && !unsavedEdits ? (
-                    <Button variant="secondary" size="sm" onClick={clearQueue}>
-                      {t('Clear queue')}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t('Clear queue')}
+                      title={t('Clear queue')}
+                      onClick={clearQueue}
+                    >
+                      <X />
                     </Button>
                   ) : null}
-                </nav>
-              </div>
+                </div>
+                <p className="ld-mobile-step">
+                  {t('Step {number} of {total}', {
+                    number: atStep + 1,
+                    total: STEPS.length,
+                  })}{' '}
+                  · {t(STEPS[atStep])}
+                </p>
+                <span className="ld-steps-track" aria-hidden="true">
+                  {STEPS.map((name, index) => (
+                    <i key={name} data-done={index <= atStep || undefined} />
+                  ))}
+                </span>
+                </div>
 
-              <dl className="ld-summary">
-                <div>
-                  <dt>{t('Ticket')}</dt>
-                  <dd>{ticket.ticket_number ?? t('Not found')}</dd>
-                </div>
-                <div>
-                  <dt>{t('Customer')}</dt>
-                  <dd>{ticket.customer_name ?? t('Not found')}</dd>
-                </div>
-                <div>
-                  <dt>{t('Net tons')}</dt>
-                  <dd>{tons ? t('{tons} Tons', { tons }) : t('Not found')}</dd>
-                </div>
-                <div>
-                  <dt>{t('Status')}</dt>
-                  <dd>
-                    {activeSaved
-                      ? activeChanged
-                        ? t('Unsaved changes')
-                        : t('Saved as record {id}', { id: active.saved_record_id ?? '' })
-                      : issues.length
-                        ? t('To review: {items}', { items: plural(issues.length, 'item') })
-                        : t('Ready to save')}
-                  </dd>
-                </div>
-              </dl>
+                {/* The picture, where the checking starts: a stamp of it here,
+                    and the whole of it over the screen when it is tapped. Laid
+                    out at full width in the form it put a screen between one
+                    field and the next. */}
+                <button
+                  type="button"
+                  className="ld-thumb"
+                  onClick={() => setViewingTicket(true)}
+                >
+                  <span className="ld-thumb-shot">
+                    <SourcePreview item={active} />
+                  </span>
+                  <span className="ld-thumb-copy">
+                    <strong>{t('Original ticket')}</strong>
+                    <small>
+                      {active.source.file_name} · {fileSize(active.source.size)}
+                    </small>
+                  </span>
+                  <FileSearch aria-hidden="true" />
+                </button>
+
+                {checkRow}
+              </div>
+            ) : null}
+
+            {isPhone ? null : queueRow}
+
+            <div className="ld-review-body">
+              {isPhone ? queueRow : null}
               <form
                 className="ld-form"
                 onSubmit={(event) => void saveActive(event)}
@@ -2800,15 +2830,21 @@ export default function LoadDesk() {
                     </details>
                   </div>
                 ) : null}
-                <fieldset className="ld-fieldset" disabled={busy} data-phone-step={atStep}>
-                  <details className="ld-section ld-collapsible" data-step="0" open>
+                {isPhone ? null : checkRow}
+
+                <fieldset
+                  className="ld-fieldset"
+                  disabled={busy}
+                  data-phone-step={isPhone ? atStep : undefined}
+                >
+                  <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
                     {sectionSummary('Ticket', ticketDetail)}
                     <div className="ld-fields">
                       {renderFields(TICKET_FIELDS)}
                     </div>
                   </details>
 
-                  <details className="ld-section ld-collapsible" data-step="1" open>
+                  <details className="ld-section ld-collapsible" data-step="1" open={isPhone || undefined}>
                     {sectionSummary('Customer and Job', jobDetail)}
                     <div className="ld-fields">
                       {renderFields(JOB_FIELDS, (def) =>
@@ -2817,7 +2853,7 @@ export default function LoadDesk() {
                     </div>
                   </details>
 
-                  <details className="ld-section ld-collapsible" data-step="2" open>
+                  <details className="ld-section ld-collapsible" data-step="2" open={isPhone || undefined}>
                     {sectionSummary(
                       'Weight and Hauling',
                       weightDetail,
@@ -3243,7 +3279,7 @@ export default function LoadDesk() {
                     </Button>
                     <Button
                       type="submit"
-                      data-phone-hidden
+                      data-phone-hidden={isPhone || undefined}
                       disabled={
                         busy ||
                         (activeSaved && !batchChanged.length && !activeUnchecked)
@@ -3300,6 +3336,19 @@ export default function LoadDesk() {
                   )}
                 </div>
               </form>
+
+              {isPhone ? null : (
+                <aside className="ld-aside" aria-label={t('Source ticket')}>
+                  <div>
+                    <h3>{t('Original')}</h3>
+                    <SourcePreview item={active} />
+                    <p className="ld-aside-note">
+                      {active.source.file_name} · {fileSize(active.source.size)} ·
+                      SHA-256 <code>{active.source.sha256.slice(0, 12)}</code>
+                    </p>
+                  </div>
+                </aside>
+              )}
             </div>
           </section>
         ) : null}

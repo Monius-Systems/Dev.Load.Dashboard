@@ -1284,421 +1284,412 @@ details[open] > .ld-section-summary .ld-section-chevron {
 /* Four screens instead of one long form. Someone standing beside a truck is
    asked one thing at a time: what is on the ticket, who it was for, what it
    weighed, and what to bill — rather than thirty boxes at once. */
-/* ============================= reviewing a ticket, as a phone task flow */
-/* Four screens instead of one long form — and the same four on a desk.
+/* ======================================== reviewing a ticket on a phone */
+/* Four screens instead of one long form, on a phone and nowhere else. A desk
+   has the room for the whole ticket at once — its sections open, the
+   photograph beside them — and keeps the review it always had. A phone has one
+   hand and one question at a time.
  *
- * Checking a ticket is not desk work that a phone has to make do with: it is
- * one hand, one question at a time, the photograph beside the answer. So the
- * review is that flow at every width, and a wide screen gets it at the size it
- * was drawn for, standing in the middle of the page — a workspace opened over
- * the dashboard rather than another page of it.
- *
- * What differs by screen is only where the two bars are anchored, which is at
- * the end of this file. */
-.ld-fieldset[data-phone-step] > [data-step] {
-  display: none;
-}
-.ld-fieldset[data-phone-step='0'] > [data-step='0'],
-.ld-fieldset[data-phone-step='1'] > [data-step='1'],
-.ld-fieldset[data-phone-step='2'] > [data-step='2'],
-.ld-fieldset[data-phone-step='3'] > [data-step='3'] {
-  display: block;
-}
-/* The step is named above the fields, so the heading that opened and closed
-   each section has nothing left to do. */
-.ld-fieldset[data-phone-step] > [data-step] > summary {
-  display: none;
-}
-/* The review is the page on a phone, not a card on it: the sheet is already
-   a card, and one inside another is a border and a shadow around every field
-   for nothing. The sheet's own margin is the only inset the fields need —
-   the form's would put them 36px from the edge of a 390px screen. */
-.ld-review {
-  padding: 0;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
-  /* Not hidden: the desk panel clips its corners with it, and a clipping box
-     is a scrolling box — which the head above would then stick to instead of
-     to the page, which is to say not at all. The head and the foot carry the
-     corners themselves. */
-  overflow: visible;
-}
-.ld-review .ld-form,
-.ld-review .ld-review-head {
-  padding: 0;
-}
-/* One step is on the screen at a time, so the rule and the space that
-   separated it from the step above have nothing to separate it from. */
-.ld-fieldset[data-phone-step] > [data-step] {
-  margin-top: 0;
-  padding-top: 0;
-  border-top: 0;
-}
-/* Which ticket, how it stands, and how far through it you are — kept at the
-   top of the screen while the fields move under it. */
-.ld-mobile-head-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-2);
-}
-.ld-mobile-head-row > strong {
-  margin-right: auto;
-  font-size: 20px;
-  font-weight: var(--type-semibold);
-  letter-spacing: -0.01em;
-}
-/* The overflow sits on the line the title is on, not in a box of its own. */
-.ld-mobile-head-row [data-slot='button'] {
-  margin-right: calc(-1 * var(--ui-space-2));
-  color: var(--ui-text-3);
-}
-/* The chip on the head line carries a tick, so it is a row and not a word,
-   and the untoned one — nobody has checked this yet — reads as quiet rather
-   than as a warning. */
-.ld-mobile-head-row .ld-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  align-self: center;
-  padding: 4px 10px;
-  background: var(--ui-fill);
-  font-size: var(--type-xs);
-  color: var(--ui-text-2);
-}
-.ld-mobile-head-row .ld-chip[data-tone='good'] {
-  background: var(--ui-success-soft);
-  color: var(--ui-success);
-}
-.ld-mobile-head-row .ld-chip[data-tone='warning'] {
-  background: var(--ui-warning-soft);
-  color: var(--ui-warning);
-}
-.ld-mobile-head-row .ld-chip svg {
-  width: 13px;
-  height: 13px;
-}
-.ld-mobile-step {
-  font-size: 15px;
-  font-weight: var(--type-medium);
-  color: var(--ui-text-3);
-}
-/* The step bar the form used to carry is in the head now. */
-.ld-steps {
-  display: none;
-}
-.ld-steps-track {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  gap: 4px;
-}
-.ld-steps-track i {
-  height: 4px;
-  border-radius: 999px;
-  background: var(--ui-fill-strong);
-}
-.ld-steps-track i[data-done] {
-  background: var(--ui-accent);
-}
-/* Back and on, across the bottom where the thumb already is, and fixed there
-   rather than scrolled to: the way out of a step should not be something to
-   go looking for. Above the bar along the bottom, clear of the home
-   indicator, and the sheet keeps room for it (see .page-sheet in home.css). */
-.ld-step-nav button {
-  min-height: 50px;
-  border-radius: var(--ui-radius-md);
-  font-size: var(--type-base);
-}
-/* While a finger is carrying the page sideways, the page is transformed and
-   anything fixed inside it is fixed to the page rather than to the screen —
-   which would send this to the bottom of a very tall box for the length of
-   the gesture. It steps out instead, and is back before the finger is off. */
-html[data-swiping] .ld-step-nav {
-  visibility: hidden;
-}
-/* Fields a thumb can hit, and text a phone will not zoom into on focus. */
-.ld-review .ld-field {
-  gap: 6px;
-}
-/* Two to a line, and the long ones across both: a time, a code and a weight
-   are short enough to sit beside each other even at 390px, and a step that
-   fits on one screen is a step you can check against the picture without
-   scrolling. Below 460px every form drops to one column; the review asks for
-   its two back. */
-.ld-review .ld-fields {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ui-space-4);
-}
-.ld-review .ld-field[data-span='2'] {
-  grid-column: 1 / -1;
-}
-/* A column is a column: nothing in one may reach into the next, and nothing
-   may reach past the edge of the sheet. Safari sizes a native date or time
-   control to the format it is showing and will run it past the box it was
-   given — which is what put Time in over Time out, and the date under the
-   right edge. */
-.ld-review .ld-field,
-.ld-review .ld-field > * {
-  min-width: 0;
-  max-width: 100%;
-}
-.ld-review .ld-field :is(input, select, textarea) {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-}
-/* And the control's own inner box, which is the part that actually overflows:
-   without this Safari lays the fields out to its own idea of the format's
-   width whatever the element around them is told. */
-.ld-review .ld-field :is(input[type='date'], input[type='time']) {
-  display: block;
-  -webkit-appearance: none;
-  appearance: none;
-}
-/* Too narrow for two is one. A field that has to be reached for is worse than
-   a field further down the page. */
-@media (max-width: 380px) {
-  .ld-review .ld-fields {
-    grid-template-columns: minmax(0, 1fr);
+ * Everything in here is the phone's: the sheet, the head that does not move,
+ * the scrolling fields, the runs they are grouped in, the picture, and Back
+ * and Next at the foot of each step. */
+@media (max-width: 767px) {
+  /* Four screens instead of one long form — and the same four on a desk.
+   *
+   * Checking a ticket is not desk work that a phone has to make do with: it is
+   * one hand, one question at a time, the photograph beside the answer. So the
+   * review is that flow at every width, and a wide screen gets it at the size it
+   * was drawn for, standing in the middle of the page — a workspace opened over
+   * the dashboard rather than another page of it.
+   *
+   * What differs by screen is only where the two bars are anchored, which is at
+   * the end of this file. */
+  .ld-fieldset[data-phone-step] > [data-step] {
+    display: none;
   }
-}
-.ld-review .ld-field > label,
-.ld-review .ld-field > span {
-  font-size: var(--type-base);
-  font-weight: var(--type-medium);
-  color: var(--ui-text-2);
-}
-.ld-review .ld-field :is(input, select, textarea),
-.ld-review .ld-field [data-slot='input'],
-.ld-review .ld-field [data-slot='select-trigger'] {
-  min-height: 50px;
-  border-radius: 15px;
-  font-size: 16px;
-}
-/* The short heading a run of fields opens with. Spacing and a quiet line,
-   rather than a card around every three boxes. */
-.ld-run {
-  grid-column: 1 / -1;
-  margin-top: var(--ui-space-2);
-  font-size: var(--type-xs);
-  font-weight: var(--type-semibold);
-  letter-spacing: var(--type-tracking-caps);
-  text-transform: uppercase;
-  color: var(--ui-text-3);
-}
-.ld-run:first-child {
-  margin-top: 0;
-}
-/* The check on the ticket and the way to the picture, on one line. */
-.ld-check-row {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-2);
-  margin-top: var(--ui-space-3);
-}
-.ld-check-row .ld-notice {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  padding: var(--ui-space-2) var(--ui-space-3);
-  font-size: var(--type-sm);
-}
-/* Passing is one line with a tick on it; anything to fix keeps the shape a
-   list needs. */
-.ld-check-row .ld-notice[data-tone='good'] {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-2);
-  min-height: 46px;
-}
-.ld-check-row .ld-notice[data-tone='good'] svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-/* Beside a list, the way to the picture sits at its top rather than its
-   middle. */
-.ld-check-row:has(.ld-notice[data-tone='warning']) {
-  align-items: flex-start;
-}
-.ld-check-row .ld-view-ticket {
-  flex-shrink: 0;
-  min-height: 46px;
-}
-/* A stamp of the ticket, and the whole of it a tap away. */
-.ld-thumb {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-3);
-  width: 100%;
-  padding: var(--ui-space-3);
-  border: 1px solid var(--ui-border);
-  border-radius: var(--ui-radius-md);
-  background: var(--ui-surface);
-  text-align: left;
-  cursor: pointer;
-}
-.ld-thumb-shot {
-  display: block;
-  overflow: hidden;
-  flex-shrink: 0;
-  width: 54px;
-  height: 54px;
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-fill);
-}
-.ld-thumb-shot .ld-preview {
-  width: 54px;
-  height: 54px;
-  min-height: 0;
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-}
-.ld-thumb-shot :is(img, iframe) {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  pointer-events: none;
-}
-.ld-thumb-shot .ld-preview-empty {
-  padding: 4px;
-  font-size: 9px;
-  line-height: 1.2;
-}
-.ld-thumb-copy {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  margin-right: auto;
-}
-.ld-thumb-copy strong {
-  font-size: var(--type-sm);
-  font-weight: var(--type-semibold);
-}
-.ld-thumb-copy small {
-  overflow: hidden;
-  font-size: var(--type-xs);
-  color: var(--ui-text-3);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ld-thumb > svg {
-  width: 18px;
-  height: 18px;
-  flex-shrink: 0;
-  color: var(--ui-text-3);
-}
-/* The heading and the four-cell summary the review used to open with are the
-   flow's head line now: which ticket, how it stands, which step. The column
-   that stood beside the form has gone with the picture that was in it. */
-.ld-review-head > div:first-child,
-.ld-summary {
-  display: none;
-}
-.ld-review-head {
-  padding-top: var(--ui-space-3);
-}
-.ld-review-body {
-  grid-template-columns: minmax(0, 1fr);
-  padding-top: var(--ui-space-4);
-}
-/* The card that said whether the ticket was saved says it on the head line
-   now, and the save is at the foot of the flow; what is left of the card is
-   the way to the invoice. */
-.ld-save > div:first-child,
-.ld-actions [data-phone-hidden] {
-  display: none;
-}
-/* And the row of tickets keeps the way between them, without repeating the
-   count or the clearing that the head line carries. */
-.ld-queue-count,
-.ld-queue > [data-slot='button']:last-child {
-  display: none;
-}
-
-/* What the reviewer keeps referring to, held at the top of the sheet: which
-   ticket, how it stands, which step, the picture, the checks. The fields go
-   under it, and a hairline says so. */
-.ld-review-sticky {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  margin: 0 calc(-1 * var(--ui-space-5));
-  padding: 0 var(--ui-space-5) var(--ui-space-3);
-  border-bottom: 1px solid var(--ui-separator);
-  border-radius: var(--ui-radius-lg) var(--ui-radius-lg) 0 0;
-  background: var(--ui-surface-2);
-}
-/* The head of it: which ticket, how it stands, how far through it you are. */
-.ld-mobile-head {
-  display: grid;
-  gap: 6px;
-  padding-bottom: var(--ui-space-3);
-}
-/* The line above the ticket: the way out, and what this screen is. */
-.ld-mobile-head-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ui-space-2);
-  /* With the head's own gap, a clear step down to the ticket's line. */
-  margin-bottom: 18px;
-}
-.ld-mobile-head-top [data-slot='button'] {
-  margin-left: calc(-1 * var(--ui-space-2));
-  height: auto;
-  padding: 2px 6px;
-  font-size: var(--type-xs);
-  color: var(--ui-text-2);
-}
-.ld-mobile-head-top > strong {
-  font-size: var(--type-2xs);
-  font-weight: var(--type-medium);
-  letter-spacing: var(--type-tracking-caps);
-  text-transform: uppercase;
-  color: var(--ui-text-3);
-}
-
-/* Back and on, across the foot of the flow where the thumb already is. */
-.ld-step-nav {
-  display: grid;
-  grid-template-columns: 1fr 1.4fr;
-  gap: var(--ui-space-3);
-  margin-top: var(--ui-space-6);
-}
-
-
-/* While a ticket is being checked, the rest of the page steps back: the flow
-   is a task opened over the dashboard, not another panel on it. The way out is
-   the head's own way back. */
-.page-sheet:has(.ld-review) .ld-grid {
-  display: none;
-}
-
-/* ------------------------------------------ the flow, on a wide screen */
-/* The size it was drawn for, in the middle of the page, with the dashboard's
-   own ground around it. Not a drawing of a phone — a panel the width of one,
-   which is the width the work wants: one column, one question, the photograph
-   a tap away. */
-@media (min-width: 768px) {
+  .ld-fieldset[data-phone-step='0'] > [data-step='0'],
+  .ld-fieldset[data-phone-step='1'] > [data-step='1'],
+  .ld-fieldset[data-phone-step='2'] > [data-step='2'],
+  .ld-fieldset[data-phone-step='3'] > [data-step='3'] {
+    display: block;
+  }
+  /* The step is named above the fields, so the heading that opened and closed
+     each section has nothing left to do. */
+  .ld-fieldset[data-phone-step] > [data-step] > summary {
+    display: none;
+  }
+  /* The review is the page on a phone, not a card on it: the sheet is already
+     a card, and one inside another is a border and a shadow around every field
+     for nothing. The sheet's own margin is the only inset the fields need —
+     the form's would put them 36px from the edge of a 390px screen. */
   .ld-review {
-    width: min(420px, 100%);
-    margin: 0 auto;
-    padding: 0 var(--ui-space-5);
-    border-radius: var(--ui-radius-lg);
-    background: var(--ui-surface);
-    box-shadow:
-      0 1px 2px rgb(16 24 40 / 6%),
-      0 24px 60px rgb(16 24 40 / 10%);
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    /* Not hidden: the desk panel clips its corners with it, and a clipping box
+       is a scrolling box — which the head above would then stick to instead of
+       to the page, which is to say not at all. The head and the foot carry the
+       corners themselves. */
+    overflow: visible;
   }
-  /* The block bleeds to the panel's edges and carries its corners. */
+  .ld-review .ld-form,
+  .ld-review .ld-review-head {
+    padding: 0;
+  }
+  /* One step is on the screen at a time, so the rule and the space that
+     separated it from the step above have nothing to separate it from. */
+  .ld-fieldset[data-phone-step] > [data-step] {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+  /* Which ticket, how it stands, and how far through it you are — kept at the
+     top of the screen while the fields move under it. */
+  .ld-mobile-head-row {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+  }
+  .ld-mobile-head-row > strong {
+    margin-right: auto;
+    font-size: 20px;
+    font-weight: var(--type-semibold);
+    letter-spacing: -0.01em;
+  }
+  /* The overflow sits on the line the title is on, not in a box of its own. */
+  .ld-mobile-head-row [data-slot='button'] {
+    margin-right: calc(-1 * var(--ui-space-2));
+    color: var(--ui-text-3);
+  }
+  /* The chip on the head line carries a tick, so it is a row and not a word,
+     and the untoned one — nobody has checked this yet — reads as quiet rather
+     than as a warning. */
+  .ld-mobile-head-row .ld-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    align-self: center;
+    padding: 4px 10px;
+    background: var(--ui-fill);
+    font-size: var(--type-xs);
+    color: var(--ui-text-2);
+  }
+  .ld-mobile-head-row .ld-chip[data-tone='good'] {
+    background: var(--ui-success-soft);
+    color: var(--ui-success);
+  }
+  .ld-mobile-head-row .ld-chip[data-tone='warning'] {
+    background: var(--ui-warning-soft);
+    color: var(--ui-warning);
+  }
+  .ld-mobile-head-row .ld-chip svg {
+    width: 13px;
+    height: 13px;
+  }
+  .ld-mobile-step {
+    font-size: 15px;
+    font-weight: var(--type-medium);
+    color: var(--ui-text-3);
+  }
+  /* The step bar the form used to carry is in the head now. */
+  .ld-steps {
+    display: none;
+  }
+  .ld-steps-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 4px;
+  }
+  .ld-steps-track i {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--ui-fill-strong);
+  }
+  .ld-steps-track i[data-done] {
+    background: var(--ui-accent);
+  }
+  /* Back and on, across the bottom where the thumb already is, and fixed there
+     rather than scrolled to: the way out of a step should not be something to
+     go looking for. Above the bar along the bottom, clear of the home
+     indicator, and the sheet keeps room for it (see .page-sheet in home.css). */
+  .ld-step-nav button {
+    min-height: 50px;
+    border-radius: var(--ui-radius-md);
+    font-size: var(--type-base);
+  }
+  /* While a finger is carrying the page sideways, the page is transformed and
+     anything fixed inside it is fixed to the page rather than to the screen —
+     which would send this to the bottom of a very tall box for the length of
+     the gesture. It steps out instead, and is back before the finger is off. */
+  html[data-swiping] .ld-step-nav {
+    visibility: hidden;
+  }
+  /* Fields a thumb can hit, and text a phone will not zoom into on focus. */
+  .ld-review .ld-field {
+    gap: 6px;
+  }
+  /* Two to a line, and the long ones across both: a time, a code and a weight
+     are short enough to sit beside each other even at 390px, and a step that
+     fits on one screen is a step you can check against the picture without
+     scrolling. Below 460px every form drops to one column; the review asks for
+     its two back. */
+  .ld-review .ld-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ui-space-4);
+  }
+  .ld-review .ld-field[data-span='2'] {
+    grid-column: 1 / -1;
+  }
+  /* A column is a column: nothing in one may reach into the next, and nothing
+     may reach past the edge of the sheet. Safari sizes a native date or time
+     control to the format it is showing and will run it past the box it was
+     given — which is what put Time in over Time out, and the date under the
+     right edge. */
+  .ld-review .ld-field,
+  .ld-review .ld-field > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .ld-review .ld-field :is(input, select, textarea) {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* And the control's own inner box, which is the part that actually overflows:
+     without this Safari lays the fields out to its own idea of the format's
+     width whatever the element around them is told. */
+  .ld-review .ld-field :is(input[type='date'], input[type='time']) {
+    display: block;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  /* Too narrow for two is one. A field that has to be reached for is worse than
+     a field further down the page. */
+  @media (max-width: 380px) {
+    .ld-review .ld-fields {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+  .ld-review .ld-field > label,
+  .ld-review .ld-field > span {
+    font-size: var(--type-base);
+    font-weight: var(--type-medium);
+    color: var(--ui-text-2);
+  }
+  .ld-review .ld-field :is(input, select, textarea),
+  .ld-review .ld-field [data-slot='input'],
+  .ld-review .ld-field [data-slot='select-trigger'] {
+    min-height: 50px;
+    border-radius: 15px;
+    font-size: 16px;
+  }
+  /* The short heading a run of fields opens with. Spacing and a quiet line,
+     rather than a card around every three boxes. */
+  .ld-run {
+    grid-column: 1 / -1;
+    margin-top: var(--ui-space-2);
+    font-size: var(--type-xs);
+    font-weight: var(--type-semibold);
+    letter-spacing: var(--type-tracking-caps);
+    text-transform: uppercase;
+    color: var(--ui-text-3);
+  }
+  .ld-run:first-child {
+    margin-top: 0;
+  }
+  /* The check on the ticket and the way to the picture, on one line. */
+  .ld-check-row {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    margin-top: var(--ui-space-3);
+  }
+  .ld-check-row .ld-notice {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    padding: var(--ui-space-2) var(--ui-space-3);
+    font-size: var(--type-sm);
+  }
+  /* Passing is one line with a tick on it; anything to fix keeps the shape a
+     list needs. */
+  .ld-check-row .ld-notice[data-tone='good'] {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-2);
+    min-height: 46px;
+  }
+  .ld-check-row .ld-notice[data-tone='good'] svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+  }
+  /* Beside a list, the way to the picture sits at its top rather than its
+     middle. */
+  .ld-check-row:has(.ld-notice[data-tone='warning']) {
+    align-items: flex-start;
+  }
+  .ld-check-row .ld-view-ticket {
+    flex-shrink: 0;
+    min-height: 46px;
+  }
+  /* A stamp of the ticket, and the whole of it a tap away. */
+  .ld-thumb {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-3);
+    width: 100%;
+    padding: var(--ui-space-3);
+    border: 1px solid var(--ui-border);
+    border-radius: var(--ui-radius-md);
+    background: var(--ui-surface);
+    text-align: left;
+    cursor: pointer;
+  }
+  .ld-thumb-shot {
+    display: block;
+    overflow: hidden;
+    flex-shrink: 0;
+    width: 54px;
+    height: 54px;
+    border-radius: var(--ui-radius-sm);
+    background: var(--ui-fill);
+  }
+  .ld-thumb-shot .ld-preview {
+    width: 54px;
+    height: 54px;
+    min-height: 0;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .ld-thumb-shot :is(img, iframe) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+  .ld-thumb-shot .ld-preview-empty {
+    padding: 4px;
+    font-size: 9px;
+    line-height: 1.2;
+  }
+  .ld-thumb-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    margin-right: auto;
+  }
+  .ld-thumb-copy strong {
+    font-size: var(--type-sm);
+    font-weight: var(--type-semibold);
+  }
+  .ld-thumb-copy small {
+    overflow: hidden;
+    font-size: var(--type-xs);
+    color: var(--ui-text-3);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ld-thumb > svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--ui-text-3);
+  }
+  /* The heading and the four-cell summary the review used to open with are the
+     flow's head line now: which ticket, how it stands, which step. The column
+     that stood beside the form has gone with the picture that was in it. */
+  .ld-review-head > div:first-child,
+  .ld-summary {
+    display: none;
+  }
+  .ld-review-head {
+    padding-top: var(--ui-space-3);
+  }
+  .ld-review-body {
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: var(--ui-space-4);
+  }
+  /* The card that said whether the ticket was saved says it on the head line
+     now, and the save is at the foot of the flow; what is left of the card is
+     the way to the invoice. */
+  .ld-save > div:first-child,
+  .ld-actions [data-phone-hidden] {
+    display: none;
+  }
+  /* And the row of tickets keeps the way between them, without repeating the
+     count or the clearing that the head line carries. */
+  .ld-queue-count,
+  .ld-queue > [data-slot='button']:last-child {
+    display: none;
+  }
+
+  /* What the reviewer keeps referring to, held at the top of the sheet: which
+     ticket, how it stands, which step, the picture, the checks. The fields go
+     under it, and a hairline says so. */
   .ld-review-sticky {
-    background: var(--ui-surface);
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    margin: 0 calc(-1 * var(--ui-space-5));
+    padding: 0 var(--ui-space-5) var(--ui-space-3);
+    border-bottom: 1px solid var(--ui-separator);
+    border-radius: var(--ui-radius-lg) var(--ui-radius-lg) 0 0;
+    background: var(--ui-surface-2);
   }
+  /* The head of it: which ticket, how it stands, how far through it you are. */
+  .ld-mobile-head {
+    display: grid;
+    gap: 6px;
+    padding-bottom: var(--ui-space-3);
+  }
+  /* The line above the ticket: the way out, and what this screen is. */
+  .ld-mobile-head-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ui-space-2);
+    /* With the head's own gap, a clear step down to the ticket's line. */
+    margin-bottom: 18px;
+  }
+  .ld-mobile-head-top [data-slot='button'] {
+    margin-left: calc(-1 * var(--ui-space-2));
+    height: auto;
+    padding: 2px 6px;
+    font-size: var(--type-xs);
+    color: var(--ui-text-2);
+  }
+  .ld-mobile-head-top > strong {
+    font-size: var(--type-2xs);
+    font-weight: var(--type-medium);
+    letter-spacing: var(--type-tracking-caps);
+    text-transform: uppercase;
+    color: var(--ui-text-3);
+  }
+
+  /* Back and on, across the foot of the flow where the thumb already is. */
+  .ld-step-nav {
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: var(--ui-space-3);
+    margin-top: var(--ui-space-6);
+  }
+
+
+
+  /* While a ticket is being checked, the rest of the page steps back: the flow
+     is a task opened over the dashboard, not another panel on it. The way out is
+     the head's own way back. */
+  .page-sheet:has(.ld-review) .ld-grid {
+    display: none;
+  }
+
 }
+
 
 /* ----------------------------------------------- the flow, on a phone */
 @media (max-width: 767px) {
