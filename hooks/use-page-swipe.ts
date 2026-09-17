@@ -93,6 +93,8 @@ export function usePageSwipe(pages: string[], current: string) {
       from = 0,
       going: string | null = null,
       lastDx = 0,
+      /** How far down the page being left was, for a drag that is taken back. */
+      wasAt = 0,
       ghost: HTMLElement | null = null;
 
     const width = () => window.innerWidth;
@@ -131,6 +133,7 @@ export function usePageSwipe(pages: string[], current: string) {
       document.body.appendChild(copy);
       ghost = copy;
       going = next;
+      wasAt = window.scrollY;
       from = dx < 0 ? width() : -width();
       // The arriving page is being carried by the finger, so it must not also
       // play the entrance a page normally gets.
@@ -176,6 +179,9 @@ export function usePageSwipe(pages: string[], current: string) {
         const copy = ghost;
         ghost = null;
         window.setTimeout(() => {
+          // And back to where it was being read, which is not where a page
+          // that is being opened starts (see AppShell).
+          window.scrollTo(0, wasAt);
           copy?.remove();
           settle();
         }, 320);
@@ -239,27 +245,23 @@ export function usePageSwipe(pages: string[], current: string) {
         tracking = dragging = false;
         return;
       }
-      const next = destination(dx);
-      if (!next || !far) {
-        if (!calm.matches) {
-          page.animate(
-            [{ transform: page.style.transform || 'none' }, { transform: 'none' }],
-            { duration: 190, easing: EASE },
-          );
-        }
+      // Nothing was opened, so nothing changes: a drag that never reached the
+      // tenth of a screen springs back, however fast it was let go. A page
+      // change here would be the one kind that has no page to hand over to —
+      // an empty flick, and a screen that jumps.
+      if (calm.matches && far) {
+        const next = destination(dx);
         settle();
+        if (next) router.push(next);
         return;
       }
-      // Gone before it was ever opened — a flick, over and done inside the
-      // tenth of a screen. Open it now and carry it the rest of the way.
-      if (calm.matches) {
-        settle();
-        router.push(next);
-        return;
+      if (!calm.matches) {
+        page.animate(
+          [{ transform: page.style.transform || 'none' }, { transform: 'none' }],
+          { duration: 190, easing: EASE },
+        );
       }
-      open(next, dx);
-      finish(dx, true);
-      tracking = dragging = false;
+      settle();
     };
 
     // A drag the system takes away — a call arriving, a gesture of its own —

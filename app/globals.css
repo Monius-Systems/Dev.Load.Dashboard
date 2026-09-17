@@ -1723,8 +1723,32 @@ svg.lucide {
   .page-content {
     touch-action: pan-y pinch-zoom;
   }
+  /* A page arrives one quiet way on a phone, however it was opened: the whole
+     page together, lifting a little as it comes up. The staggered entrance a
+     wide screen plays — each card a beat after the one above it — reads as the
+     page being assembled in front of you on a small screen, and a phone shows
+     a page, it does not build one. */
+  .page-enter > * {
+    animation: ui-page-appear 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  /* The beats of that stagger, taken off one by one: they are set on rules of
+     their own, which this would otherwise lose to. */
+  .page-enter > *:nth-child(n) {
+    animation-delay: 0s;
+  }
+  /* Except a page being carried in by a finger, which is already moving. */
   html[data-swiping] .page-enter > * {
     animation: none;
+  }
+}
+@keyframes ui-page-appear {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

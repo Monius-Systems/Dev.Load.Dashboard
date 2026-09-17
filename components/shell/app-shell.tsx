@@ -178,6 +178,20 @@ export default function AppShell({
   );
 
   /**
+   * A page opens at its top on a phone, every time.
+   *
+   * The band a page opens on is the top of it, and arriving halfway down one —
+   * which is where the browser leaves you when the page before was scrolled, or
+   * when the same address is opened again — puts you in the middle of a sheet
+   * with no heading and nothing to say where you are. On a wider screen the
+   * browser's own behaviour is left alone.
+   */
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 767px)').matches) return;
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  /**
    * The colour behind the clock, the island and the battery.
    *
    * A browser will not let the page paint up there — it keeps the strip and
