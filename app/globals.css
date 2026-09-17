@@ -1517,12 +1517,56 @@ svg.lucide {
     background: none;
   }
   .topbar-account .profile-avatar {
-    width: 36px;
-    height: 36px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
+    font-size: var(--type-sm);
   }
   /* Its menu opens downward from the corner it hangs in. */
   .topbar-account .account-menu {
     max-width: calc(100vw - 2rem);
+  }
+}
+
+/* ==================================================== phone: the card look */
+/* A phone-shaped design language, applied at phone width only: deep rounding,
+   soft shadows instead of hairlines, filled pills for anything you choose
+   between, and a leading tile on every list row so a line of text has an
+   anchor. The palette is the product's own — this is shape and spacing. */
+@media (max-width: 767px) {
+  :root {
+    /* Rounder than the desktop scale, which is tuned for denser furniture. */
+    --ui-radius-sm: 12px;
+    --ui-radius-md: 16px;
+    --ui-radius-lg: 22px;
+    --ui-radius-xl: 26px;
+  }
+  body {
+    background: var(--ui-surface-2);
+  }
+  .ld-panel {
+    padding: var(--ui-space-5);
+    border-radius: var(--ui-radius-lg);
+    box-shadow: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 6%);
+  }
+
+  /* Anything you pick between becomes a pill, filled when it is the one. */
+  .ui-segmented {
+    padding: 4px;
+    background: var(--ui-fill);
+  }
+  .ui-segmented > button {
+    min-height: 38px;
+    border-radius: var(--ui-radius-pill);
+    font-weight: var(--type-medium);
+  }
+  .ui-segmented > button[aria-pressed='true'] {
+    background: var(--ui-surface-1);
+    box-shadow: 0 1px 3px rgb(16 24 40 / 12%);
+  }
+
+  /* Buttons get the same rounding, and a size a thumb expects. */
+  [data-slot='button'] {
+    border-radius: var(--ui-radius-md);
   }
 }

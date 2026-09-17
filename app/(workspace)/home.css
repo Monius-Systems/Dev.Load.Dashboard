@@ -543,3 +543,45 @@ button.hm-row:hover {
     flex-wrap: wrap;
   }
 }
+
+@media (max-width: 767px) {
+  /* The greeting, what to do, and the numbers read as one block at the top of
+     the page — the filled card the rest of the page hangs from. Reached with
+     :has() so it is the home page's heading and not every page's. */
+  .page-enter:has(.hm-stats) .page-heading {
+    margin: 0 0 var(--ui-space-5);
+    border-radius: var(--ui-radius-xl);
+    padding: var(--ui-space-5);
+    background: linear-gradient(
+      160deg,
+      var(--ui-accent) 0%,
+      color-mix(in srgb, var(--ui-accent) 82%, #0b1020) 100%
+    );
+    color: #fff;
+  }
+  .page-enter:has(.hm-stats) .page-heading h1,
+  .page-enter:has(.hm-stats) .page-heading .muted {
+    color: #fff;
+  }
+  .page-enter:has(.hm-stats) .page-heading .muted {
+    opacity: 0.82;
+  }
+  /* The primary action reads on the filled card: white on the accent. */
+  .page-enter:has(.hm-stats) .hm-actions > a:first-child {
+    background: #fff;
+    color: var(--ui-accent-ink);
+  }
+  .page-enter:has(.hm-stats) .hm-actions > a:last-child {
+    background: rgb(255 255 255 / 16%);
+    color: #fff;
+  }
+
+  .hm-stats {
+    gap: var(--ui-space-2);
+  }
+  .hm-stats .hm-stat {
+    border-radius: var(--ui-radius-md);
+    box-shadow: 0 1px 2px rgb(16 24 40 / 5%), 0 8px 20px rgb(16 24 40 / 7%);
+  }
+
+}
