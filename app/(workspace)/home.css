@@ -561,20 +561,12 @@ button.hm-row:hover {
     margin: 0 0 var(--ui-space-5);
     border-radius: var(--ui-radius-xl);
     padding: var(--ui-space-5);
-    /* A flat background-COLOUR under the gradient, matching its first stop.
-       Nothing on screen changes: the gradient paints over it. It is here for
-       Safari, which tints the strip behind the clock and battery from the
-       background-colour of whatever sits at the top of the page, and reads a
-       gradient — a background-IMAGE, over a transparent colour — as no colour
-       at all, falling through to the grey body. */
-    background-color: color-mix(in srgb, var(--ui-accent) 52%, #ffffff);
-    background-image: linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--ui-accent) 52%, #ffffff) 0%,
-      color-mix(in srgb, var(--ui-accent) 88%, #ffffff) 26%,
-      var(--ui-accent) 58%,
-      color-mix(in srgb, var(--ui-accent) 92%, #0b1020) 100%
-    );
+    /* One flat colour, not a gradient. It reads as a single field behind the
+       greeting, and it is a background-COLOUR rather than a background-image,
+       which is what Safari samples to tint the strip behind the clock and the
+       battery: a gradient leaves that colour transparent, so Safari fell
+       through to the grey body and left the strip white. */
+    background: var(--ui-accent);
     color: #fff;
   }
   .page-enter:has(.hm-stats) .page-heading h1,

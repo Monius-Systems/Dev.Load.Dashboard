@@ -1614,8 +1614,8 @@ svg.lucide {
    colour for that strip from the root element's background — which is why it
    has been showing --ui-surface-2, the page grey.
  *
- * So the root carries the colour the page wants up there: the head of the home
- * page's gradient on the home page, the ordinary page colour everywhere else.
+ * So the root carries the colour the page wants up there: the home page's
+ * header colour on the home page, the ordinary page colour everywhere else.
  * body keeps its own background, so only the strip and the overscroll change.
  * Once html has a background of its own it is html's, not body's, that paints
  * the canvas behind them both. */
@@ -1624,7 +1624,7 @@ svg.lucide {
     background: var(--ui-surface-2);
   }
   html[data-page='home'] {
-    background: color-mix(in srgb, var(--ui-accent) 52%, #ffffff);
+    background: var(--ui-accent);
   }
   body {
     background: var(--ui-surface-2);
@@ -1648,8 +1648,7 @@ svg.lucide {
   white-space: pre-wrap;
 }
 
-/* A band pinned behind the top of the home page, in the colour the header
-   begins with. Safari in a tab will not let the page into the strip behind the
+/* A band pinned behind the top of the home page, in the header's colour. Safari in a tab will not let the page into the strip behind the
    clock, and it ignores theme-color there — but it does take that strip's
    colour from something fixed at the top of the viewport, which is how the
    ?diag=1 panel turned it dark. This is that, in the right colour.
@@ -1666,7 +1665,7 @@ svg.lucide {
     left: 0;
     z-index: 0;
     height: 180px;
-    background: color-mix(in srgb, var(--ui-accent) 52%, #ffffff);
+    background: var(--ui-accent);
     pointer-events: none;
   }
 }

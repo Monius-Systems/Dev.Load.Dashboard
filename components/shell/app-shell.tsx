@@ -176,12 +176,15 @@ export default function AppShell({
    *
    * Added to a home screen, the page does not paint up there: iOS keeps that
    * strip and fills it with the page's theme-color, which defaults to white —
-   * the pale band above the header. Setting it to the colour the header starts
-   * with makes the strip and the header read as one field. It follows the page,
-   * so the pages with a light background keep a light strip.
+   * the pale band above the header. Setting it to the header's own colour makes
+   * the strip and the header read as one field. It follows the page, so the
+   * pages with a light background keep a light strip.
    *
    * The colour is measured from the live tokens rather than written out here,
-   * so a workspace with its own accent gets its own status bar.
+   * so a workspace with its own accent gets its own status bar. Measuring also
+   * settles the serialisation: a browser writes color-mix() out as
+   * color(srgb …), which the parser that reads theme-color predates, while a
+   * measured background always comes back as plain rgb().
    */
   useEffect(() => {
     const probe = document.createElement('div');
@@ -189,20 +192,8 @@ export default function AppShell({
       'position:absolute;width:0;height:0;opacity:0;pointer-events:none;background:' +
       (pathname === '/' ? 'var(--ui-accent)' : 'var(--ui-surface-2)');
     document.body.appendChild(probe);
-    const measured = getComputedStyle(probe).backgroundColor;
+    const colour = getComputedStyle(probe).backgroundColor;
     probe.remove();
-    // The mix is done here rather than in the stylesheet: a browser serialises
-    // color-mix() as color(srgb …), and theme-color is read by a parser that
-    // predates it. Plain rgb() is understood everywhere.
-    const [red = 0, green = 0, blue = 0] = (
-      measured.match(/[\d.]+/g) ?? []
-    ).map(Number);
-    const onWhite = (channel: number) =>
-      Math.round(channel * 0.52 + 255 * 0.48);
-    const colour =
-      pathname === '/'
-        ? `rgb(${onWhite(red)}, ${onWhite(green)}, ${onWhite(blue)})`
-        : measured;
     let meta = document.head.querySelector<HTMLMetaElement>(
       'meta[name="theme-color"]',
     );
