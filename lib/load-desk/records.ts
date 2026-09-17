@@ -158,6 +158,25 @@ export function invoiceGroups(records: SavedRecord[]): InvoiceGroup[] {
 }
 
 /**
+ * The invoice number a date's tickets open on.
+ *
+ * The next in the series when one can be worked out. When it cannot — a
+ * workspace whose only invoices so far are drafts, which is every workspace
+ * since scans began being filed on the day they were taken — a draft named for
+ * the date. Never an empty string: two dates that both came back empty keyed
+ * to the same invoice, and a day's tickets were billed on another day's.
+ */
+export function invoiceNumberForDate(
+  numbersOldestFirst: string[],
+  ticketDate: string | null,
+): string {
+  return (
+    nextInvoiceNumber(numbersOldestFirst) ??
+    `DRAFT-${ticketDate?.trim() || 'undated'}`
+  );
+}
+
+/**
  * Whether a ticket belongs on an invoice already covering `invoiceDate`.
  *
  * An invoice is one date's work. A ticket for another date does not join it,

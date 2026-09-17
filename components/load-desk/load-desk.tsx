@@ -102,6 +102,7 @@ import {
   needsReview,
   invoiceLines,
   groupByTicketDate,
+  invoiceNumberForDate,
   joinsInvoiceFor,
   nextInvoiceNumber,
   recordBatch,
@@ -993,11 +994,16 @@ export default function LoadDesk() {
       // the very first one is typed in.
       const numbers = invoiceNumbersInOrder(queue);
       const billTo = recentClientBillTo();
-      const groups = groupByTicketDate(elsewhere, (item) => item.ticket.ticket_date);
+      // A ticket already filed on its own date's invoice keeps it: fileInBatch
+      // put it there and saved it. Renumbering it here is what used to pull a
+      // day's tickets onto another day's bill.
+      const filed = elsewhere.filter((item) => item.saved_record_id !== null);
+      const unfiled = elsewhere.filter((item) => item.saved_record_id === null);
+      const groups = groupByTicketDate(unfiled, (item) => item.ticket.ticket_date);
       grouped = groups.flatMap((group) => {
         const batchId = makeId();
-        const number = nextInvoiceNumber(numbers) ?? '';
-        if (number) numbers.push(number);
+        const number = invoiceNumberForDate(numbers, group.date);
+        numbers.push(number);
         return group.items.map((item) => ({
           ...item,
           batch_id: batchId,
@@ -1009,8 +1015,11 @@ export default function LoadDesk() {
           },
         }));
       });
-      grouped = [...onTarget, ...grouped];
-      const invoices = groups.length + (onTarget.length ? 1 : 0);
+      grouped = [...onTarget, ...filed, ...grouped];
+      const invoices =
+        new Set(
+          grouped.map((item) => item.invoice.invoice_number.trim().toLowerCase()),
+        ).size;
       const summary =
         invoices > 1
           ? t('{tickets} ready for review on {invoices}, one per ticket date.', {

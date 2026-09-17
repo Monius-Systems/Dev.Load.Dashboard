@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByTicketDate, joinsInvoiceFor } from '../lib/load-desk/records.ts';
+import {
+  groupByTicketDate,
+  invoiceKey,
+  invoiceNumberForDate,
+  joinsInvoiceFor,
+} from '../lib/load-desk/records.ts';
 
 type Page = { page: number; date: string | null };
 const dateOf = (item: Page) => item.date;
@@ -83,4 +88,28 @@ void test('a ticket whose date could not be read still joins', () => {
 void test('an invoice with no date of its own takes the first ticket', () => {
   assert.equal(joinsInvoiceFor(null, '2026-09-15'), true);
   assert.equal(joinsInvoiceFor('', '2026-09-15'), true);
+});
+
+void test('two dates never share an invoice, even before the first numbered one', () => {
+  // The leak: with only drafts saved, nextInvoiceNumber has no series to
+  // continue, both dates came back as "" and keyed to the same invoice — so a
+  // day's tickets were billed on another day's.
+  const numbers = ['DRAFT-2026-01-05'];
+  const first = invoiceNumberForDate(numbers, '2026-01-06');
+  numbers.push(first);
+  const second = invoiceNumberForDate(numbers, '2026-01-07');
+  assert.notEqual(invoiceKey(first), invoiceKey(second));
+  assert.ok(first.trim(), 'an invoice number is never blank');
+  assert.ok(second.trim(), 'an invoice number is never blank');
+});
+
+void test('a date opens a draft named for itself when there is no series yet', () => {
+  assert.equal(invoiceNumberForDate([], '2026-01-06'), 'DRAFT-2026-01-06');
+  assert.equal(invoiceNumberForDate(['DRAFT-x'], null), 'DRAFT-undated');
+});
+
+void test('a real series is still continued', () => {
+  // Once a numbered invoice exists, the next date takes the next number.
+  assert.equal(invoiceNumberForDate(['1041', '1042'], '2026-01-06'), '1043');
+  assert.equal(invoiceNumberForDate(['DRAFT-2026-01-05', '1042'], '2026-01-07'), '1043');
 });
