@@ -1412,3 +1412,43 @@ svg.lucide {
     -webkit-line-clamp: 2;
   }
 }
+
+/* ===================================================== phone: no stray zoom */
+/* Working a ticket on a phone, a stray pinch or a double-tap used to leave the
+   dashboard at some arbitrary scale with no obvious way back, and the next tap
+   landed on the wrong field.
+ *
+ * This is done with touch-action rather than user-scalable=no in the viewport
+ * tag for two reasons: that tag is page-wide, so it would take the two things
+ * worth looking at closely with it, and iOS ignores it anyway — Apple keeps
+ * page zoom available on purpose.
+ *
+ * touch-action is intersected with every ancestor, so a preview cannot re-open
+ * pinch inside a container that closed it. The ancestors of a preview are
+ * therefore left alone, and everything beside them is what gets restricted. */
+@media (max-width: 767px) {
+  .topbar,
+  .tabbar,
+  .page-content
+    *:not(:has(.ld-preview, .invoice-sheet)):not(.ld-preview, .ld-preview *):not(
+      .invoice-sheet,
+      .invoice-sheet *
+    ) {
+    touch-action: pan-x pan-y;
+  }
+  /* The scan of the ticket and the invoice as it will print: both are read by
+     eye, and both are smaller than the paper. These still pinch. */
+  .ld-preview,
+  .ld-preview *,
+  .invoice-sheet,
+  .invoice-sheet * {
+    touch-action: auto;
+  }
+  /* iOS zooms into a text box whose type is under 16px the moment it is
+     tapped. With pinch closed there would be no way back out, so every box a
+     thumb can type in is 16px on a phone. */
+  .pf-textarea,
+  textarea {
+    font-size: 16px;
+  }
+}
