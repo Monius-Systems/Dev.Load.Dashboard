@@ -118,7 +118,9 @@ export default function LoadsAreaChart({
     <div className="lc-chart">
       <div className="lc-plot" ref={plot} aria-hidden="true">
         <ResponsiveContainer width="100%" height={height}>
-          <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+          {/* Room at the right for the last date label: the axis centres it on the
+              final point, and on a full-width plot it would run off the glass. */}
+            <AreaChart data={data} margin={{ top: 8, right: 22, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id={fill} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="var(--ui-accent)" stopOpacity={0.32} />

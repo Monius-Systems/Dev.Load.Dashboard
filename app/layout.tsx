@@ -1,6 +1,19 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import AppCursor from '@/components/shell/app-cursor';
 import './globals.css';
+
+/**
+ * The page is allowed under the status bar and the home indicator, which is
+ * what lets the home page's colour run to the very top of the screen. Without
+ * viewport-fit=cover iOS keeps the page inside the safe area and reports every
+ * env(safe-area-inset-*) as zero, so a header can never reach the top however
+ * it is laid out.
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   title: 'Load Desk',

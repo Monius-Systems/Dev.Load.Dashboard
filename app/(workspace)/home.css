@@ -535,8 +535,21 @@ button.hm-row:hover {
     grid-auto-columns: 1fr;
     width: 100%;
   }
+  /* The graph runs the full width of the screen. Pulled out to the viewport
+     rather than by cancelling the padding of everything above it: this card
+     sits several boxes deep and negative margins only undo the nearest one. */
+  .hm-chart {
+    width: 100vw;
+    margin-left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0;
+    padding-inline: var(--ui-space-4);
+  }
+  /* The plot then gives back this card's own padding, so the lines reach the
+     glass. The words around it stay inset where they are readable. */
   .hm-chart .lc-plot {
-    min-height: 220px;
+    min-height: 230px;
+    margin-inline: calc(-1 * var(--ui-space-4));
   }
   /* Its legend wraps instead of running off the side. */
   .hm-chart .lc-legend {
@@ -593,8 +606,15 @@ button.hm-row:hover {
     margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5))
       var(--ui-space-5);
     border-radius: 0 0 var(--ui-radius-xl) var(--ui-radius-xl);
-    padding: calc(var(--phone-topbar) + var(--ui-space-2)) var(--ui-space-5)
+    padding: calc(var(--phone-topbar) + var(--ui-space-4)) var(--ui-space-5)
       var(--ui-space-6);
+  }
+  /* The greeting carries the top of the page, so it is sized to. */
+  .page-enter:has(.hm-stats) .page-heading h1 {
+    font-size: var(--type-2xl);
+  }
+  .page-enter:has(.hm-stats) .page-heading .muted {
+    font-size: var(--type-base);
   }
   /* The four cards below it would only repeat the three figures on it. */
   .hm-stats {

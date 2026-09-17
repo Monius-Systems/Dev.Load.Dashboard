@@ -1591,7 +1591,8 @@ svg.lucide {
     z-index: 5;
     min-height: 0;
     justify-content: flex-end;
-    padding: max(10px, env(safe-area-inset-top)) 16px 8px;
+    /* A little below the clock rather than level with it. */
+    padding: calc(env(safe-area-inset-top) + 18px) 16px 8px;
     background: transparent;
     pointer-events: none;
   }
@@ -1601,7 +1602,7 @@ svg.lucide {
   /* Every page starts below the floating bar; the home page reaches back up
      under it on purpose. */
   .page-content {
-    --phone-topbar: calc(max(10px, env(safe-area-inset-top)) + 58px);
+    --phone-topbar: calc(env(safe-area-inset-top) + 66px);
 
     padding-top: var(--phone-topbar);
   }
