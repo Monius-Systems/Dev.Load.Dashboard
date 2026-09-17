@@ -1220,8 +1220,10 @@ details[open] > .ld-section-summary .ld-section-chevron {
   }
   body > .ld-print-root {
     display: block;
-    width: 100%;
-    /* The margin the page no longer has. */
+    /* The margin the page no longer has. No width with it: a block fills the
+       page on its own, and 100% plus padding is wider than the paper — which
+       the browser answers by shrinking the whole page to fit, and the invoice
+       comes out a postage stamp in the corner. */
     padding: 0.4in;
   }
   .ld-print-root .invoice-sheet {
