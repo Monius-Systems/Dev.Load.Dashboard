@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
 import { Check, Lightbulb, RotateCcw, ScanLine, Sun, X, ZoomIn, ZoomOut } from 'lucide-react';
-import { guidance, movement, scannerConfig, StabilityTracker, withinFrame, type Detection, type Quad } from '@/lib/scanner/geometry';
+import { guidance, movement, scannerConfig, withinFrame, type Detection, type Quad } from '@/lib/scanner/geometry';
 import { enhanceDocument, type DocumentFilter } from '@/lib/scanner/enhance';
 // The bundler creates this default export; the linter cannot see through the
 // "?worker" suffix, which worker-env.d.ts declares for TypeScript.
@@ -14,8 +14,6 @@ import styles from './document-scanner.module.css';
 
 type Result = { original: Blob; corrected: Blob; url: string; cropped: boolean };
 type Reply = { id: number; detection?: Detection | null; image?: ImageData; error?: string; ready?: boolean };
-type PhotoCapture = { takePhoto(): Promise<Blob> };
-type PhotoCaptureConstructor = new (track: MediaStreamTrack) => PhotoCapture;
 const canvas = (width: number, height: number) => Object.assign(document.createElement('canvas'), { width, height });
 /**
  * Longest edge of the picture handed to the straightening step. A full sensor
@@ -25,8 +23,6 @@ const canvas = (width: number, height: number) => Object.assign(document.createE
  * the OCR pass works at: a scanned PDF page reaches it at around 2100 x 2750.
  */
 const CROP_MAX = 2600;
-/** Automatic tries before the photo is worth more than the crop. */
-const AUTO_TRIES = 3;
 /** The same picture, no larger than maxSize on its long edge. */
 function fit(surface: HTMLCanvasElement, maxSize: number) {
   const scale = Math.min(1, maxSize / Math.max(surface.width, surface.height));
@@ -75,9 +71,8 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
   useEffect(() => {
     let disposed = false, generation = 0, stream: MediaStream | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    let locked = false, reviewed = false, workerReady = false, sequence = 0, autoFailures = 0;
+    let locked = false, reviewed = false, workerReady = false, sequence = 0;
     let previous: Quad | null = null, smoothed: Quad | null = null;
-    const stability = new StabilityTracker();
     const pending = new Map<number, { resolve(value: Reply): void; reject(error: Error): void; timeout: ReturnType<typeof setTimeout> }>();
     // The ?worker form is resolved by the bundler in development and in the
     // build; a plain new URL() only resolves at build time.
@@ -86,7 +81,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
       workerReady = false;
       pending.forEach(p => { clearTimeout(p.timeout); p.reject(new Error('Document processing unavailable')); });
       pending.clear();
-      if (!disposed) setInstruction('Automatic scan unavailable · take a photo');
+      if (!disposed) setInstruction('Edges cannot be found · take a photo');
     };
     try {
       worker = new ScannerWorker();
@@ -114,7 +109,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
     function stopCamera() {
       generation++; clearTimeout(timer); stream?.getTracks().forEach(track => track.stop()); stream = null;
       if (video.current) video.current.srcObject = null;
-      stability.reset(); previous = smoothed = null;
+      previous = smoothed = null;
       polygon.current?.setAttribute('points', '');
       if (outline.current) outline.current.dataset.locked = 'false';
       if (!disposed) setReady(false);
@@ -127,70 +122,55 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
       surface.getContext('2d')!.drawImage(v, 0, 0, surface.width, surface.height);
       return surface;
     }
-    async function capture(automatic: boolean, live: Detection | null = null) {
+    async function capture() {
       if (locked || disposed || !stream || document.hidden) return;
       locked = true; setCapturing(true); clearTimeout(timer);
       const token = generation;
       try {
-        // Full sensor photo where supported; otherwise the negotiated full-resolution video frame.
-        let source = frame(Infinity);
-        let original: Blob | null = null;
-        const ImageCapture = (window as Window & { ImageCapture?: PhotoCaptureConstructor }).ImageCapture;
-        if (ImageCapture && stream.getVideoTracks()[0]) {
-          try {
-            const photo = await new ImageCapture(stream.getVideoTracks()[0]).takePhoto();
-            const bitmap = await createImageBitmap(photo);
-            source = canvas(bitmap.width, bitmap.height);
-            source.getContext('2d')!.drawImage(bitmap, 0, 0); bitmap.close(); original = photo;
-          } catch { /* Safari and cameras without still-photo support use the full video frame. */ }
-        }
-        if (!original) original = await blobFrom(source);
+        // The frame on the screen, taken at the size the straightening step
+        // works at. A full-sensor still through ImageCapture.takePhoto() used
+        // to be tried first: it costs a shutter cycle, a refocus and the decode
+        // of a 12 to 48 megapixel photograph — a second or more on a phone, and
+        // the stall people felt on every capture — for detail that CROP_MAX
+        // throws away again a moment later. The preview is already focused, and
+        // it is the picture the outline was drawn on.
+        const source = frame(CROP_MAX);
+        const original = await blobFrom(source);
         if (disposed || token !== generation) return;
         let cropped = false;
-        // The straightened page, when there is one, as the pixels a filter is
-        // applied to. Without a crop the photograph itself is the page.
+        // The straightened page, when the edges are found. Without a crop the
+        // photograph itself is the page — a photo taken by hand is never turned
+        // away, it is only left whole.
         let page: HTMLCanvasElement | null = null;
-        // Why the crop was turned away, in the words the next try needs. One
-        // message for everything left people repositioning a ticket that was
-        // already in the right place.
-        let reason = 'Reposition the ticket and try again';
         if (workerReady) {
           try {
-            // Re-detect on the actual still: still-photo FoV can differ from the preview.
-            const scale = Math.min(1, 1440 / Math.max(source.width, source.height));
-            const analysis = canvas(Math.round(source.width * scale), Math.round(source.height * scale));
-            analysis.getContext('2d')!.drawImage(source, 0, 0, analysis.width, analysis.height);
-            const detected = (await process(analysis.getContext('2d')!.getImageData(0, 0, analysis.width, analysis.height), 'detect')).detection;
-            // The same rule the preview used: the bottom may run off frame.
-            const inside = detected ? withinFrame(detected.corners) : false;
-            const matches = !live || (detected && movement(live.corners, detected.corners) < 0.12);
-            const advice = detected ? guidance(detected, source.width, source.height) : '';
-            if (!detected || detected.confidence < scannerConfig.minConfidence) reason = 'Ticket edges not found in the photo';
-            else if (!inside) reason = 'Fit the whole ticket in view';
-            else if (!matches) reason = 'Ticket moved · hold steady';
-            else if (automatic && advice !== 'Hold still...') reason = advice;
-            else if (automatic && detected.sharpness < scannerConfig.minSharpness) reason = 'Photo came out blurred';
-            else {
-              const warp = fit(source, CROP_MAX);
-              const output = (await process(warp.getContext('2d')!.getImageData(0, 0, warp.width, warp.height), 'crop', detected.corners)).image;
-              if (!output) throw new Error('Could not straighten the photo');
-              const correctedCanvas = canvas(output.width, output.height);
-              correctedCanvas.getContext('2d')!.putImageData(output, 0, 0);
-              cropped = true; page = correctedCanvas;
+            // One detection, on a small copy of the picture that was taken, at
+            // the size the live outline is found at. The corners come back in
+            // fractions of the frame, so they fit the full-size crop as they
+            // are. (This used to be a second detection at 1440px on top of the
+            // one the preview had just done, because a still could come from a
+            // different field of view than the preview; the still is the
+            // preview now, so there is nothing to reconcile.)
+            const analysis = fit(source, scannerConfig.analysisSize);
+            const detected = (await process(
+              analysis.getContext('2d')!.getImageData(0, 0, analysis.width, analysis.height),
+              'detect',
+            )).detection;
+            if (detected && detected.confidence >= scannerConfig.minConfidence && withinFrame(detected.corners)) {
+              const output = (await process(
+                source.getContext('2d')!.getImageData(0, 0, source.width, source.height),
+                'crop',
+                detected.corners,
+              )).image;
+              if (output) {
+                const correctedCanvas = canvas(output.width, output.height);
+                correctedCanvas.getContext('2d')!.putImageData(output, 0, 0);
+                cropped = true; page = correctedCanvas;
+              }
             }
-          } catch (error) {
-            reason = error instanceof Error && error.message === 'Could not straighten the photo'
-              ? error.message
-              : 'Straightening is not responding · photo kept';
-          }
+          } catch { /* Straightening is a nicety; the photograph is not. */ }
         }
         if (disposed || token !== generation) return;
-        // A ticket the detector keeps re-finding but will not re-confirm used to
-        // loop here for ever, throwing away a good photo each time. After a few
-        // goes the photo is worth more than the crop: review shows it uncropped,
-        // with Retake a tap away.
-        if (automatic && !cropped && ++autoFailures < AUTO_TRIES) throw new Error(reason);
-        if (cropped) autoFailures = 0;
         reviewed = true; stopCamera();
         navigator.vibrate?.(35);
         // Every capture is developed before it is shown: a photograph of paper
@@ -202,7 +182,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
         // the review screen with the picture that was taken.
         let shown: { blob: Blob; url: string };
         try {
-          const sheet = page ?? fit(source, CROP_MAX);
+          const sheet = page ?? source;
           const pixels = sheet.getContext('2d')!.getImageData(0, 0, sheet.width, sheet.height);
           captured.current = pixels;
           shown = await renderFiltered(pixels, 'auto');
@@ -218,7 +198,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
       } catch (e) {
         if (!disposed && token === generation) {
           setInstruction(e instanceof Error ? e.message : 'Please try again');
-          stability.reset(); timer = setTimeout(() => void analyze(), 900);
+          timer = setTimeout(() => void analyze(), 900);
         }
       } finally { locked = false; if (!disposed) setCapturing(false); }
     }
@@ -240,17 +220,19 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
             polygon.current?.setAttribute('points', smoothed.map(p => `${p.x * 1000},${p.y * 1000}`).join(' '));
             previous = current;
           } else { previous = smoothed = null; polygon.current?.setAttribute('points', ''); }
+          // The outline turns green when the ticket is framed well enough to
+          // straighten. It is framing help and nothing more: the photograph is
+          // taken when the person holding the phone takes it.
           const acceptable = !!detection && message === 'Hold still...' && detection.sharpness >= scannerConfig.minSharpness;
           if (outline.current) outline.current.dataset.locked = acceptable ? 'true' : 'false';
-          if (stability.update(detection?.corners ?? null, acceptable, performance.now())) { await capture(true, detection); return; }
         }
-      } catch { stability.reset(); if (!disposed) setInstruction('Automatic scan unavailable · take a photo'); }
+      } catch { if (!disposed) setInstruction('Edges cannot be found · take a photo'); }
       if (!disposed && token === generation && !locked && !reviewed) timer = setTimeout(() => void analyze(), scannerConfig.intervalMs);
     }
     async function startCamera() {
       if (disposed || reviewed || document.hidden) return;
       stopCamera(); const token = generation;
-      setError(''); setInstruction('Find ticket'); autoFailures = 0;
+      setError(''); setInstruction('Find ticket');
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera requires a secure connection and a supported browser.');
         const next = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 4096 }, height: { ideal: 3072 } } });
@@ -270,12 +252,12 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
       }
     }
     const visibility = () => { if (document.hidden) stopCamera(); else if (!reviewed) void startCamera(); };
-    const orientation = () => { stability.reset(); previous = smoothed = null; polygon.current?.setAttribute('points', ''); if (outline.current) outline.current.dataset.locked = 'false'; };
+    const orientation = () => { previous = smoothed = null; polygon.current?.setAttribute('points', ''); if (outline.current) outline.current.dataset.locked = 'false'; };
     document.addEventListener('visibilitychange', visibility);
     window.addEventListener('orientationchange', orientation);
     window.addEventListener('pagehide', stopCamera);
     window.addEventListener('pageshow', visibility);
-    shutter.current = () => { void capture(false); };
+    shutter.current = () => { void capture(); };
     void startCamera();
     return () => {
       disposed = true; stopCamera(); worker?.terminate(); shutter.current = null;
@@ -334,7 +316,7 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
         </> : <>
           <output className={styles.hint} data-tone={tone} aria-live="polite">{HintIcon ? <HintIcon size={15} /> : null}{hint}</output>
           {error ? <button type="button" className={styles.secondary} onClick={() => setSession(s => s + 1)}>Retry camera</button> :
-            <button type="button" className={styles.shutter} disabled={!ready || capturing} aria-label="Take photo manually" onClick={() => shutter.current?.()}><span /></button>}
+            <button type="button" className={styles.shutter} disabled={!ready || capturing} aria-label="Take photo" onClick={() => shutter.current?.()}><span /></button>}
         </>}
       </footer>
     </dialog>, document.body,

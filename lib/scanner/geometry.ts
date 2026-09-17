@@ -1,7 +1,9 @@
 export type Point = { x: number; y: number };
 export type Quad = [Point, Point, Point, Point];
+// stableMs and movement went with the automatic shutter: how long a ticket had
+// to be held still, and how still. The photograph is taken by the person now.
 export const scannerConfig = {
-  analysisSize: 720, intervalMs: 125, stableMs: 700, movement: 0.012,
+  analysisSize: 720, intervalMs: 125,
   minConfidence: 0.73, minArea: 0.07, usefulArea: 0.18, maxArea: 0.9,
   frameMargin: 0.012, minShortEdge: 600, minSharpness: 65,
   minBrightness: 55, maxDarkFraction: 0.35, maxGlareFraction: 0.08,
@@ -21,20 +23,6 @@ export function dimensions(q: Quad) {
 export function expandCorners(q: Quad, width: number, height: number, margin = scannerConfig.safetyMargin): Quad {
   const center = q.reduce((s, p) => ({ x: s.x + p.x / 4, y: s.y + p.y / 4 }), { x: 0, y: 0 });
   return q.map(p => ({ x: Math.max(0, Math.min(width - 1, center.x + (p.x - center.x) * (1 + 2 * margin))), y: Math.max(0, Math.min(height - 1, center.y + (p.y - center.y) * (1 + 2 * margin))) })) as Quad;
-}
-export class StabilityTracker {
-  private anchor: Quad | null = null;
-  private since = 0;
-  private last = 0;
-  reset() { this.anchor = null; this.since = this.last = 0; }
-  update(corners: Quad | null, acceptable: boolean, now: number) {
-    if (!corners || !acceptable) { this.reset(); return false; }
-    if (!this.anchor || now - this.last > 350 || movement(this.anchor, corners) > scannerConfig.movement) {
-      this.anchor = corners; this.since = now;
-    }
-    this.last = now;
-    return now - this.since >= scannerConfig.stableMs;
-  }
 }
 export type Detection = {
   corners: Quad; confidence: number; area: number; sharpness: number;
