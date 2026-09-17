@@ -678,11 +678,6 @@ button.hm-row:hover {
       calc(var(--phone-bottombar) + var(--phone-stepbar) + 100vh);
     background: var(--ui-surface-2);
   }
-  /* The bar of Back and Next stands 67px tall; the rest is room to read the
-     last field above it. */
-  .page-sheet:has(.ld-step-nav) {
-    --phone-stepbar: 84px;
-  }
   /* A review opens as a sheet, and a sheet is tight at the top: the handle a
      little under the curve, and what is being reviewed straight after it.
      Only the review — every other page keeps the room it was drawn with. */

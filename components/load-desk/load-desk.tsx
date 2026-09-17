@@ -2552,9 +2552,12 @@ export default function LoadDesk() {
             className="ld-panel ld-review"
             aria-labelledby="ld-review-title"
           >
-            {/* The flow reads under two lines: the way out and what this
-                screen is, then which ticket and how it stands. The queue below
-                is the way round the rest of them. */}
+            {/* Everything the reviewer keeps referring to — which ticket, how
+                it stands, which step, the picture, the checks — is one block
+                that holds at the top of the sheet while the fields scroll
+                under it. The queue of other tickets is not part of it: it is
+                for getting to the next ticket, not for checking this one. */}
+            <div className="ld-review-sticky">
             <div className="ld-mobile-head">
               <div className="ld-mobile-head-top">
                 <Button
@@ -2621,6 +2624,64 @@ export default function LoadDesk() {
                   <i key={name} data-done={index <= atStep || undefined} />
                 ))}
               </span>
+              </div>
+
+              {/* The picture, where the checking starts: a stamp of it here,
+                  and the whole of it over the screen when it is tapped. Laid
+                  out at full width in the form it put a screen between one
+                  field and the next. */}
+              <button
+                type="button"
+                className="ld-thumb"
+                onClick={() => setViewingTicket(true)}
+              >
+                <span className="ld-thumb-shot">
+                  <SourcePreview item={active} />
+                </span>
+                <span className="ld-thumb-copy">
+                  <strong>{t('Original ticket')}</strong>
+                  <small>
+                    {active.source.file_name} · {fileSize(active.source.size)}
+                  </small>
+                </span>
+                <FileSearch aria-hidden="true" />
+              </button>
+
+              <div className="ld-check-row">
+                <div
+                  className="ld-notice"
+                  data-tone={issues.length ? 'warning' : 'good'}
+                  aria-live="polite"
+                >
+                  {issues.length ? (
+                    <>
+                      <strong>{t('Check before saving')}</strong>
+                      <ul>
+                        {issues.map((issue) => (
+                          <li key={issue}>{t(issue)}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    <>
+                      <Check aria-hidden="true" />
+                      {t('All checks pass')}
+                    </>
+                  )}
+                </div>
+                {/* And a tap away from every step, rather than a scroll to
+                    the bottom of the form. */}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="ld-view-ticket"
+                  onClick={() => setViewingTicket(true)}
+                >
+                  <FileSearch data-icon="inline-start" />
+                  {t('View ticket')}
+                </Button>
+              </div>
             </div>
 
             <div className="ld-review-head">
@@ -2740,62 +2801,6 @@ export default function LoadDesk() {
                     </details>
                   </div>
                 ) : null}
-                {/* The picture, at the top where the checking starts: a stamp
-                    of it in the flow, and the whole of it over the screen when
-                    it is tapped. Laid out at full width in the form it put a
-                    screen between one field and the next. */}
-                <button
-                  type="button"
-                  className="ld-thumb"
-                  onClick={() => setViewingTicket(true)}
-                >
-                  <span className="ld-thumb-shot">
-                    <SourcePreview item={active} />
-                  </span>
-                  <span className="ld-thumb-copy">
-                    <strong>{t('Original ticket')}</strong>
-                    <small>
-                      {active.source.file_name} · {fileSize(active.source.size)}
-                    </small>
-                  </span>
-                  <FileSearch aria-hidden="true" />
-                </button>
-
-                <div className="ld-check-row">
-                  <div
-                    className="ld-notice"
-                    data-tone={issues.length ? 'warning' : 'good'}
-                    aria-live="polite"
-                  >
-                    {issues.length ? (
-                      <>
-                        <strong>{t('Check before saving')}</strong>
-                        <ul>
-                          {issues.map((issue) => (
-                            <li key={issue}>{t(issue)}</li>
-                          ))}
-                        </ul>
-                      </>
-                    ) : (
-                      <>
-                        <Check aria-hidden="true" />
-                        {t('All checks pass')}
-                      </>
-                    )}
-                  </div>
-                  {/* And a tap away from every step, rather than a scroll to
-                      the bottom of the form. */}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    className="ld-view-ticket"
-                    onClick={() => setViewingTicket(true)}
-                  >
-                    <FileSearch data-icon="inline-start" />
-                    {t('View ticket')}
-                  </Button>
-                </div>
                 <fieldset className="ld-fieldset" disabled={busy} data-phone-step={atStep}>
                   <details className="ld-section ld-collapsible" data-step="0" open>
                     {sectionSummary('Ticket', ticketDetail)}

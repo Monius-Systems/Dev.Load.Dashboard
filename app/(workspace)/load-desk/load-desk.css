@@ -1428,10 +1428,41 @@ html[data-swiping] .ld-step-nav {
    its two back. */
 .ld-review .ld-fields {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--ui-space-4) var(--ui-space-3);
+  gap: var(--ui-space-4);
 }
 .ld-review .ld-field[data-span='2'] {
   grid-column: 1 / -1;
+}
+/* A column is a column: nothing in one may reach into the next, and nothing
+   may reach past the edge of the sheet. Safari sizes a native date or time
+   control to the format it is showing and will run it past the box it was
+   given — which is what put Time in over Time out, and the date under the
+   right edge. */
+.ld-review .ld-field,
+.ld-review .ld-field > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.ld-review .ld-field :is(input, select, textarea) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+/* And the control's own inner box, which is the part that actually overflows:
+   without this Safari lays the fields out to its own idea of the format's
+   width whatever the element around them is told. */
+.ld-review .ld-field :is(input[type='date'], input[type='time']) {
+  display: block;
+  -webkit-appearance: none;
+  appearance: none;
+}
+/* Too narrow for two is one. A field that has to be reached for is worse than
+   a field further down the page. */
+@media (max-width: 380px) {
+  .ld-review .ld-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .ld-review .ld-field > label,
 .ld-review .ld-field > span {
@@ -1465,7 +1496,7 @@ html[data-swiping] .ld-step-nav {
   display: flex;
   align-items: center;
   gap: var(--ui-space-2);
-  margin-bottom: var(--ui-space-4);
+  margin-top: var(--ui-space-3);
 }
 .ld-check-row .ld-notice {
   flex: 1;
@@ -1502,7 +1533,6 @@ html[data-swiping] .ld-step-nav {
   align-items: center;
   gap: var(--ui-space-3);
   width: 100%;
-  margin-top: var(--ui-space-4);
   padding: var(--ui-space-3);
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-md);
@@ -1573,6 +1603,7 @@ html[data-swiping] .ld-step-nav {
 }
 .ld-review-body {
   grid-template-columns: minmax(0, 1fr);
+  padding-top: var(--ui-space-4);
 }
 /* The card that said whether the ticket was saved says it on the head line
    now, and the save is at the foot of the flow; what is left of the card is
@@ -1588,18 +1619,24 @@ html[data-swiping] .ld-step-nav {
   display: none;
 }
 
-/* The head of the flow: which ticket, how it stands, how far through it you
-   are. Sticky, so it is above the fields wherever they have got to. */
-.ld-mobile-head {
+/* What the reviewer keeps referring to, held at the top of the sheet: which
+   ticket, how it stands, which step, the picture, the checks. The fields go
+   under it, and a hairline says so. */
+.ld-review-sticky {
   position: sticky;
   top: 0;
-  z-index: 2;
-  display: grid;
-  gap: 6px;
+  z-index: 20;
   margin: 0 calc(-1 * var(--ui-space-5));
   padding: 0 var(--ui-space-5) var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-separator);
   border-radius: var(--ui-radius-lg) var(--ui-radius-lg) 0 0;
   background: var(--ui-surface-2);
+}
+/* The head of it: which ticket, how it stands, how far through it you are. */
+.ld-mobile-head {
+  display: grid;
+  gap: 6px;
+  padding-bottom: var(--ui-space-3);
 }
 /* The line above the ticket: the way out, and what this screen is. */
 .ld-mobile-head-top {
@@ -1627,19 +1664,10 @@ html[data-swiping] .ld-step-nav {
 
 /* Back and on, across the foot of the flow where the thumb already is. */
 .ld-step-nav {
-  position: sticky;
-  bottom: 0;
-  z-index: 8;
   display: grid;
   grid-template-columns: 1fr 1.4fr;
-  gap: var(--ui-space-2);
-  margin: var(--ui-space-4) calc(-1 * var(--ui-space-5)) 0;
-  padding: var(--ui-space-2) var(--ui-space-5);
-  border-top: 1px solid var(--ui-separator);
-  border-radius: 0 0 var(--ui-radius-lg) var(--ui-radius-lg);
-  background: color-mix(in srgb, var(--ui-surface-1) 96%, transparent);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
+  gap: var(--ui-space-3);
+  margin-top: var(--ui-space-6);
 }
 
 
@@ -1666,37 +1694,19 @@ html[data-swiping] .ld-step-nav {
       0 1px 2px rgb(16 24 40 / 6%),
       0 24px 60px rgb(16 24 40 / 10%);
   }
-  /* The head and the foot bleed to the panel's edges and carry its corners. */
-  .ld-mobile-head {
-    background: var(--ui-surface);
-  }
-  .ld-step-nav {
+  /* The block bleeds to the panel's edges and carries its corners. */
+  .ld-review-sticky {
     background: var(--ui-surface);
   }
 }
 
 /* ----------------------------------------------- the flow, on a phone */
 @media (max-width: 767px) {
-  /* The whole screen is the flow, so the two bars belong to the screen: the
-     head under the account that floats over the page, and the foot fixed
-     above the bar along the bottom, clear of the home indicator. The sheet
-     keeps room for it (see .page-sheet in home.css). */
-  .ld-mobile-head {
+  /* The block holds just under the account that floats over the page, so what
+     it holds is always the first thing on the screen under it. */
+  .ld-review-sticky {
     top: calc(var(--phone-topbar) - var(--ui-space-2));
     border-radius: 0;
-  }
-  /* A bar of its own, on the sheet's ground, immediately above the bar along
-     the bottom of the app — never over it, never merged with it, and with no
-     gap between the two. The safe area is the app bar's already. */
-  .ld-step-nav {
-    position: fixed;
-    right: 0;
-    bottom: var(--phone-bottombar);
-    left: 0;
-    margin: 0;
-    padding: var(--ui-space-3) var(--ui-space-5);
-    border-radius: 0;
-    background: color-mix(in srgb, var(--ui-surface-2) 96%, transparent);
   }
   /* The save button that used to sit inside the invoice section; the bar at
      the bottom is where it lives on a phone now. */
