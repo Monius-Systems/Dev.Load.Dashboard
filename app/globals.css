@@ -1855,24 +1855,24 @@ svg.lucide {
     pointer-events: none;
   }
 
-  /* The blue behind the clock, the island and the battery.
+  /* The light behind the clock, the island and the battery.
    *
    * The page runs up under there — that is what viewport-fit=cover and no
-   * theme-color are for — so what is behind the clock is whatever the page has
-   * at its top, and once a page is scrolled that is the sheet's white. This
-   * holds the band's colour up there instead: a fixed strip exactly as deep as
-   * the inset, painted the accent, with the page passing underneath it. At the
-   * top of a page it is the band's own blue and cannot be told apart from it;
-   * scrolled, it is the strip a phone app keeps behind the status bar.
+   * theme-color are for — so what is behind the clock is the page itself. When
+   * Safari has its own chrome on screen it lays a soft scrim over that strip so
+   * the time stays readable, and the top of the app goes from a light blue at
+   * the very edge to nothing by the time the header proper begins. That is the
+   * look this reproduces, so it is there whether Safari's chrome is up or not.
+   *
+   * A translucent wash and not a fill: the colour underneath is what shows
+   * through it, so the hero keeps its own #375DFB where the wash has faded out,
+   * and a page that has been scrolled shows the same light over its white. The
+   * last stop is fully transparent, so there is no edge anywhere.
    *
    * Over the sheet, which is 6, and under the bar along the bottom and the
    * dialogs. Deaf to the pointer, so the mirror that reads the colour at the
    * top of the page reads the page and not this — elementFromPoint passes
    * straight through anything that cannot be tapped.
-   *
-   * It is what makes black-translucent safe in an installed app as well: iOS
-   * draws the clock in white over the page there, and now the page is blue
-   * under it at every scroll position rather than white over white.
    */
   .page-strip {
     display: block;
@@ -1881,8 +1881,16 @@ svg.lucide {
     right: 0;
     left: 0;
     z-index: 7;
-    height: env(safe-area-inset-top);
-    background: var(--ui-accent);
+    /* A little past the inset, as Safari's own scrim runs, so the last of it
+       has somewhere to fade out that is not the header. */
+    height: calc(env(safe-area-inset-top) + 18px);
+    background: linear-gradient(
+      to bottom,
+      rgb(124 149 250 / 88%) 0%,
+      rgb(160 179 252 / 48%) 35%,
+      rgb(214 224 255 / 18%) 70%,
+      rgb(255 255 255 / 0%) 100%
+    );
     pointer-events: none;
   }
 
@@ -1980,5 +1988,21 @@ svg.lucide {
   .upright span {
     font-size: var(--type-sm);
     color: rgb(255 255 255 / 82%);
+  }
+}
+
+/* ============================= a phone, with the app on its home screen */
+/* An installed app is the one place the wash above cannot go. iOS draws the
+   clock there itself, in white, whatever is behind it — that is what
+   apple-mobile-web-app-status-bar-style: black-translucent buys, and it is not
+   negotiable from a page. White on a light wash is white on white once a page
+   has been scrolled, so an installed app keeps the flat band colour behind the
+   clock instead, which the white is legible on at any scroll position.
+   Safari, which chooses its own text colour to suit what is underneath, gets
+   the wash. */
+@media (max-width: 767px) and (display-mode: standalone) {
+  .page-strip {
+    height: env(safe-area-inset-top);
+    background: var(--ui-accent);
   }
 }
