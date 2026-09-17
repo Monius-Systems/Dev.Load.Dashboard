@@ -1815,11 +1815,21 @@ svg.lucide {
   html {
     background: var(--strip, var(--ui-accent));
   }
+  /* Pulling past either end of a page shows the canvas behind it, which is
+     this colour — and at the foot of a page, under the white the sheet lays
+     down past the last card, that is a flash of blue where a moment before
+     there was white. The sheet cannot be stretched into it: the bounce goes
+     past the end of the document, where nothing of the page is drawn at all.
+     So the page does not bounce. Nothing is lost with it — there was never
+     anything under the last card to see. */
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
   /* The canvas behind it all is the band's blue, on every page. The sheet is
      the only thing that is not: it runs to both edges and covers the page from
      its curve down to the bottom of the screen, so what the blue shows is the
-     band at the top and the overscroll at either end — never a grey the page
-     has nothing else of.
+     band at the top — never a grey the page has nothing else of.
      Deliberately a background rather than the strip variable: the strip goes on
      mirroring whatever is painted at the top, so it still turns grey once the
      sheet has been scrolled up past the band. */
