@@ -3350,8 +3350,21 @@ export default function LoadDesk() {
                     <ChevronLeft data-icon="inline-start" />
                     {t('Back')}
                   </Button>
+                  {/* Two buttons, keyed apart, and not one button that changes
+                      what it is. They sit in the same place, so without the
+                      keys React keeps the one element and swaps its type from
+                      button to submit — which it does in the middle of the tap
+                      that moved you on. The browser reads the type after the
+                      tap has been handled, finds a submit button, and does
+                      what a submit button does: the last step saved the ticket
+                      the moment you arrived on it, and the fields went dead
+                      (the fieldset is disabled while a save is in flight)
+                      before you could read the step, let alone edit it. Keyed
+                      apart, the Next button leaves the page instead, taking
+                      its form owner with it, and nothing is submitted. */}
                   {atStep < lastStep ? (
                     <Button
+                      key="next"
                       type="button"
                       onClick={() => setStep((current) => Math.min(lastStep, current + 1))}
                     >
@@ -3360,6 +3373,7 @@ export default function LoadDesk() {
                     </Button>
                   ) : (
                     <Button
+                      key="save"
                       type="submit"
                       disabled={
                         busy ||
