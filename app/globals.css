@@ -1726,6 +1726,14 @@ svg.lucide {
     overscroll-behavior-x: none;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
+    /* The sheet hangs a screen of white below the end of the page, for the
+       bounce to pull into (see .page-sheet in home.css). Clipped rather than
+       left to overflow, because overflow is height you can scroll to and this
+       is not meant to be scrolled to; and clipped with a margin, so what hangs
+       there is still painted. Clip and not hidden: hidden would make this a
+       scrolling box, and the band inside it sticks to the page's scroll. */
+    overflow: clip;
+    overflow-clip-margin: 120vh;
   }
   /* The section either side, parked a screen away and left there. These are
      live pages, not pictures of them (see SectionPager) — the same components
@@ -1814,17 +1822,6 @@ svg.lucide {
 @media (max-width: 767px) {
   html {
     background: var(--strip, var(--ui-accent));
-  }
-  /* Pulling past either end of a page shows the canvas behind it, which is
-     this colour — and at the foot of a page, under the white the sheet lays
-     down past the last card, that is a flash of blue where a moment before
-     there was white. The sheet cannot be stretched into it: the bounce goes
-     past the end of the document, where nothing of the page is drawn at all.
-     So the page does not bounce. Nothing is lost with it — there was never
-     anything under the last card to see. */
-  html,
-  body {
-    overscroll-behavior-y: none;
   }
   /* The canvas behind it all is the band's blue, on every page. The sheet is
      the only thing that is not: it runs to both edges and covers the page from

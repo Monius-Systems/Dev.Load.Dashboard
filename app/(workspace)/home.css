@@ -654,11 +654,13 @@ button.hm-row:hover {
        edge instead, the corners would cut into the page grey underneath and
        the sheet would come to a straight line.
        The foot runs down through the gap the page leaves for the bar floating
-       along the bottom, so the white reaches the edge of the screen instead of
-       stopping short of it. The same amount comes back as the sheet's own
-       padding below, so the last card still clears the bar. */
+       along the bottom, and a screenful further: the white has to be under the
+       page's last edge for the bounce to pull into something other than the
+       blue behind everything. All of it comes back as padding below, so the
+       last card still clears the bar, and none of it can be scrolled to — the
+       page area clips what hangs below it (see .page-content in globals). */
     margin: calc(-1 * var(--ui-radius-xl)) calc(-1 * var(--ui-space-5))
-      calc(-1 * var(--phone-bottombar));
+      calc(-1 * (var(--phone-bottombar) + 100vh));
     border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
     /* The top padding is what the notch is inset by, and it has to be padding:
        as the sheet's first child, a margin on the notch would collapse through
@@ -668,22 +670,8 @@ button.hm-row:hover {
        first card stays where it was. The foot is the room for the bottom bar
        that the negative margin above gave away. */
     padding: calc(var(--ui-radius-xl) + var(--ui-space-1)) var(--ui-space-5)
-      var(--phone-bottombar);
+      calc(var(--phone-bottombar) + 100vh);
     background: var(--ui-surface-2);
-    /* And it carries on well past the bottom edge of the screen, so pulling
-       the page up past its end rubber-bands into more of the sheet rather than
-       into the blue behind it.
-       It is a shadow rather than more height on purpose: height below the
-       screen is height you can scroll to, and a short page would have had a
-       dead white screenful under it. A shadow is painted and nothing more — no
-       layout, no scroll. Three copies of the sheet's own box, each a third of
-       a screen further down, so the run stays unbroken as long as the sheet is
-       at least 30vh tall — which it is on any page, the band would have to
-       take the other 70. */
-    box-shadow:
-      0 30vh 0 var(--ui-surface-2),
-      0 60vh 0 var(--ui-surface-2),
-      0 90vh 0 var(--ui-surface-2);
   }
   /* The notch, the way a sheet drawn up over something is marked. Clear of the
      corner curve, then a gap before the first card.

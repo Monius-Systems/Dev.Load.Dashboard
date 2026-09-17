@@ -718,10 +718,18 @@ details[open] > .ld-section-summary .ld-section-chevron {
   overflow: hidden;
   border-radius: var(--ui-radius-md);
   background: var(--ui-fill);
+  /* Pinching in here is the invoice's, not the browser's: what the fingers do
+     is read by the preview and applied to the page alone (see FittedInvoice),
+     so the dialog and everything behind it stay where they are. */
+  touch-action: none;
 }
 .ld-invoice-fit-box {
   position: relative;
   overflow: hidden;
+  /* Zoomed and moved about by the pinch, on its own layer. */
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 .ld-invoice-fit-page {
   width: max-content;
