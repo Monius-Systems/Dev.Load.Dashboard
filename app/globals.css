@@ -1471,13 +1471,25 @@ svg.lucide {
 @media (max-width: 767px) {
   /* Up and down only. A sideways drag used to slide the whole page off and
      leave a column of it stranded at the edge. */
+  html {
+    overflow-x: hidden;
+  }
+  /* clip, not hidden, below the root. overflow-x: hidden computes overflow-y to
+     auto and makes the element a scrolling box, and a scrolling box becomes the
+     scrollport its descendants stick to — so the home page's sticky header
+     would have been sticking to a box that never scrolls, which is to say not
+     at all. clip cuts the overflow off without any of that. */
+  body,
+  .workspace-main,
+  .page-content {
+    overflow-x: clip;
+  }
+  /* An element wider than the screen scrolls inside its own box rather than
+     taking the page with it. */
   html,
   body,
   .workspace-main,
   .page-content {
-    overflow-x: hidden;
-    /* An element wider than the screen scrolls inside its own box rather than
-       taking the page with it. */
     max-width: 100vw;
   }
   /* The bar down the right while scrolling. A phone app does not show one; the

@@ -596,15 +596,52 @@ button.hm-row:hover {
 
 }
 
+/* On a wide screen the sheet is not a box at all — its children lay out in the
+   page exactly as they did before it was wrapped around them. */
+.hm-sheet {
+  display: contents;
+}
+
 @media (max-width: 767px) {
   /* The home page opens on a filled header that runs to all three edges of the
-     screen and curves off at the bottom, with the account sitting on it. */
+     screen, with the account sitting on it.
+   *
+   * It is the floor: it stays where it is while the page moves, and the sheet
+   * below travels up over it. Sticky rather than fixed so it still takes up its
+   * own height in the flow — a fixed header would need its height measured in
+   * script and handed back to the sheet as a margin. */
   .page-enter:has(.hm-stats) .page-heading {
-    margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5))
-      var(--ui-space-5);
-    border-radius: 0 0 var(--ui-radius-xl) var(--ui-radius-xl);
+    position: sticky;
+    top: 0;
+    z-index: 0;
+    margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5)) 0;
+    /* The curve moved to the top of the sheet, which is what carries it now. */
+    border-radius: 0;
+    /* The extra radius at the foot is the strip the sheet is about to sit on
+       top of, so the gap under the buttons reads the same as it always did. */
     padding: calc(var(--phone-topbar) + var(--ui-space-4)) var(--ui-space-5)
-      var(--ui-space-6);
+      calc(var(--ui-space-6) + var(--ui-radius-xl));
+  }
+  /* The sheet: the whole page below the greeting, as one panel that runs to
+     both edges, curves at the top and slides up over the blue.
+   *
+   * min-height is what keeps the blue from reappearing. Scrolled to the very
+   * bottom, the sheet's own bottom edge sits at the bottom of the page — a
+   * full viewport of sheet guarantees it is still below the fold there, so the
+   * header it is covering never shows out from under it. */
+  .hm-sheet {
+    display: block;
+    position: relative;
+    z-index: 1;
+    /* Pulled up onto the blue by exactly its own corner radius, so the curve
+       has blue behind it to read against. Sitting flush at the header's bottom
+       edge instead, the corners would cut into the page grey underneath and
+       the sheet would come to a straight line. */
+    margin: calc(-1 * var(--ui-radius-xl)) calc(-1 * var(--ui-space-5)) 0;
+    border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
+    padding: var(--ui-space-5) var(--ui-space-5) 0;
+    min-height: 100dvh;
+    background: var(--ui-surface-2);
   }
   /* The greeting carries the top of the page, so it is sized to. */
   .page-enter:has(.hm-stats) .page-heading h1 {
