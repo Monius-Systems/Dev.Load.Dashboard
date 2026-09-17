@@ -23,6 +23,49 @@ import { useCompanyName } from '@/components/shell/use-company-name';
 import { companyInitials } from '@/lib/load-desk/business';
 import { AvatarContent } from '@/components/shell/user-avatar';
 
+/**
+ * The face in the corner of a phone, which is the way to the account page.
+ *
+ * A link and not the menu below it: on a phone the menu's two entries are the
+ * account page and signing out, the account page is where signing out lives,
+ * and a tap that opens a page is one tap rather than two. The sidebar keeps the
+ * menu, where there is room for it and a pointer to open it with.
+ */
+export function AccountLink({ initial = null }: { initial?: ShellAccount | null }) {
+  const { mode, account, ready } = useSyncExternalStore(
+    subscribeAccount,
+    accountSnapshot,
+    initialAccountSnapshot,
+  );
+  const { t } = useT();
+  const photo = account ? account.avatarUrl : (initial?.avatarUrl ?? null);
+  const name =
+    account?.name ??
+    account?.email ??
+    initial?.name ??
+    initial?.email ??
+    (mode === 'local' ? t('Local preview') : ready ? t('Account') : t('Loading account…'));
+  // Signing in is what the face offers when there is nobody signed in — the
+  // menu used to, and the account page has no way in of its own.
+  const signedIn = mode === 'remote' && account !== null;
+  const page = ready && !signedIn && mode !== 'local' ? '/login' : '/account';
+  return (
+    <Link
+      href={page}
+      className="profile account-profile"
+      aria-label={
+        page === '/login'
+          ? t('Sign in')
+          : t('Account: {name}. Open the account page', { name })
+      }
+    >
+      <span className="profile-avatar">
+        <AvatarContent name={name} src={photo} />
+      </span>
+    </Link>
+  );
+}
+
 /** The signed-in person in the sidebar footer, with their account menu. */
 export default function AccountMenu({ initial = null }: { initial?: ShellAccount | null }) {
   const { mode, account, ready, error: loadError } = useSyncExternalStore(

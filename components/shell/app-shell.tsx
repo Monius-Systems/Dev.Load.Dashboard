@@ -16,7 +16,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toast';
-import AccountMenu from '@/components/shell/account-menu';
+import AccountMenu, { AccountLink } from '@/components/shell/account-menu';
 import DeskActivity from '@/components/shell/desk-activity';
 import { adoptSessionAccount } from '@/lib/account';
 import type { ShellAccount } from '@/lib/account-display';
@@ -407,12 +407,13 @@ export default function AppShell({
             {/* The way to the account on a phone. The sidebar holds it on a
                 screen with room, but there the sidebar is a drawer and the
                 bar along the bottom replaced its trigger — leaving nowhere to
-                reach Account or sign out from.
+                reach Account or sign out from. Pressing it opens that page —
+                see AccountLink for why it is not the menu the sidebar has.
                 Not on the account page itself: the way to a page you are
                 already on, over a band that is your photo and your name. */}
             {pathname === '/account' ? null : (
               <div className="topbar-account">
-                <AccountMenu initial={initialAccount} />
+                <AccountLink initial={initialAccount} />
               </div>
             )}
           </header>
