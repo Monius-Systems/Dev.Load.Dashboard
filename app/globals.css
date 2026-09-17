@@ -1596,8 +1596,9 @@ svg.lucide {
 @media (max-width: 767px) {
   .page-heading {
     position: relative;
-    margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5))
-      var(--ui-space-5);
+    margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5)) 0;
+    /* The extra radius at the foot is the strip the sheet sits on top of, so
+       the gap under the figures reads the same as it always did. */
     padding: calc(var(--phone-topbar) + var(--ui-space-4)) var(--ui-space-5)
       calc(var(--ui-space-5) + var(--ui-radius-xl));
     background: var(--ui-accent);
@@ -1611,21 +1612,6 @@ svg.lucide {
   .page-heading .eyebrow,
   .page-heading .muted {
     opacity: 0.82;
-  }
-  /* The page below begins on a curve, the way the home page's sheet does.
-     Drawn by the band's own last strip of padding rather than by a box around
-     the page: the page grey already runs under everything below, so the only
-     thing missing was the corner. The home page has a real sheet that slides,
-     and draws its own. */
-  .page-enter:not(:has(.hm-stats)) .page-heading::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    height: var(--ui-radius-xl);
-    border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
-    background: var(--ui-surface-2);
   }
   /* The figures become the same divided row the home page carries. */
   .page-heading .ld-stats {

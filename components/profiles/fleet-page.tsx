@@ -242,135 +242,142 @@ export default function FleetPage() {
         </dl>
       </div>
 
-      {profiles.error ? (
-        <div className="ld-notice pf-notice" data-tone="warning">
-          {t(profiles.error)}
-        </div>
-      ) : null}
+      {/* Everything below the band rides in one sheet, as on every page. On a
+          phone it is the panel that slides up over the band; on a wider screen
+          it is display:contents and lays out as if it were not here. */}
+      <div className="page-sheet">
 
-      <section className="ld-panel pf-section" aria-labelledby="pf-trucks-title">
-        <div className="ld-panel-head">
-          <div>
-            <p className="ld-step">{t('Fleet')}</p>
-            <h2 id="pf-trucks-title">{t('Trucks')}</h2>
+        {profiles.error ? (
+          <div className="ld-notice pf-notice" data-tone="warning">
+            {t(profiles.error)}
           </div>
-          <Button onClick={() => edit(blankDraft())}>
-            <Plus />
-            {t('Add truck')}
-          </Button>
-        </div>
-        {!profiles.ready || !recordsReady ? (
-          <p className="ld-empty">{t('Loading trucks…')}</p>
-        ) : rows.length === 0 ? (
-          <p className="ld-empty">
-            {t(
-              'No trucks yet. Add each truck once, then choose it when uploading tickets so invoices get its number.',
-            )}
-          </p>
-        ) : (
-          <>
-          <div className="pf-table-wrap">
-            <table className="pf-table">
-              <thead>
-                <tr>
-                  <th scope="col">{t('Truck')}</th>
-                  <th scope="col">{t('Driver')}</th>
-                  <PeriodHeaders />
-                  <th scope="col">{t('Last load')}</th>
-                  <th scope="col">
-                    <span className="sr-only">{t('Actions')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ truck, summary }) => (
-                  <tr key={truck.id} data-inactive={!truck.active}>
-                    <th scope="row" className="pf-name">
+        ) : null}
+
+        <section className="ld-panel pf-section" aria-labelledby="pf-trucks-title">
+          <div className="ld-panel-head">
+            <div>
+              <p className="ld-step">{t('Fleet')}</p>
+              <h2 id="pf-trucks-title">{t('Trucks')}</h2>
+            </div>
+            <Button onClick={() => edit(blankDraft())}>
+              <Plus />
+              {t('Add truck')}
+            </Button>
+          </div>
+          {!profiles.ready || !recordsReady ? (
+            <p className="ld-empty">{t('Loading trucks…')}</p>
+          ) : rows.length === 0 ? (
+            <p className="ld-empty">
+              {t(
+                'No trucks yet. Add each truck once, then choose it when uploading tickets so invoices get its number.',
+              )}
+            </p>
+          ) : (
+            <>
+            <div className="pf-table-wrap">
+              <table className="pf-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{t('Truck')}</th>
+                    <th scope="col">{t('Driver')}</th>
+                    <PeriodHeaders />
+                    <th scope="col">{t('Last load')}</th>
+                    <th scope="col">
+                      <span className="sr-only">{t('Actions')}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ truck, summary }) => (
+                    <tr key={truck.id} data-inactive={!truck.active}>
+                      <th scope="row" className="pf-name">
+                        <strong>
+                          <Truck aria-hidden="true" />#{truck.truck_number}
+                          {truck.active ? null : (
+                            <span className="ld-chip pf-chip">{t('Inactive')}</span>
+                          )}
+                        </strong>
+                        <small>
+                          {[truck.nickname, plate(truck)].filter(Boolean).join(' · ') ||
+                            t('No nickname or plate')}
+                        </small>
+                      </th>
+                      <td>{truck.driver || <span className="pf-muted">—</span>}</td>
+                      <PeriodCells summary={summary} />
+                      <td className="pf-date">
+                        {summary.lastLoad ? date(summary.lastLoad) : '—'}
+                      </td>
+                      <td>{rowActions(truck)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="pf-cards">
+              {rows.map(({ truck, summary }) => (
+                <li key={truck.id} className="pf-card" data-inactive={!truck.active}>
+                  <div className="pf-card-head">
+                    <div>
                       <strong>
-                        <Truck aria-hidden="true" />#{truck.truck_number}
+                        #{truck.truck_number}
                         {truck.active ? null : (
                           <span className="ld-chip pf-chip">{t('Inactive')}</span>
                         )}
                       </strong>
                       <small>
-                        {[truck.nickname, plate(truck)].filter(Boolean).join(' · ') ||
-                          t('No nickname or plate')}
+                        {[truck.nickname, truck.driver, plate(truck)]
+                          .filter(Boolean)
+                          .join(' · ') || t('No details yet')}
                       </small>
-                    </th>
-                    <td>{truck.driver || <span className="pf-muted">—</span>}</td>
-                    <PeriodCells summary={summary} />
-                    <td className="pf-date">
-                      {summary.lastLoad ? date(summary.lastLoad) : '—'}
-                    </td>
-                    <td>{rowActions(truck)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <ul className="pf-cards">
-            {rows.map(({ truck, summary }) => (
-              <li key={truck.id} className="pf-card" data-inactive={!truck.active}>
-                <div className="pf-card-head">
-                  <div>
-                    <strong>
-                      #{truck.truck_number}
-                      {truck.active ? null : (
-                        <span className="ld-chip pf-chip">{t('Inactive')}</span>
-                      )}
-                    </strong>
-                    <small>
-                      {[truck.nickname, truck.driver, plate(truck)]
-                        .filter(Boolean)
-                        .join(' · ') || t('No details yet')}
-                    </small>
+                    </div>
+                    {rowActions(truck)}
                   </div>
-                  {rowActions(truck)}
-                </div>
-                <PeriodGrid summary={summary} />
-                <p className="pf-card-foot">
-                  {t('Last load')} {summary.lastLoad ? date(summary.lastLoad) : '—'}
-                </p>
-              </li>
-            ))}
-          </ul>
-          </>
-        )}
-      </section>
-
-      {suggestions.length ? (
-        <section className="ld-panel pf-section" aria-labelledby="pf-unmatched-trucks">
-          <div className="ld-panel-head">
-            <div>
-              <p className="ld-step">{t('From saved invoices')}</p>
-              <h2 id="pf-unmatched-trucks">{t('Truck Numbers Without a Profile')}</h2>
-            </div>
-            <span className="ld-hint">
-              {t('{loads} not counted under a truck', {
-                loads: plural(unassigned.length, 'load'),
-              })}
-            </span>
-          </div>
-          <ul className="pf-suggestions">
-            {suggestions.map((suggestion) => (
-              <li key={suggestion.number}>
-                <div>
-                  <strong>#{suggestion.number}</strong>
-                  <small>{plural(suggestion.count, 'load')}</small>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => edit(blankDraft(suggestion.number))}
-                >
-                  <Plus />
-                  {t('Add truck')}
-                </Button>
-              </li>
-            ))}
-          </ul>
+                  <PeriodGrid summary={summary} />
+                  <p className="pf-card-foot">
+                    {t('Last load')} {summary.lastLoad ? date(summary.lastLoad) : '—'}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            </>
+          )}
         </section>
-      ) : null}
+
+        {suggestions.length ? (
+          <section className="ld-panel pf-section" aria-labelledby="pf-unmatched-trucks">
+            <div className="ld-panel-head">
+              <div>
+                <p className="ld-step">{t('From saved invoices')}</p>
+                <h2 id="pf-unmatched-trucks">{t('Truck Numbers Without a Profile')}</h2>
+              </div>
+              <span className="ld-hint">
+                {t('{loads} not counted under a truck', {
+                  loads: plural(unassigned.length, 'load'),
+                })}
+              </span>
+            </div>
+            <ul className="pf-suggestions">
+              {suggestions.map((suggestion) => (
+                <li key={suggestion.number}>
+                  <div>
+                    <strong>#{suggestion.number}</strong>
+                    <small>{plural(suggestion.count, 'load')}</small>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => edit(blankDraft(suggestion.number))}
+                  >
+                    <Plus />
+                    {t('Add truck')}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
+
 
       <Dialog
         open={draft !== null}

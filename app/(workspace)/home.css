@@ -596,9 +596,10 @@ button.hm-row:hover {
 
 }
 
-/* On a wide screen the sheet is not a box at all — its children lay out in the
-   page exactly as they did before it was wrapped around them. */
-.hm-sheet {
+/* Every page's content below its band rides in one of these. On a wide screen
+   the sheet is not a box at all — its children lay out in the page exactly as
+   they did before it was wrapped around them. */
+.page-sheet {
   display: contents;
 }
 
@@ -622,14 +623,14 @@ button.hm-row:hover {
     padding: calc(var(--phone-topbar) + var(--ui-space-4)) var(--ui-space-5)
       calc(var(--ui-space-6) + var(--ui-radius-xl));
   }
-  /* The sheet: the whole page below the greeting, as one panel that runs to
-     both edges, curves at the top and slides up over the blue.
+  /* The sheet: the whole page below its band, as one panel that runs to both
+     edges, curves at the top and slides up over the band.
    *
    * min-height is what keeps the blue from reappearing. Scrolled to the very
    * bottom, the sheet's own bottom edge sits at the bottom of the page — a
    * full viewport of sheet guarantees it is still below the fold there, so the
    * header it is covering never shows out from under it. */
-  .hm-sheet {
+  .page-sheet {
     display: block;
     position: relative;
     /* Above the account bar, which is 5. The account is pinned to the blue and
@@ -651,10 +652,10 @@ button.hm-row:hover {
   }
   /* The notch, the way a sheet drawn up over something is marked. Clear of the
      corner curve, then a gap before the first card.
-     Defined inside the media query on purpose: above phone width .hm-sheet is
-     display:contents, which still generates its ::before, and the notch would
-     turn up in the middle of the desktop page. */
-  .hm-sheet::before {
+     Defined inside the media query on purpose: above phone width .page-sheet
+     is display:contents, which still generates its ::before, and the notch
+     would turn up in the middle of the desktop page. */
+  .page-sheet::before {
     content: '';
     display: block;
     width: 44px;

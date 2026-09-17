@@ -2146,937 +2146,944 @@ export default function LoadDesk() {
         </dl>
       </div>
 
-      <div className="ld-grid">
-        <section className="ld-panel" aria-labelledby="ld-upload-title">
-          <div className="ld-panel-head">
-            <div>
-              <p className="ld-step">{t('01 · Upload')}</p>
-              <h2 id="ld-upload-title">{t('New Load Tickets')}</h2>
-            </div>
-            <span className="ld-hint">
-              {t('PDF, image or text · 20 MB each')}
-            </span>
-          </div>
-          {/* The camera scanner is for phones; everything else uploads files. */}
-          {isPhone ? (
-            <>
-              {scannerOpen && (
-                <DocumentScanner
-                  onClose={() => setScannerOpen(false)}
-                  onUse={(file) => {
-                    chooseFiles([file]);
-                    setScannerOpen(false);
-                  }}
-                />
-              )}
-              <Button
-                type="button"
-                className="ld-scan-button"
-                onClick={() => setScannerOpen(true)}
-              >
-                <Camera data-icon="inline-start" />
-                {t('Scan ticket')}
-              </Button>
-            </>
-          ) : null}
-          <input
-            ref={fileInput}
-            type="file"
-            accept={ACCEPT_ATTRIBUTE}
-            multiple
-            hidden
-            onChange={(event) => chooseFiles(event.target.files)}
-          />
-          <button
-            type="button"
-            className="ld-drop"
-            data-phone-hidden={isPhone || undefined}
-            data-dragging={dragging}
-            onClick={() => fileInput.current?.click()}
-            onDragOver={(event) => {
-              event.preventDefault();
-              setDragging(true);
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-          >
-            <span className="ld-drop-icon" aria-hidden="true">
-              <FileUp />
-            </span>
-            <strong>
-              {pending.length ? t('Add more tickets') : t('Drop tickets here')}
-            </strong>
-            <span>
-              {busy
-                ? t('Files added now wait for the next extraction')
-                : pending.length
-                  ? t('Drop or click to add files to the list below')
-                  : t('or click to choose one or several files')}
-            </span>
-          </button>
-          {pending.length ? (
-            <div className="ld-pending" aria-live="polite">
-              <div className="ld-pending-head">
-                <strong>
-                  {t('Ready to extract: {files}', { files: plural(pending.length, 'file') })}
-                </strong>
-                <Button variant="ghost" size="xs" onClick={() => setPending([])}>
-                  {t('Clear')}
-                </Button>
-              </div>
-              <ul>
-                {pending.map((file) => (
-                  <li key={fileKey(file)}>
-                    <FileText aria-hidden="true" />
-                    <span className="ld-pending-name" title={file.name}>
-                      {file.name}
-                    </span>
-                    <span className="ld-pending-size">{fileSize(file.size)}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      aria-label={t('Remove {name}', { name: file.name })}
-                      onClick={() => removePending(fileKey(file))}
-                    >
-                      <X />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-              <p className="ld-hint">
-                {t(
-                  'Tickets from the same date go on one invoice, dated that day. Tickets from different dates get separate invoices.',
-                )}
-              </p>
-            </div>
-          ) : null}
-          <div className="ld-field ld-truck-pick">
-            <label htmlFor={`${fieldId}-upload-truck`}>
-              {t('Truck for these tickets')}
-            </label>
-            <SelectField
-              id={`${fieldId}-upload-truck`}
-              aria-describedby={`${fieldId}-upload-truck-hint`}
-              value={uploadTruck ? String(uploadTruck.id) : ''}
-              disabled={busy}
-              onValueChange={setTruckChoice}
-              options={[
-                { value: '', label: t('No truck profile') },
-                ...activeTrucks.map((truck) => ({
-                  value: String(truck.id),
-                  label: `${truckLabel(truck)}${truck.driver ? ` · ${truck.driver}` : ''}`,
-                })),
-              ]}
-            />
-            <small
-              id={`${fieldId}-upload-truck-hint`}
-              className="ld-field-hint"
-            >
-              {activeTrucks.length ? (
-                t('Its truck number goes on every invoice from this upload.')
-              ) : (
-                <>
-                  {t('Add trucks in')} <Link href="/fleet">{t('Truck Fleet')}</Link>{' '}
-                  {t('to choose one here.')}
-                </>
-              )}
-            </small>
-          </div>
-          <div className="ld-actions">
-            <Button
-              onClick={() => void extractPending()}
-              disabled={busy || !pending.length}
-            >
-              {t('Extract tickets')}
-              <ChevronRight data-icon="inline-end" />
-            </Button>
-          </div>
-          {addingTo ? null : extractionProgress}
-          <p
-            className="ld-status"
-            data-tone={uploadStatus?.tone}
-            aria-live="polite"
-          >
-            {uploadStatus?.message}
-          </p>
-        </section>
+      {/* Everything below the band rides in one sheet, as on every page. On a
+          phone it is the panel that slides up over the band; on a wider screen
+          it is display:contents and lays out as if it were not here. */}
+      <div className="page-sheet">
 
-        <section className="ld-panel" aria-labelledby="ld-saved-title">
-          <div className="ld-panel-head">
-            <div>
-              <p className="ld-step">{t('By ticket date')}</p>
-              <h2 id="ld-saved-title">{t('Batches')}</h2>
-            </div>
-            <div className="ld-actions ld-actions-flush">
-              <Link
-                href="/records"
-                className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-              >
-                {t('All invoices & tickets')}
-              </Link>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={downloadLedger}
-                disabled={!records.length}
-              >
-                <Download />
-                {t('Ledger CSV')}
-              </Button>
-            </div>
-          </div>
-          {store.error ? (
-            <div className="ld-notice" data-tone="warning">
-              {t(store.error)}{' '}
-              {store.error.includes('could not be read') ? (
-                <Button
-                  variant="link"
-                  size="xs"
-                  onClick={clearUnreadableRecords}
-                >
-                  {t('Clear saved tickets')}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-          {!store.ready ? (
-            <p className="ld-empty">{t('Loading batches…')}</p>
-          ) : records.length === 0 ? (
-            <p className="ld-empty">
-              {store.mode === 'local'
-                ? t('Nothing photographed yet. In this local preview batches stay in this browser.')
-                : t('Nothing photographed yet. A ticket goes into its date’s batch as soon as it is read.')}
-            </p>
-          ) : (
-            batchesByDate.map((batch) => (
-            <section key={batch.date ?? 'undated'} className="ld-batch">
-              <div className="ld-batch-head">
-                <strong>{batch.date ? date(batch.date) : t('No date read')}</strong>
-                <span>
-                  {plural(batch.items.length, 'ticket')}
-                  {batch.waiting
-                    ? ` · ${t('{count} to check', { count: batch.waiting })}`
-                    : ` · ${t('all checked')}`}
-                </span>
+        <div className="ld-grid">
+          <section className="ld-panel" aria-labelledby="ld-upload-title">
+            <div className="ld-panel-head">
+              <div>
+                <p className="ld-step">{t('01 · Upload')}</p>
+                <h2 id="ld-upload-title">{t('New Load Tickets')}</h2>
               </div>
-            <ul className="ld-records">
-              {batch.items.map((record) => {
-                const valid = validateTicket(record.ticket).length === 0;
-                return (
-                  <li key={record.id} className="ld-record">
-                    <div className="ld-record-main">
-                      <strong>
-                        {record.ticket.ticket_number ?? t('Unnumbered')}
-                      </strong>
-                      <span className="ld-record-meta">
-                        {record.ticket.customer_name ?? t('No customer')} ·{' '}
-                        {pounds(record.ticket.net_lb)} ·{' '}
-                        <span>{t('Invoice {number}', { number: record.invoice.invoice_number })}</span>
-                      </span>
-                    </div>
-                    <span
-                      className="ld-chip"
-                      data-tone={valid ? 'good' : 'warning'}
-                    >
-                      {valid ? t('Valid') : t('Needs review')}
-                    </span>
-                    <div className="ld-record-actions">
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => editSaved(record)}
-                      >
-                        <Pencil />
-                        {t('Edit')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => setInvoiceView(savedInvoice(record))}
-                      >
-                        <ReceiptText />
-                        {t('Invoice')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        onClick={() => void openOriginal(record)}
-                      >
-                        <FileSearch />
-                        {t('Original')}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="xs"
-                        className="ld-danger"
-                        onClick={() => setRecordToDelete(record)}
-                      >
-                        <Trash2 />
-                        {t('Delete')}
-                      </Button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-            </section>
-            ))
-          )}
-        </section>
-      </div>
-
-      {active && ticket && check ? (
-        <section
-          ref={reviewPanel}
-          className="ld-panel ld-review"
-          aria-labelledby="ld-review-title"
-        >
-          <div className="ld-review-head">
-            <div>
-              <p className="ld-step">{t('02 · Review')}</p>
-              <h2 id="ld-review-title">
-                {t('Ticket {index} of {total}', { index: activeIndex + 1, total: queue.length })}
-              </h2>
-            </div>
-            <nav className="ld-queue" aria-label={t('Ticket queue')}>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t('Previous ticket')}
-                disabled={activeIndex <= 0}
-                onClick={() => setActiveIndex(activeIndex - 1)}
-              >
-                <ChevronLeft />
-              </Button>
-              {queue.map((item, index) => {
-                const changed = hasChanges(item);
-                const saved = item.saved_record_id !== null && !changed;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className="ld-queue-tab"
-                    aria-current={index === activeIndex ? 'true' : undefined}
-                    data-saved={saved}
-                    data-changed={changed}
-                    aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${saved ? `, ${t('saved')}` : changed ? `, ${t('unsaved changes')}` : ''}`}
-                    onClick={() => setActiveIndex(index)}
-                  >
-                    {saved ? <Check aria-hidden="true" /> : index + 1}
-                  </button>
-                );
-              })}
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t('Next ticket')}
-                disabled={activeIndex >= queue.length - 1}
-                onClick={() => setActiveIndex(activeIndex + 1)}
-              >
-                <ChevronRight />
-              </Button>
-              <span className="ld-queue-count">
-                {t('{saved} of {total} saved', { saved: savedInQueue, total: queue.length })}
+              <span className="ld-hint">
+                {t('PDF, image or text · 20 MB each')}
               </span>
-              {savedInQueue === queue.length && !unsavedEdits ? (
-                <Button variant="secondary" size="sm" onClick={clearQueue}>
-                  {t('Clear queue')}
-                </Button>
-              ) : null}
-            </nav>
-          </div>
-
-          <dl className="ld-summary">
-            <div>
-              <dt>{t('Ticket')}</dt>
-              <dd>{ticket.ticket_number ?? t('Not found')}</dd>
             </div>
-            <div>
-              <dt>{t('Customer')}</dt>
-              <dd>{ticket.customer_name ?? t('Not found')}</dd>
-            </div>
-            <div>
-              <dt>{t('Net tons')}</dt>
-              <dd>{tons ? t('{tons} Tons', { tons }) : t('Not found')}</dd>
-            </div>
-            <div>
-              <dt>{t('Status')}</dt>
-              <dd>
-                {activeSaved
-                  ? activeChanged
-                    ? t('Unsaved changes')
-                    : t('Saved as record {id}', { id: active.saved_record_id ?? '' })
-                  : issues.length
-                    ? t('To review: {items}', { items: plural(issues.length, 'item') })
-                    : t('Ready to save')}
-              </dd>
-            </div>
-          </dl>
-
-          <div className="ld-review-body">
-            <form
-              className="ld-form"
-              onSubmit={(event) => void saveActive(event)}
-              onInvalidCapture={openInvalidSection}
-            >
-              {/* What the reader made of this page. Until now this was worked
-                  out, stored on the ticket and never shown, so a ticket that
-                  came back empty — an unsupported supplier's layout, a page
-                  nothing could be read from — looked like the app doing
-                  nothing at all. */}
-              {active.note_problem ? (
-                <div className="ld-notice" data-tone="warning" aria-live="polite">
-                  <strong>{t('This ticket was not read')}</strong>
-                  <p>{t(active.note)}</p>
-                  <details className="ld-scan-text">
-                    <summary>{t('What the scan read')}</summary>
-                    {active.ocr_text.trim() ? (
-                      <>
-                        <pre>{active.ocr_text}</pre>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="xs"
-                          onClick={() => void navigator.clipboard?.writeText(active.ocr_text)}
-                        >
-                          {t('Copy text')}
-                        </Button>
-                      </>
-                    ) : (
-                      <p>{t('Nothing at all. The page itself is the problem, not the layout.')}</p>
-                    )}
-                  </details>
-                </div>
-              ) : null}
-              <div
-                className="ld-notice"
-                data-tone={issues.length ? 'warning' : 'good'}
-                aria-live="polite"
-              >
-                {issues.length ? (
-                  <>
-                    <strong>{t('Check before saving')}</strong>
-                    <ul>
-                      {issues.map((issue) => (
-                        <li key={issue}>{t(issue)}</li>
-                      ))}
-                    </ul>
-                  </>
-                ) : (
-                  t('All checks pass.')
+            {/* The camera scanner is for phones; everything else uploads files. */}
+            {isPhone ? (
+              <>
+                {scannerOpen && (
+                  <DocumentScanner
+                    onClose={() => setScannerOpen(false)}
+                    onUse={(file) => {
+                      chooseFiles([file]);
+                      setScannerOpen(false);
+                    }}
+                  />
                 )}
+                <Button
+                  type="button"
+                  className="ld-scan-button"
+                  onClick={() => setScannerOpen(true)}
+                >
+                  <Camera data-icon="inline-start" />
+                  {t('Scan ticket')}
+                </Button>
+              </>
+            ) : null}
+            <input
+              ref={fileInput}
+              type="file"
+              accept={ACCEPT_ATTRIBUTE}
+              multiple
+              hidden
+              onChange={(event) => chooseFiles(event.target.files)}
+            />
+            <button
+              type="button"
+              className="ld-drop"
+              data-phone-hidden={isPhone || undefined}
+              data-dragging={dragging}
+              onClick={() => fileInput.current?.click()}
+              onDragOver={(event) => {
+                event.preventDefault();
+                setDragging(true);
+              }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+            >
+              <span className="ld-drop-icon" aria-hidden="true">
+                <FileUp />
+              </span>
+              <strong>
+                {pending.length ? t('Add more tickets') : t('Drop tickets here')}
+              </strong>
+              <span>
+                {busy
+                  ? t('Files added now wait for the next extraction')
+                  : pending.length
+                    ? t('Drop or click to add files to the list below')
+                    : t('or click to choose one or several files')}
+              </span>
+            </button>
+            {pending.length ? (
+              <div className="ld-pending" aria-live="polite">
+                <div className="ld-pending-head">
+                  <strong>
+                    {t('Ready to extract: {files}', { files: plural(pending.length, 'file') })}
+                  </strong>
+                  <Button variant="ghost" size="xs" onClick={() => setPending([])}>
+                    {t('Clear')}
+                  </Button>
+                </div>
+                <ul>
+                  {pending.map((file) => (
+                    <li key={fileKey(file)}>
+                      <FileText aria-hidden="true" />
+                      <span className="ld-pending-name" title={file.name}>
+                        {file.name}
+                      </span>
+                      <span className="ld-pending-size">{fileSize(file.size)}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        aria-label={t('Remove {name}', { name: file.name })}
+                        onClick={() => removePending(fileKey(file))}
+                      >
+                        <X />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+                <p className="ld-hint">
+                  {t(
+                    'Tickets from the same date go on one invoice, dated that day. Tickets from different dates get separate invoices.',
+                  )}
+                </p>
               </div>
+            ) : null}
+            <div className="ld-field ld-truck-pick">
+              <label htmlFor={`${fieldId}-upload-truck`}>
+                {t('Truck for these tickets')}
+              </label>
+              <SelectField
+                id={`${fieldId}-upload-truck`}
+                aria-describedby={`${fieldId}-upload-truck-hint`}
+                value={uploadTruck ? String(uploadTruck.id) : ''}
+                disabled={busy}
+                onValueChange={setTruckChoice}
+                options={[
+                  { value: '', label: t('No truck profile') },
+                  ...activeTrucks.map((truck) => ({
+                    value: String(truck.id),
+                    label: `${truckLabel(truck)}${truck.driver ? ` · ${truck.driver}` : ''}`,
+                  })),
+                ]}
+              />
+              <small
+                id={`${fieldId}-upload-truck-hint`}
+                className="ld-field-hint"
+              >
+                {activeTrucks.length ? (
+                  t('Its truck number goes on every invoice from this upload.')
+                ) : (
+                  <>
+                    {t('Add trucks in')} <Link href="/fleet">{t('Truck Fleet')}</Link>{' '}
+                    {t('to choose one here.')}
+                  </>
+                )}
+              </small>
+            </div>
+            <div className="ld-actions">
+              <Button
+                onClick={() => void extractPending()}
+                disabled={busy || !pending.length}
+              >
+                {t('Extract tickets')}
+                <ChevronRight data-icon="inline-end" />
+              </Button>
+            </div>
+            {addingTo ? null : extractionProgress}
+            <p
+              className="ld-status"
+              data-tone={uploadStatus?.tone}
+              aria-live="polite"
+            >
+              {uploadStatus?.message}
+            </p>
+          </section>
 
-              {isPhone ? (
-                <div className="ld-steps" aria-label={t('Review steps')}>
-                  <p>
-                    {t('Step {number} of {total}', {
-                      number: atStep + 1,
-                      total: STEPS.length,
-                    })}{' '}
-                    · {t(STEPS[atStep])}
-                  </p>
-                  <span className="ld-steps-track" aria-hidden="true">
-                    {STEPS.map((name, index) => (
-                      <i key={name} data-done={index <= atStep || undefined} />
-                    ))}
+          <section className="ld-panel" aria-labelledby="ld-saved-title">
+            <div className="ld-panel-head">
+              <div>
+                <p className="ld-step">{t('By ticket date')}</p>
+                <h2 id="ld-saved-title">{t('Batches')}</h2>
+              </div>
+              <div className="ld-actions ld-actions-flush">
+                <Link
+                  href="/records"
+                  className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+                >
+                  {t('All invoices & tickets')}
+                </Link>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={downloadLedger}
+                  disabled={!records.length}
+                >
+                  <Download />
+                  {t('Ledger CSV')}
+                </Button>
+              </div>
+            </div>
+            {store.error ? (
+              <div className="ld-notice" data-tone="warning">
+                {t(store.error)}{' '}
+                {store.error.includes('could not be read') ? (
+                  <Button
+                    variant="link"
+                    size="xs"
+                    onClick={clearUnreadableRecords}
+                  >
+                    {t('Clear saved tickets')}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+            {!store.ready ? (
+              <p className="ld-empty">{t('Loading batches…')}</p>
+            ) : records.length === 0 ? (
+              <p className="ld-empty">
+                {store.mode === 'local'
+                  ? t('Nothing photographed yet. In this local preview batches stay in this browser.')
+                  : t('Nothing photographed yet. A ticket goes into its date’s batch as soon as it is read.')}
+              </p>
+            ) : (
+              batchesByDate.map((batch) => (
+              <section key={batch.date ?? 'undated'} className="ld-batch">
+                <div className="ld-batch-head">
+                  <strong>{batch.date ? date(batch.date) : t('No date read')}</strong>
+                  <span>
+                    {plural(batch.items.length, 'ticket')}
+                    {batch.waiting
+                      ? ` · ${t('{count} to check', { count: batch.waiting })}`
+                      : ` · ${t('all checked')}`}
                   </span>
                 </div>
-              ) : null}
-              <fieldset
-                className="ld-fieldset"
-                disabled={busy}
-                data-phone-step={isPhone ? atStep : undefined}
-              >
-                <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
-                  {sectionSummary('Ticket', ticketDetail)}
-                  <div className="ld-fields">
-                    {TICKET_FIELDS.map((def) => renderField(def))}
-                  </div>
-                </details>
-
-                <details className="ld-section ld-collapsible" data-step="1" open={isPhone || undefined}>
-                  {sectionSummary('Customer and Job', jobDetail)}
-                  <div className="ld-fields">
-                    {JOB_FIELDS.map((def) =>
-                      renderField(
-                        def,
-                        def.name === 'project_address' ? addressPicker : undefined,
-                      ),
-                    )}
-                  </div>
-                </details>
-
-                <details className="ld-section ld-collapsible" data-step="2" open={isPhone || undefined}>
-                  {sectionSummary(
-                    'Weight and Hauling',
-                    weightDetail,
-                    check.tone === 'bad' ? 'bad' : undefined,
-                  )}
-                  <div className="ld-fields">
-                    {WEIGHT_FIELDS.map((def) => renderField(def))}
-                    <p
-                      className="ld-weight"
-                      data-tone={check.tone}
-                      aria-live="polite"
-                    >
-                      {check.text}
-                    </p>
-                    {HAULING_FIELDS.map((def) => renderField(def))}
-                  </div>
-                </details>
-
-                <div className="ld-section" data-step="3">
-                  <h3>{t('Invoice')}</h3>
-                  {batchNote ? (
-                    <p className="ld-section-note">{batchNote}</p>
-                  ) : null}
-                  <div className="ld-add-tickets">
-                    <input
-                      ref={addFileInput}
-                      type="file"
-                      accept={ACCEPT_ATTRIBUTE}
-                      multiple
-                      hidden
-                      onChange={(event) => void addTicketsToInvoice(event.target.files)}
-                    />
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={busy}
-                      onClick={() => addFileInput.current?.click()}
-                    >
-                      <FileUp data-icon="inline-start" />
-                      {t('Add tickets to this invoice')}
-                    </Button>
-                    <small className="ld-field-hint">
-                      {active.invoice.invoice_number.trim()
-                        ? t('They join invoice {number}, whatever their ticket dates.', {
-                            number: active.invoice.invoice_number.trim(),
-                          })
-                        : t('They join the invoice being reviewed, whatever their ticket dates.')}
-                    </small>
-                    {addingTo === active.batch_id ? extractionProgress : null}
-                  </div>
-                  <div className="ld-fields">
-                    {invoiceField(
-                      t('Invoice number'),
-                      active.invoice.invoice_number,
-                      (value) => setInvoice({ invoice_number: value }),
-                      {
-                        required: true,
-                        placeholder: t('e.g. 1001'),
-                        hint: active.invoice.invoice_number.trim()
-                          ? undefined
-                          : t('Enter your first invoice number. The ones after it follow in order.'),
-                      },
-                    )}
-                    {invoiceField(
-                      t('Invoice date'),
-                      active.invoice.invoice_date,
-                      (value) => setInvoice({ invoice_date: value }),
-                      { type: 'date', required: true },
-                    )}
-                    <div className="ld-field" data-span={2} data-new-row>
-                      <label htmlFor={`${fieldId}-customer`}>
-                        {t('Customer profile')}
-                      </label>
-                      <SelectField
-                        key={`customer-${activeIndex}-${customers.length}`}
-                        id={`${fieldId}-customer`}
-                        aria-describedby={`${fieldId}-customer-hint`}
-                        value={
-                          customerFormOpen
-                            ? NEW_CUSTOMER
-                            : activeCustomer
-                              ? String(activeCustomer.id)
-                              : ''
-                        }
-                        onValueChange={chooseCustomer}
-                        disabled={customerFormOpen && newCustomer.saving}
-                        options={[
-                          { value: '', label: t('No customer profile') },
-                          ...customers.map((customer) => ({
-                            value: String(customer.id),
-                            label: `${customer.name}${
-                              customer.flat_rate !== null
-                                ? ` · ${formatRate(customer.flat_rate, customer.rate_type ?? 'flat')}${(customer.rate_type ?? 'flat') === 'flat' ? ` ${t('flat')}` : ''}`
-                                : ''
-                            }`,
-                          })),
-                          { value: NEW_CUSTOMER, label: t('+ Create new customer') },
-                        ]}
-                      />
-                      <small
-                        id={`${fieldId}-customer-hint`}
-                        className="ld-field-hint"
+              <ul className="ld-records">
+                {batch.items.map((record) => {
+                  const valid = validateTicket(record.ticket).length === 0;
+                  return (
+                    <li key={record.id} className="ld-record">
+                      <div className="ld-record-main">
+                        <strong>
+                          {record.ticket.ticket_number ?? t('Unnumbered')}
+                        </strong>
+                        <span className="ld-record-meta">
+                          {record.ticket.customer_name ?? t('No customer')} ·{' '}
+                          {pounds(record.ticket.net_lb)} ·{' '}
+                          <span>{t('Invoice {number}', { number: record.invoice.invoice_number })}</span>
+                        </span>
+                      </div>
+                      <span
+                        className="ld-chip"
+                        data-tone={valid ? 'good' : 'warning'}
                       >
-                        {customerFormOpen
-                          ? t('Check the name below, then save the customer.')
-                          : activeCustomer || !ticket?.customer_name
-                            ? customerHint
-                            : t(
-                                'No customer profile matches this ticket. Choose + Create new customer to add it from the scan.',
-                              )}
-                      </small>
-                      {misprint ? (
-                        <p className="ld-near-match">
-                          <span>
-                            {t('The ticket prints “{printed}”, a letter or two off {name}.', {
-                              printed: printedName,
-                              name: misprint.alias ?? misprint.customer.name,
-                            })}
-                          </span>
+                        {valid ? t('Valid') : t('Needs review')}
+                      </span>
+                      <div className="ld-record-actions">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => editSaved(record)}
+                        >
+                          <Pencil />
+                          {t('Edit')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => setInvoiceView(savedInvoice(record))}
+                        >
+                          <ReceiptText />
+                          {t('Invoice')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() => void openOriginal(record)}
+                        >
+                          <FileSearch />
+                          {t('Original')}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          className="ld-danger"
+                          onClick={() => setRecordToDelete(record)}
+                        >
+                          <Trash2 />
+                          {t('Delete')}
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              </section>
+              ))
+            )}
+          </section>
+        </div>
+
+        {active && ticket && check ? (
+          <section
+            ref={reviewPanel}
+            className="ld-panel ld-review"
+            aria-labelledby="ld-review-title"
+          >
+            <div className="ld-review-head">
+              <div>
+                <p className="ld-step">{t('02 · Review')}</p>
+                <h2 id="ld-review-title">
+                  {t('Ticket {index} of {total}', { index: activeIndex + 1, total: queue.length })}
+                </h2>
+              </div>
+              <nav className="ld-queue" aria-label={t('Ticket queue')}>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t('Previous ticket')}
+                  disabled={activeIndex <= 0}
+                  onClick={() => setActiveIndex(activeIndex - 1)}
+                >
+                  <ChevronLeft />
+                </Button>
+                {queue.map((item, index) => {
+                  const changed = hasChanges(item);
+                  const saved = item.saved_record_id !== null && !changed;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className="ld-queue-tab"
+                      aria-current={index === activeIndex ? 'true' : undefined}
+                      data-saved={saved}
+                      data-changed={changed}
+                      aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${saved ? `, ${t('saved')}` : changed ? `, ${t('unsaved changes')}` : ''}`}
+                      onClick={() => setActiveIndex(index)}
+                    >
+                      {saved ? <Check aria-hidden="true" /> : index + 1}
+                    </button>
+                  );
+                })}
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t('Next ticket')}
+                  disabled={activeIndex >= queue.length - 1}
+                  onClick={() => setActiveIndex(activeIndex + 1)}
+                >
+                  <ChevronRight />
+                </Button>
+                <span className="ld-queue-count">
+                  {t('{saved} of {total} saved', { saved: savedInQueue, total: queue.length })}
+                </span>
+                {savedInQueue === queue.length && !unsavedEdits ? (
+                  <Button variant="secondary" size="sm" onClick={clearQueue}>
+                    {t('Clear queue')}
+                  </Button>
+                ) : null}
+              </nav>
+            </div>
+
+            <dl className="ld-summary">
+              <div>
+                <dt>{t('Ticket')}</dt>
+                <dd>{ticket.ticket_number ?? t('Not found')}</dd>
+              </div>
+              <div>
+                <dt>{t('Customer')}</dt>
+                <dd>{ticket.customer_name ?? t('Not found')}</dd>
+              </div>
+              <div>
+                <dt>{t('Net tons')}</dt>
+                <dd>{tons ? t('{tons} Tons', { tons }) : t('Not found')}</dd>
+              </div>
+              <div>
+                <dt>{t('Status')}</dt>
+                <dd>
+                  {activeSaved
+                    ? activeChanged
+                      ? t('Unsaved changes')
+                      : t('Saved as record {id}', { id: active.saved_record_id ?? '' })
+                    : issues.length
+                      ? t('To review: {items}', { items: plural(issues.length, 'item') })
+                      : t('Ready to save')}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="ld-review-body">
+              <form
+                className="ld-form"
+                onSubmit={(event) => void saveActive(event)}
+                onInvalidCapture={openInvalidSection}
+              >
+                {/* What the reader made of this page. Until now this was worked
+                    out, stored on the ticket and never shown, so a ticket that
+                    came back empty — an unsupported supplier's layout, a page
+                    nothing could be read from — looked like the app doing
+                    nothing at all. */}
+                {active.note_problem ? (
+                  <div className="ld-notice" data-tone="warning" aria-live="polite">
+                    <strong>{t('This ticket was not read')}</strong>
+                    <p>{t(active.note)}</p>
+                    <details className="ld-scan-text">
+                      <summary>{t('What the scan read')}</summary>
+                      {active.ocr_text.trim() ? (
+                        <>
+                          <pre>{active.ocr_text}</pre>
                           <Button
                             type="button"
-                            variant="link"
+                            variant="secondary"
                             size="xs"
-                            disabled={rememberBusy}
-                            onClick={() => void rememberSpelling()}
+                            onClick={() => void navigator.clipboard?.writeText(active.ocr_text)}
                           >
-                            {rememberBusy ? t('Saving…') : t('Remember this spelling')}
+                            {t('Copy text')}
                           </Button>
-                        </p>
+                        </>
+                      ) : (
+                        <p>{t('Nothing at all. The page itself is the problem, not the layout.')}</p>
+                      )}
+                    </details>
+                  </div>
+                ) : null}
+                <div
+                  className="ld-notice"
+                  data-tone={issues.length ? 'warning' : 'good'}
+                  aria-live="polite"
+                >
+                  {issues.length ? (
+                    <>
+                      <strong>{t('Check before saving')}</strong>
+                      <ul>
+                        {issues.map((issue) => (
+                          <li key={issue}>{t(issue)}</li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    t('All checks pass.')
+                  )}
+                </div>
+
+                {isPhone ? (
+                  <div className="ld-steps" aria-label={t('Review steps')}>
+                    <p>
+                      {t('Step {number} of {total}', {
+                        number: atStep + 1,
+                        total: STEPS.length,
+                      })}{' '}
+                      · {t(STEPS[atStep])}
+                    </p>
+                    <span className="ld-steps-track" aria-hidden="true">
+                      {STEPS.map((name, index) => (
+                        <i key={name} data-done={index <= atStep || undefined} />
+                      ))}
+                    </span>
+                  </div>
+                ) : null}
+                <fieldset
+                  className="ld-fieldset"
+                  disabled={busy}
+                  data-phone-step={isPhone ? atStep : undefined}
+                >
+                  <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
+                    {sectionSummary('Ticket', ticketDetail)}
+                    <div className="ld-fields">
+                      {TICKET_FIELDS.map((def) => renderField(def))}
+                    </div>
+                  </details>
+
+                  <details className="ld-section ld-collapsible" data-step="1" open={isPhone || undefined}>
+                    {sectionSummary('Customer and Job', jobDetail)}
+                    <div className="ld-fields">
+                      {JOB_FIELDS.map((def) =>
+                        renderField(
+                          def,
+                          def.name === 'project_address' ? addressPicker : undefined,
+                        ),
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="ld-section ld-collapsible" data-step="2" open={isPhone || undefined}>
+                    {sectionSummary(
+                      'Weight and Hauling',
+                      weightDetail,
+                      check.tone === 'bad' ? 'bad' : undefined,
+                    )}
+                    <div className="ld-fields">
+                      {WEIGHT_FIELDS.map((def) => renderField(def))}
+                      <p
+                        className="ld-weight"
+                        data-tone={check.tone}
+                        aria-live="polite"
+                      >
+                        {check.text}
+                      </p>
+                      {HAULING_FIELDS.map((def) => renderField(def))}
+                    </div>
+                  </details>
+
+                  <div className="ld-section" data-step="3">
+                    <h3>{t('Invoice')}</h3>
+                    {batchNote ? (
+                      <p className="ld-section-note">{batchNote}</p>
+                    ) : null}
+                    <div className="ld-add-tickets">
+                      <input
+                        ref={addFileInput}
+                        type="file"
+                        accept={ACCEPT_ATTRIBUTE}
+                        multiple
+                        hidden
+                        onChange={(event) => void addTicketsToInvoice(event.target.files)}
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => addFileInput.current?.click()}
+                      >
+                        <FileUp data-icon="inline-start" />
+                        {t('Add tickets to this invoice')}
+                      </Button>
+                      <small className="ld-field-hint">
+                        {active.invoice.invoice_number.trim()
+                          ? t('They join invoice {number}, whatever their ticket dates.', {
+                              number: active.invoice.invoice_number.trim(),
+                            })
+                          : t('They join the invoice being reviewed, whatever their ticket dates.')}
+                      </small>
+                      {addingTo === active.batch_id ? extractionProgress : null}
+                    </div>
+                    <div className="ld-fields">
+                      {invoiceField(
+                        t('Invoice number'),
+                        active.invoice.invoice_number,
+                        (value) => setInvoice({ invoice_number: value }),
+                        {
+                          required: true,
+                          placeholder: t('e.g. 1001'),
+                          hint: active.invoice.invoice_number.trim()
+                            ? undefined
+                            : t('Enter your first invoice number. The ones after it follow in order.'),
+                        },
+                      )}
+                      {invoiceField(
+                        t('Invoice date'),
+                        active.invoice.invoice_date,
+                        (value) => setInvoice({ invoice_date: value }),
+                        { type: 'date', required: true },
+                      )}
+                      <div className="ld-field" data-span={2} data-new-row>
+                        <label htmlFor={`${fieldId}-customer`}>
+                          {t('Customer profile')}
+                        </label>
+                        <SelectField
+                          key={`customer-${activeIndex}-${customers.length}`}
+                          id={`${fieldId}-customer`}
+                          aria-describedby={`${fieldId}-customer-hint`}
+                          value={
+                            customerFormOpen
+                              ? NEW_CUSTOMER
+                              : activeCustomer
+                                ? String(activeCustomer.id)
+                                : ''
+                          }
+                          onValueChange={chooseCustomer}
+                          disabled={customerFormOpen && newCustomer.saving}
+                          options={[
+                            { value: '', label: t('No customer profile') },
+                            ...customers.map((customer) => ({
+                              value: String(customer.id),
+                              label: `${customer.name}${
+                                customer.flat_rate !== null
+                                  ? ` · ${formatRate(customer.flat_rate, customer.rate_type ?? 'flat')}${(customer.rate_type ?? 'flat') === 'flat' ? ` ${t('flat')}` : ''}`
+                                  : ''
+                              }`,
+                            })),
+                            { value: NEW_CUSTOMER, label: t('+ Create new customer') },
+                          ]}
+                        />
+                        <small
+                          id={`${fieldId}-customer-hint`}
+                          className="ld-field-hint"
+                        >
+                          {customerFormOpen
+                            ? t('Check the name below, then save the customer.')
+                            : activeCustomer || !ticket?.customer_name
+                              ? customerHint
+                              : t(
+                                  'No customer profile matches this ticket. Choose + Create new customer to add it from the scan.',
+                                )}
+                        </small>
+                        {misprint ? (
+                          <p className="ld-near-match">
+                            <span>
+                              {t('The ticket prints “{printed}”, a letter or two off {name}.', {
+                                printed: printedName,
+                                name: misprint.alias ?? misprint.customer.name,
+                              })}
+                            </span>
+                            <Button
+                              type="button"
+                              variant="link"
+                              size="xs"
+                              disabled={rememberBusy}
+                              onClick={() => void rememberSpelling()}
+                            >
+                              {rememberBusy ? t('Saving…') : t('Remember this spelling')}
+                            </Button>
+                          </p>
+                        ) : null}
+                      </div>
+                      {customerFormOpen ? (
+                        <fieldset
+                          className="ld-new-client"
+                          aria-labelledby={`${fieldId}-new-customer-title`}
+                        >
+                          <p
+                            id={`${fieldId}-new-customer-title`}
+                            className="ld-new-client-title"
+                          >
+                            {t('New customer')}
+                          </p>
+                          <div className="ld-fields">
+                            <div className="ld-field" data-span={2}>
+                              <label htmlFor={`${fieldId}-new-customer-name`}>
+                                {t('Customer name')}
+                                <span className="ld-required" aria-hidden="true">
+                                  {' '}
+                                  *
+                                </span>
+                              </label>
+                              <Input
+                                ref={newCustomerInput}
+                                id={`${fieldId}-new-customer-name`}
+                                aria-describedby={`${fieldId}-new-customer-hint`}
+                                value={newCustomer.name}
+                                disabled={newCustomer.saving}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setNewCustomer(
+                                    (current) => current && { ...current, name: value, error: null },
+                                  );
+                                }}
+                                onKeyDown={(event) => {
+                                  // Enter saves the customer, not the ticket form around it.
+                                  if (event.key === 'Enter') {
+                                    event.preventDefault();
+                                    void saveNewCustomer();
+                                  }
+                                }}
+                              />
+                              <small
+                                id={`${fieldId}-new-customer-hint`}
+                                className="ld-field-hint"
+                              >
+                                {[
+                                  ticket.customer_name &&
+                                    t('Scanned as {name}', { name: ticket.customer_name }),
+                                  ticket.customer_id &&
+                                    t('customer number {number}', { number: ticket.customer_id }),
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ')}
+                                .{' '}
+                                {t('Tickets with the scanned name or number will match this customer.')}
+                              </small>
+                            </div>
+                          </div>
+                          {newCustomer.error ? (
+                            <p className="ld-status" data-tone="error" role="alert">
+                              {t(newCustomer.error)}
+                            </p>
+                          ) : null}
+                          <div className="ld-actions ld-actions-flush">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={newCustomer.saving}
+                              onClick={() => setNewCustomer(null)}
+                            >
+                              {t('Cancel')}
+                            </Button>
+                            <Button
+                              type="button"
+                              disabled={newCustomer.saving}
+                              onClick={() => void saveNewCustomer()}
+                            >
+                              {newCustomer.saving ? t('Saving…') : t('Save customer')}
+                            </Button>
+                          </div>
+                        </fieldset>
+                      ) : null}
+                      <div className="ld-field" data-span={2}>
+                        <label htmlFor={`${fieldId}-truck`}>{t('Truck profile')}</label>
+                        <SelectField
+                          id={`${fieldId}-truck`}
+                          aria-describedby={`${fieldId}-truck-hint`}
+                          value={activeTruck ? String(activeTruck.id) : ''}
+                          onValueChange={chooseTruck}
+                          options={[
+                            { value: '', label: t('No truck profile') },
+                            ...trucks
+                              .filter(
+                                (truck) =>
+                                  truck.active || truck.id === active.truck_id,
+                              )
+                              .map((truck) => ({
+                                value: String(truck.id),
+                                label: truckLabel(truck),
+                              })),
+                          ]}
+                        />
+                        <small
+                          id={`${fieldId}-truck-hint`}
+                          className="ld-field-hint"
+                        >
+                          {truckHint}
+                        </small>
+                      </div>
+                      {/* Rate type, rate, fuel type and fuel charge share a row; the line total sits under the rate. */}
+                      <div className="ld-field" data-new-row>
+                        <label htmlFor={`${fieldId}-rate-type`}>{t('Rate type')}</label>
+                        <SelectField
+                          key={`rate-type-${activeIndex}`}
+                          id={`${fieldId}-rate-type`}
+                          value={rateType}
+                          onValueChange={(value) => setField('rate_type', value)}
+                          options={RATE_TYPES.map((type) => ({
+                            value: type,
+                            label: t(RATE_TYPE_LABELS[type]),
+                          }))}
+                        />
+                      </div>
+                      {renderField({
+                        name: 'rate',
+                        label: t('Rate {unit}', { unit: t(RATE_UNITS[rateType]) }),
+                        step: '0.01',
+                      })}
+                      <div className="ld-field">
+                        <label htmlFor={`${fieldId}-fuel-type`}>{t('Fuel charge type')}</label>
+                        <SelectField
+                          key={`fuel-type-${activeIndex}`}
+                          id={`${fieldId}-fuel-type`}
+                          value={fuelType}
+                          onValueChange={(value) => setField('fuel_type', value)}
+                          options={FUEL_TYPES.map((type) => ({
+                            value: type,
+                            label: t(FUEL_TYPE_LABELS[type]),
+                          }))}
+                        />
+                      </div>
+                      {renderField({
+                        name: 'fuel_charge',
+                        label:
+                          fuelType === 'percent' ? 'Fuel charge %' : 'Fuel charge ($)',
+                        step: '0.01',
+                      })}
+                      <div className="ld-field" data-span={2} data-new-row>
+                        <span>{t('Line total')}</span>
+                        <output className="ld-output" aria-describedby={`${fieldId}-line-math`}>
+                          {money(lineTotal(ticket)) || t('Draft')}
+                        </output>
+                        <small id={`${fieldId}-line-math`} className="ld-field-hint">
+                          {t(lineBreakdown(ticket))}
+                        </small>
+                      </div>
+                      {rateType === 'hourly'
+                        ? renderField({ name: 'hours', label: 'Hours', step: '0.25' })
+                        : null}
+                      <div className="ld-field" data-span={2} data-new-row>
+                        <label htmlFor={`${fieldId}-client`}>
+                          {t('Bill to client')}
+                          <span className="ld-required" aria-hidden="true">
+                            {' '}
+                            *
+                          </span>
+                        </label>
+                        <SelectField
+                          // A new client changes the list: start the menu afresh.
+                          key={`client-${activeIndex}-${clients.length}`}
+                          id={`${fieldId}-client`}
+                          aria-describedby={`${fieldId}-client-hint`}
+                          value={clientChoice}
+                          onValueChange={chooseClient}
+                          options={clientOptions}
+                        />
+                        <small id={`${fieldId}-client-hint`} className="ld-field-hint">
+                          {clientDetails}{' '}
+                          <Link href="/customers">{t('Manage clients')}</Link>
+                        </small>
+                      </div>
+                      {newClient ? (
+                        <fieldset
+                          className="ld-new-client"
+                          aria-labelledby={`${fieldId}-new-client-title`}
+                        >
+                          <p id={`${fieldId}-new-client-title`} className="ld-new-client-title">
+                            {t('New client')}
+                          </p>
+                          <div className="ld-fields">
+                            {/* The examples describe each box; they never name a real client. */}
+                            {newClientField('name', t('Company name'), {
+                              required: true,
+                              placeholder: t('Company name'),
+                            })}
+                            {newClientField('phone', t('Phone'), {
+                              type: 'tel',
+                              placeholder: PHONE_MASK,
+                            })}
+                            {newClientField('street', t('Address line 1'), {
+                              placeholder: t('Street address'),
+                            })}
+                            {newClientField('city', t('Address line 2'), {
+                              placeholder: t('City, state and ZIP'),
+                            })}
+                          </div>
+                          {newClient.error ? (
+                            <p className="ld-status" data-tone="error" role="alert">
+                              {t(newClient.error)}
+                            </p>
+                          ) : null}
+                          <div className="ld-actions ld-actions-flush">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              disabled={newClient.saving}
+                              onClick={() => setNewClient(null)}
+                            >
+                              {t('Cancel')}
+                            </Button>
+                            <Button
+                              type="button"
+                              disabled={newClient.saving}
+                              onClick={() => void saveNewClient()}
+                            >
+                              {newClient.saving ? t('Saving…') : t('Save client')}
+                            </Button>
+                          </div>
+                        </fieldset>
                       ) : null}
                     </div>
-                    {customerFormOpen ? (
-                      <fieldset
-                        className="ld-new-client"
-                        aria-labelledby={`${fieldId}-new-customer-title`}
-                      >
-                        <p
-                          id={`${fieldId}-new-customer-title`}
-                          className="ld-new-client-title"
-                        >
-                          {t('New customer')}
-                        </p>
-                        <div className="ld-fields">
-                          <div className="ld-field" data-span={2}>
-                            <label htmlFor={`${fieldId}-new-customer-name`}>
-                              {t('Customer name')}
-                              <span className="ld-required" aria-hidden="true">
-                                {' '}
-                                *
-                              </span>
-                            </label>
-                            <Input
-                              ref={newCustomerInput}
-                              id={`${fieldId}-new-customer-name`}
-                              aria-describedby={`${fieldId}-new-customer-hint`}
-                              value={newCustomer.name}
-                              disabled={newCustomer.saving}
-                              onChange={(event) => {
-                                const value = event.target.value;
-                                setNewCustomer(
-                                  (current) => current && { ...current, name: value, error: null },
-                                );
-                              }}
-                              onKeyDown={(event) => {
-                                // Enter saves the customer, not the ticket form around it.
-                                if (event.key === 'Enter') {
-                                  event.preventDefault();
-                                  void saveNewCustomer();
-                                }
-                              }}
-                            />
-                            <small
-                              id={`${fieldId}-new-customer-hint`}
-                              className="ld-field-hint"
-                            >
-                              {[
-                                ticket.customer_name &&
-                                  t('Scanned as {name}', { name: ticket.customer_name }),
-                                ticket.customer_id &&
-                                  t('customer number {number}', { number: ticket.customer_id }),
-                              ]
-                                .filter(Boolean)
-                                .join(' · ')}
-                              .{' '}
-                              {t('Tickets with the scanned name or number will match this customer.')}
-                            </small>
-                          </div>
-                        </div>
-                        {newCustomer.error ? (
-                          <p className="ld-status" data-tone="error" role="alert">
-                            {t(newCustomer.error)}
-                          </p>
-                        ) : null}
-                        <div className="ld-actions ld-actions-flush">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            disabled={newCustomer.saving}
-                            onClick={() => setNewCustomer(null)}
-                          >
-                            {t('Cancel')}
-                          </Button>
-                          <Button
-                            type="button"
-                            disabled={newCustomer.saving}
-                            onClick={() => void saveNewCustomer()}
-                          >
-                            {newCustomer.saving ? t('Saving…') : t('Save customer')}
-                          </Button>
-                        </div>
-                      </fieldset>
-                    ) : null}
-                    <div className="ld-field" data-span={2}>
-                      <label htmlFor={`${fieldId}-truck`}>{t('Truck profile')}</label>
-                      <SelectField
-                        id={`${fieldId}-truck`}
-                        aria-describedby={`${fieldId}-truck-hint`}
-                        value={activeTruck ? String(activeTruck.id) : ''}
-                        onValueChange={chooseTruck}
-                        options={[
-                          { value: '', label: t('No truck profile') },
-                          ...trucks
-                            .filter(
-                              (truck) =>
-                                truck.active || truck.id === active.truck_id,
-                            )
-                            .map((truck) => ({
-                              value: String(truck.id),
-                              label: truckLabel(truck),
-                            })),
-                        ]}
-                      />
-                      <small
-                        id={`${fieldId}-truck-hint`}
-                        className="ld-field-hint"
-                      >
-                        {truckHint}
-                      </small>
-                    </div>
-                    {/* Rate type, rate, fuel type and fuel charge share a row; the line total sits under the rate. */}
-                    <div className="ld-field" data-new-row>
-                      <label htmlFor={`${fieldId}-rate-type`}>{t('Rate type')}</label>
-                      <SelectField
-                        key={`rate-type-${activeIndex}`}
-                        id={`${fieldId}-rate-type`}
-                        value={rateType}
-                        onValueChange={(value) => setField('rate_type', value)}
-                        options={RATE_TYPES.map((type) => ({
-                          value: type,
-                          label: t(RATE_TYPE_LABELS[type]),
-                        }))}
-                      />
-                    </div>
-                    {renderField({
-                      name: 'rate',
-                      label: t('Rate {unit}', { unit: t(RATE_UNITS[rateType]) }),
-                      step: '0.01',
-                    })}
-                    <div className="ld-field">
-                      <label htmlFor={`${fieldId}-fuel-type`}>{t('Fuel charge type')}</label>
-                      <SelectField
-                        key={`fuel-type-${activeIndex}`}
-                        id={`${fieldId}-fuel-type`}
-                        value={fuelType}
-                        onValueChange={(value) => setField('fuel_type', value)}
-                        options={FUEL_TYPES.map((type) => ({
-                          value: type,
-                          label: t(FUEL_TYPE_LABELS[type]),
-                        }))}
-                      />
-                    </div>
-                    {renderField({
-                      name: 'fuel_charge',
-                      label:
-                        fuelType === 'percent' ? 'Fuel charge %' : 'Fuel charge ($)',
-                      step: '0.01',
-                    })}
-                    <div className="ld-field" data-span={2} data-new-row>
-                      <span>{t('Line total')}</span>
-                      <output className="ld-output" aria-describedby={`${fieldId}-line-math`}>
-                        {money(lineTotal(ticket)) || t('Draft')}
-                      </output>
-                      <small id={`${fieldId}-line-math`} className="ld-field-hint">
-                        {t(lineBreakdown(ticket))}
-                      </small>
-                    </div>
-                    {rateType === 'hourly'
-                      ? renderField({ name: 'hours', label: 'Hours', step: '0.25' })
-                      : null}
-                    <div className="ld-field" data-span={2} data-new-row>
-                      <label htmlFor={`${fieldId}-client`}>
-                        {t('Bill to client')}
-                        <span className="ld-required" aria-hidden="true">
-                          {' '}
-                          *
-                        </span>
-                      </label>
-                      <SelectField
-                        // A new client changes the list: start the menu afresh.
-                        key={`client-${activeIndex}-${clients.length}`}
-                        id={`${fieldId}-client`}
-                        aria-describedby={`${fieldId}-client-hint`}
-                        value={clientChoice}
-                        onValueChange={chooseClient}
-                        options={clientOptions}
-                      />
-                      <small id={`${fieldId}-client-hint`} className="ld-field-hint">
-                        {clientDetails}{' '}
-                        <Link href="/customers">{t('Manage clients')}</Link>
-                      </small>
-                    </div>
-                    {newClient ? (
-                      <fieldset
-                        className="ld-new-client"
-                        aria-labelledby={`${fieldId}-new-client-title`}
-                      >
-                        <p id={`${fieldId}-new-client-title`} className="ld-new-client-title">
-                          {t('New client')}
-                        </p>
-                        <div className="ld-fields">
-                          {/* The examples describe each box; they never name a real client. */}
-                          {newClientField('name', t('Company name'), {
-                            required: true,
-                            placeholder: t('Company name'),
-                          })}
-                          {newClientField('phone', t('Phone'), {
-                            type: 'tel',
-                            placeholder: PHONE_MASK,
-                          })}
-                          {newClientField('street', t('Address line 1'), {
-                            placeholder: t('Street address'),
-                          })}
-                          {newClientField('city', t('Address line 2'), {
-                            placeholder: t('City, state and ZIP'),
-                          })}
-                        </div>
-                        {newClient.error ? (
-                          <p className="ld-status" data-tone="error" role="alert">
-                            {t(newClient.error)}
-                          </p>
-                        ) : null}
-                        <div className="ld-actions ld-actions-flush">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            disabled={newClient.saving}
-                            onClick={() => setNewClient(null)}
-                          >
-                            {t('Cancel')}
-                          </Button>
-                          <Button
-                            type="button"
-                            disabled={newClient.saving}
-                            onClick={() => void saveNewClient()}
-                          >
-                            {newClient.saving ? t('Saving…') : t('Save client')}
-                          </Button>
-                        </div>
-                      </fieldset>
-                    ) : null}
                   </div>
-                </div>
-              </fieldset>
+                </fieldset>
 
-              <div className="ld-save">
-                <div>
-                  <strong>
-                    {activeSaved
-                      ? batchChanged.length
-                        ? t('Unsaved changes')
-                        : t('Ticket saved')
-                      : t('Ready to save?')}
-                  </strong>
-                  <p>
-                    {activeSaved
-                      ? batchChanged.length
-                        ? batchChanged.length > 1
-                          ? t(
-                              'Saving updates the saved tickets on this invoice ({tickets}) for everyone in your workspace.',
-                              { tickets: plural(batchChanged.length, 'saved ticket') },
+                <div className="ld-save">
+                  <div>
+                    <strong>
+                      {activeSaved
+                        ? batchChanged.length
+                          ? t('Unsaved changes')
+                          : t('Ticket saved')
+                        : t('Ready to save?')}
+                    </strong>
+                    <p>
+                      {activeSaved
+                        ? batchChanged.length
+                          ? batchChanged.length > 1
+                            ? t(
+                                'Saving updates the saved tickets on this invoice ({tickets}) for everyone in your workspace.',
+                                { tickets: plural(batchChanged.length, 'saved ticket') },
+                              )
+                            : t('Saving updates this saved ticket for everyone in your workspace.')
+                          : t(
+                              'Change any field to edit this ticket or its invoice, then save the changes.',
                             )
-                          : t('Saving updates this saved ticket for everyone in your workspace.')
                         : t(
-                            'Change any field to edit this ticket or its invoice, then save the changes.',
-                          )
-                      : t(
-                          'The original file is stored with this record. Without a rate the invoice stays a draft.',
-                        )}
-                  </p>
-                </div>
-                <div className="ld-actions ld-actions-flush">
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      setInvoiceView({
-                        lines: batchItems,
-                        invoice: active.invoice,
-                      })
-                    }
-                  >
-                    <ReceiptText />
-                    {t('Preview invoice')}
-                  </Button>
-                  <Button
-                    type="submit"
-                    data-phone-hidden={isPhone && atStep < lastStep ? true : undefined}
-                    disabled={busy || (activeSaved && !batchChanged.length)}
-                  >
-                    {activeSaved && !batchChanged.length ? <Check /> : null}
-                    {busy && activeSaved ? t('Saving…') : saveLabel}
-                    {activeSaved ? null : (
-                      <ChevronRight data-icon="inline-end" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <p
-                className="ld-status"
-                data-tone={saveStatus?.tone}
-                aria-live="polite"
-              >
-                {saveStatus?.message}
-              </p>
-              {isPhone ? (
-                <div className="ld-step-nav">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={atStep === 0}
-                    onClick={() => setStep((current) => Math.max(0, current - 1))}
-                  >
-                    <ChevronLeft data-icon="inline-start" />
-                    {t('Back')}
-                  </Button>
-                  {atStep < lastStep ? (
+                            'The original file is stored with this record. Without a rate the invoice stays a draft.',
+                          )}
+                    </p>
+                  </div>
+                  <div className="ld-actions ld-actions-flush">
                     <Button
-                      type="button"
-                      onClick={() => setStep((current) => Math.min(lastStep, current + 1))}
+                      variant="secondary"
+                      onClick={() =>
+                        setInvoiceView({
+                          lines: batchItems,
+                          invoice: active.invoice,
+                        })
+                      }
                     >
-                      {t('Next')}
-                      <ChevronRight data-icon="inline-end" />
+                      <ReceiptText />
+                      {t('Preview invoice')}
                     </Button>
-                  ) : (
                     <Button
                       type="submit"
+                      data-phone-hidden={isPhone && atStep < lastStep ? true : undefined}
                       disabled={busy || (activeSaved && !batchChanged.length)}
                     >
                       {activeSaved && !batchChanged.length ? <Check /> : null}
                       {busy && activeSaved ? t('Saving…') : saveLabel}
+                      {activeSaved ? null : (
+                        <ChevronRight data-icon="inline-end" />
+                      )}
                     </Button>
-                  )}
+                  </div>
                 </div>
-              ) : null}
-            </form>
-
-            <aside className="ld-aside" aria-label={t('Source ticket')}>
-              <div>
-                <h3>{t('Original')}</h3>
-                <SourcePreview item={active} />
-                <p className="ld-aside-note">
-                  {active.source.file_name} · {fileSize(active.source.size)} ·
-                  SHA-256 <code>{active.source.sha256.slice(0, 12)}</code>
+                <p
+                  className="ld-status"
+                  data-tone={saveStatus?.tone}
+                  aria-live="polite"
+                >
+                  {saveStatus?.message}
                 </p>
-              </div>
-            </aside>
-          </div>
-        </section>
-      ) : null}
+                {isPhone ? (
+                  <div className="ld-step-nav">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={atStep === 0}
+                      onClick={() => setStep((current) => Math.max(0, current - 1))}
+                    >
+                      <ChevronLeft data-icon="inline-start" />
+                      {t('Back')}
+                    </Button>
+                    {atStep < lastStep ? (
+                      <Button
+                        type="button"
+                        onClick={() => setStep((current) => Math.min(lastStep, current + 1))}
+                      >
+                        {t('Next')}
+                        <ChevronRight data-icon="inline-end" />
+                      </Button>
+                    ) : (
+                      <Button
+                        type="submit"
+                        disabled={busy || (activeSaved && !batchChanged.length)}
+                      >
+                        {activeSaved && !batchChanged.length ? <Check /> : null}
+                        {busy && activeSaved ? t('Saving…') : saveLabel}
+                      </Button>
+                    )}
+                  </div>
+                ) : null}
+              </form>
+
+              <aside className="ld-aside" aria-label={t('Source ticket')}>
+                <div>
+                  <h3>{t('Original')}</h3>
+                  <SourcePreview item={active} />
+                  <p className="ld-aside-note">
+                    {active.source.file_name} · {fileSize(active.source.size)} ·
+                    SHA-256 <code>{active.source.sha256.slice(0, 12)}</code>
+                  </p>
+                </div>
+              </aside>
+            </div>
+          </section>
+        ) : null}
+      </div>
+
 
       <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />
 

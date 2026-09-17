@@ -315,10 +315,10 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Everything below the greeting rides in one sheet. On a phone it is the
-          panel that slides up over the blue; on a wider screen it is
-          display:contents and lays out exactly as if it were not here. */}
-      <div className="hm-sheet">
+      {/* Everything below the band rides in one sheet, as on every page. On a
+          phone it is the panel that slides up over the band; on a wider screen
+          it is display:contents and lays out as if it were not here. */}
+      <div className="page-sheet">
         {!ready ? (
           <p className="ld-empty">{t('Loading your dashboard…')}</p>
         ) : (

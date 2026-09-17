@@ -363,166 +363,173 @@ export default function CustomersPage() {
         </dl>
       </div>
 
-      {profiles.error ? (
-        <div className="ld-notice pf-notice" data-tone="warning">
-          {t(profiles.error)}
-        </div>
-      ) : null}
+      {/* Everything below the band rides in one sheet, as on every page. On a
+          phone it is the panel that slides up over the band; on a wider screen
+          it is display:contents and lays out as if it were not here. */}
+      <div className="page-sheet">
 
-      {/* Customers and clients side by side on wide screens. */}
-      <div className="pf-pair">
-      <div className="pf-column">
-      <section className="ld-panel pf-section" aria-labelledby="pf-customers-title">
-        <div className="ld-panel-head">
-          <div>
-            <p className="ld-step">{t('Loads by customer')}</p>
-            <h2 id="pf-customers-title">{t('Customer Profiles')}</h2>
+        {profiles.error ? (
+          <div className="ld-notice pf-notice" data-tone="warning">
+            {t(profiles.error)}
           </div>
-          <Button onClick={() => edit(blankDraft())}>
-            <Plus />
-            {t('Add customer')}
-          </Button>
-        </div>
-        {!profiles.ready || !recordsReady ? (
-          <p className="ld-empty">{t('Loading customers…')}</p>
-        ) : rows.length === 0 ? (
-          <p className="ld-empty">
-            {t(
-              'No customers yet. Add one, or create a profile from a customer found on saved tickets.',
-            )}
-          </p>
-        ) : (
-          <>
-          <div className="pf-table-wrap">
-            <table className="pf-table">
-              <thead>
-                <tr>
-                  <th scope="col">{t('Customer')}</th>
-                  <th scope="col">{t('Rate')}</th>
-                  <PeriodHeaders />
-                  <th scope="col" className="pf-num">
-                    {t('Billed')}
-                  </th>
-                  <th scope="col">{t('Last load')}</th>
-                  <th scope="col">
-                    <span className="sr-only">{t('Actions')}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(({ customer, summary }) => (
-                  <tr key={customer.id}>
-                    <th scope="row" className="pf-name">
-                      <strong>{customer.name}</strong>
-                      <small>{matchDescription(tr, customer)}</small>
-                    </th>
-                    <td className="pf-rate">
-                      {customer.flat_rate === null ? (
-                        <span className="pf-muted">{t('Per ticket')}</span>
-                      ) : (
-                        <>
-                          <strong>{money(customer.flat_rate)}</strong>
-                          <small>
-                            {rateUnit(customer.rate_type)}
-                            {fuelText(tr, customer)}
-                          </small>
-                        </>
-                      )}
-                    </td>
-                    <PeriodCells summary={summary} />
-                    <td className="pf-num">{money(summary.billed)}</td>
-                    <td className="pf-date">
-                      {summary.lastLoad ? date(summary.lastLoad) : '—'}
-                    </td>
-                    <td>{rowActions(customer)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <ul className="pf-cards">
-            {rows.map(({ customer, summary }) => (
-              <li key={customer.id} className="pf-card">
-                <div className="pf-card-head">
-                  <div>
-                    <strong>{customer.name}</strong>
-                    <small>
-                      {customer.flat_rate === null
-                        ? t('Rate per ticket')
-                        : `${money(customer.flat_rate)} ${rateUnit(customer.rate_type)}${fuelText(tr, customer)}`}
-                    </small>
-                  </div>
-                  {rowActions(customer)}
-                </div>
-                <CustomerLoadsChart
-                  name={customer.name}
-                  records={byCustomer.get(customer.id) ?? []}
-                  now={now}
-                />
-                <p className="pf-card-foot">
-                  {t('Billed {amount} · Last load {date}', {
-                    amount: money(summary.billed),
-                    date: summary.lastLoad ? date(summary.lastLoad) : '—',
-                  })}
-                </p>
-              </li>
-            ))}
-          </ul>
-          </>
-        )}
-      </section>
+        ) : null}
 
-      {suggestions.length ? (
-        <section className="ld-panel pf-section" aria-labelledby="pf-unmatched-title">
+        {/* Customers and clients side by side on wide screens. */}
+        <div className="pf-pair">
+        <div className="pf-column">
+        <section className="ld-panel pf-section" aria-labelledby="pf-customers-title">
           <div className="ld-panel-head">
             <div>
-              <p className="ld-step">{t('From saved tickets')}</p>
-              <h2 id="pf-unmatched-title">{t('Customers Without a Profile')}</h2>
+              <p className="ld-step">{t('Loads by customer')}</p>
+              <h2 id="pf-customers-title">{t('Customer Profiles')}</h2>
             </div>
-            <span className="ld-hint">
-              {t('{loads} not counted under a customer', {
-                loads: plural(unassigned.length, 'load'),
-              })}
-            </span>
+            <Button onClick={() => edit(blankDraft())}>
+              <Plus />
+              {t('Add customer')}
+            </Button>
           </div>
-          <ul className="pf-suggestions">
-            {suggestions.map((suggestion) => (
-              <li key={`${suggestion.id}|${suggestion.name}`}>
-                <div>
-                  <strong>
-                    {suggestion.name || t('Customer {number}', { number: suggestion.id })}
-                  </strong>
-                  <small>
-                    {suggestion.id
-                      ? `${t('Customer no. {number}', { number: suggestion.id })} · `
-                      : ''}
-                    {plural(suggestion.count, 'load')}
-                  </small>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() =>
-                    edit({
-                      ...blankDraft(),
-                      name: suggestion.name,
-                      ids: suggestion.id,
-                      names: suggestion.name ? [suggestion.name] : [],
-                    })
-                  }
-                >
-                  <UserPlus />
-                  {t('Create profile')}
-                </Button>
-              </li>
-            ))}
-          </ul>
+          {!profiles.ready || !recordsReady ? (
+            <p className="ld-empty">{t('Loading customers…')}</p>
+          ) : rows.length === 0 ? (
+            <p className="ld-empty">
+              {t(
+                'No customers yet. Add one, or create a profile from a customer found on saved tickets.',
+              )}
+            </p>
+          ) : (
+            <>
+            <div className="pf-table-wrap">
+              <table className="pf-table">
+                <thead>
+                  <tr>
+                    <th scope="col">{t('Customer')}</th>
+                    <th scope="col">{t('Rate')}</th>
+                    <PeriodHeaders />
+                    <th scope="col" className="pf-num">
+                      {t('Billed')}
+                    </th>
+                    <th scope="col">{t('Last load')}</th>
+                    <th scope="col">
+                      <span className="sr-only">{t('Actions')}</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(({ customer, summary }) => (
+                    <tr key={customer.id}>
+                      <th scope="row" className="pf-name">
+                        <strong>{customer.name}</strong>
+                        <small>{matchDescription(tr, customer)}</small>
+                      </th>
+                      <td className="pf-rate">
+                        {customer.flat_rate === null ? (
+                          <span className="pf-muted">{t('Per ticket')}</span>
+                        ) : (
+                          <>
+                            <strong>{money(customer.flat_rate)}</strong>
+                            <small>
+                              {rateUnit(customer.rate_type)}
+                              {fuelText(tr, customer)}
+                            </small>
+                          </>
+                        )}
+                      </td>
+                      <PeriodCells summary={summary} />
+                      <td className="pf-num">{money(summary.billed)}</td>
+                      <td className="pf-date">
+                        {summary.lastLoad ? date(summary.lastLoad) : '—'}
+                      </td>
+                      <td>{rowActions(customer)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <ul className="pf-cards">
+              {rows.map(({ customer, summary }) => (
+                <li key={customer.id} className="pf-card">
+                  <div className="pf-card-head">
+                    <div>
+                      <strong>{customer.name}</strong>
+                      <small>
+                        {customer.flat_rate === null
+                          ? t('Rate per ticket')
+                          : `${money(customer.flat_rate)} ${rateUnit(customer.rate_type)}${fuelText(tr, customer)}`}
+                      </small>
+                    </div>
+                    {rowActions(customer)}
+                  </div>
+                  <CustomerLoadsChart
+                    name={customer.name}
+                    records={byCustomer.get(customer.id) ?? []}
+                    now={now}
+                  />
+                  <p className="pf-card-foot">
+                    {t('Billed {amount} · Last load {date}', {
+                      amount: money(summary.billed),
+                      date: summary.lastLoad ? date(summary.lastLoad) : '—',
+                    })}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            </>
+          )}
         </section>
-      ) : null}
+
+        {suggestions.length ? (
+          <section className="ld-panel pf-section" aria-labelledby="pf-unmatched-title">
+            <div className="ld-panel-head">
+              <div>
+                <p className="ld-step">{t('From saved tickets')}</p>
+                <h2 id="pf-unmatched-title">{t('Customers Without a Profile')}</h2>
+              </div>
+              <span className="ld-hint">
+                {t('{loads} not counted under a customer', {
+                  loads: plural(unassigned.length, 'load'),
+                })}
+              </span>
+            </div>
+            <ul className="pf-suggestions">
+              {suggestions.map((suggestion) => (
+                <li key={`${suggestion.id}|${suggestion.name}`}>
+                  <div>
+                    <strong>
+                      {suggestion.name || t('Customer {number}', { number: suggestion.id })}
+                    </strong>
+                    <small>
+                      {suggestion.id
+                        ? `${t('Customer no. {number}', { number: suggestion.id })} · `
+                        : ''}
+                      {plural(suggestion.count, 'load')}
+                    </small>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() =>
+                      edit({
+                        ...blankDraft(),
+                        name: suggestion.name,
+                        ids: suggestion.id,
+                        names: suggestion.name ? [suggestion.name] : [],
+                      })
+                    }
+                  >
+                    <UserPlus />
+                    {t('Create profile')}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        </div>
+
+        <ClientsSection records={records} ready={recordsReady} />
+        </div>
       </div>
 
-      <ClientsSection records={records} ready={recordsReady} />
-      </div>
 
       <Dialog
         open={draft !== null}

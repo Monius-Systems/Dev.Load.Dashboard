@@ -360,399 +360,406 @@ export default function RecordsPage() {
         </dl>
       </div>
 
-      {storeError ? (
-        <div className="ld-notice pf-notice" data-tone="warning">
-          {t(storeError)}
-        </div>
-      ) : null}
+      {/* Everything below the band rides in one sheet, as on every page. On a
+          phone it is the panel that slides up over the band; on a wider screen
+          it is display:contents and lays out as if it were not here. */}
+      <div className="page-sheet">
 
-      <section
-        className="ld-panel pf-section rec-panel"
-        aria-labelledby="rec-title"
-      >
-        <div className="ld-panel-head">
-          <div>
-            <p className="ld-step">{t('Database')}</p>
-            <h2 id="rec-title">
-              {tab === 'invoices' ? t('Invoices') : t('Load Tickets')}
-            </h2>
+        {storeError ? (
+          <div className="ld-notice pf-notice" data-tone="warning">
+            {t(storeError)}
           </div>
-          <fieldset className="ui-segmented">
-            <legend className="sr-only">{t('Show')}</legend>
-            <button
-              type="button"
-              aria-pressed={tab === 'invoices'}
-              onClick={() => chooseTab('invoices')}
-            >
-              {t('Invoices')}
-            </button>
-            <button
-              type="button"
-              aria-pressed={tab === 'tickets'}
-              onClick={() => chooseTab('tickets')}
-            >
-              {t('Tickets')}
-            </button>
-          </fieldset>
-        </div>
+        ) : null}
 
-        <div className="rec-toolbar">
-          <div className="rec-search">
-            <Search aria-hidden="true" />
-            <Input
-              type="search"
-              aria-label={t('Search invoices and tickets')}
-              placeholder={t('Search ticket #, invoice #, customer, destination, truck…')}
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
-          </div>
-          <button
-            type="button"
-            className="rec-filter-toggle"
-            aria-expanded={filtersOpen}
-            onClick={() => setFiltersOpen((open) => !open)}
-          >
-            <SlidersHorizontal aria-hidden="true" />
-            {filtersOpen ? t('Hide filters') : t('Filters')}
-            {activeFilterCount ? <em>{activeFilterCount}</em> : null}
-          </button>
-          <div className="rec-filters" data-open={filtersOpen}>
-            <div className="ld-field rec-filter">
-              <label htmlFor={`${fieldId}-from`}>{t('Ticket date from')}</label>
-              <Input
-                id={`${fieldId}-from`}
-                type="date"
-                value={from}
-                onChange={(event) => setFrom(event.target.value)}
-              />
+        <section
+          className="ld-panel pf-section rec-panel"
+          aria-labelledby="rec-title"
+        >
+          <div className="ld-panel-head">
+            <div>
+              <p className="ld-step">{t('Database')}</p>
+              <h2 id="rec-title">
+                {tab === 'invoices' ? t('Invoices') : t('Load Tickets')}
+              </h2>
             </div>
-            <div className="ld-field rec-filter">
-              <label htmlFor={`${fieldId}-to`}>{t('Ticket date to')}</label>
-              <Input
-                id={`${fieldId}-to`}
-                type="date"
-                value={to}
-                onChange={(event) => setTo(event.target.value)}
-              />
-            </div>
-            <div className="ld-field rec-filter">
-              <label htmlFor={`${fieldId}-customer`}>{t('Customer')}</label>
-              <SelectField
-                id={`${fieldId}-customer`}
-                value={customerFilter}
-                onValueChange={setCustomerFilter}
-                options={[
-                  { value: '', label: t('All customers') },
-                  ...customers.map((customer) => ({
-                    value: String(customer.id),
-                    label: customer.name,
-                  })),
-                  { value: 'none', label: t('Without a profile') },
-                ]}
-              />
-            </div>
-            <div className="ld-field rec-filter">
-              <label htmlFor={`${fieldId}-truck`}>{t('Truck')}</label>
-              <SelectField
-                id={`${fieldId}-truck`}
-                value={truckFilter}
-                onValueChange={setTruckFilter}
-                options={[
-                  { value: '', label: t('All trucks') },
-                  ...trucks.map((truck) => ({
-                    value: String(truck.id),
-                    label: truckLabel(truck),
-                  })),
-                  { value: 'none', label: t('Without a profile') },
-                ]}
-              />
-            </div>
-            <div className="ld-field rec-filter">
-              <label htmlFor={`${fieldId}-status`}>{t('Status')}</label>
-              <SelectField
-                id={`${fieldId}-status`}
-                value={status}
-                onValueChange={setStatus}
-                options={STATUS_OPTIONS[tab].map(([value, label]) => ({
-                  value,
-                  label: t(label),
-                }))}
-              />
-            </div>
-          </div>
-          <div className="rec-summary">
-            <span aria-live="polite">
-              {filtersActive
-                ? t('Showing {shown} of {total}', {
-                    shown: shownCount,
-                    total: plural(totalCount, noun),
-                  })
-                : plural(totalCount, noun)}
-            </span>
-            <div className="rec-summary-actions">
-              {filtersActive ? (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  {t('Clear filters')}
-                </Button>
-              ) : null}
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={exportCsv}
-                disabled={!shownCount}
+            <fieldset className="ui-segmented">
+              <legend className="sr-only">{t('Show')}</legend>
+              <button
+                type="button"
+                aria-pressed={tab === 'invoices'}
+                onClick={() => chooseTab('invoices')}
               >
-                <Download />
-                {t('Export CSV')}
-              </Button>
+                {t('Invoices')}
+              </button>
+              <button
+                type="button"
+                aria-pressed={tab === 'tickets'}
+                onClick={() => chooseTab('tickets')}
+              >
+                {t('Tickets')}
+              </button>
+            </fieldset>
+          </div>
+
+          <div className="rec-toolbar">
+            <div className="rec-search">
+              <Search aria-hidden="true" />
+              <Input
+                type="search"
+                aria-label={t('Search invoices and tickets')}
+                placeholder={t('Search ticket #, invoice #, customer, destination, truck…')}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              className="rec-filter-toggle"
+              aria-expanded={filtersOpen}
+              onClick={() => setFiltersOpen((open) => !open)}
+            >
+              <SlidersHorizontal aria-hidden="true" />
+              {filtersOpen ? t('Hide filters') : t('Filters')}
+              {activeFilterCount ? <em>{activeFilterCount}</em> : null}
+            </button>
+            <div className="rec-filters" data-open={filtersOpen}>
+              <div className="ld-field rec-filter">
+                <label htmlFor={`${fieldId}-from`}>{t('Ticket date from')}</label>
+                <Input
+                  id={`${fieldId}-from`}
+                  type="date"
+                  value={from}
+                  onChange={(event) => setFrom(event.target.value)}
+                />
+              </div>
+              <div className="ld-field rec-filter">
+                <label htmlFor={`${fieldId}-to`}>{t('Ticket date to')}</label>
+                <Input
+                  id={`${fieldId}-to`}
+                  type="date"
+                  value={to}
+                  onChange={(event) => setTo(event.target.value)}
+                />
+              </div>
+              <div className="ld-field rec-filter">
+                <label htmlFor={`${fieldId}-customer`}>{t('Customer')}</label>
+                <SelectField
+                  id={`${fieldId}-customer`}
+                  value={customerFilter}
+                  onValueChange={setCustomerFilter}
+                  options={[
+                    { value: '', label: t('All customers') },
+                    ...customers.map((customer) => ({
+                      value: String(customer.id),
+                      label: customer.name,
+                    })),
+                    { value: 'none', label: t('Without a profile') },
+                  ]}
+                />
+              </div>
+              <div className="ld-field rec-filter">
+                <label htmlFor={`${fieldId}-truck`}>{t('Truck')}</label>
+                <SelectField
+                  id={`${fieldId}-truck`}
+                  value={truckFilter}
+                  onValueChange={setTruckFilter}
+                  options={[
+                    { value: '', label: t('All trucks') },
+                    ...trucks.map((truck) => ({
+                      value: String(truck.id),
+                      label: truckLabel(truck),
+                    })),
+                    { value: 'none', label: t('Without a profile') },
+                  ]}
+                />
+              </div>
+              <div className="ld-field rec-filter">
+                <label htmlFor={`${fieldId}-status`}>{t('Status')}</label>
+                <SelectField
+                  id={`${fieldId}-status`}
+                  value={status}
+                  onValueChange={setStatus}
+                  options={STATUS_OPTIONS[tab].map(([value, label]) => ({
+                    value,
+                    label: t(label),
+                  }))}
+                />
+              </div>
+            </div>
+            <div className="rec-summary">
+              <span aria-live="polite">
+                {filtersActive
+                  ? t('Showing {shown} of {total}', {
+                      shown: shownCount,
+                      total: plural(totalCount, noun),
+                    })
+                  : plural(totalCount, noun)}
+              </span>
+              <div className="rec-summary-actions">
+                {filtersActive ? (
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    {t('Clear filters')}
+                  </Button>
+                ) : null}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={exportCsv}
+                  disabled={!shownCount}
+                >
+                  <Download />
+                  {t('Export CSV')}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {!ready ? (
-          <p className="ld-empty">{t('Loading saved records…')}</p>
-        ) : !records.length ? (
-          <p className="ld-empty">
-            {t(
-              'Nothing saved yet. Tickets and their invoices appear here after you save them in',
-            )}{' '}
-            <Link href="/load-desk">Load Desk</Link>.
-          </p>
-        ) : !shownCount ? (
-          <p className="ld-empty">
-            {tab === 'invoices'
-              ? t('No invoices match these filters.')
-              : t('No tickets match these filters.')}
-          </p>
-        ) : tab === 'invoices' ? (
-          <>
-            <div className="pf-table-wrap">
-              <table className="pf-table">
-                <thead>
-                  <tr>
-                    <th scope="col">{t('Invoice #')}</th>
-                    <th scope="col">{t('Invoice date')}</th>
-                    <th scope="col" className="rec-wide-only">
-                      {t('Bill to')}
-                    </th>
-                    <th scope="col">{t('Customers')}</th>
-                    <th scope="col">{t('Truck #')}</th>
-                    <th scope="col" className="pf-num">
-                      {t('Tickets')}
-                    </th>
-                    <th scope="col" className="pf-num">
-                      {t('Net tons')}
-                    </th>
-                    <th scope="col" className="pf-num">
-                      {t('Total')}
-                    </th>
-                    <th scope="col">{t('Status')}</th>
-                    <th scope="col">
-                      <span className="sr-only">{t('Actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shownInvoices.map((group) => (
-                    <tr key={group.key}>
-                      <th scope="row" className="pf-name">
-                        <button
-                          type="button"
-                          className="rec-link"
-                          onClick={() =>
-                            openInvoice(group.invoice.invoice_number, group.invoice)
-                          }
-                        >
-                          {group.invoice.invoice_number}
-                        </button>
-                        <small>{dateRange(tr, group)}</small>
+          {!ready ? (
+            <p className="ld-empty">{t('Loading saved records…')}</p>
+          ) : !records.length ? (
+            <p className="ld-empty">
+              {t(
+                'Nothing saved yet. Tickets and their invoices appear here after you save them in',
+              )}{' '}
+              <Link href="/load-desk">Load Desk</Link>.
+            </p>
+          ) : !shownCount ? (
+            <p className="ld-empty">
+              {tab === 'invoices'
+                ? t('No invoices match these filters.')
+                : t('No tickets match these filters.')}
+            </p>
+          ) : tab === 'invoices' ? (
+            <>
+              <div className="pf-table-wrap">
+                <table className="pf-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('Invoice #')}</th>
+                      <th scope="col">{t('Invoice date')}</th>
+                      <th scope="col" className="rec-wide-only">
+                        {t('Bill to')}
                       </th>
-                      <td className="pf-date">
-                        {date(group.invoice.invoice_date)}
-                      </td>
-                      <td className="rec-wrap rec-wide-only">
-                        {group.invoice.bill_to.name}
-                      </td>
-                      <td className="rec-wrap">
-                        {[...new Set(group.records.map(customerName))].join(', ')}
-                      </td>
-                      <td>{group.invoice.truck_number || '—'}</td>
-                      <td className="pf-num">{group.records.length}</td>
-                      <td className="pf-num">{group.tons.toFixed(2)}</td>
-                      <td className="pf-num">{invoiceTotal(group)}</td>
-                      <td>{invoiceStatus(group)}</td>
-                      <td>
-                        {invoiceActions(group)}
-                      </td>
+                      <th scope="col">{t('Customers')}</th>
+                      <th scope="col">{t('Truck #')}</th>
+                      <th scope="col" className="pf-num">
+                        {t('Tickets')}
+                      </th>
+                      <th scope="col" className="pf-num">
+                        {t('Net tons')}
+                      </th>
+                      <th scope="col" className="pf-num">
+                        {t('Total')}
+                      </th>
+                      <th scope="col">{t('Status')}</th>
+                      <th scope="col">
+                        <span className="sr-only">{t('Actions')}</span>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ul className="pf-cards">
-              {shownInvoices.map((group) => (
-                <li key={group.key} className="pf-card">
-                  <div className="pf-card-head">
-                    <div>
-                      <strong>
-                        {group.invoice.invoice_number}
-                        {invoiceStatus(group)}
-                      </strong>
-                      <small>
-                        {date(group.invoice.invoice_date)} ·{' '}
-                        {group.invoice.bill_to.name}
-                      </small>
-                    </div>
-                    {invoiceActions(group)}
-                  </div>
-                  <dl className="rec-card-facts">
-                    <div>
-                      <dt>{t('Tickets')}</dt>
-                      <dd>{group.records.length}</dd>
-                    </div>
-                    <div>
-                      <dt>{t('Net tons')}</dt>
-                      <dd>{group.tons.toFixed(2)}</dd>
-                    </div>
-                    <div>
-                      <dt>{t('Total')}</dt>
-                      <dd>{invoiceTotal(group)}</dd>
-                    </div>
-                  </dl>
-                  <p className="pf-card-foot">
-                    {[...new Set(group.records.map(customerName))].join(', ')}
-                    {group.invoice.truck_number
-                      ? ` · ${t('Truck #{number}', { number: group.invoice.truck_number })}`
-                      : ''}{' '}
-                    · {dateRange(tr, group)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : (
-          <>
-            <div className="pf-table-wrap">
-              <table className="pf-table rec-table-tickets">
-                <thead>
-                  <tr>
-                    <th scope="col">{t('Ticket #')}</th>
-                    <th scope="col">{t('Ticket date')}</th>
-                    <th scope="col">{t('Customer · product')}</th>
-                    <th scope="col">{t('Origin → destination')}</th>
-                    <th scope="col" className="pf-num">
-                      {t('Net tons')}
-                    </th>
-                    <th scope="col">{t('Invoice · truck')}</th>
-                    <th scope="col" className="pf-num">
-                      {t('Line total')}
-                    </th>
-                    <th scope="col" className="rec-wide-only">
-                      {t('Status')}
-                    </th>
-                    <th scope="col">
-                      <span className="sr-only">{t('Actions')}</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shownTickets.map((record) => (
-                    <tr key={record.id}>
-                      <th scope="row" className="pf-name">
+                  </thead>
+                  <tbody>
+                    {shownInvoices.map((group) => (
+                      <tr key={group.key}>
+                        <th scope="row" className="pf-name">
+                          <button
+                            type="button"
+                            className="rec-link"
+                            onClick={() =>
+                              openInvoice(group.invoice.invoice_number, group.invoice)
+                            }
+                          >
+                            {group.invoice.invoice_number}
+                          </button>
+                          <small>{dateRange(tr, group)}</small>
+                        </th>
+                        <td className="pf-date">
+                          {date(group.invoice.invoice_date)}
+                        </td>
+                        <td className="rec-wrap rec-wide-only">
+                          {group.invoice.bill_to.name}
+                        </td>
+                        <td className="rec-wrap">
+                          {[...new Set(group.records.map(customerName))].join(', ')}
+                        </td>
+                        <td>{group.invoice.truck_number || '—'}</td>
+                        <td className="pf-num">{group.records.length}</td>
+                        <td className="pf-num">{group.tons.toFixed(2)}</td>
+                        <td className="pf-num">{invoiceTotal(group)}</td>
+                        <td>{invoiceStatus(group)}</td>
+                        <td>
+                          {invoiceActions(group)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ul className="pf-cards">
+                {shownInvoices.map((group) => (
+                  <li key={group.key} className="pf-card">
+                    <div className="pf-card-head">
+                      <div>
                         <strong>
-                          {record.ticket.ticket_number ?? t('Unnumbered')}
-                          <span className="rec-compact-only">
-                            {recordStatus(record)}
-                          </span>
+                          {group.invoice.invoice_number}
+                          {invoiceStatus(group)}
                         </strong>
                         <small>
-                          {record.ticket.plant_name ?? t('Unknown plant')}
-                          {record.edited_at
-                            ? ` · ${t('Edited {date}', { date: date(record.edited_at.slice(0, 10)) })}`
-                            : ''}
+                          {date(group.invoice.invoice_date)} ·{' '}
+                          {group.invoice.bill_to.name}
                         </small>
+                      </div>
+                      {invoiceActions(group)}
+                    </div>
+                    <dl className="rec-card-facts">
+                      <div>
+                        <dt>{t('Tickets')}</dt>
+                        <dd>{group.records.length}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('Net tons')}</dt>
+                        <dd>{group.tons.toFixed(2)}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('Total')}</dt>
+                        <dd>{invoiceTotal(group)}</dd>
+                      </div>
+                    </dl>
+                    <p className="pf-card-foot">
+                      {[...new Set(group.records.map(customerName))].join(', ')}
+                      {group.invoice.truck_number
+                        ? ` · ${t('Truck #{number}', { number: group.invoice.truck_number })}`
+                        : ''}{' '}
+                      · {dateRange(tr, group)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <div className="pf-table-wrap">
+                <table className="pf-table rec-table-tickets">
+                  <thead>
+                    <tr>
+                      <th scope="col">{t('Ticket #')}</th>
+                      <th scope="col">{t('Ticket date')}</th>
+                      <th scope="col">{t('Customer · product')}</th>
+                      <th scope="col">{t('Origin → destination')}</th>
+                      <th scope="col" className="pf-num">
+                        {t('Net tons')}
                       </th>
-                      <td className="pf-date">{date(loadDate(record))}</td>
-                      <td className="rec-wrap rec-stack">
-                        <span>{customerName(record)}</span>
-                        <small>
-                          {record.ticket.product_description ??
-                            record.ticket.product_code ??
-                            t('No product')}
-                        </small>
-                      </td>
-                      <td className="rec-wrap rec-stack">
-                        <span>{invoiceOrigin(record.ticket) || '—'}</span>
-                        <small>
-                          → {invoiceDestination(record.ticket.project_address) || '—'}
-                        </small>
-                      </td>
-                      <td className="pf-num">{invoiceTons(record.ticket) || '—'}</td>
-                      <td className="rec-stack">
-                        <button
-                          type="button"
-                          className="rec-link"
-                          onClick={() => openInvoice(record.invoice.invoice_number)}
-                        >
-                          {record.invoice.invoice_number}
-                        </button>
-                        <small>
-                          {record.invoice.truck_number
-                            ? t('Truck #{number}', { number: record.invoice.truck_number })
-                            : t('No truck #')}
-                        </small>
-                      </td>
-                      <td className="pf-num">
-                        {money(lineTotal(record.ticket)) || (
-                          <span className="pf-muted">{t('No rate')}</span>
-                        )}
-                      </td>
-                      <td className="rec-wide-only">{recordStatus(record)}</td>
-                      <td>{ticketActions(record)}</td>
+                      <th scope="col">{t('Invoice · truck')}</th>
+                      <th scope="col" className="pf-num">
+                        {t('Line total')}
+                      </th>
+                      <th scope="col" className="rec-wide-only">
+                        {t('Status')}
+                      </th>
+                      <th scope="col">
+                        <span className="sr-only">{t('Actions')}</span>
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <ul className="pf-cards">
-              {shownTickets.map((record) => (
-                <li key={record.id} className="pf-card">
-                  <div className="pf-card-head">
-                    <div>
-                      <strong>
-                        {record.ticket.ticket_number ?? t('Unnumbered')}
-                        {recordStatus(record)}
-                      </strong>
-                      <small>
-                        {date(loadDate(record))} · {customerName(record)}
-                      </small>
+                  </thead>
+                  <tbody>
+                    {shownTickets.map((record) => (
+                      <tr key={record.id}>
+                        <th scope="row" className="pf-name">
+                          <strong>
+                            {record.ticket.ticket_number ?? t('Unnumbered')}
+                            <span className="rec-compact-only">
+                              {recordStatus(record)}
+                            </span>
+                          </strong>
+                          <small>
+                            {record.ticket.plant_name ?? t('Unknown plant')}
+                            {record.edited_at
+                              ? ` · ${t('Edited {date}', { date: date(record.edited_at.slice(0, 10)) })}`
+                              : ''}
+                          </small>
+                        </th>
+                        <td className="pf-date">{date(loadDate(record))}</td>
+                        <td className="rec-wrap rec-stack">
+                          <span>{customerName(record)}</span>
+                          <small>
+                            {record.ticket.product_description ??
+                              record.ticket.product_code ??
+                              t('No product')}
+                          </small>
+                        </td>
+                        <td className="rec-wrap rec-stack">
+                          <span>{invoiceOrigin(record.ticket) || '—'}</span>
+                          <small>
+                            → {invoiceDestination(record.ticket.project_address) || '—'}
+                          </small>
+                        </td>
+                        <td className="pf-num">{invoiceTons(record.ticket) || '—'}</td>
+                        <td className="rec-stack">
+                          <button
+                            type="button"
+                            className="rec-link"
+                            onClick={() => openInvoice(record.invoice.invoice_number)}
+                          >
+                            {record.invoice.invoice_number}
+                          </button>
+                          <small>
+                            {record.invoice.truck_number
+                              ? t('Truck #{number}', { number: record.invoice.truck_number })
+                              : t('No truck #')}
+                          </small>
+                        </td>
+                        <td className="pf-num">
+                          {money(lineTotal(record.ticket)) || (
+                            <span className="pf-muted">{t('No rate')}</span>
+                          )}
+                        </td>
+                        <td className="rec-wide-only">{recordStatus(record)}</td>
+                        <td>{ticketActions(record)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ul className="pf-cards">
+                {shownTickets.map((record) => (
+                  <li key={record.id} className="pf-card">
+                    <div className="pf-card-head">
+                      <div>
+                        <strong>
+                          {record.ticket.ticket_number ?? t('Unnumbered')}
+                          {recordStatus(record)}
+                        </strong>
+                        <small>
+                          {date(loadDate(record))} · {customerName(record)}
+                        </small>
+                      </div>
+                      {ticketActions(record)}
                     </div>
-                    {ticketActions(record)}
-                  </div>
-                  <dl className="rec-card-facts">
-                    <div>
-                      <dt>{t('Net tons')}</dt>
-                      <dd>{invoiceTons(record.ticket) || '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>{t('Line total')}</dt>
-                      <dd>{money(lineTotal(record.ticket)) || '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>{t('Truck #')}</dt>
-                      <dd>{record.invoice.truck_number || '—'}</dd>
-                    </div>
-                  </dl>
-                  <p className="pf-card-foot">
-                    {t('Invoice {number}', { number: record.invoice.invoice_number })} ·{' '}
-                    {invoiceDestination(record.ticket.project_address) || t('No destination')}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </section>
+                    <dl className="rec-card-facts">
+                      <div>
+                        <dt>{t('Net tons')}</dt>
+                        <dd>{invoiceTons(record.ticket) || '—'}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('Line total')}</dt>
+                        <dd>{money(lineTotal(record.ticket)) || '—'}</dd>
+                      </div>
+                      <div>
+                        <dt>{t('Truck #')}</dt>
+                        <dd>{record.invoice.truck_number || '—'}</dd>
+                      </div>
+                    </dl>
+                    <p className="pf-card-foot">
+                      {t('Invoice {number}', { number: record.invoice.invoice_number })} ·{' '}
+                      {invoiceDestination(record.ticket.project_address) || t('No destination')}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      </div>
+
 
       <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />
 
