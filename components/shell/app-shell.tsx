@@ -190,16 +190,14 @@ export default function AppShell({
     if (!window.matchMedia('(max-width: 767px)').matches) return;
     window.scrollTo(0, 0);
     // And the sheet sits where it is drawn to sit, whatever was happening when
-    // the page changed: a swipe interrupted mid-drag would otherwise leave the
-    // page area carrying the last transform it was given, and its copy over
-    // the top. Not while a swipe is in hand — it owns both until it lets go.
+    // the page changed: a gesture interrupted by a tap on the bar would
+    // otherwise leave the page area carrying the last transform it was given.
+    // Not while a swipe is in hand — it owns the page area until it lets go,
+    // and normalises it itself (hooks/use-page-swipe.ts).
     if (document.documentElement.dataset.swiping) return;
     document
       .getElementById('workspace-content')
       ?.style.removeProperty('transform');
-    for (const copy of document.querySelectorAll('.page-swipe-copy')) {
-      copy.remove();
-    }
   }, [pathname]);
 
   /**

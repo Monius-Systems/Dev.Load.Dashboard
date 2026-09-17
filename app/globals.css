@@ -1710,18 +1710,60 @@ svg.lucide {
 }
 
 /* ==================================================== phone: swiping pages */
-/* A drag across the page moves along the bar at the bottom. Both pages are real
-   and both move with the finger — the one being left as a copy of itself, the
-   one being opened in the page area behind it — and all of that is done in
-   script, where the finger is (see hooks/use-page-swipe.ts). What is here is
-   the little the stylesheet owns: the gesture the browser must leave alone, and
-   holding back the entrance animation of a page that is being carried in by
-   hand rather than arriving on its own. */
+/* A drag across the page moves along the bar at the bottom. Three things are on
+   the screen while it happens — the live page and a pane either side of it
+   holding a picture of the neighbouring section — and all three are moved by
+   one transform per frame, written from script (hooks/use-page-swipe.ts).
+ *
+ * What is here is what the stylesheet owns: the gesture the browser must leave
+ * alone, the panes at rest, and the two expensive things that are put down
+ * while a finger is moving the page. */
 @media (max-width: 767px) {
   /* Sideways is the shell's gesture on a phone; up and down stays the page's,
      and a pinch stays the browser's. */
   .page-content {
     touch-action: pan-y pinch-zoom;
+    overscroll-behavior-x: none;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  /* The section either side, parked a screen away and left there. Contained,
+     so what is in one costs the page around it nothing; asking for its own
+     layer, so it is drawn once and afterwards only moved; and never hidden, so
+     the first frame of a gesture has nothing to draw for the first time. */
+  .page-swipe-pane {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    overflow: hidden;
+    contain: strict;
+    pointer-events: none;
+    background: var(--ui-accent);
+    transform: translate3d(100%, 0, 0);
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  /* Put down for the length of a gesture, and picked up again after it. A
+     blurred bar over a moving page is blurred again every frame, and the
+     sheet's shadow is three screenfuls of it that nothing can see while the
+     page is in motion. The bar keeps its own colour, opaque, so the swap is
+     not something you can catch. */
+  html[data-swiping] .tabbar {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--ui-surface-1);
+  }
+  html[data-swiping] .page-sheet {
+    box-shadow: none;
+  }
+  /* And the band stops being sticky for the length of the gesture. A sticky
+     element inside something that is being transformed is worked out again on
+     every frame, on the main thread, which is exactly where the frames were
+     going. Nothing moves when it is turned off: at the top of a page the band
+     is already where it would be, and anywhere else it is behind the sheet. */
+  html[data-swiping] :is(.page-heading, .ac-hero) {
+    position: static;
   }
   /* A page arrives one quiet way on a phone, however it was opened: the whole
      page together, lifting a little as it comes up. The staggered entrance a
@@ -1736,7 +1778,8 @@ svg.lucide {
   .page-enter > *:nth-child(n) {
     animation-delay: 0s;
   }
-  /* Except a page being carried in by a finger, which is already moving. */
+  /* Except a page that a finger has just carried in, which has been moving all
+     along and has nothing to arrive from. */
   html[data-swiping] .page-enter > * {
     animation: none;
   }
