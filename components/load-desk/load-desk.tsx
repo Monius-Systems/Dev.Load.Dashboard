@@ -2204,9 +2204,8 @@ export default function LoadDesk() {
 
   /**
    * The way round the other tickets. It heads the panel on a desk as it always
-   * has, and on a phone it follows the block held at the top of the sheet: it
-   * is for reaching the next ticket, not for checking this one, so it travels
-   * with the page rather than standing over it.
+   * has, and on a phone it follows the block the review opens on: it is for
+   * reaching the next ticket, not for checking this one.
    *
    * Null until there is a ticket open: this is worked out on every render of
    * the page, including the one where the queue is empty and the review is not
@@ -2301,7 +2300,7 @@ export default function LoadDesk() {
 
   /**
    * What the ticket still needs, or that it needs nothing. The phone keeps it
-   * in the block at the top of the sheet; the desk keeps it at the head of the
+   * in the block the review opens on; the desk keeps it at the head of the
    * form, where it has always been.
    */
   const checkRow = (
@@ -2330,17 +2329,21 @@ export default function LoadDesk() {
               )}
             </div>
             {/* And a tap away from every step, rather than a scroll to
-                the bottom of the form. */}
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="ld-view-ticket"
-              onClick={() => setViewingTicket(true)}
-            >
-              <FileSearch data-icon="inline-start" />
-              {t('View ticket')}
-            </Button>
+                the bottom of the form. Only on a phone: a desk has the
+                photograph standing beside the form already (.ld-aside), so the
+                button would open what is on the screen anyway. */}
+            {isPhone ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="ld-view-ticket"
+                onClick={() => setViewingTicket(true)}
+              >
+                <FileSearch data-icon="inline-start" />
+                {t('View ticket')}
+              </Button>
+            ) : null}
           </div>
   );
 
@@ -2694,11 +2697,12 @@ export default function LoadDesk() {
             className="ld-panel ld-review"
             aria-labelledby="ld-review-title"
           >
-            {/* On a phone everything the reviewer keeps referring to — which
-                ticket, how it stands, which step, the picture, the checks — is
-                one block that holds at the top of the sheet while the fields
-                scroll under it. A desk has room for the ticket and its
-                photograph at once and keeps the review it always had. */}
+            {/* On a phone the review opens on one block — which ticket, how
+                it stands, which step, the picture, the checks — and then gets
+                out of the way: it scrolls off with the rest, so the foot of a
+                long step is the fields and nothing else. A desk has room for
+                the ticket and its photograph at once and keeps the review it
+                always had. */}
             {isPhone ? (
               <div className="ld-review-sticky">
               <div className="ld-mobile-head">
