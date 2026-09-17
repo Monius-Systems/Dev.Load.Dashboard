@@ -1318,6 +1318,11 @@ details[open] > .ld-section-summary .ld-section-chevron {
   border-radius: 0;
   background: none;
   box-shadow: none;
+  /* Not hidden: the desk panel clips its corners with it, and a clipping box
+     is a scrolling box — which the head above would then stick to instead of
+     to the page, which is to say not at all. The head and the foot carry the
+     corners themselves. */
+  overflow: visible;
 }
 .ld-review .ld-form,
 .ld-review .ld-review-head {
@@ -1592,7 +1597,7 @@ html[data-swiping] .ld-step-nav {
   display: grid;
   gap: 6px;
   margin: 0 calc(-1 * var(--ui-space-5));
-  padding: var(--ui-space-3) var(--ui-space-5);
+  padding: 0 var(--ui-space-5) var(--ui-space-3);
   border-radius: var(--ui-radius-lg) var(--ui-radius-lg) 0 0;
   background: var(--ui-surface-2);
 }
@@ -1602,6 +1607,8 @@ html[data-swiping] .ld-step-nav {
   align-items: center;
   justify-content: space-between;
   gap: var(--ui-space-2);
+  /* With the head's own gap, a clear step down to the ticket's line. */
+  margin-bottom: 18px;
 }
 .ld-mobile-head-top [data-slot='button'] {
   margin-left: calc(-1 * var(--ui-space-2));
@@ -1630,7 +1637,7 @@ html[data-swiping] .ld-step-nav {
   padding: var(--ui-space-2) var(--ui-space-5);
   border-top: 1px solid var(--ui-separator);
   border-radius: 0 0 var(--ui-radius-lg) var(--ui-radius-lg);
-  background: color-mix(in srgb, var(--ui-surface-1) 92%, transparent);
+  background: color-mix(in srgb, var(--ui-surface-1) 96%, transparent);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
   backdrop-filter: blur(16px) saturate(180%);
 }
@@ -1678,13 +1685,18 @@ html[data-swiping] .ld-step-nav {
     top: calc(var(--phone-topbar) - var(--ui-space-2));
     border-radius: 0;
   }
+  /* A bar of its own, on the sheet's ground, immediately above the bar along
+     the bottom of the app — never over it, never merged with it, and with no
+     gap between the two. The safe area is the app bar's already. */
   .ld-step-nav {
     position: fixed;
     right: 0;
     bottom: var(--phone-bottombar);
     left: 0;
     margin: 0;
+    padding: var(--ui-space-3) var(--ui-space-5);
     border-radius: 0;
+    background: color-mix(in srgb, var(--ui-surface-2) 96%, transparent);
   }
   /* The save button that used to sit inside the invoice section; the bar at
      the bottom is where it lives on a phone now. */
