@@ -1664,6 +1664,40 @@ details[open] > .ld-section-summary .ld-section-chevron {
   .page-heading[data-review] .ld-steps-track i[data-done] {
     background: #fff;
   }
+  /* The one thing in the band to press, so it is solid on the blue rather than
+     the pale fill it wears against white. */
+  .page-heading[data-review] .ld-view-ticket {
+    border-color: transparent;
+    background: #fff;
+    font-weight: var(--type-semibold);
+    color: var(--ui-accent);
+  }
+  /* The way round the other tickets, on a line of its own at the foot of the
+     band: reaching another ticket is a different thing from checking this one,
+     so it sits at the edge rather than among the ticket's own lines. Outside
+     .ld-review now, so the padding and the rule that panel took off it have to
+     come off again here. */
+  .page-heading[data-review] .ld-review-head {
+    width: 100%;
+    margin-top: var(--ui-space-3);
+    padding: 0;
+    border-bottom: 0;
+  }
+  /* Green, as the check on the ticket is: the two say the same thing about the
+     same work. Which ticket you are on is the filled one, and the ones already
+     saved carry a tick instead of a number, so nothing is lost by colouring
+     them all alike. */
+  .page-heading[data-review] .ld-queue-tab {
+    background: var(--ui-success-soft);
+    color: var(--ui-success);
+  }
+  .page-heading[data-review] .ld-queue-tab[aria-current='true'] {
+    background: var(--ui-success);
+    color: #fff;
+  }
+  .page-heading[data-review] .ld-queue [data-slot='button'] {
+    color: rgb(255 255 255 / 80%);
+  }
   /* The head of it: which ticket, how it stands, how far through it you are. */
   .ld-mobile-head {
     display: grid;

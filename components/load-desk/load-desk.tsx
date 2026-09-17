@@ -1087,12 +1087,7 @@ export default function LoadDesk() {
     // nobody having checked them. This is only whether to ask about them now.
     if (!open) return;
     setActiveIndex(start);
-    requestAnimationFrame(() =>
-      reviewPanel.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      }),
-    );
+    scrollToReview();
   }
 
   /** Extracts more tickets onto the invoice under review, such as a saved one being edited. */
@@ -1571,10 +1566,21 @@ export default function LoadDesk() {
     });
   }
 
+  /**
+   * Where a review starts from. On a phone that is the top of the page: the
+   * band carries the ticket's own head now — which ticket, which step, the
+   * checks, the way round the other tickets — so bringing the panel into view
+   * would open the review with the first thing to read already above the
+   * screen. On a desk the panel is still what to scroll to.
+   */
   const scrollToReview = () =>
-    requestAnimationFrame(() =>
-      reviewPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-    );
+    requestAnimationFrame(() => {
+      if (isPhone) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      reviewPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
   /** Reopens a saved ticket, with the other saved tickets on its invoice, to edit. */
   function editSaved(record: SavedRecord) {
@@ -2354,6 +2360,17 @@ export default function LoadDesk() {
    * review has no use for, and the page they belong to is one tap back.
    */
   const phoneReview = isPhone && !!active && !!ticket && !!check;
+  /**
+   * Every step opens at the top of the page, where the band is. The foot of
+   * the step before is not where the next one starts: what a step opens on is
+   * which ticket this is, how far through it you are and what it still needs.
+   * Only on a phone — a desk has the whole review on one screen.
+   */
+  useEffect(() => {
+    if (!phoneReview) return;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [phoneReview, atStep, activeIndex]);
+
   const reviewBand = phoneReview ? (
     <div className="ld-review-band">
       <div className="ld-mobile-head">
@@ -2425,6 +2442,7 @@ export default function LoadDesk() {
       </div>
 
       {checkRow}
+      {queueRow}
     </div>
   ) : null;
 
@@ -2786,10 +2804,11 @@ export default function LoadDesk() {
             className="ld-panel ld-review"
             aria-labelledby="ld-review-title"
           >
-            {/* On a phone the head of the review is up in the band (see
-                reviewBand); a desk has room for the ticket and its photograph
-                at once and keeps the review it always had. */}
-            {queueRow}
+            {/* On a phone the head of the review and the way round the other
+                tickets are both up in the band (see reviewBand); a desk has
+                room for the ticket and its photograph at once and keeps the
+                review it always had. */}
+            {isPhone ? null : queueRow}
 
             <div className="ld-review-body">
               <form
