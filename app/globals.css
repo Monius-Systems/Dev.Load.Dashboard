@@ -1596,7 +1596,9 @@ svg.lucide {
     position: relative;
   }
   .topbar {
-    position: absolute;
+    /* Fixed, not absolute: the account is reachable at any scroll position
+       rather than riding off the top of the page with the header. */
+    position: fixed;
     top: 0;
     right: 0;
     left: 0;
@@ -1638,6 +1640,12 @@ svg.lucide {
   html[data-page='home'] {
     background: var(--ui-accent);
   }
+  /* Scrolled far enough that the sheet has covered the header, there is no
+     blue left on the page for the strip to match — so it stops being blue and
+     takes the colour of the sheet that is now underneath it. */
+  html[data-page='home'][data-scrolled='past'] {
+    background: var(--ui-surface-2);
+  }
   body {
     background: var(--ui-surface-2);
   }
@@ -1672,24 +1680,3 @@ svg.lucide {
   white-space: pre-wrap;
 }
 
-/* A band pinned behind the top of the home page, in the header's colour. Safari in a tab will not let the page into the strip behind the
-   clock, and it ignores theme-color there — but it does take that strip's
-   colour from something fixed at the top of the viewport, which is how the
-   ?diag=1 panel turned it dark. This is that, in the right colour.
- *
- * It is the same colour as the header above it, so whichever Safari looks at —
- * this band or the header covering it — the answer is the same, and nothing of
- * it is ever visible on the page itself. */
-@media (max-width: 767px) {
-  html[data-page='home'] body::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    right: 0;
-    left: 0;
-    z-index: 0;
-    height: 180px;
-    background: var(--ui-accent);
-    pointer-events: none;
-  }
-}

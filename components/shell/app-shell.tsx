@@ -187,13 +187,16 @@ export default function AppShell({
    * measured background always comes back as plain rgb().
    */
   useEffect(() => {
-    const probe = document.createElement('div');
-    probe.style.cssText =
-      'position:absolute;width:0;height:0;opacity:0;pointer-events:none;background:' +
-      (pathname === '/' ? 'var(--ui-accent)' : 'var(--ui-surface-2)');
-    document.body.appendChild(probe);
-    const colour = getComputedStyle(probe).backgroundColor;
-    probe.remove();
+    const root = document.documentElement;
+    // The page is named on the root element. The strip behind the clock takes
+    // its colour from the root's background, and keying that off the page
+    // rather than off something the page renders means it is right on the
+    // first paint — :has(.hm-stats) only became true once the records had
+    // loaded, so the strip spent the first moment grey and Safari had already
+    // decided by then.
+    const home = pathname === '/';
+    root.dataset.page = home ? 'home' : 'inner';
+
     let meta = document.head.querySelector<HTMLMetaElement>(
       'meta[name="theme-color"]',
     );
@@ -202,14 +205,58 @@ export default function AppShell({
       meta.name = 'theme-color';
       document.head.appendChild(meta);
     }
-    meta.content = colour;
-    // And the page itself is named on the root element. The strip behind the
-    // clock takes its colour from the root's background, and keying that off
-    // the page rather than off something the page renders means it is right on
-    // the first paint — :has(.hm-stats) only became true once the records had
-    // loaded, so the strip spent the first moment grey and Safari had already
-    // decided by then.
-    document.documentElement.dataset.page = pathname === '/' ? 'home' : 'inner';
+    const themeColour = meta;
+
+    /** Blue while the header is showing, the sheet's grey once it is not. */
+    const paint = (covered: boolean) => {
+      if (covered) root.dataset.scrolled = 'past';
+      else delete root.dataset.scrolled;
+      const probe = document.createElement('div');
+      probe.style.cssText =
+        'position:absolute;width:0;height:0;opacity:0;pointer-events:none;background:' +
+        (home && !covered ? 'var(--ui-accent)' : 'var(--ui-surface-2)');
+      document.body.appendChild(probe);
+      themeColour.content = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+    };
+
+    if (!home) {
+      paint(false);
+      return;
+    }
+
+    // On the home page the strip follows the scroll: the header is the floor
+    // and the sheet travels up over it, so once the sheet has reached the top
+    // of the screen there is no blue left up there to match and the strip
+    // would be a band of it on its own.
+    const phone = window.matchMedia('(max-width: 767px)');
+    let frame = 0;
+    let covered = false;
+    const check = () => {
+      frame = 0;
+      const sheet = document.querySelector('.hm-sheet');
+      // display:contents above phone width, where the sheet is not a box and
+      // reports an empty rect that would read as covered.
+      const now =
+        phone.matches && !!sheet && sheet.getBoundingClientRect().top <= 0;
+      if (now !== covered) paint((covered = now));
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(check);
+    };
+
+    paint(false);
+    check();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    phone.addEventListener('change', onScroll);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      phone.removeEventListener('change', onScroll);
+      delete root.dataset.scrolled;
+    };
   }, [pathname]);
 
   // Design tokens derive their accent tints from --primary on the root element.
