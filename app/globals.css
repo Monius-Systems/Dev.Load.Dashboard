@@ -1796,6 +1796,21 @@ svg.lucide {
   }
 }
 
+/* And a phone on its side is still a phone. The rules above are written for the
+   width of one held upright, which a phone turned sideways no longer has — so
+   on the way round the canvas would fall back to the grey a wide screen is
+   painted on, and flash grey again on the way back. The colour is the same one
+   the app asks for the phone back in (see .upright), so sideways is one field
+   of blue from edge to edge. */
+@media (orientation: landscape) and (max-height: 500px) and (pointer: coarse) {
+  html {
+    background: var(--strip, var(--ui-accent));
+  }
+  body {
+    background: var(--ui-accent);
+  }
+}
+
 /* The ?diag=1 read-out. Sits over everything, and is never rendered without it. */
 .shell-diagnostics {
   position: fixed;
