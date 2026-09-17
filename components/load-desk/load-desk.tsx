@@ -2203,9 +2203,10 @@ export default function LoadDesk() {
   }, [unsavedEdits]);
 
   /**
-   * The way round the other tickets. On a desk it heads the panel, as it
-   * always has; on a phone it goes with what scrolls, because it is for
-   * reaching the next ticket rather than for checking this one.
+   * The way round the other tickets. It heads the panel on a desk as it always
+   * has, and on a phone it follows the block held at the top of the sheet: it
+   * is for reaching the next ticket, not for checking this one, so it travels
+   * with the page rather than standing over it.
    */
   const queueRow = (
     <>
@@ -2688,15 +2689,11 @@ export default function LoadDesk() {
             className="ld-panel ld-review"
             aria-labelledby="ld-review-title"
           >
-            {/* Everything the reviewer keeps referring to — which ticket, how
-                it stands, which step, the picture, the checks — is one block
-                that holds at the top of the sheet while the fields scroll
-                under it. The queue of other tickets is not part of it: it is
-                for getting to the next ticket, not for checking this one. */}
-            {/* On a phone everything the reviewer keeps referring to is one
-                block that does not move, with the fields scrolling under it.
-                A desk has room for the ticket and its photograph at once and
-                keeps the review it always had. */}
+            {/* On a phone everything the reviewer keeps referring to — which
+                ticket, how it stands, which step, the picture, the checks — is
+                one block that holds at the top of the sheet while the fields
+                scroll under it. A desk has room for the ticket and its
+                photograph at once and keeps the review it always had. */}
             {isPhone ? (
               <div className="ld-review-sticky">
               <div className="ld-mobile-head">
@@ -2792,10 +2789,9 @@ export default function LoadDesk() {
               </div>
             ) : null}
 
-            {isPhone ? null : queueRow}
+            {queueRow}
 
             <div className="ld-review-body">
-              {isPhone ? queueRow : null}
               <form
                 className="ld-form"
                 onSubmit={(event) => void saveActive(event)}

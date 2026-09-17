@@ -1693,60 +1693,11 @@ details[open] > .ld-section-summary .ld-section-chevron {
 
 /* ----------------------------------------------- the flow, on a phone */
 @media (max-width: 767px) {
-  /* While a ticket is being checked the page itself does not scroll: the
-     screen is the sheet, and what moves inside it is the fields.
-     .page-content is held to the screen's height so nothing can carry the
-     blue, the sheet or the header away with the form. */
-  .page-content:has(.ld-review) {
-    height: 100dvh;
-    overflow: hidden;
-  }
-  /* The band comes down to a strip of blue for the sheet to sit on: its own
-     heading and figures are a screenful that the review has better uses for,
-     and the page they belong to is one tap away. */
-  .page-content:has(.ld-review) .page-heading {
-    /* Only what the clock and the account standing on it need. */
-    padding-top: var(--phone-topbar);
-    padding-bottom: var(--ui-radius-xl);
-  }
-  .page-content:has(.ld-review) .page-heading > * {
-    display: none;
-  }
-  /* The sheet takes what the band leaves, and lays out as a column: the header
-     at its natural height, the fields taking the rest. */
-  .page-sheet:has(.ld-review) {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
-  .ld-review {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    min-height: 0;
-  }
-  /* Outside the scrolling box, not stuck to the top of one: the header cannot
-     move because nothing it is in moves. */
+  /* The block holds just under the account that floats over the page, so what
+     it holds is always the first thing on the screen under it. */
   .ld-review-sticky {
-    position: relative;
-    top: auto;
-    flex: 0 0 auto;
-    z-index: 20;
+    top: calc(var(--phone-topbar) - var(--ui-space-2));
     border-radius: 0;
-  }
-  /* And this is the only thing on the screen that scrolls. Contained, so
-     reaching its end does not start the page moving behind it; and padded at
-     the foot so the last of a step clears the bar along the bottom. */
-  .ld-review-body {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(var(--phone-bottombar) + var(--ui-space-5));
   }
   /* The save button that used to sit inside the invoice section; the bar at
      the bottom is where it lives on a phone now. */
