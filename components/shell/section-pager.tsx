@@ -51,18 +51,17 @@ const ORDER = shellConfig.navigation
 export default function SectionPager({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const pager = useRef<HTMLDivElement>(null);
-  /** The sections that have been on the screen already, this session. */
-  const seen = useRef(new Set<string>());
   /**
    * How much of the row is alive, and when.
    *
    * 0 — the section asked for, and nothing else. What the server sends and
    *     what is hydrated, so the first paint costs exactly what it used to.
    * 1 — the two either side, a moment later: what a swipe moves.
-   * 2 — the rest of the bar, once the page is quiet: what the bar itself jumps
+   * 2 — the rest of the bar, a breath after that: what the bar itself jumps
    *     to. A tap on a section that was never mounted has to build it while
    *     you watch, and that is the flick the bar had; built in advance and
-   *     parked, a tap is a page that is already there.
+   *     parked, a tap is a page that is already there, the first time and
+   *     every time.
    *
    * A wider screen stops at 0: there is no swipe and no bar to jump from.
    */
@@ -77,7 +76,7 @@ export default function SectionPager({ children }: { children: ReactNode }) {
         return;
       }
       setReach(1);
-      slower = window.setTimeout(() => setReach(2), 1200);
+      slower = window.setTimeout(() => setReach(2), 350);
     };
     read();
     phone.addEventListener('change', read);
@@ -114,22 +113,6 @@ export default function SectionPager({ children }: { children: ReactNode }) {
     // top as well; this is the one that happens before anything is drawn.)
     if (!window.matchMedia('(max-width: 767px)').matches) return;
     window.scrollTo(0, 0);
-    // And a section being shown for the first time is given the entrance one
-    // gets. A section that was already mounted — every one of them, once the
-    // row is alive — is simply shown: it has nothing to arrive from, and
-    // fading in a page that is already there is the flick, not the polish.
-    // A finger gets no entrance either; it has been moving it all along.
-    const fresh = !seen.current.has(pathname);
-    seen.current.add(pathname);
-    if (!fresh || document.documentElement.dataset.swiping) return;
-    const live = box.querySelector<HTMLElement>('[data-role="current"]');
-    if (!live) return;
-    live.dataset.appear = 'true';
-    const done = () => {
-      delete live.dataset.appear;
-      live.removeEventListener('animationend', done);
-    };
-    live.addEventListener('animationend', done);
   }, [pathname]);
 
   return (

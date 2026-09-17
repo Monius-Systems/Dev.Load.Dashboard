@@ -1187,10 +1187,16 @@ details[open] > .ld-section-summary .ld-section-chevron {
   display: none;
 }
 @media print {
-  /* US Letter, landscape. The margins are the sheet's padding on screen. */
+  /* US Letter, landscape, and no margin at all.
+   *
+   * The address, the date and "Page 1 of 1" are the browser's, and it prints
+   * them into the margin of the page. There is no way to ask it not to — but a
+   * page with no margin has nowhere to put them, so they go. The margin comes
+   * back below as the print root's own padding, which is inside the page and
+   * ours to leave empty. */
   @page {
     size: letter landscape;
-    margin: 0.4in;
+    margin: 0;
   }
   /* What is being printed is paper, and paper is not a phone.
    *
@@ -1215,6 +1221,8 @@ details[open] > .ld-section-summary .ld-section-chevron {
   body > .ld-print-root {
     display: block;
     width: 100%;
+    /* The margin the page no longer has. */
+    padding: 0.4in;
   }
   .ld-print-root .invoice-sheet {
     width: auto;

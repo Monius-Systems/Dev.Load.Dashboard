@@ -1772,14 +1772,9 @@ svg.lucide {
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
-  /* The bar along the bottom keeps its frost through a swipe: the sections
-     sliding under it are exactly what it is there to be frosted over, and it
-     costs what it costs. (The sheet's shadow is put down instead — three
-     screenfuls of it, and nothing can see any of them while the page is in
-     motion.) */
-  html[data-swiping] .page-sheet {
-    box-shadow: none;
-  }
+  /* Nothing is put down for a swipe any more: the bar keeps its frost, and the
+     sheet keeps the three screenfuls of white it carries under itself, so the
+     page reads the same at rest and in motion. */
   /* And the band stops being sticky for the length of the gesture. A sticky
      element inside something that is being transformed is worked out again on
      every frame, on the main thread, which is exactly where the frames were
@@ -1788,28 +1783,16 @@ svg.lucide {
   html[data-swiping] :is(.page-heading, .ac-hero) {
     position: static;
   }
-  /* A section opened by a tap on the bar arrives one quiet way: the whole page
-     together, lifting a little as it comes up. The staggered entrance a wide
-     screen plays — each card a beat after the one above it — reads as the page
-     being assembled in front of you on a small screen, and a phone shows a
-     page, it does not build one.
-     Put on the pane, because the pane is the thing that is arriving; a section
-     carried in by a finger has been moving all along and is never given it. */
-  .section-pane[data-appear] {
-    animation: ui-page-appear 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
-  }
+  /* Nothing on a phone plays an entrance.
+   *
+   * Every section of the bar is mounted and standing by (see SectionPager), so
+   * arriving at one is not a page being built and there is nothing for it to
+   * arrive from: fading in a page that is already there is the flick, however
+   * gentle the fade. A tap shows the section, the way a phone's own bar does,
+   * and a swipe has been carrying it all along. The staggered entrance a wide
+   * screen plays is taken off here for the same reason. */
   .page-enter > *:nth-child(n) {
     animation: none;
-  }
-}
-@keyframes ui-page-appear {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 8px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: none;
   }
 }
 
