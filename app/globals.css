@@ -1434,7 +1434,7 @@ svg.lucide {
       .invoice-sheet,
       .invoice-sheet *
     ) {
-    touch-action: pan-x pan-y;
+    touch-action: pan-y;
   }
   /* The scan of the ticket and the invoice as it will print: both are read by
      eye, and both are smaller than the paper. These still pinch. */
@@ -1450,5 +1450,46 @@ svg.lucide {
   .pf-textarea,
   textarea {
     font-size: 16px;
+  }
+}
+
+/* ============================================= a dialog never outgrows the screen */
+/* A form with a dozen fields in it was taller than the phone it was on, and the
+   box does not scroll: the customer dialog came out 1212px tall on an 844px
+   screen, centred, so its title ran off the top and its Save button off the
+   bottom with no way to reach either. It is capped to the screen and scrolls
+   inside instead. Not a phone rule — the same form does this on a laptop. */
+[data-slot='dialog-content'] {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ================================================== phone: one way to scroll */
+@media (max-width: 767px) {
+  /* Up and down only. A sideways drag used to slide the whole page off and
+     leave a column of it stranded at the edge. */
+  html,
+  body,
+  .workspace-main,
+  .page-content {
+    overflow-x: hidden;
+    /* An element wider than the screen scrolls inside its own box rather than
+       taking the page with it. */
+    max-width: 100vw;
+  }
+  /* The bar down the right while scrolling. A phone app does not show one; the
+     content still scrolls exactly as it did. */
+  html,
+  body,
+  .page-content,
+  [data-slot='dialog-content'] {
+    scrollbar-width: none;
+  }
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  .page-content::-webkit-scrollbar,
+  [data-slot='dialog-content']::-webkit-scrollbar {
+    display: none;
   }
 }
