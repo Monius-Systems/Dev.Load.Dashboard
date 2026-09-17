@@ -195,13 +195,13 @@ export default function AppShell({
   /**
    * The colour behind the clock, the island and the battery.
    *
-   * A browser will not let the page paint up there — it keeps the strip and
-   * fills it from theme-color and the root element's background. So the root
-   * is made a mirror of the page instead: --strip and theme-color are both set
-   * to the colour actually painted at the top of the page, and the strip then
-   * behaves the way a transparent one would. The accent over the band every
-   * page opens on, the sheet's grey once the home page has been scrolled up
-   * past it, and never a colour that is not on the page underneath.
+   * With no theme-color to go on (see app/layout.tsx), Safari lets the page
+   * run to the top edge and lays its own scrim over it, so what is behind the
+   * clock is the page itself. The root is still made a mirror of it — what is
+   * painted at the top of the page is written to --strip — because that is the
+   * colour of the canvas the page sits on, which is what shows when the page
+   * is pulled past either end, and it is what tells the account in the corner
+   * whether it is standing on the band or on the sheet.
    *
    * The colour is read off the page rather than worked out from the route, so
    * it needs no list of which page is what, and the scanner needs no special
@@ -212,16 +212,6 @@ export default function AppShell({
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.page = pathname === '/' ? 'home' : 'inner';
-
-    let meta = document.head.querySelector<HTMLMetaElement>(
-      'meta[name="theme-color"]',
-    );
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'theme-color';
-      document.head.appendChild(meta);
-    }
-    const themeColour = meta;
 
     /* Only a colour that hides what is behind it answers the question. Anything
        with an alpha is a tint over something else — the 12% white pill of
@@ -262,7 +252,6 @@ export default function AppShell({
       const colour = topColour();
       if (!colour || colour === last) return;
       last = colour;
-      themeColour.content = colour;
       root.style.setProperty('--strip', colour);
       root.dataset.strip = colour === accent ? 'accent' : 'page';
     };
@@ -408,6 +397,9 @@ export default function AppShell({
         {/* The floor under the screen: what a phone's bounce pulls into at the
             foot of a page. See .page-floor. */}
         <div className="page-floor" aria-hidden="true" />
+        {/* And the blue behind the clock, which stays while the page scrolls
+            under it. See .page-strip. */}
+        <div className="page-strip" aria-hidden="true" />
         <Diagnostics />
         <a className="skip-link" href="#workspace-content">
           {t('Skip to content')}

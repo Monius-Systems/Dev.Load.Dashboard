@@ -16,8 +16,11 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',
-    // The colour the app opens on, behind the clock and on the splash screen.
-    theme_color: shellConfig.accentColor,
+    // The colour the app opens on, on the splash screen while it starts.
+    //
+    // No theme_color with it, for the same reason there is no theme-color meta
+    // (see app/layout.tsx): given one, the strip behind the clock is filled
+    // with it flat instead of the page being allowed to reach up there.
     background_color: shellConfig.accentColor,
     icons: [
       { src: '/apple-touch-icon.png?v=2', sizes: '180x180', type: 'image/png' },

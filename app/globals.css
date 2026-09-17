@@ -374,9 +374,10 @@ html[lang='pl']
   min-width: 0;
   background: transparent;
 }
-/* The floor under a phone's screen; nothing anywhere else. See the phone
-   block near the end of this file. */
-.page-floor {
+/* The floor under a phone's screen and the strip above it; nothing anywhere
+   else. See the phone block near the end of this file. */
+.page-floor,
+.page-strip {
   display: none;
 }
 /* Dot grid behind the whole workspace, fading out toward the edges. */
@@ -1851,6 +1852,37 @@ svg.lucide {
     z-index: 0;
     height: 100vh;
     background: var(--ui-surface-2);
+    pointer-events: none;
+  }
+
+  /* The blue behind the clock, the island and the battery.
+   *
+   * The page runs up under there — that is what viewport-fit=cover and no
+   * theme-color are for — so what is behind the clock is whatever the page has
+   * at its top, and once a page is scrolled that is the sheet's white. This
+   * holds the band's colour up there instead: a fixed strip exactly as deep as
+   * the inset, painted the accent, with the page passing underneath it. At the
+   * top of a page it is the band's own blue and cannot be told apart from it;
+   * scrolled, it is the strip a phone app keeps behind the status bar.
+   *
+   * Over the sheet, which is 6, and under the bar along the bottom and the
+   * dialogs. Deaf to the pointer, so the mirror that reads the colour at the
+   * top of the page reads the page and not this — elementFromPoint passes
+   * straight through anything that cannot be tapped.
+   *
+   * It is what makes black-translucent safe in an installed app as well: iOS
+   * draws the clock in white over the page there, and now the page is blue
+   * under it at every scroll position rather than white over white.
+   */
+  .page-strip {
+    display: block;
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 7;
+    height: env(safe-area-inset-top);
+    background: var(--ui-accent);
     pointer-events: none;
   }
 

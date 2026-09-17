@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { shellConfig } from '@/lib/shell-config';
 import AppCursor from '@/components/shell/app-cursor';
 import Upright from '@/components/shell/upright';
 import './globals.css';
@@ -12,21 +11,24 @@ import './globals.css';
  * it is laid out.
  */
 /**
- * The colour iOS paints behind the clock and the battery: the home page
- * header's colour exactly, so the two read as one field.
+ * No theme-color, on purpose.
  *
- * Set here as well as from the shell, because a home-screen app reads
- * theme-color once when it launches: a value written later by script reaches
- * every browser that watches for it, but not that strip. The app opens on the
- * home page, so this is the colour that matters there.
+ * Given one, Safari stops letting the page reach the top of the screen: it
+ * keeps a strip behind the clock and the battery and fills it with that colour
+ * flat — the solid blue band above the page. Given none, the page runs to the
+ * physical top edge under viewport-fit=cover, whatever is at the top of it is
+ * what is behind the clock, and Safari lays its own soft scrim over that so
+ * the time stays readable. That is the fade this app is meant to have: the
+ * band's blue under the clock at the top of a page, the sheet's white under it
+ * once the page has been scrolled, and no flat strip at any point.
+ *
+ * It costs the tinted address bar on Android, which is the same flat fill by
+ * another name. The installed app keeps its own colour, in app/manifest.ts.
  */
-const statusBarColour = shellConfig.accentColor;
-
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
-  themeColor: statusBarColour,
 };
 
 export const metadata: Metadata = {
