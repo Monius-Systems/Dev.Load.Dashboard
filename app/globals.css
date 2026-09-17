@@ -1629,6 +1629,18 @@ svg.lucide {
   body {
     background: var(--ui-surface-2);
   }
+  /* And the dot grid does not come to the phone. It is a fixed box pinned to
+     all four edges of the viewport, painted #f4f5f7 — so it is sitting in the
+     strip behind the clock, above the root background and above anything the
+     page pins there, and it is very close to white. Every attempt to colour
+     that strip was being painted over by it.
+     Its mask fades it out at the edges, but the mask is not what Safari reads
+     when it decides the strip's colour; the background-colour is.
+     Nothing is lost by dropping it: the dots are decoration for a wide screen,
+     and body already carries #f8f9fa underneath, a shade off the same grey. */
+  .workspace-backdrop {
+    display: none;
+  }
 }
 
 /* The ?diag=1 read-out. Sits over everything, and is never rendered without it. */
