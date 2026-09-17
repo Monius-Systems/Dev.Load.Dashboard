@@ -1631,16 +1631,38 @@ details[open] > .ld-section-summary .ld-section-chevron {
     display: none;
   }
 
-  /* What the review opens on: which ticket, how it stands, which step, the
-     picture, the checks. It heads the sheet and travels with it rather than
-     standing over it — at the foot of a long step the screen is the fields and
-     the bar of Back and Next, and nothing else. A hairline marks where it
-     ends. */
-  .ld-review-sticky {
-    margin: 0 calc(-1 * var(--ui-space-5));
-    padding: 0 var(--ui-space-5) var(--ui-space-3);
-    border-bottom: 1px solid var(--ui-separator);
-    background: var(--ui-surface-2);
+  /* The review's head, standing in the blue band at the top of the page in
+     place of this page's title and figures: which ticket, how it stands, which
+     step, the checks and the way to the picture. The band is a flex column
+     that shrinks its children to their content, so this is told to span it.
+     It travels with the band, which is the page's floor — scrolled past, the
+     step is the fields and the bar of Back and Next, and nothing else. */
+  .ld-review-band {
+    width: 100%;
+  }
+  /* The band closes up behind it: the row of figures it stands in place of
+     carried the gap down to the sheet, and the checks carry their own. */
+  .page-heading[data-review] {
+    gap: 0;
+  }
+  /* On the blue, what was grey text is white held back and what was drawn in
+     the accent is white outright — the band is the accent already. The chip
+     and the check panel keep their own tones: pale green or amber on blue is
+     what tells the two apart at a glance. */
+  .page-heading[data-review] .ld-mobile-head-top [data-slot='button'],
+  .page-heading[data-review] .ld-mobile-head-top > strong,
+  .page-heading[data-review] .ld-mobile-head-row [data-slot='button'],
+  .page-heading[data-review] .ld-mobile-step {
+    color: rgb(255 255 255 / 80%);
+  }
+  .page-heading[data-review] .ld-mobile-head-row > strong {
+    color: #fff;
+  }
+  .page-heading[data-review] .ld-steps-track i {
+    background: rgb(255 255 255 / 28%);
+  }
+  .page-heading[data-review] .ld-steps-track i[data-done] {
+    background: #fff;
   }
   /* The head of it: which ticket, how it stands, how far through it you are. */
   .ld-mobile-head {

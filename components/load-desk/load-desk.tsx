@@ -2347,33 +2347,122 @@ export default function LoadDesk() {
           </div>
   );
 
+  /**
+   * On a phone the review takes the blue band at the top of the page for its
+   * own head: which ticket, how it stands, which step, the checks and the way
+   * to the picture. The page's own title and figures are a screenful the
+   * review has no use for, and the page they belong to is one tap back.
+   */
+  const phoneReview = isPhone && !!active && !!ticket && !!check;
+  const reviewBand = phoneReview ? (
+    <div className="ld-review-band">
+      <div className="ld-mobile-head">
+        <div className="ld-mobile-head-top">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setActiveIndex(-1)}
+          >
+            <ChevronLeft data-icon="inline-start" />
+            {t('Tickets')}
+          </Button>
+          <strong>{t('Review')}</strong>
+        </div>
+        <div className="ld-mobile-head-row">
+          <strong>
+            {t('Ticket {index} of {total}', {
+              index: activeIndex + 1,
+              total: queue.length,
+            })}
+          </strong>
+          <span
+            className="ld-chip"
+            data-tone={
+              activeChanged
+                ? 'warning'
+                : activeSaved && !activeUnchecked
+                  ? 'good'
+                  : undefined
+            }
+          >
+            {activeChanged ? (
+              t('Unsaved')
+            ) : activeSaved && !activeUnchecked ? (
+              <>
+                <Check aria-hidden="true" />
+                {t('Saved')}
+              </>
+            ) : (
+              t('To check')
+            )}
+          </span>
+          {savedInQueue === queue.length && !unsavedEdits ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t('Clear queue')}
+              title={t('Clear queue')}
+              onClick={clearQueue}
+            >
+              <X />
+            </Button>
+          ) : null}
+        </div>
+        <p className="ld-mobile-step">
+          {t('Step {number} of {total}', {
+            number: atStep + 1,
+            total: STEPS.length,
+          })}{' '}
+          · {t(STEPS[atStep])}
+        </p>
+        <span className="ld-steps-track" aria-hidden="true">
+          {STEPS.map((name, index) => (
+            <i key={name} data-done={index <= atStep || undefined} />
+          ))}
+        </span>
+      </div>
+
+      {checkRow}
+    </div>
+  ) : null;
+
   return (
     <>
       {phoneExtracting}
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">LOAD DESK</p>
-          <h1>{t('Load Tickets to Invoices')}</h1>
-          <p className="muted">
-            {t(
-              'Upload tickets, check the extracted fields, then save each one with its original and an invoice.',
-            )}
-          </p>
-        </div>
-        <dl className="ld-stats">
-          <div>
-            <dt>{t('Saved tickets')}</dt>
-            <dd>{records.length}</dd>
-          </div>
-          <div>
-            <dt>{t('Needs review')}</dt>
-            <dd>{reviewCount}</dd>
-          </div>
-          <div>
-            <dt>{t('Net tons')}</dt>
-            <dd>{netTons.toFixed(2)}</dd>
-          </div>
-        </dl>
+      {/* The band every page opens on. While a ticket is being checked on a
+          phone it carries the review's head instead of this page's title and
+          figures: what the band is for is saying where you are, and where you
+          are is inside one ticket. */}
+      <div className="page-heading" data-review={phoneReview || undefined}>
+        {reviewBand ?? (
+          <>
+            <div>
+              <p className="eyebrow">LOAD DESK</p>
+              <h1>{t('Load Tickets to Invoices')}</h1>
+              <p className="muted">
+                {t(
+                  'Upload tickets, check the extracted fields, then save each one with its original and an invoice.',
+                )}
+              </p>
+            </div>
+            <dl className="ld-stats">
+              <div>
+                <dt>{t('Saved tickets')}</dt>
+                <dd>{records.length}</dd>
+              </div>
+              <div>
+                <dt>{t('Needs review')}</dt>
+                <dd>{reviewCount}</dd>
+              </div>
+              <div>
+                <dt>{t('Net tons')}</dt>
+                <dd>{netTons.toFixed(2)}</dd>
+              </div>
+            </dl>
+          </>
+        )}
       </div>
 
       {/* Everything below the band rides in one sheet, as on every page. On a
@@ -2697,86 +2786,9 @@ export default function LoadDesk() {
             className="ld-panel ld-review"
             aria-labelledby="ld-review-title"
           >
-            {/* On a phone the review opens on one block — which ticket, how
-                it stands, which step, the picture, the checks — and then gets
-                out of the way: it scrolls off with the rest, so the foot of a
-                long step is the fields and nothing else. A desk has room for
-                the ticket and its photograph at once and keeps the review it
-                always had. */}
-            {isPhone ? (
-              <div className="ld-review-sticky">
-              <div className="ld-mobile-head">
-                <div className="ld-mobile-head-top">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setActiveIndex(-1)}
-                  >
-                    <ChevronLeft data-icon="inline-start" />
-                    {t('Tickets')}
-                  </Button>
-                  <strong>{t('Review')}</strong>
-                </div>
-                <div className="ld-mobile-head-row">
-                  <strong>
-                    {t('Ticket {index} of {total}', {
-                      index: activeIndex + 1,
-                      total: queue.length,
-                    })}
-                  </strong>
-                  <span
-                    className="ld-chip"
-                    data-tone={
-                      activeChanged
-                        ? 'warning'
-                        : activeSaved && !activeUnchecked
-                          ? 'good'
-                          : undefined
-                    }
-                  >
-                    {activeChanged ? (
-                      t('Unsaved')
-                    ) : activeSaved && !activeUnchecked ? (
-                      <>
-                        <Check aria-hidden="true" />
-                        {t('Saved')}
-                      </>
-                    ) : (
-                      t('To check')
-                    )}
-                  </span>
-                  {savedInQueue === queue.length && !unsavedEdits ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={t('Clear queue')}
-                      title={t('Clear queue')}
-                      onClick={clearQueue}
-                    >
-                      <X />
-                    </Button>
-                  ) : null}
-                </div>
-                <p className="ld-mobile-step">
-                  {t('Step {number} of {total}', {
-                    number: atStep + 1,
-                    total: STEPS.length,
-                  })}{' '}
-                  · {t(STEPS[atStep])}
-                </p>
-                <span className="ld-steps-track" aria-hidden="true">
-                  {STEPS.map((name, index) => (
-                    <i key={name} data-done={index <= atStep || undefined} />
-                  ))}
-                </span>
-                </div>
-
-                {checkRow}
-              </div>
-            ) : null}
-
+            {/* On a phone the head of the review is up in the band (see
+                reviewBand); a desk has room for the ticket and its photograph
+                at once and keeps the review it always had. */}
             {queueRow}
 
             <div className="ld-review-body">
