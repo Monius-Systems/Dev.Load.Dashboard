@@ -21,6 +21,7 @@ import DeskActivity from '@/components/shell/desk-activity';
 import { adoptSessionAccount } from '@/lib/account';
 import type { ShellAccount } from '@/lib/account-display';
 import { useCompanyName } from '@/components/shell/use-company-name';
+import { usePageSwipe } from '@/hooks/use-page-swipe';
 import { useT } from '@/lib/i18n/use-t';
 import { companyInitials } from '@/lib/load-desk/business';
 import { shellConfig } from '@/lib/shell-config';
@@ -150,6 +151,9 @@ function TabBar() {
   );
 }
 
+/** The sections a swipe moves between: the bar along the bottom, in its order. */
+const SWIPE_PAGES = shellConfig.navigation.map(({ href }) => href);
+
 /** The dashboard frame: floating sidebar, top bar and page area. */
 export default function AppShell({
   children,
@@ -164,6 +168,8 @@ export default function AppShell({
   // somebody else sees their name, email and photo until the server answers.
   adoptSessionAccount(initialAccount);
   const pathname = usePathname();
+  // A swipe across a phone moves along the bar at the bottom, in its order.
+  usePageSwipe(SWIPE_PAGES, pathname);
   const { t } = useT();
   const title = t(
     shellConfig.navigation.find(({ href }) => href === pathname)?.label ??

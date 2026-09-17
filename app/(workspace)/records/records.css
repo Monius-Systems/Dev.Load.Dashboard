@@ -161,6 +161,11 @@
   display: none;
 }
 @media (max-width: 767px) {
+  /* A spreadsheet is a desk job: a file downloaded on a phone lands somewhere
+     nobody opens it from. The whole list is on the page either way. */
+  .rec-export {
+    display: none;
+  }
   .rec-filter-toggle {
     display: inline-flex;
     align-items: center;

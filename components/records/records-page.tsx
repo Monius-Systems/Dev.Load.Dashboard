@@ -502,6 +502,7 @@ export default function RecordsPage() {
                   </Button>
                 ) : null}
                 <Button
+                  className="rec-export"
                   variant="secondary"
                   size="sm"
                   onClick={exportCsv}
