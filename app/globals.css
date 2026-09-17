@@ -1670,13 +1670,14 @@ svg.lucide {
     position: relative;
   }
   .topbar {
-    /* Fixed, not absolute: the account is reachable at any scroll position
-       rather than riding off the top of the page with the header. */
+    /* Fixed, and over the sheet rather than under it: the account holds the
+       same corner whatever the page is doing, rather than riding off the top
+       with the band or disappearing under the sheet on its way up. */
     position: fixed;
     top: 0;
     right: 0;
     left: 0;
-    z-index: 5;
+    z-index: 7;
     min-height: 0;
     justify-content: flex-end;
     /* A little below the clock rather than level with it. */

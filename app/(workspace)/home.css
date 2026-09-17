@@ -626,15 +626,16 @@ button.hm-row:hover {
   /* The sheet: the whole page below its band, as one panel that runs to both
      edges, curves at the top and slides up over the band.
    *
-   * min-height is what keeps the blue from reappearing. Scrolled to the very
-   * bottom, the sheet's own bottom edge sits at the bottom of the page — a
-   * full viewport of sheet guarantees it is still below the fold there, so the
-   * header it is covering never shows out from under it. */
+   * Nothing pads it out to fill the screen. A viewport of min-height let a
+   * nearly empty page scroll a screenful down into blank grey, and it was never
+   * needed to stop the band showing out from under it: the band is sticky
+   * inside .page-enter, whose bottom edge is the sheet's own, and sticky's own
+   * clamp will not let it past that. */
   .page-sheet {
     display: block;
     position: relative;
-    /* Above the account bar, which is 5. The account is pinned to the blue and
-       the sheet passes over it, the same as it passes over the greeting. */
+    /* Above the band it slides over, and under the account, which stays on
+       top of both. */
     z-index: 6;
     /* Pulled up onto the blue by exactly its own corner radius, so the curve
        has blue behind it to read against. Sitting flush at the header's bottom
@@ -647,7 +648,6 @@ button.hm-row:hover {
        the sheet's own top edge and cancel the negative margin holding it on
        the blue. */
     padding: calc(var(--ui-radius-xl) + var(--ui-space-3)) var(--ui-space-5) 0;
-    min-height: 100dvh;
     background: var(--ui-surface-2);
   }
   /* The notch, the way a sheet drawn up over something is marked. Clear of the
