@@ -1724,8 +1724,16 @@ svg.lucide {
   html {
     background: var(--strip, var(--ui-accent));
   }
+  /* The canvas behind it all is the band's blue, on every page. The sheet is
+     the only thing that is not: it runs to both edges and covers the page, so
+     what the blue shows is the band at the top and whatever is left below the
+     sheet's last card — which now reads as one colour the sheet sits on,
+     rather than the near-white the page used to end on.
+     Deliberately a background rather than the strip variable: the strip goes on
+     mirroring whatever is painted at the top, so it still turns grey once the
+     sheet has been scrolled up past the band. */
   body {
-    background: var(--ui-surface-2);
+    background: var(--ui-accent);
   }
   /* And the dot grid does not come to the phone. It is a fixed box pinned to
      all four edges of the viewport, painted #f4f5f7 — so it is sitting in the
@@ -1735,7 +1743,7 @@ svg.lucide {
      Its mask fades it out at the edges, but the mask is not what Safari reads
      when it decides the strip's colour; the background-colour is.
      Nothing is lost by dropping it: the dots are decoration for a wide screen,
-     and body already carries #f8f9fa underneath, a shade off the same grey. */
+     and the phone canvas is the band's blue now, not a grey to match. */
   .workspace-backdrop {
     display: none;
   }
