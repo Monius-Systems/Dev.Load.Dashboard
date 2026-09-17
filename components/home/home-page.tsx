@@ -262,6 +262,22 @@ export default function HomePage() {
             {t('Loads, invoices and your fleet at {company}.', { company: sellerName })}
           </p>
         </div>
+        {ready && isPhone ? (
+          <dl className="hm-hero-stats">
+            <div>
+              <dt>{compare.week.loads.toLocaleString('en-US')}</dt>
+              <dd>{t('This week')}</dd>
+            </div>
+            <div>
+              <dt>{compare.month.loads.toLocaleString('en-US')}</dt>
+              <dd>{t('This month')}</dd>
+            </div>
+            <div>
+              <dt>{money(compare.month.billed)}</dt>
+              <dd>{t('Billed')}</dd>
+            </div>
+          </dl>
+        ) : null}
         <div className="hm-actions">
           <Link href="/load-desk" className={buttonVariants()}>
             {isPhone ? <ScanLine /> : <FileUp />}

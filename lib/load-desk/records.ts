@@ -157,6 +157,25 @@ export function invoiceGroups(records: SavedRecord[]): InvoiceGroup[] {
     );
 }
 
+/**
+ * Whether a ticket belongs on an invoice already covering `invoiceDate`.
+ *
+ * An invoice is one date's work. A ticket for another date does not join it,
+ * however it got there — including through "Add tickets to this invoice",
+ * which used to take whatever it was given and quietly put two dates on one
+ * bill. A ticket whose date could not be read has nothing to disagree with, so
+ * it joins: that is the multi-page scan whose second page lost its date line.
+ */
+export function joinsInvoiceFor(
+  invoiceDate: string | null,
+  ticketDate: string | null,
+): boolean {
+  const ticket = ticketDate?.trim();
+  if (!ticket) return true;
+  const invoice = invoiceDate?.trim();
+  return !invoice || invoice === ticket;
+}
+
 /** Photographed and read, but nobody has checked it against the picture yet. */
 export const needsReview = (record: SavedRecord) => !record.reviewed_at;
 

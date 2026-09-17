@@ -102,6 +102,7 @@ import {
   needsReview,
   invoiceLines,
   groupByTicketDate,
+  joinsInvoiceFor,
   nextInvoiceNumber,
   recordBatch,
 } from '@/lib/load-desk/records';
@@ -956,21 +957,43 @@ export default function LoadDesk() {
           : filled;
     }
     let grouped: QueueItem[];
-    if (target) {
-      // Tickets added to an invoice join it, whatever their dates.
-      grouped = added.map((item) => ({
-        ...item,
-        batch_id: target.batch_id,
-        truck_id: target.truck_id,
-        invoice: { ...target.invoice, bill_to: { ...target.invoice.bill_to } },
-      }));
-    } else {
+    // Tickets added to an invoice join it only if they are that invoice's date.
+    // An invoice is one date's work, and a ticket for another day goes to its
+    // own date's invoice instead of being billed on somebody else's.
+    const joining = target
+      ? added.filter((item) =>
+          joinsInvoiceFor(target.ticket.ticket_date, item.ticket.ticket_date),
+        )
+      : [];
+    const elsewhere = target
+      ? added.filter((item) => !joining.includes(item))
+      : added;
+    // Whatever did not join the target, and everything on an ordinary upload,
+    // is filed by its own ticket date below.
+    const onTarget =
+      target && joining.length
+        ? joining.map((item) => ({
+            ...item,
+            batch_id: target.batch_id,
+            truck_id: target.truck_id,
+            invoice: { ...target.invoice, bill_to: { ...target.invoice.bill_to } },
+          }))
+        : [];
+    if (target && elsewhere.length) {
+      failures.push(
+        t('{count} for another date went to its own invoice, not {number}.', {
+          count: plural(elsewhere.length, 'ticket'),
+          number: target.invoice.invoice_number.trim() || t('this one'),
+        }),
+      );
+    }
+    {
       // One invoice per ticket date, dated that day, oldest first. Invoice
       // numbers continue in order after the latest saved or queued invoice;
       // the very first one is typed in.
       const numbers = invoiceNumbersInOrder(queue);
       const billTo = recentClientBillTo();
-      const groups = groupByTicketDate(added, (item) => item.ticket.ticket_date);
+      const groups = groupByTicketDate(elsewhere, (item) => item.ticket.ticket_date);
       grouped = groups.flatMap((group) => {
         const batchId = makeId();
         const number = nextInvoiceNumber(numbers) ?? '';
@@ -986,11 +1009,13 @@ export default function LoadDesk() {
           },
         }));
       });
+      grouped = [...onTarget, ...grouped];
+      const invoices = groups.length + (onTarget.length ? 1 : 0);
       const summary =
-        groups.length > 1
+        invoices > 1
           ? t('{tickets} ready for review on {invoices}, one per ticket date.', {
               tickets: plural(added.length, 'ticket'),
-              invoices: plural(groups.length, 'invoice'),
+              invoices: plural(invoices, 'invoice'),
             })
           : t('{tickets} ready for review.', { tickets: plural(added.length, 'ticket') });
       setUploadStatus({

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByTicketDate } from '../lib/load-desk/records.ts';
+import { groupByTicketDate, joinsInvoiceFor } from '../lib/load-desk/records.ts';
 
 type Page = { page: number; date: string | null };
 const dateOf = (item: Page) => item.date;
@@ -62,4 +62,25 @@ void test('an upload without any dates is one group', () => {
   );
   assert.deepEqual(pages(groups), [[null, [1, 2]]]);
   assert.deepEqual(groupByTicketDate([], dateOf), []);
+});
+
+void test('a ticket for another date does not join an invoice', () => {
+  // The leak: "Add tickets to this invoice" took whatever it was given, so a
+  // ticket photographed on a different day was billed on an older invoice.
+  assert.equal(joinsInvoiceFor('2026-09-14', '2026-09-15'), false);
+  assert.equal(joinsInvoiceFor('2026-09-14', '2026-09-13'), false);
+  assert.equal(joinsInvoiceFor('2026-09-14', '2026-09-14'), true);
+  assert.equal(joinsInvoiceFor('2026-09-14', ' 2026-09-14 '), true, 'spacing is not a date');
+});
+
+void test('a ticket whose date could not be read still joins', () => {
+  // It has nothing to disagree with: this is page two of a scan that lost its
+  // date line, and it belongs with the page before it.
+  assert.equal(joinsInvoiceFor('2026-09-14', null), true);
+  assert.equal(joinsInvoiceFor('2026-09-14', '   '), true);
+});
+
+void test('an invoice with no date of its own takes the first ticket', () => {
+  assert.equal(joinsInvoiceFor(null, '2026-09-15'), true);
+  assert.equal(joinsInvoiceFor('', '2026-09-15'), true);
 });

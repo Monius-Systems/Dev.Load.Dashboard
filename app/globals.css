@@ -1570,3 +1570,39 @@ svg.lucide {
     border-radius: var(--ui-radius-md);
   }
 }
+
+/* ============================== phone: no breadcrumb, and a header that floats */
+@media (max-width: 767px) {
+  /* The "/ Home" trail says what the bar along the bottom already shows. */
+  .breadcrumb {
+    display: none;
+  }
+  /* With it gone the bar carries only the account, so it stops taking a row of
+     its own and floats over the top of the page — which lets a page put its own
+     colour up behind it, the way the home page now does. */
+  .workspace-main {
+    position: relative;
+  }
+  .topbar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 5;
+    min-height: 0;
+    justify-content: flex-end;
+    padding: max(10px, env(safe-area-inset-top)) 16px 8px;
+    background: transparent;
+    pointer-events: none;
+  }
+  .topbar > * {
+    pointer-events: auto;
+  }
+  /* Every page starts below the floating bar; the home page reaches back up
+     under it on purpose. */
+  .page-content {
+    --phone-topbar: calc(max(10px, env(safe-area-inset-top)) + 58px);
+
+    padding-top: var(--phone-topbar);
+  }
+}
