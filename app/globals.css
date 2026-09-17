@@ -1647,3 +1647,26 @@ svg.lucide {
   line-height: 1.5;
   white-space: pre-wrap;
 }
+
+/* A band pinned behind the top of the home page, in the colour the header
+   begins with. Safari in a tab will not let the page into the strip behind the
+   clock, and it ignores theme-color there — but it does take that strip's
+   colour from something fixed at the top of the viewport, which is how the
+   ?diag=1 panel turned it dark. This is that, in the right colour.
+ *
+ * It is the same colour as the header above it, so whichever Safari looks at —
+ * this band or the header covering it — the answer is the same, and nothing of
+ * it is ever visible on the page itself. */
+@media (max-width: 767px) {
+  html[data-page='home'] body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 0;
+    height: 180px;
+    background: color-mix(in srgb, var(--ui-accent) 52%, #ffffff);
+    pointer-events: none;
+  }
+}
