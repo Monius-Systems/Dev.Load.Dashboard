@@ -281,3 +281,11 @@ export function billToFit(name: string): 'medium' | 'small' | undefined {
   if (length > 22) return 'medium';
   return undefined;
 }
+
+/** A file size in the words a person uses for one. */
+export const fileSize = (bytes: number) =>
+  bytes < 1024
+    ? `${bytes} bytes`
+    : bytes < 1024 * 1024
+      ? `${Math.round(bytes / 1024)} KB`
+      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;

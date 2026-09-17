@@ -54,9 +54,11 @@ import { toast } from '@/components/ui/toast';
 import InvoiceDialog, {
   type InvoiceView,
 } from '@/components/load-desk/invoice-dialog';
+import TicketViewer from '@/components/load-desk/ticket-viewer';
 import {
   formatFuel,
   formatRate,
+  fileSize,
   FUEL_TYPE_LABELS,
   invoiceTons,
   ledgerCsv,
@@ -159,25 +161,32 @@ type FieldDef = {
   type?: 'date' | 'time';
   step?: string;
   required?: boolean;
+  /**
+   * The run of fields this one opens, on a phone. A step of seven boxes reads
+   * as a list to get to the end of; the same seven under two short headings
+   * read as two things to check. Only the phone shows them — a wide screen has
+   * the section headings and the room to lay the fields out in.
+   */
+  group?: string;
 };
 
 const TICKET_FIELDS: FieldDef[] = [
-  { name: 'ticket_number', label: 'Ticket / BOL', required: true },
+  { name: 'ticket_number', label: 'Ticket / BOL', required: true, group: 'Ticket' },
   { name: 'ticket_date', label: 'Date', type: 'date', required: true },
   { name: 'time_in', label: 'Time in', type: 'time' },
   { name: 'time_out', label: 'Time out', type: 'time' },
-  { name: 'plant_code', label: 'Plant code' },
+  { name: 'plant_code', label: 'Plant code', group: 'Plant' },
   { name: 'plant_name', label: 'Plant name', span: 2 },
   { name: 'dispatch_number', label: 'Dispatch' },
 ];
 const JOB_FIELDS: FieldDef[] = [
-  { name: 'customer_id', label: 'Customer ID' },
+  { name: 'customer_id', label: 'Customer ID', group: 'Customer' },
   { name: 'customer_name', label: 'Customer name', span: 2, required: true },
   { name: 'order_number', label: 'Order number' },
-  { name: 'project_name', label: 'Project', span: 2 },
+  { name: 'project_name', label: 'Project', span: 2, group: 'Job' },
   { name: 'project_address', label: 'Destination address', span: 2 },
   { name: 'po_number', label: 'PO' },
-  { name: 'product_code', label: 'Product code' },
+  { name: 'product_code', label: 'Product code', group: 'Material' },
   { name: 'product_description', label: 'Product description', span: 2 },
 ];
 const WEIGHT_FIELDS: FieldDef[] = [
@@ -220,13 +229,6 @@ const makeId = () =>
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'Something went wrong.';
-
-const fileSize = (bytes: number) =>
-  bytes < 1024
-    ? `${bytes} bytes`
-    : bytes < 1024 * 1024
-      ? `${Math.round(bytes / 1024)} KB`
-      : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 
 /** The same file picked or dropped twice is only added once. */
 const fileKey = (file: File) =>
@@ -688,6 +690,8 @@ export default function LoadDesk() {
   const [addressBusy, setAddressBusy] = useState(false);
   const addFileInput = useRef<HTMLInputElement>(null);
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
+  /** The photographed ticket, over the screen, while a field is being checked. */
+  const [viewingTicket, setViewingTicket] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<SavedRecord | null>(
     null,
   );
@@ -1693,6 +1697,23 @@ export default function LoadDesk() {
   }
 
   /** `under` goes below the box, for a field with more than a box to it. */
+  /**
+   * A step's fields, with the short heading each run of them opens with on a
+   * phone. Returned as a list so the headings sit in the same grid as the
+   * fields and can span it.
+   */
+  const renderFields = (defs: FieldDef[], under?: (def: FieldDef) => ReactNode) =>
+    defs.flatMap((def) => {
+      const field = renderField(def, under?.(def));
+      if (!isPhone || !def.group) return field ? [field] : [];
+      return [
+        <p key={`run-${def.group}`} className="ld-run">
+          {t(def.group)}
+        </p>,
+        ...(field ? [field] : []),
+      ];
+    });
+
   const renderField = (def: FieldDef, under?: ReactNode) => {
     if (!ticket) return null;
     const value = ticket[def.name];
@@ -2531,6 +2552,76 @@ export default function LoadDesk() {
             className="ld-panel ld-review"
             aria-labelledby="ld-review-title"
           >
+            {/* A phone reviews under a line, not a heading: which ticket, how
+                it stands, and how far through it you are. The queue below is
+                the desk's way round the same tickets and stays for it. */}
+            {isPhone ? (
+              <div className="ld-mobile-head">
+                <div className="ld-mobile-head-row">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t('Back to the batches')}
+                    onClick={() => setActiveIndex(-1)}
+                  >
+                    <ChevronLeft />
+                  </Button>
+                  <strong>
+                    {t('Ticket {index} of {total}', {
+                      index: activeIndex + 1,
+                      total: queue.length,
+                    })}
+                  </strong>
+                  <span
+                    className="ld-chip"
+                    data-tone={
+                      activeChanged
+                        ? 'warning'
+                        : activeSaved && !activeUnchecked
+                          ? 'good'
+                          : undefined
+                    }
+                  >
+                    {activeChanged ? (
+                      t('Unsaved')
+                    ) : activeSaved && !activeUnchecked ? (
+                      <>
+                        <Check aria-hidden="true" />
+                        {t('Saved')}
+                      </>
+                    ) : (
+                      t('To check')
+                    )}
+                  </span>
+                  {savedInQueue === queue.length && !unsavedEdits ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={t('Clear queue')}
+                      title={t('Clear queue')}
+                      onClick={clearQueue}
+                    >
+                      <X />
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="ld-mobile-step">
+                  {t('Step {number} of {total}', {
+                    number: atStep + 1,
+                    total: STEPS.length,
+                  })}{' '}
+                  · {t(STEPS[atStep])}
+                </p>
+                <span className="ld-steps-track" aria-hidden="true">
+                  {STEPS.map((name, index) => (
+                    <i key={name} data-done={index <= atStep || undefined} />
+                  ))}
+                </span>
+              </div>
+            ) : null}
+
             <div className="ld-review-head">
               <div>
                 <p className="ld-step">{t('02 · Review')}</p>
@@ -2648,41 +2739,45 @@ export default function LoadDesk() {
                     </details>
                   </div>
                 ) : null}
-                <div
-                  className="ld-notice"
-                  data-tone={issues.length ? 'warning' : 'good'}
-                  aria-live="polite"
-                >
-                  {issues.length ? (
-                    <>
-                      <strong>{t('Check before saving')}</strong>
-                      <ul>
-                        {issues.map((issue) => (
-                          <li key={issue}>{t(issue)}</li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    t('All checks pass.')
-                  )}
-                </div>
-
-                {isPhone ? (
-                  <div className="ld-steps" aria-label={t('Review steps')}>
-                    <p>
-                      {t('Step {number} of {total}', {
-                        number: atStep + 1,
-                        total: STEPS.length,
-                      })}{' '}
-                      · {t(STEPS[atStep])}
-                    </p>
-                    <span className="ld-steps-track" aria-hidden="true">
-                      {STEPS.map((name, index) => (
-                        <i key={name} data-done={index <= atStep || undefined} />
-                      ))}
-                    </span>
+                <div className="ld-check-row">
+                  <div
+                    className="ld-notice"
+                    data-tone={issues.length ? 'warning' : 'good'}
+                    aria-live="polite"
+                  >
+                    {issues.length ? (
+                      <>
+                        <strong>{t('Check before saving')}</strong>
+                        <ul>
+                          {issues.map((issue) => (
+                            <li key={issue}>{t(issue)}</li>
+                          ))}
+                        </ul>
+                      </>
+                    ) : isPhone ? (
+                      <>
+                        <Check aria-hidden="true" />
+                        {t('All checks pass')}
+                      </>
+                    ) : (
+                      t('All checks pass.')
+                    )}
                   </div>
-                ) : null}
+                  {/* The picture is a tap away from every step, rather than a
+                      scroll to the bottom of the form. */}
+                  {isPhone ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="ld-view-ticket"
+                      onClick={() => setViewingTicket(true)}
+                    >
+                      <FileSearch data-icon="inline-start" />
+                      {t('View ticket')}
+                    </Button>
+                  ) : null}
+                </div>
                 <fieldset
                   className="ld-fieldset"
                   disabled={busy}
@@ -2691,18 +2786,15 @@ export default function LoadDesk() {
                   <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
                     {sectionSummary('Ticket', ticketDetail)}
                     <div className="ld-fields">
-                      {TICKET_FIELDS.map((def) => renderField(def))}
+                      {renderFields(TICKET_FIELDS)}
                     </div>
                   </details>
 
                   <details className="ld-section ld-collapsible" data-step="1" open={isPhone || undefined}>
                     {sectionSummary('Customer and Job', jobDetail)}
                     <div className="ld-fields">
-                      {JOB_FIELDS.map((def) =>
-                        renderField(
-                          def,
-                          def.name === 'project_address' ? addressPicker : undefined,
-                        ),
+                      {renderFields(JOB_FIELDS, (def) =>
+                        def.name === 'project_address' ? addressPicker : undefined,
                       )}
                     </div>
                   </details>
@@ -2714,7 +2806,7 @@ export default function LoadDesk() {
                       check.tone === 'bad' ? 'bad' : undefined,
                     )}
                     <div className="ld-fields">
-                      {WEIGHT_FIELDS.map((def) => renderField(def))}
+                      {renderFields(WEIGHT_FIELDS)}
                       <p
                         className="ld-weight"
                         data-tone={check.tone}
@@ -2722,7 +2814,7 @@ export default function LoadDesk() {
                       >
                         {check.text}
                       </p>
-                      {HAULING_FIELDS.map((def) => renderField(def))}
+                      {renderFields(HAULING_FIELDS)}
                     </div>
                   </details>
 
@@ -3193,21 +3285,47 @@ export default function LoadDesk() {
                 ) : null}
               </form>
 
-              <aside className="ld-aside" aria-label={t('Source ticket')}>
-                <div>
-                  <h3>{t('Original')}</h3>
-                  <SourcePreview item={active} />
-                  <p className="ld-aside-note">
-                    {active.source.file_name} · {fileSize(active.source.size)} ·
-                    SHA-256 <code>{active.source.sha256.slice(0, 12)}</code>
-                  </p>
-                </div>
-              </aside>
+              {isPhone ? (
+                /* A phone shows the picture the size of a stamp and opens it
+                   over the screen when it is tapped. Laid out at full width in
+                   the form it put a screen between one field and the next. */
+                <button
+                  type="button"
+                  className="ld-thumb"
+                  onClick={() => setViewingTicket(true)}
+                >
+                  <span className="ld-thumb-shot">
+                    <SourcePreview item={active} />
+                  </span>
+                  <span className="ld-thumb-copy">
+                    <strong>{t('Original ticket')}</strong>
+                    <small>
+                      {active.source.file_name} · {fileSize(active.source.size)}
+                    </small>
+                  </span>
+                  <FileSearch aria-hidden="true" />
+                </button>
+              ) : (
+                <aside className="ld-aside" aria-label={t('Source ticket')}>
+                  <div>
+                    <h3>{t('Original')}</h3>
+                    <SourcePreview item={active} />
+                    <p className="ld-aside-note">
+                      {active.source.file_name} · {fileSize(active.source.size)} ·
+                      SHA-256 <code>{active.source.sha256.slice(0, 12)}</code>
+                    </p>
+                  </div>
+                </aside>
+              )}
             </div>
           </section>
         ) : null}
       </div>
 
+
+      {viewingTicket && active ? (
+        <TicketViewer item={active} onClose={() => setViewingTicket(false)} />
+      ) : null}
 
       <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { usePinchZoom } from '@/hooks/use-pinch-zoom';
 import { createPortal } from 'react-dom';
 import { Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -65,153 +66,10 @@ function FittedInvoice({ view }: { view: InvoiceView }) {
   }, []);
 
   /**
-   * Pinching the invoice zooms the invoice, and nothing else.
-   *
-   * A phone's own pinch zooms the whole page — the dialog, the bar, the lot —
-   * which is no way to read a line of a bill. So the preview takes the gesture
-   * itself: touch-action tells the browser to keep its hands off anything that
-   * starts in here, and what the fingers do is applied to the page's box as a
-   * transform. Two fingers scale it about the point between them, one finger
-   * moves it once it is bigger than the frame, and letting go of the zoom puts
-   * it back where it started.
-   *
-   * Written straight to the element from an animation frame, like the swipe:
-   * a pinch that re-rendered React on every touchmove would stutter.
+   * Pinching the invoice zooms the invoice, and nothing else — see the hook,
+   * which the ticket viewer uses as well.
    */
-  useEffect(() => {
-    const frame_ = area.current;
-    const sheet = box.current;
-    if (!frame_ || !sheet) return;
-    let scale = 1,
-      x = 0,
-      y = 0,
-      frame = 0;
-    // Cached when a gesture starts; nothing below reads the layout back.
-    let width = 0,
-      height = 0,
-      centreX = 0,
-      centreY = 0;
-    let fromScale = 1,
-      fromSpan = 0,
-      anchorX = 0,
-      anchorY = 0,
-      pinching = false,
-      panning = false,
-      panX = 0,
-      panY = 0;
-
-    const write = () => {
-      frame = 0;
-      sheet.style.transform =
-        scale === 1 && !x && !y
-          ? ''
-          : `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
-    };
-    const draw = () => {
-      if (!frame) frame = requestAnimationFrame(write);
-    };
-    /** Never further than the edge of what is being looked at. */
-    const hold = () => {
-      const roomX = Math.max(0, (width * scale - frame_.clientWidth) / 2);
-      const roomY = Math.max(0, (height * scale - frame_.clientHeight) / 2);
-      x = Math.min(roomX, Math.max(-roomX, x));
-      y = Math.min(roomY, Math.max(-roomY, y));
-    };
-    const measure = () => {
-      const seen = frame_.getBoundingClientRect();
-      width = sheet.offsetWidth;
-      height = sheet.offsetHeight;
-      centreX = seen.left + seen.width / 2;
-      centreY = seen.top + seen.height / 2;
-    };
-
-    const start = (event: TouchEvent) => {
-      if (event.touches.length === 2) {
-        measure();
-        const [a, b] = [event.touches[0], event.touches[1]];
-        fromSpan = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-        fromScale = scale;
-        // The point of the invoice between the fingers, which stays there.
-        const midX = (a.clientX + b.clientX) / 2 - centreX;
-        const midY = (a.clientY + b.clientY) / 2 - centreY;
-        anchorX = (midX - x) / scale;
-        anchorY = (midY - y) / scale;
-        pinching = true;
-        panning = false;
-        return;
-      }
-      if (event.touches.length === 1 && scale > 1) {
-        measure();
-        panX = event.touches[0].clientX - x;
-        panY = event.touches[0].clientY - y;
-        panning = true;
-      }
-    };
-
-    const move = (event: TouchEvent) => {
-      if (pinching && event.touches.length === 2) {
-        event.preventDefault();
-        const [a, b] = [event.touches[0], event.touches[1]];
-        const span = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-        scale = Math.min(MAX_ZOOM, Math.max(1, (fromScale * span) / (fromSpan || 1)));
-        x = (a.clientX + b.clientX) / 2 - centreX - anchorX * scale;
-        y = (a.clientY + b.clientY) / 2 - centreY - anchorY * scale;
-        hold();
-        draw();
-        return;
-      }
-      if (panning && event.touches.length === 1) {
-        event.preventDefault();
-        x = event.touches[0].clientX - panX;
-        y = event.touches[0].clientY - panY;
-        hold();
-        draw();
-      }
-    };
-
-    const end = (event: TouchEvent) => {
-      if (event.touches.length === 0) {
-        pinching = panning = false;
-        // All the way out is all the way back: no drifted corner to find.
-        if (scale <= 1.01) {
-          scale = 1;
-          x = y = 0;
-          draw();
-        }
-        return;
-      }
-      if (event.touches.length === 1 && pinching) {
-        pinching = false;
-        if (scale > 1) {
-          measure();
-          panX = event.touches[0].clientX - x;
-          panY = event.touches[0].clientY - y;
-          panning = true;
-        }
-      }
-    };
-
-    // Safari's own pinch, which arrives as well as the touches on older
-    // versions, and would zoom the page underneath.
-    const refuse = (event: Event) => event.preventDefault();
-
-    frame_.addEventListener('touchstart', start, { passive: true });
-    frame_.addEventListener('touchmove', move, { passive: false });
-    frame_.addEventListener('touchend', end, { passive: true });
-    frame_.addEventListener('touchcancel', end, { passive: true });
-    frame_.addEventListener('gesturestart', refuse);
-    frame_.addEventListener('gesturechange', refuse);
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      frame_.removeEventListener('touchstart', start);
-      frame_.removeEventListener('touchmove', move);
-      frame_.removeEventListener('touchend', end);
-      frame_.removeEventListener('touchcancel', end);
-      frame_.removeEventListener('gesturestart', refuse);
-      frame_.removeEventListener('gesturechange', refuse);
-      sheet.style.transform = '';
-    };
-  }, [view]);
+  usePinchZoom(area, box, { max: MAX_ZOOM, reset: view });
 
   return (
     <div ref={area} className="ld-invoice-fit">

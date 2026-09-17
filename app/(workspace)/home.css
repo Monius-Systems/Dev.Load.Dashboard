@@ -640,6 +640,11 @@ button.hm-row:hover {
     min-height: 100dvh;
   }
   .page-sheet {
+    /* The bar of Back and Next, when a ticket is being reviewed: the sheet
+       leaves room for it the same way it leaves room for the bar along the
+       bottom, so the last field is reachable above both. */
+    --phone-stepbar: 0px;
+
     display: block;
     position: relative;
     /* Grows into whatever the band leaves, and never shrinks below its own
@@ -660,7 +665,7 @@ button.hm-row:hover {
        last card still clears the bar, and none of it can be scrolled to — the
        page area clips what hangs below it (see .page-content in globals). */
     margin: calc(-1 * var(--ui-radius-xl)) calc(-1 * var(--ui-space-5))
-      calc(-1 * (var(--phone-bottombar) + 100vh));
+      calc(-1 * (var(--phone-bottombar) + var(--phone-stepbar) + 100vh));
     border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
     /* The top padding is what the notch is inset by, and it has to be padding:
        as the sheet's first child, a margin on the notch would collapse through
@@ -670,8 +675,11 @@ button.hm-row:hover {
        first card stays where it was. The foot is the room for the bottom bar
        that the negative margin above gave away. */
     padding: calc(var(--ui-radius-xl) + var(--ui-space-1)) var(--ui-space-5)
-      calc(var(--phone-bottombar) + 100vh);
+      calc(var(--phone-bottombar) + var(--phone-stepbar) + 100vh);
     background: var(--ui-surface-2);
+  }
+  .page-sheet:has(.ld-step-nav) {
+    --phone-stepbar: 68px;
   }
   /* The notch, the way a sheet drawn up over something is marked. Clear of the
      corner curve, then a gap before the first card.
