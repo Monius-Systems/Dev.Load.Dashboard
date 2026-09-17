@@ -1307,6 +1307,11 @@ details[open] > .ld-section-summary .ld-section-chevron {
   .ld-actions [data-phone-hidden] {
     display: none;
   }
+  /* A spreadsheet is a desk job, as on Invoices & Tickets: a file downloaded
+     on a phone lands somewhere nobody opens it from. */
+  .ld-ledger-csv {
+    display: none;
+  }
   /* Reading a ticket takes over the screen: one bar, and what it is doing. */
   .ld-extracting {
     position: fixed;

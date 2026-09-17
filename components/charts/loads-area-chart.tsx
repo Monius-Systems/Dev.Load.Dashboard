@@ -159,6 +159,11 @@ export default function LoadsAreaChart({
               tickCount={4}
               allowDecimals={false}
               tick={AXIS_TICK}
+              // A period with nothing in it would otherwise be scaled from
+              // zero to zero: no ticks to read against and no room for the
+              // line. Given a top of four, an empty chart draws the same way
+              // a full one does, with the line flat along the bottom.
+              domain={[0, (max: number) => (max > 0 ? max : 4)]}
             />
             <Tooltip
               cursor={{ stroke: 'var(--ui-border-strong)' }}

@@ -2413,6 +2413,7 @@ export default function LoadDesk() {
                   {t('All invoices & tickets')}
                 </Link>
                 <Button
+                  className="ld-ledger-csv"
                   variant="secondary"
                   size="sm"
                   onClick={downloadLedger}

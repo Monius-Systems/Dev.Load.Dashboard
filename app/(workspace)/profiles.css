@@ -525,17 +525,10 @@
     padding: 7px 8px;
   }
 
-  /* Customers. A chart of a month per customer, usually empty, cost more
-     screen than the customer did. The numbers above it already say it. */
-  .pf-chart svg,
-  .pf-chart .recharts-wrapper,
-  .pf-chart-note {
-    display: none;
-  }
-  .pf-chart {
-    padding: var(--ui-space-3);
-  }
-  .pf-chart-head {
-    margin: 0;
+  /* Customers. The chart is drawn on a phone as it is on a desk, empty or
+     not: axes, grid and the line along the bottom say "no loads this month"
+     in the shape the answer will take when there are some. */
+  .pf-chart-period {
+    width: 8.5rem;
   }
 }
