@@ -174,28 +174,22 @@ export default function AppShell({
   /**
    * The colour behind the clock, the island and the battery.
    *
-   * Added to a home screen, the page does not paint up there: iOS keeps that
-   * strip and fills it with the page's theme-color, which defaults to white —
-   * the pale band above the header. Setting it to the header's own colour makes
-   * the strip and the header read as one field. It follows the page, so the
-   * pages with a light background keep a light strip.
+   * A browser will not let the page paint up there — it keeps the strip and
+   * fills it from theme-color and the root element's background. So the root
+   * is made a mirror of the page instead: --strip and theme-color are both set
+   * to the colour actually painted at the top of the page, and the strip then
+   * behaves the way a transparent one would. The accent over the band every
+   * page opens on, the sheet's grey once the home page has been scrolled up
+   * past it, and never a colour that is not on the page underneath.
    *
-   * The colour is measured from the live tokens rather than written out here,
-   * so a workspace with its own accent gets its own status bar. Measuring also
-   * settles the serialisation: a browser writes color-mix() out as
-   * color(srgb …), which the parser that reads theme-color predates, while a
-   * measured background always comes back as plain rgb().
+   * The colour is read off the page rather than worked out from the route, so
+   * it needs no list of which page is what, and it was already right for the
+   * scanner: exit it and the page under it answers, instead of the strip
+   * keeping the black it had while the camera was up.
    */
   useEffect(() => {
     const root = document.documentElement;
-    // The page is named on the root element. The strip behind the clock takes
-    // its colour from the root's background, and keying that off the page
-    // rather than off something the page renders means it is right on the
-    // first paint — :has(.hm-stats) only became true once the records had
-    // loaded, so the strip spent the first moment grey and Safari had already
-    // decided by then.
-    const home = pathname === '/';
-    root.dataset.page = home ? 'home' : 'inner';
+    root.dataset.page = pathname === '/' ? 'home' : 'inner';
 
     let meta = document.head.querySelector<HTMLMetaElement>(
       'meta[name="theme-color"]',
@@ -207,55 +201,77 @@ export default function AppShell({
     }
     const themeColour = meta;
 
-    /** Blue while the header is showing, the sheet's grey once it is not. */
-    const paint = (covered: boolean) => {
-      if (covered) root.dataset.scrolled = 'past';
-      else delete root.dataset.scrolled;
-      const probe = document.createElement('div');
-      probe.style.cssText =
-        'position:absolute;width:0;height:0;opacity:0;pointer-events:none;background:' +
-        (home && !covered ? 'var(--ui-accent)' : 'var(--ui-surface-2)');
-      document.body.appendChild(probe);
-      themeColour.content = getComputedStyle(probe).backgroundColor;
-      probe.remove();
+    /* Only a colour that hides what is behind it answers the question. Anything
+       with an alpha is a tint over something else — the 12% white pill of
+       figures on the band, for one, which is not the colour of anything. */
+    const opaque = (colour: string) => {
+      const parts = colour.match(/[\d.]+/g);
+      return !!parts && (parts.length < 4 || Number(parts[3]) === 1);
     };
 
-    if (!home) {
-      paint(false);
-      return;
-    }
+    /** What is painted at the top of the page, down the middle. */
+    const topColour = () => {
+      let node = document.elementFromPoint(
+        Math.round(window.innerWidth / 2),
+        1,
+      );
+      while (node) {
+        const colour = getComputedStyle(node).backgroundColor;
+        if (opaque(colour)) return colour;
+        node = node.parentElement;
+      }
+      return null;
+    };
 
-    // On the home page the strip follows the scroll: the header is the floor
-    // and the sheet travels up over it, so once the sheet has reached the top
-    // of the screen there is no blue left up there to match and the strip
-    // would be a band of it on its own.
-    const phone = window.matchMedia('(max-width: 767px)');
+    /* The accent as the browser writes it, to compare the mirror's answer
+       against: the account on the bar is dressed for the band or for the page,
+       and which one it is on is exactly which colour won here. */
+    const swatch = document.createElement('div');
+    swatch.style.cssText =
+      'position:absolute;width:0;height:0;opacity:0;pointer-events:none;background:var(--ui-accent)';
+    document.body.appendChild(swatch);
+    const accent = getComputedStyle(swatch).backgroundColor;
+    swatch.remove();
+
     let frame = 0;
-    let covered = false;
-    const check = () => {
+    let last = '';
+    const mirror = () => {
       frame = 0;
-      const sheet = document.querySelector('.hm-sheet');
-      // display:contents above phone width, where the sheet is not a box and
-      // reports an empty rect that would read as covered.
-      const now =
-        phone.matches && !!sheet && sheet.getBoundingClientRect().top <= 0;
-      if (now !== covered) paint((covered = now));
+      // A modal dialog is in the top layer and covers the page: the scanner's
+      // black is the strip's own business while it is up, and the page keeps
+      // the colour it will go back to when it closes.
+      if (document.querySelector('dialog[open]')) return;
+      const colour = topColour();
+      if (!colour || colour === last) return;
+      last = colour;
+      themeColour.content = colour;
+      root.style.setProperty('--strip', colour);
+      root.dataset.strip = colour === accent ? 'accent' : 'page';
     };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(check);
+    const queue = () => {
+      if (!frame) frame = requestAnimationFrame(mirror);
     };
 
-    paint(false);
-    check();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    phone.addEventListener('change', onScroll);
+    queue();
+    window.addEventListener('scroll', queue, { passive: true });
+    window.addEventListener('resize', queue);
+    // Records arrive after the first paint and the page grows; the band may not
+    // have been there to read when this started.
+    const grew = new ResizeObserver(queue);
+    grew.observe(document.body);
+    // And neither the page growing nor a scroll covers the stylesheet landing
+    // after the first frame, which is how the band came back the page grey and
+    // stayed that way: read once more as the page settles. Cheap, and the write
+    // is skipped when the answer has not moved.
+    const settling = [150, 600].map((ms) => setTimeout(queue, ms));
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      phone.removeEventListener('change', onScroll);
-      delete root.dataset.scrolled;
+      for (const timer of settling) clearTimeout(timer);
+      window.removeEventListener('scroll', queue);
+      window.removeEventListener('resize', queue);
+      grew.disconnect();
+      root.style.removeProperty('--strip');
+      delete root.dataset.strip;
     };
   }, [pathname]);
 

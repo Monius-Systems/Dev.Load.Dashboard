@@ -1583,6 +1583,94 @@ svg.lucide {
   }
 }
 
+/* ===================================== phone: every page opens on the band */
+/* The home page's filled header, made the shape of every page. All five page
+   headings are built the same way — eyebrow, title, a line of description and
+   a <dl class="ld-stats"> of figures — so the band is put on .page-heading
+   itself and no page has to be rebuilt around a wrapper.
+ *
+ * It is also what keeps the strip behind the clock off white. The strip mirrors
+ * whatever is painted at the top of the page; with a band there, that is the
+ * accent, on every page. Before this, leaving the scanner dropped you onto Load
+ * Desk's page grey and the strip went from the scanner's black to near-white. */
+@media (max-width: 767px) {
+  .page-heading {
+    position: relative;
+    margin: calc(-1 * var(--phone-topbar)) calc(-1 * var(--ui-space-5))
+      var(--ui-space-5);
+    padding: calc(var(--phone-topbar) + var(--ui-space-4)) var(--ui-space-5)
+      calc(var(--ui-space-5) + var(--ui-radius-xl));
+    background: var(--ui-accent);
+    color: #fff;
+  }
+  .page-heading h1,
+  .page-heading .eyebrow,
+  .page-heading .muted {
+    color: #fff;
+  }
+  .page-heading .eyebrow,
+  .page-heading .muted {
+    opacity: 0.82;
+  }
+  /* The page below begins on a curve, the way the home page's sheet does.
+     Drawn by the band's own last strip of padding rather than by a box around
+     the page: the page grey already runs under everything below, so the only
+     thing missing was the corner. The home page has a real sheet that slides,
+     and draws its own. */
+  .page-enter:not(:has(.hm-stats)) .page-heading::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: var(--ui-radius-xl);
+    border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
+    background: var(--ui-surface-2);
+  }
+  /* The figures become the same divided row the home page carries. */
+  .page-heading .ld-stats {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    /* The heading is a flex column that shrinks its children to their content;
+       this row is meant to span it. */
+    width: 100%;
+    gap: 0;
+    margin-top: var(--ui-space-5);
+    border-radius: var(--ui-radius-md);
+    padding: var(--ui-space-3) 0;
+    background: rgb(255 255 255 / 12%);
+    text-align: center;
+  }
+  .page-heading .ld-stats > div + div {
+    border-left: 1px solid rgb(255 255 255 / 18%);
+  }
+  .page-heading .ld-stats dt {
+    color: rgb(255 255 255 / 76%);
+  }
+  .page-heading .ld-stats dd {
+    color: #fff;
+    font-size: var(--type-lg);
+  }
+}
+
+/* The account is pinned to the top of the screen and every page now opens on
+   the band, so what it has to be legible against is whatever the strip landed
+   on: cut out of the band while the band is up there, and a solid disc lifted
+   off the page once something else is. */
+@media (max-width: 767px) {
+  html[data-strip='accent'] .topbar-account .profile-avatar {
+    background: rgb(255 255 255 / 22%);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 28%);
+  }
+  html[data-strip='page'] .topbar-account .profile-avatar {
+    background: var(--ui-surface);
+    color: var(--ui-text-2);
+    box-shadow: 0 1px 2px rgb(16 24 40 / 8%), 0 6px 16px rgb(16 24 40 / 12%);
+  }
+}
+
 /* ============================== phone: no breadcrumb, and a header that floats */
 @media (max-width: 767px) {
   /* The "/ Home" trail says what the bar along the bottom already shows. */
@@ -1625,26 +1713,21 @@ svg.lucide {
 /* ========================== the strip behind the clock, in Safari on a phone */
 /* Safari is not a home-screen app: the status bar belongs to the browser, and
    the apple-mobile-web-app-* tags are ignored. What Safari does do is take the
-   colour for that strip from the root element's background — which is why it
-   has been showing --ui-surface-2, the page grey.
+   colour for that strip from the root element's background.
  *
- * So the root carries the colour the page wants up there: the home page's
- * header colour on the home page, the ordinary page colour everywhere else.
+ * So the root is a mirror. --strip is written by the shell on every scroll from
+ * the colour actually painted at the top of the page, which makes the strip
+ * behave the way a transparent one would: blue over the band every page opens
+ * on, the sheet's grey once the page has been scrolled up past it, and never a
+ * colour that is not on the page. The fallback is what paints before any of
+ * that runs — the band, since that is what every page starts on.
+ *
  * body keeps its own background, so only the strip and the overscroll change.
  * Once html has a background of its own it is html's, not body's, that paints
  * the canvas behind them both. */
 @media (max-width: 767px) {
   html {
-    background: var(--ui-surface-2);
-  }
-  html[data-page='home'] {
-    background: var(--ui-accent);
-  }
-  /* Scrolled far enough that the sheet has covered the header, there is no
-     blue left on the page for the strip to match — so it stops being blue and
-     takes the colour of the sheet that is now underneath it. */
-  html[data-page='home'][data-scrolled='past'] {
-    background: var(--ui-surface-2);
+    background: var(--strip, var(--ui-accent));
   }
   body {
     background: var(--ui-surface-2);
