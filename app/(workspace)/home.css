@@ -632,16 +632,36 @@ button.hm-row:hover {
   .hm-sheet {
     display: block;
     position: relative;
-    z-index: 1;
+    /* Above the account bar, which is 5. The account is pinned to the blue and
+       the sheet passes over it, the same as it passes over the greeting. */
+    z-index: 6;
     /* Pulled up onto the blue by exactly its own corner radius, so the curve
        has blue behind it to read against. Sitting flush at the header's bottom
        edge instead, the corners would cut into the page grey underneath and
        the sheet would come to a straight line. */
     margin: calc(-1 * var(--ui-radius-xl)) calc(-1 * var(--ui-space-5)) 0;
     border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
-    padding: var(--ui-space-5) var(--ui-space-5) 0;
+    /* The top padding is what the notch is inset by, and it has to be padding:
+       as the sheet's first child, a margin on the notch would collapse through
+       the sheet's own top edge and cancel the negative margin holding it on
+       the blue. */
+    padding: calc(var(--ui-radius-xl) + var(--ui-space-3)) var(--ui-space-5) 0;
     min-height: 100dvh;
     background: var(--ui-surface-2);
+  }
+  /* The notch, the way a sheet drawn up over something is marked. Clear of the
+     corner curve, then a gap before the first card.
+     Defined inside the media query on purpose: above phone width .hm-sheet is
+     display:contents, which still generates its ::before, and the notch would
+     turn up in the middle of the desktop page. */
+  .hm-sheet::before {
+    content: '';
+    display: block;
+    width: 44px;
+    height: 5px;
+    margin: 0 auto var(--ui-space-4);
+    border-radius: 999px;
+    background: var(--ui-fill-strong);
   }
   /* The greeting carries the top of the page, so it is sized to. */
   .page-enter:has(.hm-stats) .page-heading h1 {
@@ -696,16 +716,5 @@ button.hm-row:hover {
     background: rgb(255 255 255 / 22%);
     color: #fff;
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 28%);
-  }
-  /* Once the sheet has come up over the header the account is sitting on grey,
-     where a disc cut out of white has nothing to be cut out of. It takes a
-     solid one and lifts off the page instead. */
-  html[data-scrolled='past']
-    .workspace-main:has(.hm-stats)
-    .topbar-account
-    .profile-avatar {
-    background: var(--ui-surface);
-    color: var(--ui-text-2);
-    box-shadow: 0 1px 2px rgb(16 24 40 / 8%), 0 6px 16px rgb(16 24 40 / 12%);
   }
 }
