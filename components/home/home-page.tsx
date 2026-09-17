@@ -10,6 +10,7 @@ import {
   FileUp,
   Minus,
   ReceiptText,
+  ScanLine,
   Truck,
   UserPlus,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ import InvoiceDialog, {
 } from '@/components/load-desk/invoice-dialog';
 import LoadsChart from '@/components/home/loads-chart';
 import { useProfiles, useRecords } from '@/components/profiles/profile-ui';
+import { useIsPhone } from '@/hooks/use-phone';
 import type { Translator } from '@/lib/i18n/translate';
 import { useT } from '@/lib/i18n/use-t';
 import { sellerDisplayName } from '@/lib/load-desk/business';
@@ -116,6 +118,7 @@ type AttentionItem = {
 };
 
 export default function HomePage() {
+  const isPhone = useIsPhone();
   const { records, ready: recordsReady } = useRecords();
   const { customers, trucks, company, ready: profilesReady } = useProfiles();
   const tr = useT();
@@ -260,16 +263,16 @@ export default function HomePage() {
           </p>
         </div>
         <div className="hm-actions">
+          <Link href="/load-desk" className={buttonVariants()}>
+            {isPhone ? <ScanLine /> : <FileUp />}
+            {isPhone ? t('Scan ticket') : t('Upload tickets')}
+          </Link>
           <Link
             href="/records"
             className={buttonVariants({ variant: 'secondary' })}
           >
             <ReceiptText />
-            {t('Invoices & Tickets')}
-          </Link>
-          <Link href="/load-desk" className={buttonVariants()}>
-            <FileUp />
-            {t('Upload tickets')}
+            {isPhone ? t('Invoices') : t('Invoices & Tickets')}
           </Link>
         </div>
       </div>

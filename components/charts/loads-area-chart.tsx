@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import {
   Area,
   AreaChart,
@@ -95,9 +95,28 @@ export default function LoadsAreaChart({
     strokeWidth: 2,
   });
 
+  // A tap on a phone leaves the tooltip where it was put: there is no pointer
+  // to move away, so the chart never hears that the finger has gone. Scrolling
+  // the page tells it — otherwise the reading hangs over the chart while the
+  // page moves underneath it, which is what it does on a phone today.
+  const plot = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const clear = () => {
+      // React makes "mouse left" out of a mouseout whose relatedTarget is
+      // outside the element, so that is the event the chart is listening for.
+      // A plain mouseleave is not delivered and the reading stays put.
+      const wrapper = plot.current?.querySelector('.recharts-wrapper');
+      wrapper?.dispatchEvent(
+        new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body }),
+      );
+    };
+    window.addEventListener('scroll', clear, { passive: true, capture: true });
+    return () => window.removeEventListener('scroll', clear, { capture: true });
+  }, []);
+
   return (
     <div className="lc-chart">
-      <div className="lc-plot" aria-hidden="true">
+      <div className="lc-plot" ref={plot} aria-hidden="true">
         <ResponsiveContainer width="100%" height={height}>
           <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <defs>
