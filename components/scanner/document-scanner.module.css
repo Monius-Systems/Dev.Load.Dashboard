@@ -247,8 +247,7 @@
   box-shadow: inset 0 0 0 0.5px rgb(52 229 164 / 45%);
   color: #b6ffe6;
 }
-.hint[data-tone='error'],
-.status[data-tone='warn'] {
+.hint[data-tone='error'] {
   background: rgb(255 159 10 / 20%);
   box-shadow: inset 0 0 0 0.5px rgb(255 159 10 / 45%);
   color: #ffd9a3;
@@ -270,6 +269,14 @@
 .scanner button:focus-visible {
   outline: 3px solid var(--lock);
   outline-offset: 4px;
+}
+/* The way out is not the lock. A modal dialog hands focus to the first thing
+   inside it as it opens, and that is this button, so its ring is on the screen
+   from the moment the scanner is — in the colour that means the camera has
+   found the ticket, before it has seen anything at all. Blue: a control, not a
+   reading. */
+.close:focus-visible {
+  outline-color: #0a84ff;
 }
 
 /* The camera shutter every phone owner already knows: a ring with a disc in

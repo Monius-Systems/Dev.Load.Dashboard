@@ -308,7 +308,10 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
 
       <footer className={styles.footer}>
         {result ? <>
-          <p className={styles.status} data-tone={result.cropped ? 'good' : 'warn'}>{result.cropped ? <><Check size={15} />Ready to use</> : <><Sun size={15} />Edges unclear · original photo kept</>}</p>
+          {/* Only when there is something to say. A photo the edges could not
+              be found in is still the photo that was taken, and saying so
+              under it read as a fault rather than as the ordinary case. */}
+          {result.cropped ? <p className={styles.status} data-tone="good"><Check size={15} />Ready to use</p> : null}
           <div className={styles.actions}>
             <button type="button" className={styles.secondary} onClick={() => { captured.current = null; setResult(null); setSession(s => s + 1); }}>Retake</button>
             <button type="button" className={styles.primary} onClick={() => { onUse(new File([result.corrected], `ticket-${Date.now()}.${result.corrected.type === 'image/png' ? 'png' : 'jpg'}`, { type: result.corrected.type })); }}>Use Photo</button>
