@@ -646,8 +646,10 @@ button.hm-row:hover {
     /* The top padding is what the notch is inset by, and it has to be padding:
        as the sheet's first child, a margin on the notch would collapse through
        the sheet's own top edge and cancel the negative margin holding it on
-       the blue. */
-    padding: calc(var(--ui-radius-xl) + var(--ui-space-3)) var(--ui-space-5) 0;
+       the blue. Just past the corner curve, so the notch sits high on the
+       sheet; the gap it carries underneath makes up the difference and the
+       first card stays where it was. */
+    padding: calc(var(--ui-radius-xl) + var(--ui-space-1)) var(--ui-space-5) 0;
     background: var(--ui-surface-2);
   }
   /* The notch, the way a sheet drawn up over something is marked. Clear of the
@@ -660,7 +662,7 @@ button.hm-row:hover {
     display: block;
     width: 44px;
     height: 5px;
-    margin: 0 auto var(--ui-space-4);
+    margin: 0 auto var(--ui-space-6);
     border-radius: 999px;
     background: var(--ui-fill-strong);
   }
