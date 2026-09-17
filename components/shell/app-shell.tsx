@@ -183,9 +183,10 @@ export default function AppShell({
    * past it, and never a colour that is not on the page underneath.
    *
    * The colour is read off the page rather than worked out from the route, so
-   * it needs no list of which page is what, and it was already right for the
-   * scanner: exit it and the page under it answers, instead of the strip
-   * keeping the black it had while the camera was up.
+   * it needs no list of which page is what, and the scanner needs no special
+   * case either: a modal dialog is in the top layer, so while the camera is up
+   * the colour at the top of the screen is the scanner's own black, and when
+   * it closes the page underneath answers again.
    */
   useEffect(() => {
     const root = document.documentElement;
@@ -237,10 +238,6 @@ export default function AppShell({
     let last = '';
     const mirror = () => {
       frame = 0;
-      // A modal dialog is in the top layer and covers the page: the scanner's
-      // black is the strip's own business while it is up, and the page keeps
-      // the colour it will go back to when it closes.
-      if (document.querySelector('dialog[open]')) return;
       const colour = topColour();
       if (!colour || colour === last) return;
       last = colour;
@@ -259,6 +256,27 @@ export default function AppShell({
     // have been there to read when this started.
     const grew = new ResizeObserver(queue);
     grew.observe(document.body);
+    // The scanner opening or closing changes what is at the top of the screen
+    // without scrolling or resizing anything: it is a dialog put into the top
+    // layer and taken out again. Both the element arriving and its open
+    // attribute being set are watched, since showModal comes an effect after
+    // the dialog is in the document.
+    //
+    // Page edits are DOM changes too, and this would otherwise read the screen
+    // after every one of them: what is watched is only whether a modal is up,
+    // and the read is asked for when that answer changes.
+    let layerUp = false;
+    const layered = new MutationObserver(() => {
+      const up = !!document.querySelector('dialog[open]');
+      if (up === layerUp) return;
+      layerUp = up;
+      queue();
+    });
+    layered.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributeFilter: ['open'],
+    });
     // And neither the page growing nor a scroll covers the stylesheet landing
     // after the first frame, which is how the band came back the page grey and
     // stayed that way: read once more as the page settles. Cheap, and the write
@@ -270,6 +288,7 @@ export default function AppShell({
       window.removeEventListener('scroll', queue);
       window.removeEventListener('resize', queue);
       grew.disconnect();
+      layered.disconnect();
       root.style.removeProperty('--strip');
       delete root.dataset.strip;
     };

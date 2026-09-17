@@ -1,6 +1,6 @@
 import { watchForChanges } from './live.ts';
 import { apiJson, dataMode, type DataMode } from './data-mode';
-import { staleTicketDates, withInvoiceDate } from './invoice-dates';
+import { datedFromTicket, staleInvoiceDates } from './invoice-dates';
 import { applyRecordEdit, type RecordEdit } from './record-input';
 import { findInvoiceClash, recordBatch } from './records';
 import type { SavedRecord } from './types';
@@ -81,14 +81,23 @@ function readLocalRecords(): RecordsSnapshot {
   };
 }
 
+/** Every record dated the one way, whatever is stored (see staleInvoiceDates). */
+const dated = (records: SavedRecord[]) => {
+  const repaired = staleInvoiceDates(records);
+  if (!repaired.length) return records;
+  const byId = new Map(repaired.map((record) => [record.id, record]));
+  return records.map((record) => byId.get(record.id) ?? record);
+};
+
 /**
- * Local records, with ticket dates brought in line for invoices whose date was
- * changed before ticket dates followed it (see staleTicketDates). The repair
- * is written back once; later reads find nothing to repair.
+ * Local records, with invoices dated from their tickets where an older one was
+ * filed with the day it was photographed (see staleInvoiceDates). Written back
+ * as records rather than as edits, so nothing is marked checked or edited by
+ * the repair; later reads find nothing to repair.
  */
 function readRepairedLocalRecords(): RecordsSnapshot {
   const read = readLocalRecords();
-  const repaired = read.error ? [] : staleTicketDates(read.records);
+  const repaired = read.error ? [] : staleInvoiceDates(read.records);
   if (!repaired.length) return read;
   const byId = new Map(repaired.map((record) => [record.id, record]));
   const records = read.records.map((record) => byId.get(record.id) ?? record);
@@ -116,26 +125,16 @@ async function load() {
     return;
   }
   const result = await apiJson<{ records: SavedRecord[] }>('/api/records');
+  // The same repair for the workspace database, but in what is handed to the
+  // pages rather than written back: saving is what marks a ticket checked, and
+  // a ticket filed to be looked at later must not be marked checked by a date
+  // being put right. The row itself is corrected the next time it is saved —
+  // by then it is going through the parsers, which date it from its ticket.
   publish(
     result.ok
-      ? { records: result.data.records, error: null, ready: true, mode }
+      ? { records: dated(result.data.records), error: null, ready: true, mode }
       : { records: [], error: result.error, ready: true, mode },
   );
-  if (!result.ok) return;
-  // The same repair for the workspace database, saved like any other edit.
-  const repaired = staleTicketDates(result.data.records);
-  if (repaired.length) {
-    void updateSavedRecords(
-      repaired.map((record) => ({
-        id: record.id,
-        ticket: record.ticket,
-        invoice: record.invoice,
-        ocr_text: record.ocr_text,
-        customer_profile_id: record.customer_profile_id ?? null,
-        truck_id: record.truck_id ?? null,
-      })),
-    );
-  }
 }
 
 /** One catch-up at a time; a slow answer must not stack up behind itself. */
@@ -208,9 +207,12 @@ const uploadType = (type: string) => {
  * already used by another upload.
  */
 export async function saveRecord(
-  draft: RecordDraft,
+  requested: RecordDraft,
   original: Blob,
 ): Promise<{ record: SavedRecord } | { error: string }> {
+  // Dated by its ticket before it is stored, whoever sent it and whichever
+  // side stores it. The parsers do the same for anything arriving over the API.
+  const draft = datedFromTicket(requested);
   const mode = snapshot.mode ?? (await dataMode());
   if (mode === 'remote') {
     const upload = await apiJson<{ ok: true }>(
@@ -255,11 +257,9 @@ export async function updateSavedRecords(
   requested: RecordEdit[],
 ): Promise<{ records: SavedRecord[] } | { error: string }> {
   if (!requested.length) return { records: [] };
-  // Every save keeps ticket dates with a changed invoice date, whichever page
-  // sent the change.
-  const edits = requested.map((edit) =>
-    withInvoiceDate(snapshot.records.find((record) => record.id === edit.id), edit),
-  );
+  // Whichever page sent the change, the invoice is dated from its ticket. The
+  // parsers enforce it too, for a change that comes in over the API.
+  const edits = requested.map(datedFromTicket);
   const replaced = (updated: SavedRecord[]) => {
     const byId = new Map(updated.map((record) => [record.id, record]));
     return snapshot.records.map((record) => byId.get(record.id) ?? record);

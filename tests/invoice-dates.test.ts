@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { staleTicketDates, withInvoiceDate } from '../lib/load-desk/invoice-dates.ts';
+import { datedFromTicket, staleInvoiceDates } from '../lib/load-desk/invoice-dates.ts';
 import { customerNameFor, type CustomerProfile } from '../lib/load-desk/profiles.ts';
 import type { RecordEdit } from '../lib/load-desk/record-input.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
@@ -38,44 +38,44 @@ const editOf = (record: SavedRecord, patch: { invoiceDate?: string; ticketDate?:
   truck_id: record.truck_id ?? null,
 });
 
-void test('changing the invoice date moves a ticket dated with the invoice', () => {
-  const record = saved('1001', '2026-09-02', '2026-09-02');
-  const edit = withInvoiceDate(record, editOf(record, { invoiceDate: '2026-09-05' }));
-  assert.equal(edit.ticket.ticket_date, '2026-09-05');
-  assert.equal(edit.invoice.invoice_date, '2026-09-05');
+void test('an invoice is dated by its ticket, whatever date it was given', () => {
+  const record = saved('1001', '2026-09-15', '2026-09-02');
+  assert.equal(datedFromTicket(record).invoice.invoice_date, '2026-09-02');
+
+  // An edit sent from any page comes out dated the same way.
+  const edit = datedFromTicket(editOf(record, { invoiceDate: '2026-09-15' }));
+  assert.equal(edit.invoice.invoice_date, '2026-09-02');
+
+  // Correcting the ticket's date is what moves the invoice.
+  const moved = datedFromTicket(editOf(record, { ticketDate: '2026-09-03' }));
+  assert.equal(moved.invoice.invoice_date, '2026-09-03');
 });
 
-void test('a ticket with its own date, or a ticket date changed in the same edit, is kept', () => {
-  const other = saved('1001', '2026-09-02', '2026-09-01');
-  assert.equal(withInvoiceDate(other, editOf(other, { invoiceDate: '2026-09-05' })).ticket.ticket_date, '2026-09-01');
+void test('a ticket with no date of its own leaves the invoice date alone', () => {
+  const undated = saved('1001', '2026-09-15', null);
+  assert.equal(datedFromTicket(undated), undated);
 
-  const both = saved('1001', '2026-09-02', '2026-09-02');
-  const edit = withInvoiceDate(both, editOf(both, { invoiceDate: '2026-09-05', ticketDate: '2026-09-03' }));
-  assert.equal(edit.ticket.ticket_date, '2026-09-03');
+  const blank = saved('1001', '2026-09-15', '   ');
+  assert.equal(datedFromTicket(blank).invoice.invoice_date, '2026-09-15');
 
-  const unchanged = saved('1001', '2026-09-02', '2026-09-02');
-  const same = editOf(unchanged, {});
-  assert.equal(withInvoiceDate(unchanged, same), same);
-  assert.equal(withInvoiceDate(undefined, same), same);
+  const nonsense = saved('1001', '2026-09-15', '09/02/2026');
+  assert.equal(datedFromTicket(nonsense).invoice.invoice_date, '2026-09-15');
 });
 
-void test('an invoice whose date was edited before the fix gets its ticket dates repaired', () => {
+void test('invoices filed with the day they were photographed are repaired', () => {
   const stale = [
-    saved('1002', '2026-09-10', '2026-09-03', '2026-09-15T10:00:00.000Z'),
-    saved('1002', '2026-09-10', '2026-09-03', '2026-09-15T10:00:00.000Z'),
+    saved('1002', '2026-09-15', '2026-09-03'),
+    saved('1002', '2026-09-15', '2026-09-03'),
   ];
-  const consistent = saved('1001', '2026-09-02', '2026-09-02', '2026-09-15T10:00:00.000Z');
-  const neverEdited = saved('1003', '2026-09-15', '2026-09-04');
-  const mixedDates = [
-    saved('1004', '2026-09-12', '2026-09-01', '2026-09-15T10:00:00.000Z'),
-    saved('1004', '2026-09-12', '2026-09-02', '2026-09-15T10:00:00.000Z'),
-  ];
-  const repaired = staleTicketDates([...stale, consistent, neverEdited, ...mixedDates]);
+  const consistent = saved('1001', '2026-09-02', '2026-09-02');
+  const undated = saved('1003', '2026-09-15', null);
+  const repaired = staleInvoiceDates([...stale, consistent, undated]);
   assert.deepEqual(
-    repaired.map((record) => [record.id, record.ticket.ticket_date]),
-    stale.map((record) => [record.id, '2026-09-10']),
+    repaired.map((record) => [record.id, record.invoice.invoice_date]),
+    stale.map((record) => [record.id, '2026-09-03']),
   );
-  assert.equal(staleTicketDates(repaired.length ? [...repaired, consistent] : []).length, 0);
+  // Once repaired there is nothing left to repair.
+  assert.equal(staleInvoiceDates([...repaired, consistent, undated]).length, 0);
 });
 
 void test('invoice lines use the customer profile name, not the scanned one', () => {

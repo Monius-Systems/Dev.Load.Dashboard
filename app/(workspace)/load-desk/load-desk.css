@@ -1321,18 +1321,6 @@ details[open] > .ld-section-summary .ld-section-chevron {
   .ld-extracting .ld-progress {
     width: 100%;
   }
-  /* "Review later" reads the ticket off to the side, so it says so off to the
-     side: a line above the bar along the bottom, over a page that has not
-     moved and is ready for the next photograph. */
-  .ld-extracting[data-quiet] {
-    inset: auto var(--ui-space-4)
-      calc(var(--phone-bottombar, 92px) + var(--ui-space-2));
-    display: block;
-    border-radius: var(--ui-radius-md);
-    padding: var(--ui-space-3) var(--ui-space-4);
-    background: var(--ui-surface-1);
-    box-shadow: var(--ui-shadow-float), 0 0 0 1px var(--ui-border);
-  }
 }
 
 @media (max-width: 767px) {

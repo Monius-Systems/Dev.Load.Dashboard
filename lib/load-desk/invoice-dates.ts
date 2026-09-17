@@ -1,56 +1,39 @@
-import { invoiceKey } from './records.ts';
-import type { RecordEdit } from './record-input.ts';
-import type { SavedRecord } from './types.ts';
+import type { InvoiceDraft, SavedRecord, Ticket } from './types.ts';
 
-// An invoice is dated by its tickets. Loads count on the ticket date
-// everywhere (Home, customers, fleet, invoice lines), so when an invoice date
-// changes, the tickets dated with it must change too.
+// An invoice is dated by its ticket. Whatever date is read off the ticket, or
+// typed onto it afterwards, is the date of the invoice that ticket is billed
+// on — there is no second date to keep in step and no way to set one. Loads
+// count on the ticket date everywhere (Home, customers, fleet, invoice lines),
+// and a bill that says a different day than the ticket it is for is wrong.
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * A change to a saved ticket that moves its invoice date also moves the
- * ticket date, when the ticket was dated with the invoice and its own date is
- * not being changed in the same edit.
+ * Anything holding a ticket and its invoice, dated from the ticket.
+ *
+ * The one exception is a ticket with no date read off it at all: there is
+ * nothing to date the invoice from, so what it has stands until the ticket's
+ * date is filled in — and filling it in brings the invoice with it.
  */
-export function withInvoiceDate(previous: SavedRecord | undefined, edit: RecordEdit): RecordEdit {
-  const next = edit.invoice.invoice_date;
-  if (!previous || !ISO_DATE.test(next) || next === previous.invoice.invoice_date) return edit;
-  const ticketDate = previous.ticket.ticket_date;
-  if (ticketDate !== previous.invoice.invoice_date || edit.ticket.ticket_date !== ticketDate) {
-    return edit;
-  }
-  return { ...edit, ticket: { ...edit.ticket, ticket_date: next } };
+export function datedFromTicket<T extends { ticket: Ticket; invoice: InvoiceDraft }>(
+  value: T,
+): T {
+  const date = value.ticket.ticket_date?.trim();
+  if (!date || !ISO_DATE.test(date) || date === value.invoice.invoice_date) return value;
+  return { ...value, invoice: { ...value.invoice, invoice_date: date } };
 }
 
 /**
- * Saved tickets left behind by an invoice date changed before ticket dates
- * followed it: every ticket on the invoice was edited after saving and shares
- * one ticket date that differs from the invoice date. Returns those tickets
- * dated with their invoice; tickets that are consistent are not returned.
+ * Saved tickets whose invoice carries a date that is not the ticket's — filed
+ * before the rule was enforced, when a ticket kept the day it was photographed
+ * rather than the day on it. Returns them dated from their tickets; records
+ * that already agree are not returned.
  */
-export function staleTicketDates(records: SavedRecord[]): SavedRecord[] {
-  const invoices = new Map<string, SavedRecord[]>();
-  for (const record of records) {
-    const key = invoiceKey(record.invoice.invoice_number);
-    if (key) invoices.set(key, [...(invoices.get(key) ?? []), record]);
-  }
+export function staleInvoiceDates(records: SavedRecord[]): SavedRecord[] {
   const repaired: SavedRecord[] = [];
-  for (const lines of invoices.values()) {
-    const invoiceDate = lines[0].invoice.invoice_date;
-    const ticketDates = new Set(lines.map((record) => record.ticket.ticket_date));
-    const [ticketDate] = ticketDates;
-    if (
-      !ISO_DATE.test(invoiceDate) ||
-      lines.some((record) => record.invoice.invoice_date !== invoiceDate || !record.edited_at) ||
-      ticketDates.size !== 1 ||
-      ticketDate === invoiceDate
-    ) {
-      continue;
-    }
-    for (const record of lines) {
-      repaired.push({ ...record, ticket: { ...record.ticket, ticket_date: invoiceDate } });
-    }
+  for (const record of records) {
+    const dated = datedFromTicket(record);
+    if (dated !== record) repaired.push(dated);
   }
   return repaired;
 }

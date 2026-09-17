@@ -19,9 +19,10 @@ export type DeskExtraction = {
   percent: number;
   label: string;
   /**
-   * Read off to the side, for "Review later": a line above the bar along the
-   * bottom rather than the screen a phone otherwise gives this. Kept here with
-   * the rest of the extraction so it survives leaving the page and coming back.
+   * Read with nothing shown, for "Review later": no bar, no takeover, nothing
+   * to dismiss — the ticket is read and filed while the page stays where it
+   * was. Kept here with the rest of the extraction so it survives leaving the
+   * page and coming back.
    */
   quiet: boolean;
 } | null;

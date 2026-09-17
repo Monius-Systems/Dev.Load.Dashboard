@@ -279,6 +279,24 @@ type NewCustomerDraft = {
   saving: boolean;
 };
 
+/**
+ * An invoice is dated by its ticket. Always: whatever date is read off the
+ * ticket, or typed onto it afterwards, is the date of the invoice it goes on,
+ * and there is no way to set one that differs. It is applied wherever an item
+ * is built, filed or saved rather than trusted to the screen, because a ticket
+ * is now filed into its batch the moment it is read — before anyone has looked
+ * at it — and what was filed then carried the day it was photographed.
+ *
+ * The only invoice that is not dated this way is one whose ticket has no date
+ * on it at all: there is nothing to go by, so the draft's own date stands until
+ * the ticket's date is filled in, and filling it in moves the invoice.
+ */
+function invoiceDated(item: QueueItem): QueueItem {
+  const date = item.ticket.ticket_date?.trim();
+  if (!date || date === item.invoice.invoice_date) return item;
+  return { ...item, invoice: { ...item.invoice, invoice_date: date } };
+}
+
 function defaultInvoice(): InvoiceDraft {
   return {
     invoice_number: '',
@@ -417,9 +435,11 @@ async function buildQueueItem(
     baseline: null,
     from_saved: false,
   };
-  return applyTruck(
-    applyCustomer(item, matchCustomer(profiles.customers, ticket)),
-    profiles.truck,
+  return invoiceDated(
+    applyTruck(
+      applyCustomer(item, matchCustomer(profiles.customers, ticket)),
+      profiles.truck,
+    ),
   );
 }
 
@@ -437,9 +457,10 @@ async function buildQueueItem(
  * stays in the queue to be saved by hand rather than being lost.
  */
 async function fileInBatch(
-  item: QueueItem,
+  original: QueueItem,
   records: SavedRecord[],
 ): Promise<{ item: QueueItem; error: string | null }> {
+  const item = invoiceDated(original);
   const batch = batchInvoiceFor(records, item.ticket.ticket_date);
   const result = await saveRecord(
     {
@@ -457,18 +478,19 @@ async function fileInBatch(
     item.original,
   );
   if ('error' in result) return { item, error: result.error };
-  return {
-    item: {
-      ...item,
-      invoice: result.record.invoice,
-      batch_id: batch.batch_id,
-      saved_record_id: result.record.id,
-      from_saved: true,
-      baseline: null,
-      note: 'Kept in this date’s batch. Check the fields against the picture when you invoice it.',
-    },
-    error: null,
+  const filed: QueueItem = {
+    ...item,
+    invoice: result.record.invoice,
+    batch_id: batch.batch_id,
+    saved_record_id: result.record.id,
+    from_saved: true,
+    baseline: null,
+    note: 'Kept in this date’s batch. Check the fields against the picture when you invoice it.',
   };
+  // What was filed is what is on the screen, so that is the mark to measure
+  // later edits against. Without it nothing typed afterwards reads as a change
+  // and the ticket sits on "Saved" with the button disabled, unsaveable.
+  return { item: { ...filed, baseline: editKey(filed) }, error: null };
 }
 
 function nextUnsaved(queue: QueueItem[], from: number) {
@@ -494,7 +516,8 @@ const editKey = (edit: Omit<RecordEdit, 'id'>) =>
 const hasChanges = (item: QueueItem) =>
   item.baseline !== null && editKey(item) !== item.baseline;
 
-function editOf(item: QueueItem): RecordEdit {
+function editOf(source: QueueItem): RecordEdit {
+  const item = invoiceDated(source);
   return {
     id: item.saved_record_id!,
     ticket: item.ticket,
@@ -530,7 +553,10 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
     baseline: null,
     from_saved: true,
   };
-  return { ...item, baseline: editKey(item) };
+  // The baseline is what is stored, and the date is corrected after it: a
+  // record filed before the rule was enforced opens with the ticket's date and
+  // says so as an unsaved change, rather than keeping the wrong one quietly.
+  return invoiceDated({ ...item, baseline: editKey(item) });
 }
 
 function weightCheck(ticket: Ticket, t: Translator['t']) {
@@ -710,6 +736,16 @@ export default function LoadDesk() {
   const ticket = active?.ticket ?? null;
   const issues = ticket ? validateTicket(ticket) : [];
   const activeSaved = active?.saved_record_id != null;
+  /**
+   * A ticket filed by "Review later" is saved before anyone has looked at it,
+   * and saving it after looking is what marks it checked (see reviewed_at).
+   * So it can be saved with nothing changed: otherwise a ticket whose fields
+   * were all read correctly could never be taken off the batch's "to check".
+   */
+  const activeUnchecked =
+    active?.saved_record_id != null &&
+    (records.find((record) => record.id === active.saved_record_id)?.reviewed_at ??
+      null) === null;
   const savedInQueue = queue.filter(
     (item) => item.saved_record_id !== null,
   ).length;
@@ -737,12 +773,10 @@ export default function LoadDesk() {
         const parsed = Number(raw);
         value = Number.isFinite(parsed) ? parsed : null;
       }
-      // The invoice is dated from its tickets: correcting the ticket date moves
-      // the invoice date too, unless the invoice date was changed by hand.
-      const moveInvoiceDate =
-        name === 'ticket_date' &&
-        typeof value === 'string' &&
-        target.invoice.invoice_date === (target.ticket.ticket_date ?? '');
+      // The invoice is dated from its ticket, so correcting the ticket date
+      // moves the invoice's — and every ticket on that invoice moves with it,
+      // since they are one date's work.
+      const moveInvoiceDate = name === 'ticket_date' && typeof value === 'string';
       return current.map((item, index) => {
         let next = item;
         if (index === activeIndex) {
@@ -764,22 +798,17 @@ export default function LoadDesk() {
       );
     });
 
-  const setInvoice = (patch: Partial<InvoiceDraft>) =>
-    updateBatch((item) => {
-      // Tickets are dated with their invoice: a new invoice date moves the
-      // date of every ticket that had the old one, so loads count on it
-      // everywhere (charts, customers, fleet, invoice lines).
-      const movesTicket =
-        Boolean(patch.invoice_date) &&
-        item.ticket.ticket_date === item.invoice.invoice_date;
-      return {
-        ...item,
-        ticket: movesTicket
-          ? { ...item.ticket, ticket_date: patch.invoice_date ?? null }
-          : item.ticket,
-        invoice: { ...item.invoice, ...patch },
-      };
-    });
+  /**
+   * Invoice details are shared by every ticket from the same upload. The date
+   * is not among them and cannot be passed here: it is the ticket's, and the
+   * way to move it is to correct the date on the ticket. Spelled out in the
+   * type so the compiler refuses any other way of setting it.
+   */
+  const setInvoice = (patch: Partial<Omit<InvoiceDraft, 'invoice_date'>>) =>
+    updateBatch((item) => ({
+      ...item,
+      invoice: { ...item.invoice, ...patch },
+    }));
 
   const setBillTo = (
     update: (billTo: InvoiceDraft['bill_to']) => InvoiceDraft['bill_to'],
@@ -1486,10 +1515,16 @@ export default function LoadDesk() {
     const changed = queue.filter(
       (item) => item.batch_id === active.batch_id && hasChanges(item),
     );
-    if (!changed.length) return;
+    // Nothing to correct on a ticket nobody has checked yet is still something
+    // to save: saving it is the checking.
+    const toSave =
+      activeUnchecked && !changed.some((item) => item.id === active.id)
+        ? [...changed, active]
+        : changed;
+    if (!toSave.length) return;
     const clash = findInvoiceClash(
       records,
-      changed.map((item) => ({
+      toSave.map((item) => ({
         id: item.saved_record_id,
         invoiceNumber: item.invoice.invoice_number,
         batchId: item.batch_id,
@@ -1506,7 +1541,7 @@ export default function LoadDesk() {
       return;
     }
     setBusy(true);
-    const error = await persistChanges(changed);
+    const error = await persistChanges(toSave);
     setBusy(false);
     if (error) {
       setSaveStatus({ message: error, tone: 'error' });
@@ -1514,10 +1549,11 @@ export default function LoadDesk() {
     }
     const invoiceNumber = active.invoice.invoice_number.trim();
     const label = active.ticket.ticket_number ?? active.source.file_name;
-    const message =
-      changed.length > 1
+    const message = !changed.length
+      ? t('Checked. Nothing needed changing.')
+      : toSave.length > 1
         ? t('Saved changes to {tickets} on invoice {number}.', {
-            tickets: plural(changed.length, 'ticket'),
+            tickets: plural(toSave.length, 'ticket'),
             number: invoiceNumber,
           })
         : t('Changes saved.');
@@ -1726,6 +1762,8 @@ export default function LoadDesk() {
       newRow?: boolean;
       placeholder?: string;
       hint?: string;
+      /** Shown, not asked for: the value is worked out from something else. */
+      readOnly?: boolean;
     } = {},
   ) => (
     <label
@@ -1746,6 +1784,7 @@ export default function LoadDesk() {
         type={options.type ?? 'text'}
         required={options.required}
         placeholder={options.placeholder}
+        readOnly={options.readOnly}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
@@ -2059,21 +2098,17 @@ export default function LoadDesk() {
    * happening, it takes a few seconds, and a bar tucked inside a card halfway
    * down a page reads as though the app has simply stopped.
    *
-   * Unless it was sent off to the side by "Review later", which is the whole
-   * point of that button: then it is a line along the bottom, and the page
-   * stays where it was — ready for the next photograph.
+   * A quiet one shows nothing at all, here or anywhere else: "Review later"
+   * means the page stays exactly as it was, ready for the next photograph, and
+   * the status line under the button says where the ticket went once it lands.
    */
   const phoneExtracting =
-    isPhone && extraction ? (
-      <output
-        className="ld-extracting"
-        data-quiet={extraction.quiet || undefined}
-        aria-live="polite"
-      >
+    isPhone && extraction && !extraction.quiet ? (
+      <output className="ld-extracting" aria-live="polite">
         <Progress value={extraction.percent} className="ld-progress">
           <div className="ld-progress-head">
             <ProgressLabel className="ld-progress-label">
-              {extraction.quiet ? t('Reading it off to the side') : t('Reading the ticket')}
+              {t('Reading the ticket')}
             </ProgressLabel>
             <ProgressValue className="ld-progress-value" />
           </div>
@@ -2082,7 +2117,7 @@ export default function LoadDesk() {
       </output>
     ) : null;
 
-  const extractionProgress = extraction ? (
+  const extractionProgress = extraction && !extraction.quiet ? (
     <Progress value={extraction.percent} className="ld-progress">
       <div className="ld-progress-head">
         <ProgressLabel className="ld-progress-label">
@@ -2119,7 +2154,9 @@ export default function LoadDesk() {
   const saveLabel = activeSaved
     ? batchChanged.length
       ? t('Save changes')
-      : t('Saved')
+      : activeUnchecked
+        ? t('Save as checked')
+        : t('Saved')
     : queue.some(
           (item, index) =>
             index !== activeIndex && item.saved_record_id === null,
@@ -2749,11 +2786,24 @@ export default function LoadDesk() {
                             : t('Enter your first invoice number. The ones after it follow in order.'),
                         },
                       )}
+                      {/* Read-only on purpose: an invoice is dated by its
+                          ticket, so this follows the date in step 1 rather
+                          than being a second date to keep in step with it. A
+                          plain box, not a date picker, so it matches the
+                          fields around it instead of whatever control the
+                          phone draws for type="date". */}
                       {invoiceField(
                         t('Invoice date'),
-                        active.invoice.invoice_date,
-                        (value) => setInvoice({ invoice_date: value }),
-                        { type: 'date', required: true },
+                        active.ticket.ticket_date
+                          ? date(active.ticket.ticket_date)
+                          : date(active.invoice.invoice_date),
+                        () => {},
+                        {
+                          readOnly: true,
+                          hint: active.ticket.ticket_date
+                            ? t('The ticket’s date. Change it on the ticket to move the invoice.')
+                            : t('No date was read off the ticket. Fill the date in on the ticket and the invoice follows.'),
+                        },
                       )}
                       <div className="ld-field" data-span={2} data-new-row>
                         <label htmlFor={`${fieldId}-customer`}>
@@ -3056,7 +3106,9 @@ export default function LoadDesk() {
                       {activeSaved
                         ? batchChanged.length
                           ? t('Unsaved changes')
-                          : t('Ticket saved')
+                          : activeUnchecked
+                            ? t('Not checked yet')
+                            : t('Ticket saved')
                         : t('Ready to save?')}
                     </strong>
                     <p>
@@ -3068,9 +3120,13 @@ export default function LoadDesk() {
                                 { tickets: plural(batchChanged.length, 'saved ticket') },
                               )
                             : t('Saving updates this saved ticket for everyone in your workspace.')
-                          : t(
-                              'Change any field to edit this ticket or its invoice, then save the changes.',
-                            )
+                          : activeUnchecked
+                            ? t(
+                                'It was read off the picture and kept in this date’s batch. Correct anything that is wrong, then save it to mark it checked.',
+                              )
+                            : t(
+                                'Change any field to edit this ticket or its invoice, then save the changes.',
+                              )
                         : t(
                             'The original file is stored with this record. Without a rate the invoice stays a draft.',
                           )}
@@ -3091,10 +3147,15 @@ export default function LoadDesk() {
                     </Button>
                     <Button
                       type="submit"
-                      data-phone-hidden={isPhone && atStep < lastStep ? true : undefined}
-                      disabled={busy || (activeSaved && !batchChanged.length)}
+                      data-phone-hidden={isPhone || undefined}
+                      disabled={
+                        busy ||
+                        (activeSaved && !batchChanged.length && !activeUnchecked)
+                      }
                     >
-                      {activeSaved && !batchChanged.length ? <Check /> : null}
+                      {activeSaved && !batchChanged.length && !activeUnchecked ? (
+                        <Check />
+                      ) : null}
                       {busy && activeSaved ? t('Saving…') : saveLabel}
                       {activeSaved ? null : (
                         <ChevronRight data-icon="inline-end" />
@@ -3131,9 +3192,14 @@ export default function LoadDesk() {
                     ) : (
                       <Button
                         type="submit"
-                        disabled={busy || (activeSaved && !batchChanged.length)}
+                        disabled={
+                          busy ||
+                          (activeSaved && !batchChanged.length && !activeUnchecked)
+                        }
                       >
-                        {activeSaved && !batchChanged.length ? <Check /> : null}
+                        {activeSaved && !batchChanged.length && !activeUnchecked ? (
+                          <Check />
+                        ) : null}
                         {busy && activeSaved ? t('Saving…') : saveLabel}
                       </Button>
                     )}

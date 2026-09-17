@@ -14,6 +14,7 @@ import type {
   CustomerProfile,
   TruckProfile,
 } from './profiles.ts';
+import { datedFromTicket } from './invoice-dates.ts';
 
 // Validation for data the browser sends to the server. Everything is checked
 // field by field and bounded, so stored rows always have the shape the app
@@ -147,7 +148,8 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
     return { error: 'The ticket record is not valid.' };
   }
   return {
-    value: {
+    // An invoice is dated by its ticket, wherever the record came from.
+    value: datedFromTicket({
       saved_at: value.saved_at as string,
       ticket,
       invoice,
@@ -159,7 +161,7 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
       invoice_batch_id: value.invoice_batch_id as string,
       // Absent means nobody has checked it yet; see SavedRecord.reviewed_at.
       reviewed_at: (value.reviewed_at as string | null | undefined) ?? null,
-    },
+    }),
   };
 }
 
@@ -200,14 +202,18 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
     ) {
       return { error: 'The ticket changes are not valid.' };
     }
-    edits.push({
-      id,
-      ticket,
-      invoice,
-      ocr_text: item.ocr_text as string,
-      customer_profile_id: (item.customer_profile_id as number | null | undefined) ?? null,
-      truck_id: (item.truck_id as number | null | undefined) ?? null,
-    });
+    // An invoice is dated by its ticket here too: a change that came in over
+    // the API cannot leave one carrying a day of its own.
+    edits.push(
+      datedFromTicket({
+        id,
+        ticket,
+        invoice,
+        ocr_text: item.ocr_text as string,
+        customer_profile_id: (item.customer_profile_id as number | null | undefined) ?? null,
+        truck_id: (item.truck_id as number | null | undefined) ?? null,
+      }),
+    );
   }
   return { value: edits };
 }
