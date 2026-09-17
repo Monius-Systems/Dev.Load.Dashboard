@@ -626,30 +626,49 @@ button.hm-row:hover {
   /* The sheet: the whole page below its band, as one panel that runs to both
      edges, curves at the top and slides up over the band.
    *
-   * Nothing pads it out to fill the screen. A viewport of min-height let a
-   * nearly empty page scroll a screenful down into blank grey, and it was never
-   * needed to stop the band showing out from under it: the band is sticky
-   * inside .page-enter, whose bottom edge is the sheet's own, and sticky's own
-   * clamp will not let it past that. */
+   * It comes down to the bottom edge of the screen on every page, however
+   * little is on it, by taking the room the band leaves rather than by being
+   * given a height of its own: a plain min-height of 100dvh here would stack
+   * on top of the band and let a nearly empty page scroll a screenful down
+   * into nothing. So the page is made exactly one screen tall, and the sheet
+   * is the part of it that grows.
+   *
+   * Only on pages built as a band over a sheet; the account page is neither. */
+  .page-content:has(.page-sheet) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
   .page-sheet {
     display: block;
     position: relative;
+    /* Grows into whatever the band leaves, and never shrinks below its own
+       content: a page with more on it than fits runs past the bottom of the
+       screen the way it always did. */
+    flex: 1 0 auto;
     /* The top of the three: over the band it slides across, and over the
        account pinned to that band, which is 5. */
     z-index: 6;
     /* Pulled up onto the blue by exactly its own corner radius, so the curve
        has blue behind it to read against. Sitting flush at the header's bottom
        edge instead, the corners would cut into the page grey underneath and
-       the sheet would come to a straight line. */
-    margin: calc(-1 * var(--ui-radius-xl)) calc(-1 * var(--ui-space-5)) 0;
+       the sheet would come to a straight line.
+       The foot runs down through the gap the page leaves for the bar floating
+       along the bottom, so the white reaches the edge of the screen instead of
+       stopping short of it. The same amount comes back as the sheet's own
+       padding below, so the last card still clears the bar. */
+    margin: calc(-1 * var(--ui-radius-xl)) calc(-1 * var(--ui-space-5))
+      calc(-1 * var(--phone-bottombar));
     border-radius: var(--ui-radius-xl) var(--ui-radius-xl) 0 0;
     /* The top padding is what the notch is inset by, and it has to be padding:
        as the sheet's first child, a margin on the notch would collapse through
        the sheet's own top edge and cancel the negative margin holding it on
        the blue. Just past the corner curve, so the notch sits high on the
        sheet; the gap it carries underneath makes up the difference and the
-       first card stays where it was. */
-    padding: calc(var(--ui-radius-xl) + var(--ui-space-1)) var(--ui-space-5) 0;
+       first card stays where it was. The foot is the room for the bottom bar
+       that the negative margin above gave away. */
+    padding: calc(var(--ui-radius-xl) + var(--ui-space-1)) var(--ui-space-5)
+      var(--phone-bottombar);
     background: var(--ui-surface-2);
   }
   /* The notch, the way a sheet drawn up over something is marked. Clear of the

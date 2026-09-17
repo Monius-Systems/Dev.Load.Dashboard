@@ -1380,7 +1380,7 @@ svg.lucide {
   }
   /* The bar floats over the page, so the page ends above it. */
   .page-content {
-    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+    padding-bottom: var(--phone-bottombar);
   }
   /* The drawer and its trigger are what the bar replaces. */
   .breadcrumb [data-sidebar='trigger'] {
@@ -1700,6 +1700,10 @@ svg.lucide {
      under it on purpose. */
   .page-content {
     --phone-topbar: calc(env(safe-area-inset-top) + 66px);
+    /* And the bar along the bottom, which floats over the page the same way.
+       Named because the sheet reaches down through it: the page keeps the gap,
+       the sheet's white crosses it to the edge of the screen. */
+    --phone-bottombar: calc(92px + env(safe-area-inset-bottom));
 
     padding-top: var(--phone-topbar);
   }
@@ -1725,10 +1729,10 @@ svg.lucide {
     background: var(--strip, var(--ui-accent));
   }
   /* The canvas behind it all is the band's blue, on every page. The sheet is
-     the only thing that is not: it runs to both edges and covers the page, so
-     what the blue shows is the band at the top and whatever is left below the
-     sheet's last card — which now reads as one colour the sheet sits on,
-     rather than the near-white the page used to end on.
+     the only thing that is not: it runs to both edges and covers the page from
+     its curve down to the bottom of the screen, so what the blue shows is the
+     band at the top and the overscroll at either end — never a grey the page
+     has nothing else of.
      Deliberately a background rather than the strip variable: the strip goes on
      mirroring whatever is painted at the top, so it still turns grey once the
      sheet has been scrolled up past the band. */
