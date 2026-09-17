@@ -1500,12 +1500,12 @@ details[open] > .ld-section-summary .ld-section-chevron {
   .ld-run:first-child {
     margin-top: 0;
   }
-  /* The check on the ticket and the way to the picture, on one line. */
+  /* The check on the ticket and the way to the picture, on one line. The head
+     above carries the gap between the two. */
   .ld-check-row {
     display: flex;
     align-items: center;
     gap: var(--ui-space-2);
-    margin-top: var(--ui-space-3);
   }
   .ld-check-row .ld-notice {
     flex: 1;
@@ -1536,12 +1536,15 @@ details[open] > .ld-section-summary .ld-section-chevron {
     flex-shrink: 0;
     min-height: 46px;
   }
-  /* A stamp of the ticket, and the whole of it a tap away. */
+  /* A stamp of the ticket, and the whole of it a tap away. It stands under the
+     card that carries the way to the invoice, close enough to read as the
+     second of the two. */
   .ld-thumb {
     display: flex;
     align-items: center;
     gap: var(--ui-space-3);
     width: 100%;
+    margin-top: var(--ui-space-3);
     padding: var(--ui-space-3);
     border: 1px solid var(--ui-border);
     border-radius: var(--ui-radius-md);

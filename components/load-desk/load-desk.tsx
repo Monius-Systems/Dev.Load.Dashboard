@@ -2773,27 +2773,6 @@ export default function LoadDesk() {
                 </span>
                 </div>
 
-                {/* The picture, where the checking starts: a stamp of it here,
-                    and the whole of it over the screen when it is tapped. Laid
-                    out at full width in the form it put a screen between one
-                    field and the next. */}
-                <button
-                  type="button"
-                  className="ld-thumb"
-                  onClick={() => setViewingTicket(true)}
-                >
-                  <span className="ld-thumb-shot">
-                    <SourcePreview item={active} />
-                  </span>
-                  <span className="ld-thumb-copy">
-                    <strong>{t('Original ticket')}</strong>
-                    <small>
-                      {active.source.file_name} · {fileSize(active.source.size)}
-                    </small>
-                  </span>
-                  <FileSearch aria-hidden="true" />
-                </button>
-
                 {checkRow}
               </div>
             ) : null}
@@ -3300,6 +3279,29 @@ export default function LoadDesk() {
                     </Button>
                   </div>
                 </div>
+                {/* The picture, at the foot of every step under the way to
+                    the invoice: a stamp of it here, and the whole of it over
+                    the screen when it is tapped. Laid out among the fields it
+                    put a screen between one and the next; a desk has it
+                    standing beside the form already (.ld-aside). */}
+                {isPhone ? (
+                  <button
+                    type="button"
+                    className="ld-thumb"
+                    onClick={() => setViewingTicket(true)}
+                  >
+                    <span className="ld-thumb-shot">
+                      <SourcePreview item={active} />
+                    </span>
+                    <span className="ld-thumb-copy">
+                      <strong>{t('Original ticket')}</strong>
+                      <small>
+                        {active.source.file_name} · {fileSize(active.source.size)}
+                      </small>
+                    </span>
+                    <FileSearch aria-hidden="true" />
+                  </button>
+                ) : null}
                 <p
                   className="ld-status"
                   data-tone={saveStatus?.tone}
