@@ -1238,3 +1238,82 @@ details[open] > .ld-section-summary .ld-section-chevron {
   font-size: var(--type-xs);
   color: var(--ui-text-3);
 }
+
+/* ======================================== reviewing a ticket on a phone */
+/* Four screens instead of one long form. Someone standing beside a truck is
+   asked one thing at a time: what is on the ticket, who it was for, what it
+   weighed, and what to bill — rather than thirty boxes at once. */
+@media (max-width: 767px) {
+  .ld-fieldset[data-phone-step] > [data-step] {
+    display: none;
+  }
+  .ld-fieldset[data-phone-step='0'] > [data-step='0'],
+  .ld-fieldset[data-phone-step='1'] > [data-step='1'],
+  .ld-fieldset[data-phone-step='2'] > [data-step='2'],
+  .ld-fieldset[data-phone-step='3'] > [data-step='3'] {
+    display: block;
+  }
+  /* The step is named above the fields, so the heading that opened and closed
+     each section has nothing left to do. */
+  .ld-fieldset[data-phone-step] > [data-step] > summary {
+    display: none;
+  }
+  .ld-steps {
+    display: grid;
+    gap: 8px;
+    margin-bottom: var(--ui-space-4);
+  }
+  .ld-steps p {
+    font-size: var(--type-sm);
+    font-weight: var(--type-medium);
+    color: var(--ui-text-2);
+  }
+  .ld-steps-track {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 4px;
+  }
+  .ld-steps-track i {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--ui-fill-strong);
+  }
+  .ld-steps-track i[data-done] {
+    background: var(--ui-accent);
+  }
+  /* Back and on, across the bottom where the thumb already is. */
+  .ld-step-nav {
+    position: sticky;
+    bottom: 0;
+    display: grid;
+    grid-template-columns: 1fr 1.4fr;
+    gap: var(--ui-space-2);
+    margin-top: var(--ui-space-4);
+    padding-top: var(--ui-space-3);
+    background: linear-gradient(to top, var(--ui-surface-1) 72%, transparent);
+  }
+  .ld-step-nav button {
+    min-height: 48px;
+    font-size: var(--type-base);
+  }
+  /* The save button that used to sit inside the invoice section; the bar at
+     the bottom is where it lives on a phone now. */
+  .ld-actions [data-phone-hidden] {
+    display: none;
+  }
+  /* Reading a ticket takes over the screen: one bar, and what it is doing. */
+  .ld-extracting {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    align-content: center;
+    gap: var(--ui-space-5);
+    padding: var(--ui-space-8);
+    background: var(--ui-surface-1);
+  }
+  .ld-extracting .ld-progress {
+    width: 100%;
+  }
+}

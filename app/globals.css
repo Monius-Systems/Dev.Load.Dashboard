@@ -747,7 +747,9 @@ h2 {
 }
 @media (max-width: 767px) {
 .topbar {
-    padding: 12px 16px;
+    /* Clear of the clock and the battery on a notched phone, where the
+       breadcrumb was printing underneath the status bar. */
+    padding: max(12px, env(safe-area-inset-top)) 16px 12px;
   }
 .page-content {
     padding: 24px 20px;

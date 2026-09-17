@@ -664,6 +664,20 @@ export default function LoadDesk() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const isPhone = useIsPhone();
+  /**
+   * Which part of the ticket a phone is being asked about. The four sections
+   * of the review are one screen each there: a page of thirty boxes is a desk
+   * job, and the person holding the phone is standing next to a truck.
+   */
+  const [step, setStep] = useState(0);
+  // Opening a different ticket starts its review at the beginning. Adjusted
+  // while rendering rather than in an effect, so the first paint of a new
+  // ticket is already its first step instead of the last one of the ticket before.
+  const [stepTicket, setStepTicket] = useState(activeIndex);
+  if (stepTicket !== activeIndex) {
+    setStepTicket(activeIndex);
+    setStep(0);
+  }
   const reviewPanel = useRef<HTMLElement>(null);
   const router = useRouter();
   // "Edit" on Invoices & tickets opens this page with ?edit=<saved ticket id>.
@@ -1931,6 +1945,10 @@ export default function LoadDesk() {
     }))
     .reverse();
 
+  const STEPS = ['Ticket', 'Customer and job', 'Weight', 'Invoice'];
+  const lastStep = STEPS.length - 1;
+  const atStep = Math.min(step, lastStep);
+
   const batchItems = active
     ? queue.filter((item) => item.batch_id === active.batch_id)
     : [];
@@ -1967,6 +1985,26 @@ export default function LoadDesk() {
         .filter(Boolean)
         .join(' · ')
     : '';
+
+  /**
+   * Reading a ticket, over the whole screen on a phone. It is the only thing
+   * happening, it takes a few seconds, and a bar tucked inside a card halfway
+   * down a page reads as though the app has simply stopped.
+   */
+  const phoneExtracting =
+    isPhone && extraction ? (
+      <output className="ld-extracting" aria-live="polite">
+        <Progress value={extraction.percent} className="ld-progress">
+          <div className="ld-progress-head">
+            <ProgressLabel className="ld-progress-label">
+              {t('Reading the ticket')}
+            </ProgressLabel>
+            <ProgressValue className="ld-progress-value" />
+          </div>
+          <p className="ld-progress-detail">{t(extraction.label)}</p>
+        </Progress>
+      </output>
+    ) : null;
 
   const extractionProgress = extraction ? (
     <Progress value={extraction.percent} className="ld-progress">
@@ -2047,6 +2085,7 @@ export default function LoadDesk() {
 
   return (
     <>
+      {phoneExtracting}
       <div className="page-heading">
         <div>
           <p className="eyebrow">LOAD DESK</p>
@@ -2494,15 +2533,35 @@ export default function LoadDesk() {
                 )}
               </div>
 
-              <fieldset className="ld-fieldset" disabled={busy}>
-                <details className="ld-section ld-collapsible">
+              {isPhone ? (
+                <div className="ld-steps" aria-label={t('Review steps')}>
+                  <p>
+                    {t('Step {number} of {total}', {
+                      number: atStep + 1,
+                      total: STEPS.length,
+                    })}{' '}
+                    · {t(STEPS[atStep])}
+                  </p>
+                  <span className="ld-steps-track" aria-hidden="true">
+                    {STEPS.map((name, index) => (
+                      <i key={name} data-done={index <= atStep || undefined} />
+                    ))}
+                  </span>
+                </div>
+              ) : null}
+              <fieldset
+                className="ld-fieldset"
+                disabled={busy}
+                data-phone-step={isPhone ? atStep : undefined}
+              >
+                <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
                   {sectionSummary('Ticket', ticketDetail)}
                   <div className="ld-fields">
                     {TICKET_FIELDS.map((def) => renderField(def))}
                   </div>
                 </details>
 
-                <details className="ld-section ld-collapsible">
+                <details className="ld-section ld-collapsible" data-step="1" open={isPhone || undefined}>
                   {sectionSummary('Customer and Job', jobDetail)}
                   <div className="ld-fields">
                     {JOB_FIELDS.map((def) =>
@@ -2514,7 +2573,7 @@ export default function LoadDesk() {
                   </div>
                 </details>
 
-                <details className="ld-section ld-collapsible">
+                <details className="ld-section ld-collapsible" data-step="2" open={isPhone || undefined}>
                   {sectionSummary(
                     'Weight and Hauling',
                     weightDetail,
@@ -2533,7 +2592,7 @@ export default function LoadDesk() {
                   </div>
                 </details>
 
-                <div className="ld-section">
+                <div className="ld-section" data-step="3">
                   <h3>{t('Invoice')}</h3>
                   {batchNote ? (
                     <p className="ld-section-note">{batchNote}</p>
@@ -2921,6 +2980,7 @@ export default function LoadDesk() {
                   </Button>
                   <Button
                     type="submit"
+                    data-phone-hidden={isPhone && atStep < lastStep ? true : undefined}
                     disabled={busy || (activeSaved && !batchChanged.length)}
                   >
                     {activeSaved && !batchChanged.length ? <Check /> : null}
@@ -2938,6 +2998,36 @@ export default function LoadDesk() {
               >
                 {saveStatus?.message}
               </p>
+              {isPhone ? (
+                <div className="ld-step-nav">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={atStep === 0}
+                    onClick={() => setStep((current) => Math.max(0, current - 1))}
+                  >
+                    <ChevronLeft data-icon="inline-start" />
+                    {t('Back')}
+                  </Button>
+                  {atStep < lastStep ? (
+                    <Button
+                      type="button"
+                      onClick={() => setStep((current) => Math.min(lastStep, current + 1))}
+                    >
+                      {t('Next')}
+                      <ChevronRight data-icon="inline-end" />
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      disabled={busy || (activeSaved && !batchChanged.length)}
+                    >
+                      {activeSaved && !batchChanged.length ? <Check /> : null}
+                      {busy && activeSaved ? t('Saving…') : saveLabel}
+                    </Button>
+                  )}
+                </div>
+              ) : null}
             </form>
 
             <aside className="ld-aside" aria-label={t('Source ticket')}>
