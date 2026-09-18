@@ -14,10 +14,6 @@
 // picture is left exactly as it arrived and reading carries on as before.
 
 import { scannerConfig, type Quad } from './geometry.ts';
-// The bundler creates this default export; the linter cannot see through the
-// "?worker" suffix, which worker-env.d.ts declares for TypeScript.
-// eslint-disable-next-line import/default
-import ScannerWorker from './scanner.worker.ts?worker';
 
 type Reply = {
   id: number;
@@ -40,27 +36,50 @@ let worker: Worker | null = null;
 let ready: Promise<boolean> | null = null;
 let sequence = 0;
 
-/** Starts the vision worker once per page, and remembers if it cannot start. */
+/**
+ * Starts the vision worker once per page, and remembers if it cannot start.
+ *
+ * The worker is OpenCV — ten megabytes of it — and it is reached only from
+ * here, only in a browser, only once a picture is being read. It used to be
+ * imported at the top of this file, which made it part of this module for every
+ * environment the module is built for: the server built its own copy of the
+ * worker and shipped it inside the Worker script, where nothing could ever run
+ * it. Loaded on demand instead, behind a check the bundler resolves at build
+ * time (`import.meta.env.SSR` is a constant in each environment), so the server
+ * build does not contain the import at all and OpenCV exists only in the
+ * browser's own bundle, fetched when a scan first needs it.
+ */
 function start(): Promise<boolean> {
-  ready ??= new Promise<boolean>((resolve) => {
+  ready ??= (async () => {
+    // Never on the server, and the bundler drops the import along with the
+    // branch: there is no worker to start where there is no page to read on.
+    if (import.meta.env.SSR || typeof window === 'undefined') return false;
+    let ScannerWorker: new () => Worker;
     try {
-      worker = new ScannerWorker();
+      ({ default: ScannerWorker } = await import('./scanner.worker.ts?worker'));
     } catch {
-      resolve(false);
-      return;
+      return false;
     }
-    const timer = setTimeout(() => resolve(false), REPLY_TIMEOUT_MS);
-    worker.addEventListener('message', function first(event: MessageEvent<Reply>) {
-      if (!event.data?.ready) return;
-      worker?.removeEventListener('message', first);
-      clearTimeout(timer);
-      resolve(true);
+    return new Promise<boolean>((resolve) => {
+      try {
+        worker = new ScannerWorker();
+      } catch {
+        resolve(false);
+        return;
+      }
+      const timer = setTimeout(() => resolve(false), REPLY_TIMEOUT_MS);
+      worker.addEventListener('message', function first(event: MessageEvent<Reply>) {
+        if (!event.data?.ready) return;
+        worker?.removeEventListener('message', first);
+        clearTimeout(timer);
+        resolve(true);
+      });
+      worker.addEventListener('error', () => {
+        clearTimeout(timer);
+        resolve(false);
+      });
     });
-    worker.addEventListener('error', () => {
-      clearTimeout(timer);
-      resolve(false);
-    });
-  });
+  })();
   return ready;
 }
 

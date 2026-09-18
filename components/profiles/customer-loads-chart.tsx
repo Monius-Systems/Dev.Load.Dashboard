@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import LoadsAreaChart from '@/components/charts/loads-area-chart';
+import LoadsAreaChart from '@/components/charts/loads-area-chart.lazy';
 import { SelectField } from '@/components/ui/select-field';
 import { useT } from '@/lib/i18n/use-t';
 import { isPeriod, loadSeries, PERIOD_PHRASE } from '@/lib/load-desk/load-series';

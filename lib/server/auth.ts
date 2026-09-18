@@ -126,10 +126,17 @@ export function authClient(request: Request) {
 }
 
 /**
- * The name and photo for the sidebar, from the session already held in the
- * cookies — no round trip, so the shell renders them into the HTML. Display
- * only: every request for real data is authorized again, and the photo itself
- * is fetched from /api/account/avatar like any other member request.
+ * The name and photo for the sidebar, from the token already held in the
+ * cookies, so the shell renders them into the HTML. Display only: every request
+ * for real data is authorized again, and the photo itself is fetched from
+ * /api/account/avatar like any other member request.
+ *
+ * Read from the token's verified claims rather than from `getSession()`, whose
+ * user object is whatever the cookie says it is: the claims are checked against
+ * the project's signing key — locally, with the key cached, on a project using
+ * asymmetric keys — so what the sidebar shows is what the token actually
+ * carries. A token that does not verify shows nobody, which is what the proxy
+ * has already decided for the request anyway.
  */
 export async function sessionShellAccount(
   cookies: { name: string; value: string }[],
@@ -142,8 +149,14 @@ export async function sessionShellAccount(
       // browser's own next request instead.
       cookies: { getAll: () => cookies, setAll: () => {} },
     });
-    const { data } = await client.auth.getSession();
-    return shellAccountFrom(data.session?.user);
+    const { data } = await client.auth.getClaims();
+    const claims = data?.claims;
+    if (!claims) return null;
+    return shellAccountFrom({
+      id: claims.sub,
+      email: claims.email ?? null,
+      user_metadata: (claims.user_metadata ?? null) as Record<string, unknown> | null,
+    });
   } catch {
     return null;
   }

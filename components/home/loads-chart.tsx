@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
-import LoadsAreaChart, { type ChartLine } from '@/components/charts/loads-area-chart';
+import LoadsAreaChart, { type ChartLine } from '@/components/charts/loads-area-chart.lazy';
 import { SelectField } from '@/components/ui/select-field';
 import { useT } from '@/lib/i18n/use-t';
 import { money } from '@/lib/load-desk/format';

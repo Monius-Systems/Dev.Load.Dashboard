@@ -1,13 +1,61 @@
 'use client';
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
-import HomePage from '@/components/home/home-page';
-import LoadDesk from '@/components/load-desk/load-desk';
-import RecordsPage from '@/components/records/records-page';
-import CustomersPage from '@/components/profiles/customers-page';
-import FleetPage from '@/components/profiles/fleet-page';
 import { shellConfig } from '@/lib/shell-config';
+
+/**
+ * Each section's code, fetched the first time that section is rendered.
+ *
+ * Split apart rather than imported at the top, because whatever this file
+ * imports is evaluated wherever this file is — and on the server that is every
+ * request for every workspace page. Importing the five sections here meant a
+ * request for Home evaluated Load Desk as well: the PDF reader, the ticket
+ * extraction, the OCR, the scanner and its ten-megabyte OpenCV worker, none of
+ * which the server would go on to render (`reach` is 0 there), all charged to
+ * that request's CPU. On Cloudflare that is what "Exceeded CPU Limit" on GET /
+ * was. Now the server evaluates the one section the route asked for and nothing
+ * else.
+ *
+ * In the browser the split is also why the other panes come to be mounted
+ * later rather than at once (see `reach` below): their code is fetched, parked
+ * and ready before a swipe or a tap can reach them, warmed by `warmSections`.
+ */
+const SECTION_LOADERS = {
+  '/': () => import('@/components/home/home-page'),
+  '/load-desk': () => import('@/components/load-desk/load-desk'),
+  '/records': () => import('@/components/records/records-page'),
+  '/customers': () => import('@/components/profiles/customers-page'),
+  '/fleet': () => import('@/components/profiles/fleet-page'),
+} as const;
+
+const HomePage = dynamic(SECTION_LOADERS['/']);
+const LoadDesk = dynamic(SECTION_LOADERS['/load-desk']);
+const RecordsPage = dynamic(SECTION_LOADERS['/records']);
+const CustomersPage = dynamic(SECTION_LOADERS['/customers']);
+const FleetPage = dynamic(SECTION_LOADERS['/fleet']);
+
+/**
+ * Fetches the code of every section that is not on the screen, once the one
+ * that is has been painted. A tap on the bar then opens a section whose code is
+ * already here, as it was when everything came down in one piece; only the
+ * server is spared, not the browser. Idle time when the browser offers it, and
+ * simply a moment later when it does not.
+ */
+function warmSections(except: string) {
+  const warm = () => {
+    for (const [path, load] of Object.entries(SECTION_LOADERS)) {
+      if (path !== except) void load().catch(() => {});
+    }
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    const handle = window.requestIdleCallback(warm, { timeout: 2000 });
+    return () => window.cancelIdleCallback(handle);
+  }
+  const handle = window.setTimeout(warm, 500);
+  return () => window.clearTimeout(handle);
+}
 
 /**
  * The page area, as a window of three live sections rather than one.
@@ -66,6 +114,7 @@ export default function SectionPager({ children }: { children: ReactNode }) {
    * A wider screen stops at 0: there is no swipe and no bar to jump from.
    */
   const [reach, setReach] = useState(0);
+  useEffect(() => warmSections(pathname), [pathname]);
   useEffect(() => {
     const phone = window.matchMedia('(max-width: 767px)');
     let slower = 0;
