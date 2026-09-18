@@ -1906,6 +1906,45 @@ details[open] > .ld-section-summary .ld-section-chevron {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The picture in the column beside the form, which opens the whole thing. A
+   button around it and nothing else: what it looks like is the picture. */
+.ld-aside-open {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  text-align: inherit;
+  cursor: zoom-in;
+}
+.ld-aside-open:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 3px;
+  border-radius: var(--ui-radius-sm);
+}
+/* Zooming without fingers: the wheel and a drag do it, and these say so and
+   give anyone who would rather press something a way in. */
+.ld-viewer-zoom {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.ld-viewer-zoom button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 14%);
+  color: #fff;
+  cursor: pointer;
+}
+.ld-viewer-zoom button:hover {
+  background: rgb(255 255 255 / 24%);
+}
+
 .ld-viewer-close {
   display: grid;
   place-items: center;
@@ -1926,6 +1965,12 @@ details[open] > .ld-section-summary .ld-section-chevron {
   min-height: 0;
   padding: 0 var(--ui-space-3);
   touch-action: none;
+  /* There is something to take hold of here once it is bigger than the frame,
+     and nothing else on the screen says so to a mouse. */
+  cursor: grab;
+}
+.ld-viewer-stage:active {
+  cursor: grabbing;
 }
 .ld-viewer-page {
   display: grid;

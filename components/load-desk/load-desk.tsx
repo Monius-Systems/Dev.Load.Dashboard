@@ -3440,7 +3440,19 @@ export default function LoadDesk() {
                 <aside className="ld-aside" aria-label={t('Source ticket')}>
                   <div>
                     <h3>{t('Original')}</h3>
-                    <SourcePreview item={active} />
+                    {/* The column is as wide as the column is; a weight printed
+                        small on a photographed ticket is not readable at that
+                        size. Opening it puts the picture over the whole screen,
+                        where it can be zoomed into and moved about. */}
+                    <button
+                      type="button"
+                      className="ld-aside-open"
+                      title={t('Open to zoom')}
+                      aria-label={t('Open the original to zoom in')}
+                      onClick={() => setViewingTicket(true)}
+                    >
+                      <SourcePreview item={active} />
+                    </button>
                     <p className="ld-aside-note">
                       {active.source.file_name} · {fileSize(active.source.size)} ·
                       SHA-256 <code>{active.source.sha256.slice(0, 12)}</code>
