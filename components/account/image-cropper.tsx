@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  movedBox,
+  resizedBox,
+  wholeOf,
+  type Box,
+  type Corner,
+} from '@/lib/crop-box';
 import { useT } from '@/lib/i18n/use-t';
 
 /**
@@ -16,11 +23,6 @@ import { useT } from '@/lib/i18n/use-t';
  * fractions of the original, because that is the space the fingers and the
  * pointer work in; it is scaled back up to the original when it is cut.
  */
-
-type Box = { x: number; y: number; w: number; h: number };
-type Corner = 'nw' | 'ne' | 'sw' | 'se';
-/** Small enough to crop tightly, large enough to still have corners to grab. */
-const MIN_SIDE = 40;
 
 export default function ImageCropper({
   file,
@@ -44,6 +46,9 @@ export default function ImageCropper({
   // picture a frame late and costs a second pass for nothing.
   const [url] = useState(() => URL.createObjectURL(file));
   const [box, setBox] = useState<Box | null>(null);
+  // The size the picture was last measured at, for keeping the box on the same
+  // part of it when the window changes shape.
+  const shownSize = useRef({ width: 0, height: 0 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,19 +63,44 @@ export default function ImageCropper({
     };
   }, []);
 
-  /** The whole picture to start with, or the largest square inside it. */
-  function fitBox() {
+  /**
+   * The box follows the size of the picture as it is shown.
+   *
+   * Not `onLoad`: the picture can finish decoding before the effect above has
+   * called showModal(), and a dialog that is not open yet has no layout — the
+   * measurement comes back 0 and the box is never drawn at all. An observer
+   * asks the other way round, and answers again if the window is resized,
+   * where the box would otherwise be left describing a picture of another size.
+   */
+  useEffect(() => {
     const shown = picture.current;
     if (!shown) return;
-    const width = shown.clientWidth;
-    const height = shown.clientHeight;
-    if (!width || !height) return;
-    const side = Math.min(width, height);
-    setBox(
-      square
-        ? { x: (width - side) / 2, y: (height - side) / 2, w: side, h: side }
-        : { x: 0, y: 0, w: width, h: height },
-    );
+    const observer = new ResizeObserver(() => {
+      const width = shown.clientWidth;
+      const height = shown.clientHeight;
+      if (!width || !height) return;
+      const was = shownSize.current;
+      shownSize.current = { width, height };
+      setBox((current) =>
+        current && was.width && was.height
+          ? {
+              x: current.x * (width / was.width),
+              y: current.y * (height / was.height),
+              w: current.w * (width / was.width),
+              h: current.h * (height / was.height),
+            }
+          : wholeOf(width, height, square),
+      );
+    });
+    observer.observe(shown);
+    return () => observer.disconnect();
+  }, [square]);
+
+  /** Back to the whole picture, for the Reset button. */
+  function fitBox() {
+    const shown = picture.current;
+    if (!shown?.clientWidth || !shown.clientHeight) return;
+    setBox(wholeOf(shown.clientWidth, shown.clientHeight, square));
   }
 
   /** Dragging the box itself, or one of its corners. */
@@ -79,9 +109,7 @@ export default function ImageCropper({
     if (!shown || !box) return;
     event.preventDefault();
     event.stopPropagation();
-    (event.target as Element).setPointerCapture(event.pointerId);
-    const limitW = shown.clientWidth;
-    const limitH = shown.clientHeight;
+    const limit = { width: shown.clientWidth, height: shown.clientHeight };
     const fromX = event.clientX;
     const fromY = event.clientY;
     const start = box;
@@ -89,38 +117,20 @@ export default function ImageCropper({
     const move = (moved: PointerEvent) => {
       const dx = moved.clientX - fromX;
       const dy = moved.clientY - fromY;
-      if (!corner) {
-        setBox({
-          ...start,
-          x: Math.min(limitW - start.w, Math.max(0, start.x + dx)),
-          y: Math.min(limitH - start.h, Math.max(0, start.y + dy)),
-        });
-        return;
-      }
-      // The corner opposite the one being dragged stays where it is.
-      const right = start.x + start.w;
-      const bottom = start.y + start.h;
-      const west = corner === 'nw' || corner === 'sw';
-      const north = corner === 'nw' || corner === 'ne';
-      let x = west ? Math.min(right - MIN_SIDE, Math.max(0, start.x + dx)) : start.x;
-      let y = north ? Math.min(bottom - MIN_SIDE, Math.max(0, start.y + dy)) : start.y;
-      let w = west ? right - x : Math.min(limitW - start.x, Math.max(MIN_SIDE, start.w + dx));
-      let h = north ? bottom - y : Math.min(limitH - start.y, Math.max(MIN_SIDE, start.h + dy));
-      if (square) {
-        // The smaller of the two, so the box never leaves the picture.
-        const side = Math.min(w, h);
-        w = h = side;
-        if (west) x = right - side;
-        if (north) y = bottom - side;
-      }
-      setBox({ x, y, w, h });
+      setBox(
+        corner
+          ? resizedBox(start, corner, dx, dy, limit, square)
+          : movedBox(start, dx, dy, limit),
+      );
     };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   }
 
   /** Cuts the box out of the original, at the original's own resolution. */

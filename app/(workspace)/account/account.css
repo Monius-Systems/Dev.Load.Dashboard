@@ -690,7 +690,13 @@
   width: fit-content;
   max-width: 100%;
   margin: 0 auto;
-  /* The drag is this element's, not the browser's scroll. */
+  /* The box dims everything around it with one enormous shadow, and this is
+     what keeps that shadow on the picture: without it the dim spreads across
+     the dialog and out over the page. */
+  overflow: hidden;
+  border-radius: var(--ui-radius-sm);
+  /* The drag is this element's, not the browser's scroll. touch-action does
+     not inherit, so the box and its corners say it again for themselves. */
   touch-action: none;
   user-select: none;
 }
@@ -711,33 +717,41 @@
   border: 2px solid #fff;
   box-shadow: 0 0 0 9999px rgb(16 24 40 / 55%);
   cursor: move;
+  touch-action: none;
 }
+/* Inside the corners, not straddling them: the stage clips what leaves it, and
+   a box drawn tight to the edge of the picture — which is where a logo's box
+   starts — would have had half of every handle cut off. */
 .ac-cropper-corner {
   position: absolute;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border: 2px solid #fff;
   background: var(--ui-accent);
-  border-radius: 3px;
+  touch-action: none;
 }
 .ac-cropper-corner[data-corner='nw'] {
-  top: -10px;
-  left: -10px;
+  top: 0;
+  left: 0;
+  border-radius: 4px 0 0 0;
   cursor: nwse-resize;
 }
 .ac-cropper-corner[data-corner='ne'] {
-  top: -10px;
-  right: -10px;
+  top: 0;
+  right: 0;
+  border-radius: 0 4px 0 0;
   cursor: nesw-resize;
 }
 .ac-cropper-corner[data-corner='sw'] {
-  bottom: -10px;
-  left: -10px;
+  bottom: 0;
+  left: 0;
+  border-radius: 0 0 0 4px;
   cursor: nesw-resize;
 }
 .ac-cropper-corner[data-corner='se'] {
-  bottom: -10px;
-  right: -10px;
+  bottom: 0;
+  right: 0;
+  border-radius: 0 0 4px 0;
   cursor: nwse-resize;
 }
 .ac-cropper-hint {
