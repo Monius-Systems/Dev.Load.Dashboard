@@ -70,6 +70,7 @@ import {
 } from '@/lib/load-desk/profiles';
 import { shellConfig } from '@/lib/shell-config';
 import { useCompanyLogo, useCompanyName } from '@/components/shell/use-company-name';
+import ImageCropper from '@/components/account/image-cropper';
 import { AvatarContent, CompanyMark } from '@/components/shell/user-avatar';
 
 const shortDate = (locale: Locale, iso: string | null | undefined) =>
@@ -192,6 +193,8 @@ function ProfileHero({
   const photoInput = useRef<HTMLInputElement>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  // The picture waiting to be cropped, or null when none is.
+  const [cropping, setCropping] = useState<File | null>(null);
 
   const photo = account?.avatarUrl ?? null;
   const name =
@@ -200,14 +203,25 @@ function ProfileHero({
     ? t('Unprotected local preview. Nothing on this page leaves this browser.')
     : (account?.email ?? t('Signed in'));
 
-  async function choosePhoto(files: FileList | null) {
+  /**
+   * A photo goes to the cropper first: what is stored is a square, and which
+   * square it is should be the person's choice rather than whatever happened
+   * to be in the middle of the frame.
+   */
+  function choosePhoto(files: FileList | null) {
     const file = files?.[0];
     // Reset so choosing the same file again still fires a change event.
     if (photoInput.current) photoInput.current.value = '';
     if (!file || photoBusy) return;
+    setPhotoError(null);
+    setCropping(file);
+  }
+
+  async function savePhoto(cropped: File) {
+    setCropping(null);
     setPhotoBusy(true);
     setPhotoError(null);
-    const message = await uploadAvatar(file);
+    const message = await uploadAvatar(cropped);
     setPhotoBusy(false);
     if (message) return setPhotoError(message);
     toast.add({
@@ -231,7 +245,7 @@ function ProfileHero({
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 hidden
-                onChange={(event) => void choosePhoto(event.target.files)}
+                onChange={(event) => choosePhoto(event.target.files)}
               />
               <button
                 type="button"
@@ -291,6 +305,16 @@ function ProfileHero({
           <dd>{shortDate(locale, account?.lastSignInAt)}</dd>
         </div>
       </dl>
+      {cropping ? (
+        <ImageCropper
+          key={`${cropping.name}-${cropping.size}`}
+          file={cropping}
+          square
+          title={t('Crop your photo')}
+          onCancel={() => setCropping(null)}
+          onCropped={(cropped) => void savePhoto(cropped)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -524,15 +548,24 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
   const [error, setError] = useState<string | null>(null);
   const logoInput = useRef<HTMLInputElement>(null);
   const [logoBusy, setLogoBusy] = useState(false);
+  const [croppingLogo, setCroppingLogo] = useState<File | null>(null);
 
-  async function chooseLogo(files: FileList | null) {
+  /** A logo is cropped first too: files arrive with whatever margin they were
+   *  saved with, and that margin is what the tile would show. */
+  function chooseLogo(files: FileList | null) {
     const file = files?.[0];
     // Reset so choosing the same file again still fires a change event.
     if (logoInput.current) logoInput.current.value = '';
     if (!file || logoBusy) return;
+    setError(null);
+    setCroppingLogo(file);
+  }
+
+  async function saveLogo(cropped: File) {
+    setCroppingLogo(null);
     setLogoBusy(true);
     setError(null);
-    const message = await saveCompanyLogo(file);
+    const message = await saveCompanyLogo(cropped);
     setLogoBusy(false);
     if (message) return setError(message);
     toast.add({
@@ -656,14 +689,17 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
         {t('It shows in the sidebar and menus for everyone in the workspace.')}
       </p>
       <div className="ac-workspace-links">
-        {canEdit ? (
+        {/* The logo is part of changing what the workspace is called, so it
+            keeps that company: while the name is being edited, and out of the
+            way the rest of the time. */}
+        {canEdit && draft !== null ? (
           <>
             <input
               ref={logoInput}
               type="file"
               accept="image/png,image/jpeg,image/webp"
               hidden
-              onChange={(event) => void chooseLogo(event.target.files)}
+              onChange={(event) => chooseLogo(event.target.files)}
             />
             <Button
               type="button"
@@ -701,6 +737,15 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
           {t('Company Name and Address')}
         </Link>
       </div>
+      {croppingLogo ? (
+        <ImageCropper
+          key={`${croppingLogo.name}-${croppingLogo.size}`}
+          file={croppingLogo}
+          title={t('Crop the logo')}
+          onCancel={() => setCroppingLogo(null)}
+          onCropped={(cropped) => void saveLogo(cropped)}
+        />
+      ) : null}
     </section>
   );
 }

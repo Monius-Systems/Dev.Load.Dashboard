@@ -645,3 +645,126 @@
     color: #fff;
   }
 }
+
+/* ===================================================== choosing what is kept */
+/* A picture with a box over it: dragged by its middle, resized by its corners,
+   and what is inside it is what is uploaded. A real dialog, so it is in the top
+   layer over the page and Escape is the browser's business. */
+.ac-cropper {
+  width: min(560px, calc(100vw - 2 * var(--ui-space-4)));
+  max-width: none;
+  max-height: calc(100dvh - 2 * var(--ui-space-4));
+  margin: auto;
+  border: 0;
+  border-radius: var(--ui-radius-lg);
+  padding: var(--ui-space-5);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 6%),
+    0 24px 60px rgb(16 24 40 / 20%);
+}
+.ac-cropper::backdrop {
+  background: rgb(16 24 40 / 55%);
+}
+.ac-cropper-title {
+  margin: 0 0 var(--ui-space-4);
+  font-size: var(--type-base);
+  font-weight: var(--type-medium);
+}
+/* Shrink-wrapped to the picture, so the box's coordinates and the picture's
+   are the same coordinates. */
+.ac-cropper-stage {
+  position: relative;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
+  /* The drag is this element's, not the browser's scroll. */
+  touch-action: none;
+  user-select: none;
+}
+.ac-cropper-picture {
+  display: block;
+  max-width: 100%;
+  /* Room for the buttons and the hint under it on a short window. */
+  max-height: min(56dvh, 420px);
+  width: auto;
+  height: auto;
+  border-radius: var(--ui-radius-sm);
+}
+/* Everything outside the box is dimmed by the box's own giant shadow, which
+   costs nothing and needs no second element over the picture. */
+.ac-cropper-box {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 9999px rgb(16 24 40 / 55%);
+  cursor: move;
+}
+.ac-cropper-corner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #fff;
+  background: var(--ui-accent);
+  border-radius: 3px;
+}
+.ac-cropper-corner[data-corner='nw'] {
+  top: -10px;
+  left: -10px;
+  cursor: nwse-resize;
+}
+.ac-cropper-corner[data-corner='ne'] {
+  top: -10px;
+  right: -10px;
+  cursor: nesw-resize;
+}
+.ac-cropper-corner[data-corner='sw'] {
+  bottom: -10px;
+  left: -10px;
+  cursor: nesw-resize;
+}
+.ac-cropper-corner[data-corner='se'] {
+  bottom: -10px;
+  right: -10px;
+  cursor: nwse-resize;
+}
+.ac-cropper-hint {
+  margin: var(--ui-space-3) 0 0;
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
+  text-align: center;
+}
+.ac-cropper-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-4);
+}
+.ac-cropper-actions button {
+  min-height: 38px;
+  border: 0;
+  border-radius: var(--ui-radius-md);
+  padding: 0 var(--ui-space-4);
+  font: inherit;
+  font-weight: var(--type-medium);
+  cursor: pointer;
+}
+.ac-cropper-reset {
+  margin-right: auto;
+  background: none;
+  color: var(--ui-text-2);
+}
+.ac-cropper-cancel {
+  background: var(--ui-fill);
+  color: var(--ui-text);
+}
+.ac-cropper-save {
+  background: var(--ui-accent);
+  color: #fff;
+}
+.ac-cropper-actions button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

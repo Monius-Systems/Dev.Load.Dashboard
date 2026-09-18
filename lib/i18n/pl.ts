@@ -90,6 +90,14 @@ export const PL_TEXT: Record<string, string> = {
   'missing information': 'brak informacji',
   'On another invoice': 'Na innej fakturze',
   'on another invoice': 'na innej fakturze',
+  'Crop your photo': 'Przytnij zdjęcie',
+  'Crop the logo': 'Przytnij logo',
+  'Drag the box to move it, and its corners to change what is kept.':
+    'Przeciągnij ramkę, aby ją przesunąć, a jej rogi, aby zmienić przycięcie.',
+  Reset: 'Przywróć',
+  'That picture could not be read.': 'Nie udało się odczytać tego obrazu.',
+  'This browser cannot prepare the picture.':
+    'Ta przeglądarka nie może przygotować tego obrazu.',
   'Logo saved': 'Logo zapisane',
   'Logo removed': 'Logo usunięte',
   'The company initials show again.': 'Znów widać inicjały firmy.',
