@@ -139,7 +139,7 @@ import {
   type TextField,
   type Ticket,
 } from '@/lib/load-desk/types';
-import { RATING_ISSUES, validateTicket, WEIGHT_TOLERANCE_LB } from '@/lib/load-desk/validate';
+import { validateTicket, WEIGHT_TOLERANCE_LB } from '@/lib/load-desk/validate';
 import {
   deskSnapshot,
   serverDeskSnapshot,
@@ -2233,12 +2233,15 @@ export default function LoadDesk() {
     stopHere >= 0 && stopHere < invoiceStops.length - 1 ? invoiceStops[stopHere + 1] : null;
 
   /**
-   * Missing what a ticket cannot be invoiced without. A rate nobody has entered
-   * yet is not that: it keeps the invoice a draft but the ticket itself is
-   * whole, which is the line RATING_ISSUES draws.
+   * Anything still to be filled in before this ticket is done with — a missing
+   * rate included. A rate only keeps the invoice a draft rather than the ticket
+   * incomplete, but a draft is not finished either, and a tick beside a ticket
+   * that still needs a rate says it is. The same rule the batch list marks
+   * "Needs review" by, so a ticket does not read as two different things in two
+   * places.
    */
   const missingInformation = (item: QueueItem) =>
-    validateTicket(item.ticket).some((issue) => !RATING_ISSUES.has(issue));
+    validateTicket(item.ticket).length > 0;
 
   const queueRow =
     active && ticket ? (
