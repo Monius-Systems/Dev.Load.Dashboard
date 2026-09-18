@@ -273,10 +273,15 @@
 /* The way out is not the lock. A modal dialog hands focus to the first thing
    inside it as it opens, and that is this button, so its ring is on the screen
    from the moment the scanner is — in the colour that means the camera has
-   found the ticket, before it has seen anything at all. Blue: a control, not a
-   reading. */
-.close:focus-visible {
-  outline-color: #0a84ff;
+   found the ticket, before it has seen anything at all. The app's own focus
+   ring instead, which is what the same circle-and-cross wears over a
+   photograph on the ticket viewer.
+   Scoped through .scanner on purpose: .scanner button:focus-visible above
+   carries an element in it and so outranks a lone .close, which would leave
+   this rule doing nothing at all. */
+.scanner .close:focus-visible {
+  outline: 2px solid var(--ui-focus);
+  outline-offset: 2px;
 }
 
 /* The camera shutter every phone owner already knows: a ring with a disc in
