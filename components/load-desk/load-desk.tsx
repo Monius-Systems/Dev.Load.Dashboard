@@ -116,7 +116,10 @@ import {
   numbersForWaitingBatches,
   recordBatch,
   isPendingInvoiceNumber,
+  isUndatedBatch,
+  pendingInvoiceNumber,
   shownInvoiceNumber,
+  UNDATED_BATCH,
   stepReviewStop,
   ticketDateValue,
   type InvoiceMove,
@@ -1226,9 +1229,15 @@ export default function LoadDesk() {
       const numbers = invoiceNumbersInOrder(queue);
       const groups = groupByTicketDate(unfiled, (item) => item.ticket.ticket_date);
       grouped = groups.flatMap((group) => {
-        const batchId = makeId();
-        const number = openingInvoiceNumber(numbers);
-        numbers.push(number);
+        // Tickets with no date read wait together, on no invoice and no
+        // number, until the date is entered; the batch is the same one filed
+        // scans wait in, so they are all in one place.
+        const undated = group.date === null;
+        const batchId = undated ? UNDATED_BATCH : makeId();
+        const number = undated
+          ? pendingInvoiceNumber(UNDATED_BATCH)
+          : openingInvoiceNumber(numbers);
+        if (!undated) numbers.push(number);
         return group.items.map((item) => ({
           ...item,
           batch_id: batchId,
@@ -1241,9 +1250,26 @@ export default function LoadDesk() {
         }));
       });
       grouped = [...onTarget, ...filed, ...grouped];
+      // Said plainly, and first: a ticket nobody can date is a ticket nobody
+      // can invoice, and it is waiting rather than billed on a guessed day.
+      const undated = grouped.filter((item) => isUndatedBatch(item.batch_id)).length;
+      if (undated) {
+        const notice = t(
+          'No date was detected on {tickets}, now waiting in “Date not found”. Enter the date to put each on an invoice.',
+          { tickets: plural(undated, 'ticket') },
+        );
+        failures.unshift(notice);
+        toast.add({
+          title: t('Date not found on {tickets}', { tickets: plural(undated, 'ticket') }),
+          description: notice,
+          type: 'error',
+        });
+      }
       const invoices =
         new Set(
-          grouped.map((item) => item.invoice.invoice_number.trim().toLowerCase()),
+          grouped
+            .filter((item) => !isUndatedBatch(item.batch_id))
+            .map((item) => item.invoice.invoice_number.trim().toLowerCase()),
         ).size;
       const summary = !open
         ? t('{tickets} filed to check later. Open the batch below when you are ready.', {
@@ -3090,7 +3116,7 @@ export default function LoadDesk() {
               batchesByDate.map((batch) => (
               <section key={batch.date ?? 'undated'} className="ld-batch">
                 <div className="ld-batch-head">
-                  <strong>{batch.date ? date(batch.date) : t('No date read')}</strong>
+                  <strong>{batch.date ? date(batch.date) : t('Date not found')}</strong>
                   <span>
                     {plural(batch.items.length, 'ticket')}
                     {batch.waiting
@@ -3131,7 +3157,9 @@ export default function LoadDesk() {
                               ? t('Invoice {number}', {
                                   number: shownInvoiceNumber(record.invoice.invoice_number),
                                 })
-                              : t('Waiting for the rest of this upload')}
+                              : isUndatedBatch(recordBatch(record))
+                                ? t('Date not found · no invoice yet')
+                                : t('Waiting for the rest of this upload')}
                           </span>
                         </span>
                       </div>
@@ -3243,6 +3271,15 @@ export default function LoadDesk() {
                   <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
                     {sectionSummary('Ticket', ticketDetail)}
                     <div className="ld-fields">
+                      {/* No date came off the scan, so this ticket is on no
+                          invoice. The date is what puts it on one. */}
+                      {isUndatedBatch(active.batch_id) && !active.ticket.ticket_date?.trim() ? (
+                        <p className="ld-weight" data-tone="bad" role="alert">
+                          {t(
+                            'No date was detected on this ticket. Read it off the original and enter it below; the ticket then goes on that day’s invoice.',
+                          )}
+                        </p>
+                      ) : null}
                       {renderFields(TICKET_FIELDS)}
                     </div>
                   </details>
@@ -3316,13 +3353,19 @@ export default function LoadDesk() {
                         shownInvoiceNumber(active.invoice.invoice_number),
                         (value) => setInvoice({ invoice_number: value }),
                         {
-                          required: true,
+                          // A ticket with no date has no number to give yet;
+                          // the date, entered in step 1, is what earns it one
+                          // on save. Requiring a number here would stop that
+                          // save at the very field it is about to fill.
+                          required: !isUndatedBatch(active.batch_id),
                           placeholder: t('e.g. 1001'),
                           hint: shownInvoiceNumber(active.invoice.invoice_number)
                             ? undefined
-                            : isPendingInvoiceNumber(active.invoice.invoice_number)
-                              ? t('Waiting for the rest of this upload to be read.')
-                              : t('Enter your first invoice number. The ones after it follow in order.'),
+                            : isUndatedBatch(active.batch_id)
+                              ? t('Given once the ticket has a date: enter it in step 1.')
+                              : isPendingInvoiceNumber(active.invoice.invoice_number)
+                                ? t('Waiting for the rest of this upload to be read.')
+                                : t('Enter your first invoice number. The ones after it follow in order.'),
                         },
                       )}
                       {/* Read-only on purpose: an invoice is dated by its

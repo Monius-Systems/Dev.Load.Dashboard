@@ -6,6 +6,8 @@ import {
   batchInvoiceFor,
   invoiceMoveFor,
   isPendingInvoiceNumber,
+  isUndatedBatch,
+  UNDATED_BATCH,
   needsReview,
   numbersByTicketDate,
   shownInvoiceNumber,
@@ -86,15 +88,54 @@ void test('a batch already invoiced keeps its real number', () => {
   assert.equal(batchInvoiceFor([billed], '2026-01-06').invoice_number, '1042');
 });
 
-void test('a ticket whose date could not be read is still filed somewhere', () => {
-  // Never dropped for want of a date: it goes somewhere visible and fixable.
+void test('a ticket whose date could not be read waits in the holding batch', () => {
+  // Never dropped for want of a date: it goes somewhere visible and fixable —
+  // but not onto an invoice, and never onto a number. Nobody can bill a day
+  // nobody knows.
   const undated = batchInvoiceFor([saved('2026-01-06', '1042')], null);
+  assert.equal(isUndatedBatch(undated.batch_id), true);
   assert.equal(isPendingInvoiceNumber(undated.invoice_number), true);
   assert.equal(batchDate(saved(null, '1043')), 'undated');
   assert.equal(batchDate(saved('  ', '1043')), 'undated');
-  // And a second undated scan joins the first rather than piling up batches.
-  const first = saved(null, '1043');
-  assert.equal(batchInvoiceFor([first], null).batch_id, first.invoice_batch_id);
+  // A second undated scan joins the first rather than piling up batches.
+  const first = saved(null, '1043', { invoice_batch_id: UNDATED_BATCH });
+  const second = batchInvoiceFor([first], null);
+  assert.equal(second.batch_id, UNDATED_BATCH);
+  assert.equal(second.opened, false);
+  // And it never takes a number an earlier undated ticket was given under the
+  // old rule: the mark, always.
+  assert.equal(isPendingInvoiceNumber(second.invoice_number), true);
+});
+
+void test('the holding batch is left out of the numbering', () => {
+  // An upload of the 6th, the 7th and a page with no date: two invoices, and
+  // the undated page waits with no number, so none is burnt on it.
+  const jan6 = saved('2026-01-06', 'x');
+  const jan7 = saved('2026-01-07', 'x');
+  const lost = saved(null, 'DRAFT-batch-undated', { invoice_batch_id: UNDATED_BATCH });
+  const wanted = numbersByTicketDate(
+    [saved('2026-01-01', '5'), jan6, jan7, lost],
+    [jan6.invoice_batch_id!, jan7.invoice_batch_id!, UNDATED_BATCH],
+  );
+  assert.equal(wanted.get(jan6.invoice_batch_id!), '6');
+  assert.equal(wanted.get(jan7.invoice_batch_id!), '7');
+  assert.equal(wanted.has(UNDATED_BATCH), false, 'no number for the undated');
+});
+
+void test('entering the date takes a ticket out of the holding batch', () => {
+  // Alone there or not, it leaves: the holding batch is not an invoice to
+  // stay on. Onto the invoice already filed for that day, or one of its own.
+  const jan6 = saved('2026-01-06', '6');
+  assert.equal(
+    invoiceMoveFor({ batchId: UNDATED_BATCH, date: '2026-01-06' }, [jan6]).kind,
+    'join',
+    'the day is filed already',
+  );
+  const opened = invoiceMoveFor({ batchId: UNDATED_BATCH, date: '2026-01-09' }, [jan6]);
+  assert.equal(opened.kind, 'open', 'nothing filed for the day, and nobody left behind');
+  if (opened.kind === 'open') assert.equal(opened.invoiceNumber, '7');
+  // Still no date: still waiting.
+  assert.equal(invoiceMoveFor({ batchId: UNDATED_BATCH, date: null }, [jan6]).kind, 'stay');
 });
 
 void test('a ticket is waiting until somebody has checked it', () => {

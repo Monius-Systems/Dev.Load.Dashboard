@@ -46,7 +46,10 @@ void test('tickets from different dates become invoices in date order', () => {
   ]);
 });
 
-void test('a ticket without a date joins the ticket before it', () => {
+void test('a ticket without a date is held apart, after every dated one', () => {
+  // It used to be given the date of the ticket before it and billed on that
+  // day's invoice without anyone being told. A ticket with no date is not
+  // ready to invoice: it waits, together with the others like it.
   const groups = groupByTicketDate(
     [
       { page: 1, date: null },
@@ -58,8 +61,9 @@ void test('a ticket without a date joins the ticket before it', () => {
     dateOf,
   );
   assert.deepEqual(pages(groups), [
-    ['2026-09-12', [4, 5]],
-    ['2026-09-13', [1, 2, 3]],
+    ['2026-09-12', [4]],
+    ['2026-09-13', [2]],
+    [null, [1, 3, 5]],
   ]);
 });
 
@@ -162,40 +166,28 @@ void test('every ticket of a batch shares the batch number', () => {
   assert.deepEqual([...assigned], [['batch-2026-09-12', '8']]);
 });
 
-void test('an undated batch is numbered after every dated one', () => {
-  // It has no place in a run of dates, so it does not take a number out of the
-  // middle of one.
+void test('an undated batch is never numbered', () => {
+  // A ticket cannot be billed for a day nobody knows. The batch waits without
+  // a number, and the dated batches are numbered as if it were not there, so
+  // no number is burnt on it and none is taken out of the middle of the run.
   const assigned = numbersForWaitingBatches(
     ['20'],
     waiting([
       ['batch-undated', null],
       ['batch-2026-09-12', '2026-09-12'],
+      ['batch-blank', '   '],
+      ['batch-2026-09-13', '2026-09-13'],
     ]),
   );
   assert.deepEqual(
     [...assigned],
     [
       ['batch-2026-09-12', '21'],
-      ['batch-undated', '22'],
+      ['batch-2026-09-13', '22'],
     ],
   );
-});
-
-void test('two undated batches keep the order they arrived in', () => {
-  const assigned = numbersForWaitingBatches(
-    ['3'],
-    waiting([
-      ['batch-second', '   '],
-      ['batch-first', null],
-    ]),
-  );
-  assert.deepEqual(
-    [...assigned],
-    [
-      ['batch-second', '4'],
-      ['batch-first', '5'],
-    ],
-  );
+  assert.equal(assigned.has('batch-undated'), false);
+  assert.equal(assigned.has('batch-blank'), false);
 });
 
 void test('with no series to continue the numbering starts', () => {

@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789768134.1491964,
-    "seen": 1789768655.417372,
-    "ast_hash": "533aa4f8ff48b090ad6d12f0f9873648",
+    "mtime": 1789769171.2238646,
+    "seen": 1789769630.100086,
+    "ast_hash": "c5fd999acd11afbc8498e6cfe7264bbd",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "components/profiles/customers-page.tsx": {
-    "mtime": 1789668472.07489,
-    "seen": 1789684604.783875,
-    "ast_hash": "98fceb4aa1e07b615a5103e652356134",
+    "mtime": 1789769273.6850579,
+    "seen": 1789769630.10009,
+    "ast_hash": "deaaf8bd0fc87387cf635b737b537d27",
     "semantic_hash": ""
   },
   "components/profiles/fleet-page.tsx": {
@@ -510,15 +510,15 @@
     "semantic_hash": ""
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1789768134.1498358,
-    "seen": 1789768655.417425,
-    "ast_hash": "bff5bdc10392cb2913616491eb59dee0",
+    "mtime": 1789769304.5266283,
+    "seen": 1789769630.100141,
+    "ast_hash": "af6463bf1ed47040d42859f936bf85ef",
     "semantic_hash": ""
   },
   "lib/i18n/pl.ts": {
-    "mtime": 1789738511.0023992,
-    "seen": 1789738546.817749,
-    "ast_hash": "55fe24a4630cf99a8131868d981acc1b",
+    "mtime": 1789769304.5259736,
+    "seen": 1789769630.100142,
+    "ast_hash": "11c2f4d70e7a4837e671d76264377ee9",
     "semantic_hash": ""
   },
   "lib/i18n/store.ts": {
@@ -612,15 +612,15 @@
     "semantic_hash": ""
   },
   "lib/load-desk/profiles.ts": {
-    "mtime": 1789752813.172272,
-    "seen": 1789752989.998055,
-    "ast_hash": "29fb49a9e21389e54c97549eb7c54300",
+    "mtime": 1789769147.5558043,
+    "seen": 1789769630.100163,
+    "ast_hash": "8d8c27aa375756d3e177d27385bc95fd",
     "semantic_hash": ""
   },
   "lib/load-desk/record-input.ts": {
-    "mtime": 1789767924.327625,
-    "seen": 1789768655.4174452,
-    "ast_hash": "bf07fe066edc16ac802b036ba7766a62",
+    "mtime": 1789769106.6056345,
+    "seen": 1789769630.1001642,
+    "ast_hash": "4ba039327f9c17238947ca2b71c3c961",
     "semantic_hash": ""
   },
   "lib/load-desk/records.ts": {
@@ -1431,6 +1431,18 @@
     "mtime": 1789767953.771744,
     "seen": 1789768655.417484,
     "ast_hash": "3073d65617105b8cce950f02f123f366",
+    "semantic_hash": ""
+  },
+  "lib/load-desk/customer-rates.ts": {
+    "mtime": 1789769147.5560055,
+    "seen": 1789769630.10015,
+    "ast_hash": "68a26bdfaa44a8505c0d20c6cc2e2b9c",
+    "semantic_hash": ""
+  },
+  "tests/customer-site-rates.test.ts": {
+    "mtime": 1789769350.7491136,
+    "seen": 1789769630.100242,
+    "ast_hash": "900e8164e78db2a35e915fe4539e6af2",
     "semantic_hash": ""
   }
 }

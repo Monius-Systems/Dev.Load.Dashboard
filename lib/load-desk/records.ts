@@ -65,21 +65,22 @@ export const recordTons = (record: SavedRecord) =>
   (record.ticket.net_lb === null ? 0 : record.ticket.net_lb / 2000);
 
 /**
- * Splits an upload into one invoice per ticket date, oldest date first. A
- * ticket whose date was not read joins the ticket before it (usually the
- * previous page), or the earliest-listed date when it comes first. Without any
- * dates the whole upload is one group with a null date.
+ * Splits an upload into one invoice per ticket date, oldest date first.
+ *
+ * A ticket whose date was not read is held apart in a group of its own, with a
+ * null date, after every dated one. It used to be given the date of the ticket
+ * before it, on the theory that it was the second page of that ticket — and
+ * then billed on that day's invoice, at that day's number, without anyone
+ * being told the date had been guessed. A ticket with no date is a ticket that
+ * is not ready to invoice; it waits for the date to be read off the paper.
  */
 export function groupByTicketDate<T>(
   items: T[],
   dateOf: (item: T) => string | null,
 ): { date: string | null; items: T[] }[] {
-  const dates = items.map((item) => dateOf(item)?.trim() || null);
   const groups = new Map<string | null, T[]>();
-  let previous = dates.find((date) => date !== null) ?? null;
-  for (const [index, item] of items.entries()) {
-    const date = dates[index] ?? previous;
-    previous = date;
+  for (const item of items) {
+    const date = dateOf(item)?.trim() || null;
     groups.set(date, [...(groups.get(date) ?? []), item]);
   }
   return [...groups]
@@ -190,19 +191,21 @@ export function nextInvoiceNumber(numbersOldestFirst: string[]): string | null {
  * 12th. Books read in number order, so the oldest date takes the number after
  * the last invoice on file and each later date takes the one after that.
  *
- * A batch whose tickets carry no date has no place in a run of dates: it goes
- * after every dated one, keeping the order it arrived in. Returns nothing for
- * A workspace with no invoice to follow yet starts its numbering at
- * `FIRST_INVOICE_NUMBER`, so a batch is never left without a number.
+ * A batch whose tickets carry no date is not numbered at all — see
+ * `UNDATED_BATCH` — and is left out of what is returned. A workspace with no
+ * invoice to follow yet starts its numbering at `FIRST_INVOICE_NUMBER`, so a
+ * dated batch is never left without a number.
  */
 export function numbersForWaitingBatches(
   numbersOldestFirst: string[],
   waiting: { batchId: string; ticketDate: string | null }[],
 ): Map<string, string> {
-  // One entry per batch: the tickets of a batch share its number.
+  // One entry per batch: the tickets of a batch share its number. A batch
+  // with no date is not an invoice and takes none; it waits for its date.
   const batches: { batchId: string; day: number | null; arrived: number }[] = [];
   for (const item of waiting) {
     if (batches.some((batch) => batch.batchId === item.batchId)) continue;
+    if (ticketDateValue(item.ticketDate) === null) continue;
     batches.push({
       batchId: item.batchId,
       day: ticketDateValue(item.ticketDate),
@@ -532,6 +535,14 @@ export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
   record.ticket.ticket_date?.trim() || 'undated';
 
 /**
+ * The batch every ticket with no date read off it waits in. It is not an
+ * invoice and never takes a number: a ticket cannot be billed for a day nobody
+ * knows. Entering the date in review moves the ticket to that day's invoice.
+ */
+export const UNDATED_BATCH = 'batch-undated';
+export const isUndatedBatch = (batchId: string) => batchId === UNDATED_BATCH;
+
+/**
  * The invoice a ticket photographed for `ticketDate` belongs on: the one the
  * other tickets of that date are already on, or a new batch for a date not filed
  * yet.
@@ -547,6 +558,16 @@ export function batchInvoiceFor(
   ticketDate: string | null,
 ): { invoice_number: string; batch_id: string; opened: boolean } {
   const date = ticketDate?.trim() || 'undated';
+  // No date read: into the holding batch, on no invoice. Always the mark,
+  // never a number an earlier undated ticket may have been given under the
+  // old rule, so nothing undated is ever billed.
+  if (date === 'undated') {
+    return {
+      invoice_number: pendingInvoiceNumber(UNDATED_BATCH),
+      batch_id: UNDATED_BATCH,
+      opened: !records.some((record) => recordBatch(record) === UNDATED_BATCH),
+    };
+  }
   const existing = records.find((record) => batchDate(record) === date);
   if (existing) {
     return {
@@ -611,7 +632,12 @@ export function invoiceMoveFor(
   const leftBehind =
     others.some((record) => recordBatch(record) === ticket.batchId) ||
     queued.some((item) => item.batchId === ticket.batchId);
-  if (!leftBehind) return { kind: 'stay' };
+  // The holding batch for undated tickets is not an invoice: a ticket given
+  // its date leaves it whether or not anything is left behind, onto an
+  // invoice of its own.
+  if (!leftBehind && !(isUndatedBatch(ticket.batchId) && ticket.date?.trim())) {
+    return { kind: 'stay' };
+  }
   const numbers = [...others]
     .sort((a, b) => a.id - b.id)
     .map((record) => record.invoice.invoice_number);

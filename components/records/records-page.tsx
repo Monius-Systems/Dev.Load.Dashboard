@@ -50,7 +50,11 @@ import {
   invoiceGroups,
   invoiceLines,
   invoicesCsv,
+  isPendingInvoiceNumber,
+  isUndatedBatch,
+  recordBatch,
   recordMatches,
+  shownInvoiceNumber,
   ticketStatus,
   type InvoiceGroup,
 } from '@/lib/load-desk/records';
@@ -97,6 +101,21 @@ function dateRange({ t, date }: Translator, group: InvoiceGroup) {
   return first === last
     ? t('Tickets {date}', { date: first })
     : t('Tickets {first} – {last}', { first, last });
+}
+
+/**
+ * What to call an invoice: its number, or, for tickets not on one yet, why
+ * not. Tickets with no date read off them wait on no invoice at all (see
+ * UNDATED_BATCH); a batch still being read waits for its number.
+ */
+function invoiceName({ t }: Translator, group: Pick<InvoiceGroup, 'records' | 'invoice'>) {
+  const number = shownInvoiceNumber(group.invoice.invoice_number);
+  if (number) return number;
+  const first = group.records[0];
+  if (first && isUndatedBatch(recordBatch(first))) return t('Date not found');
+  return isPendingInvoiceNumber(group.invoice.invoice_number)
+    ? t('Waiting for a number')
+    : group.invoice.invoice_number;
 }
 
 export default function RecordsPage() {
@@ -572,7 +591,7 @@ export default function RecordsPage() {
                               openInvoice(group.invoice.invoice_number, group.invoice)
                             }
                           >
-                            {group.invoice.invoice_number}
+                            {invoiceName(tr, group)}
                           </button>
                           <small>{dateRange(tr, group)}</small>
                         </th>
@@ -604,7 +623,7 @@ export default function RecordsPage() {
                     <div className="pf-card-head">
                       <div>
                         <strong>
-                          {group.invoice.invoice_number}
+                          {invoiceName(tr, group)}
                           {invoiceStatus(group)}
                         </strong>
                         <small>
@@ -703,7 +722,7 @@ export default function RecordsPage() {
                             className="rec-link"
                             onClick={() => openInvoice(record.invoice.invoice_number)}
                           >
-                            {record.invoice.invoice_number}
+                            {invoiceName(tr, { records: [record], invoice: record.invoice })}
                           </button>
                           <small>
                             {record.invoice.truck_number
@@ -753,7 +772,10 @@ export default function RecordsPage() {
                       </div>
                     </dl>
                     <p className="pf-card-foot">
-                      {t('Invoice {number}', { number: record.invoice.invoice_number })} ·{' '}
+                      {shownInvoiceNumber(record.invoice.invoice_number)
+                        ? t('Invoice {number}', { number: record.invoice.invoice_number })
+                        : invoiceName(tr, { records: [record], invoice: record.invoice })}{' '}
+                      ·{' '}
                       {invoiceDestination(record.ticket.project_address) || t('No destination')}
                     </p>
                   </li>

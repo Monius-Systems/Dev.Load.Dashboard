@@ -470,6 +470,18 @@ export const PL_PAGES: Record<string, string> = {
   // A batch filed but not yet numbered: the numbers of an upload are handed out
   // in ticket-date order once every page of it has been read.
   'Waiting for the rest of this upload': 'Czeka na resztę tego przesłania',
+  // A ticket with no date read off it waits on no invoice until the date is
+  // entered.
+  'Date not found': 'Nie znaleziono daty',
+  'Date not found · no invoice yet': 'Nie znaleziono daty · jeszcze bez faktury',
+  'Waiting for a number': 'Czeka na numer',
+  'Date not found on {tickets}': 'Nie znaleziono daty na {tickets}',
+  'No date was detected on {tickets}, now waiting in “Date not found”. Enter the date to put each on an invoice.':
+    'Nie wykryto daty na {tickets}; czekają w „Nie znaleziono daty”. Wpisz datę, aby każdy trafił na fakturę.',
+  'Given once the ticket has a date: enter it in step 1.':
+    'Nadawany, gdy kwit ma datę: wpisz ją w kroku 1.',
+  'No date was detected on this ticket. Read it off the original and enter it below; the ticket then goes on that day’s invoice.':
+    'Na tym kwicie nie wykryto daty. Odczytaj ją z oryginału i wpisz poniżej; kwit trafi wtedy na fakturę z tego dnia.',
   'Waiting for the rest of this upload to be read.':
     'Czeka na odczytanie reszty tego przesłania.',
   'Filed. Waiting for the rest of this upload':
