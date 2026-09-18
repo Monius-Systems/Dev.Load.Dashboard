@@ -305,6 +305,30 @@
   align-items: center;
   gap: 6px;
 }
+/* The two arrows either side of the run of numbered steps.
+   They were a 28px button with a 12px corner beside 30px steps with an 8px one,
+   so the row carried two heights on two centre-lines and two different corners.
+   Squared off to the step's own size and corner here rather than by picking
+   another size on the button, because the step is what they have to line up
+   with; the button's own size and radius are each a single utility class, so
+   these win on specificity without having to insist.
+   The margin either side is the row's gap plus a little, which is what sets the
+   way round the tickets apart from the tickets themselves. */
+.ld-queue .ld-queue-step {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--ui-radius-sm);
+}
+.ld-queue .ld-queue-step svg {
+  width: 16px;
+  height: 16px;
+}
+.ld-queue .ld-queue-step[data-step='previous'] {
+  margin-inline-end: 2px;
+}
+.ld-queue .ld-queue-step[data-step='next'] {
+  margin-inline-start: 2px;
+}
 .ld-queue-tab {
   display: grid;
   place-items: center;

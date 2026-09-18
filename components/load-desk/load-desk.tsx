@@ -2434,6 +2434,8 @@ export default function LoadDesk() {
               <Button
                 variant="ghost"
                 size="icon-sm"
+                className="ld-queue-step"
+                data-step="previous"
                 aria-label={t('Previous ticket')}
                 disabled={previousStop === null}
                 onClick={() => previousStop !== null && setActiveIndex(previousStop)}
@@ -2482,6 +2484,8 @@ export default function LoadDesk() {
               <Button
                 variant="ghost"
                 size="icon-sm"
+                className="ld-queue-step"
+                data-step="next"
                 aria-label={t('Next ticket')}
                 disabled={nextStop === null}
                 onClick={() => nextStop !== null && setActiveIndex(nextStop)}

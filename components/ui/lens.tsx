@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { cn } from '@/lib/utils';
+import { hideDrawnCursor } from '@/components/shell/cursor-suspend';
 
 /**
  * A magnifying glass over whatever is inside it: the pointer carries a round
@@ -44,6 +45,19 @@ export function Lens({
   const container = useRef<HTMLDivElement>(null);
   const [pointer, setPointer] = useState<Position>({ x: 100, y: 100 });
   const [hovering, setHovering] = useState(false);
+
+  /**
+   * While the lens is up it is the only thing pointing: `cursor: none` below
+   * takes the system pointer away, and this takes away the app's drawn one,
+   * which is an ordinary element and pays no attention to a cursor rule. Tied
+   * to the lens being up rather than to the handlers, so a lens that unmounts
+   * with the pointer still over it — the ticket saved from the keyboard, the
+   * review closing — gives the cursor back on the way out.
+   */
+  useEffect(() => {
+    if (!hovering || isStatic) return;
+    return hideDrawnCursor();
+  }, [hovering, isStatic]);
 
   const at = isStatic ? position : pointer;
   const mask = `radial-gradient(circle ${lensSize / 2}px at ${at.x}px ${at.y}px, #000 100%, transparent 100%)`;

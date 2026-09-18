@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789753759.5143929,
-    "seen": 1789753847.882554,
-    "ast_hash": "f2d644b83f8ca4779c815a2378c12a92",
+    "mtime": 1789754623.340709,
+    "seen": 1789754699.7252889,
+    "ast_hash": "9ff9a17705a3853fc11cb9c976c01803",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -1392,9 +1392,9 @@
     "semantic_hash": ""
   },
   "components/ui/lens.tsx": {
-    "mtime": 1789738722.4054568,
-    "seen": 1789738744.886123,
-    "ast_hash": "c1e853744039f206f2eab1a88a27e363",
+    "mtime": 1789754608.6439276,
+    "seen": 1789754699.725318,
+    "ast_hash": "33d7b1723bad775c74b20a5746a21fcd",
     "semantic_hash": ""
   },
   "lib/server/ai-usage.ts": {
@@ -1404,9 +1404,9 @@
     "semantic_hash": ""
   },
   "components/shell/cursor-suspend.ts": {
-    "mtime": 1789740027.6385684,
-    "seen": 1789740165.097085,
-    "ast_hash": "56de05d62a1c37543dd5ff4cdbd174bc",
+    "mtime": 1789754596.7656627,
+    "seen": 1789754699.7253,
+    "ast_hash": "d81b3e68414988f7316679a14c00f613",
     "semantic_hash": ""
   },
   "lib/load-desk/upload-session.ts": {

@@ -302,6 +302,15 @@ html[data-smooth-cursor] a,
 html[data-smooth-cursor] img {
   -webkit-user-drag: none;
 }
+/* While something on the page is pointing in the cursor's place — the lens over
+   a ticket preview is a round window that follows the hand — the drawn cursor
+   goes and the system pointer stays hidden, so there is one mark on the picture
+   rather than an arrow sitting on top of the magnified copy. Set by
+   hideDrawnCursor (components/shell/cursor-suspend.ts). The opacity is animated
+   inline, which is why this has to insist. */
+html[data-cursor-hidden] [data-slot='smooth-cursor'] {
+  opacity: 0 !important;
+}
 
 /* Every word in titles, buttons, field labels, dropdown choices and menu items
    starts with a capital ("Truck Profile"). Only the display changes: exports
