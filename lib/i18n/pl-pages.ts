@@ -443,6 +443,12 @@ export const PL_PAGES: Record<string, string> = {
   'All tickets reviewed ({tickets}).': 'Sprawdzono wszystkie kwity ({tickets}).',
   'Now reviewing ticket {next}.': 'Teraz sprawdzasz kwit {next}.',
   // The run is the invoice's own: an invoice is what gets sent.
+  // A ticket whose date was corrected goes to the invoice of that date.
+  'Moved to invoice {number}, with the other tickets for {date}.':
+    'Przeniesiono na fakturę {number}, razem z pozostałymi kwitami z {date}.',
+  'Moved to its own invoice, {number}, for {date}.':
+    'Przeniesiono na osobną fakturę {number} z {date}.',
+  '(waiting)': '(oczekuje)',
   'Invoice {number} · Ticket {index} of {total}':
     'Faktura {number} · Kwit {index} z {total}',
   'Every ticket in the queue is saved ({tickets}).':

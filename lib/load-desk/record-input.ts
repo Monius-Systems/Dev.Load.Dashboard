@@ -175,6 +175,14 @@ export type RecordEdit = {
   ocr_text: string;
   customer_profile_id: number | null;
   truck_id: number | null;
+  /**
+   * The invoice the ticket is moving to, when it is moving. A ticket belongs on
+   * the invoice of its date, so correcting the date on a ticket can take it
+   * off one invoice and onto another (see `invoiceMoveFor`); the batch is what
+   * makes tickets one invoice here, and this is the one it joins. Absent for an
+   * edit that keeps the ticket where it is, which is nearly all of them.
+   */
+  invoice_batch_id?: string;
 };
 
 export const MAX_EDITS = 200;
@@ -204,6 +212,10 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
     ) {
       return { error: 'The ticket changes are not valid.' };
     }
+    const batch = item.invoice_batch_id;
+    if (batch !== undefined && !(text(batch, 64) && batch)) {
+      return { error: 'The ticket changes are not valid.' };
+    }
     // An invoice is dated by its ticket here too: a change that came in over
     // the API cannot leave one carrying a day of its own.
     edits.push(
@@ -214,6 +226,7 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
         ocr_text: item.ocr_text as string,
         customer_profile_id: (item.customer_profile_id as number | null | undefined) ?? null,
         truck_id: (item.truck_id as number | null | undefined) ?? null,
+        ...(batch !== undefined ? { invoice_batch_id: batch as string } : {}),
       }),
     );
   }
@@ -221,8 +234,9 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
 }
 
 /**
- * A saved ticket with changes applied. Its source file, upload, stored
- * original and first save time never change.
+ * A saved ticket with changes applied. Its source file, stored original and
+ * first save time never change. Its invoice can: a ticket whose date was
+ * corrected goes to the invoice of that date, and the edit says which.
  */
 export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
   record: T,
@@ -231,6 +245,7 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
 ): T {
   return {
     ...record,
+    ...(edit.invoice_batch_id ? { invoice_batch_id: edit.invoice_batch_id } : {}),
     ticket: edit.ticket,
     invoice: edit.invoice,
     ocr_text: edit.ocr_text,

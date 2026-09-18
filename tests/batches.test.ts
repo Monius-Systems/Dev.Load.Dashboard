@@ -4,6 +4,7 @@ import {
   batchDate,
   batchesByRecency,
   batchInvoiceFor,
+  invoiceMoveFor,
   isPendingInvoiceNumber,
   needsReview,
   numbersByTicketDate,
@@ -278,4 +279,87 @@ void test('a ticket date written as it is on the paper is placed by its day', ()
   );
   assert.equal(wanted.get(december.invoice_batch_id!), '2');
   assert.equal(wanted.get(january.invoice_batch_id!), '3');
+});
+
+
+// A ticket belongs on the invoice of its date. These are what happens when the
+// date on a ticket is corrected in review, from what is already filed.
+
+void test('a ticket re-dated to a day already filed joins that day\u2019s invoice', () => {
+  // Scanned as 1/1, corrected to 1/2, and 1/2 already has an invoice: the
+  // ticket goes onto it, with its number and its invoice details.
+  const jan1 = saved('2026-01-01', '5');
+  const jan2 = saved('2026-01-02', '6');
+  const ticket = saved('2026-01-01', '5');
+  const move = invoiceMoveFor(
+    { batchId: ticket.invoice_batch_id!, date: '2026-01-02' },
+    [jan1, jan2],
+  );
+  assert.equal(move.kind, 'join');
+  if (move.kind !== 'join') return;
+  assert.equal(move.batchId, jan2.invoice_batch_id);
+  assert.equal(move.invoice.invoice_number, '6');
+});
+
+void test('a ticket re-dated to a day not yet filed opens an invoice of its own', () => {
+  // Corrected to the 3rd, which nothing is filed for, while the 1st keeps its
+  // other ticket: a new invoice on the next number, never the middle of the run.
+  const jan1 = saved('2026-01-01', '5');
+  const jan2 = saved('2026-01-02', '6');
+  const ticket = saved('2026-01-01', '5');
+  const move = invoiceMoveFor(
+    { batchId: ticket.invoice_batch_id!, date: '2026-01-03' },
+    [jan1, jan2],
+  );
+  assert.equal(move.kind, 'open');
+  if (move.kind !== 'open') return;
+  assert.equal(move.batchId, 'batch-2026-01-03');
+  assert.equal(move.invoiceNumber, '7', 'after the highest on file');
+});
+
+void test('the only ticket on an invoice re-dates the invoice with it', () => {
+  // Nothing filed for the new day and nobody left behind: this is the same
+  // invoice with its date corrected, and it keeps its number.
+  const alone = saved('2026-01-01', '5');
+  const other = saved('2026-01-10', '6');
+  const move = invoiceMoveFor(
+    { batchId: alone.invoice_batch_id!, date: '2026-01-02' },
+    [other],
+  );
+  assert.equal(move.kind, 'stay');
+});
+
+void test('a ticket already on the invoice of its date does not move', () => {
+  const a = saved('2026-01-01', '5');
+  const b = saved('2026-01-01', '5');
+  assert.equal(
+    invoiceMoveFor({ batchId: a.invoice_batch_id!, date: '2026-01-01' }, [b]).kind,
+    'stay',
+    'with company',
+  );
+  assert.equal(
+    invoiceMoveFor({ batchId: a.invoice_batch_id!, date: '2026-01-01' }, []).kind,
+    'stay',
+    'alone',
+  );
+});
+
+void test('unsaved tickets in the queue count as company left behind', () => {
+  // Two tickets read together, neither saved yet, and the first is re-dated
+  // before saving: it must not drag the second's invoice to a day it is not.
+  const move = invoiceMoveFor(
+    { batchId: 'upload-1', date: '2026-01-02' },
+    [saved('2025-12-31', '4')],
+    [{ batchId: 'upload-1', date: '2026-01-01' }],
+  );
+  assert.equal(move.kind, 'open');
+});
+
+void test('a move never takes a number that is in use', () => {
+  const move = invoiceMoveFor(
+    { batchId: 'batch-2026-01-01', date: '2026-01-03' },
+    [saved('2026-01-01', '5'), saved('2026-01-05', '9'), saved('2026-01-04', '7')],
+  );
+  assert.equal(move.kind, 'open');
+  if (move.kind === 'open') assert.equal(move.invoiceNumber, '10');
 });

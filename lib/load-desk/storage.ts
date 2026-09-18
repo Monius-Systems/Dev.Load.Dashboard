@@ -282,8 +282,12 @@ export async function updateSavedRecords(
     if (!record) {
       return { error: 'A ticket you changed no longer exists. Reload and try again.' };
     }
-    // Older tickets get their upload recorded, so a new invoice number stays theirs.
-    const withBatch = { ...record, invoice_batch_id: recordBatch(record) };
+    // Older tickets get their upload recorded, so a new invoice number stays
+    // theirs. A ticket moving to another invoice brings that one with it.
+    const withBatch = {
+      ...record,
+      invoice_batch_id: edit.invoice_batch_id ?? recordBatch(record),
+    };
     updated.push({ ...applyRecordEdit(withBatch, edit, editedAt), id: edit.id });
   }
   const clash = findInvoiceClash(

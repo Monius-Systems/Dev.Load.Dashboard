@@ -180,6 +180,9 @@ export async function updateRecords(
     changes: updated.map(({ id, ...record }) => ({
       id,
       ticket_date: ticketDateColumn(record.ticket),
+      // Only when the ticket is moving to another invoice; otherwise the row
+      // keeps the upload it was saved with.
+      ...(record.invoice_batch_id ? { batch_id: record.invoice_batch_id } : {}),
       record,
     })),
   });

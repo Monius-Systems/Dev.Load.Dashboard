@@ -104,6 +104,7 @@ import {
   findInvoiceClash,
   needsReview,
   invoiceLines,
+  invoiceMoveFor,
   batchesByRecency,
   groupByTicketDate,
   openingInvoiceNumber,
@@ -116,6 +117,7 @@ import {
   shownInvoiceNumber,
   stepReviewStop,
   ticketDateValue,
+  type InvoiceMove,
   type ReviewStop,
 } from '@/lib/load-desk/records';
 import {
@@ -557,7 +559,7 @@ const editKey = (edit: Omit<RecordEdit, 'id'>) =>
 const hasChanges = (item: QueueItem) =>
   item.baseline !== null && editKey(item) !== item.baseline;
 
-function editOf(source: QueueItem): RecordEdit {
+function editOf(source: QueueItem, movedTo?: string): RecordEdit {
   const item = invoiceDated(source);
   return {
     id: item.saved_record_id!,
@@ -569,6 +571,7 @@ function editOf(source: QueueItem): RecordEdit {
     ocr_text: item.ocr_text,
     customer_profile_id: item.customer_profile_id,
     truck_id: item.truck_id,
+    ...(movedTo ? { invoice_batch_id: movedTo } : {}),
   };
 }
 
@@ -808,18 +811,18 @@ export default function LoadDesk() {
         value = Number.isFinite(parsed) ? parsed : null;
       }
       // The invoice is dated from its ticket, so correcting the ticket date
-      // moves the invoice's — and every ticket on that invoice moves with it,
-      // since they are one date's work.
+      // moves this ticket's invoice date with it — and, when it is saved, the
+      // ticket itself onto the invoice of that date (see `invoiceMoveFor`).
+      // Only this ticket: the others on the invoice are still the day they
+      // say, and re-dating them along with it, as this used to, printed a
+      // whole invoice for a day most of its tickets were not.
       const moveInvoiceDate = name === 'ticket_date' && typeof value === 'string';
       return current.map((item, index) => {
-        let next = item;
-        if (index === activeIndex) {
-          next = { ...next, ticket: { ...next.ticket, [name]: value } };
-        }
-        if (moveInvoiceDate && item.batch_id === target.batch_id) {
-          next = { ...next, invoice: { ...next.invoice, invoice_date: value as string } };
-        }
-        return next;
+        if (index !== activeIndex) return item;
+        const next = { ...item, ticket: { ...item.ticket, [name]: value } };
+        return moveInvoiceDate
+          ? { ...next, invoice: { ...next.invoice, invoice_date: value as string } }
+          : next;
       });
     });
 
@@ -1522,12 +1525,15 @@ export default function LoadDesk() {
       });
       return;
     }
-    const invoiceNumber = active.invoice.invoice_number.trim();
+    // On the invoice of its date, which may not be the one it was queued on
+    // if the date was corrected in review.
+    const { item: placed, move } = placedByDate(active);
+    const invoiceNumber = placed.invoice.invoice_number.trim();
     // recordBatch also covers tickets saved before uploads were recorded, so a
     // ticket added to one of their invoices is not refused.
     if (
       findInvoiceClash(records, [
-        { id: null, invoiceNumber, batchId: active.batch_id },
+        { id: null, invoiceNumber, batchId: placed.batch_id },
       ])
     ) {
       setSaveStatus({
@@ -1557,13 +1563,13 @@ export default function LoadDesk() {
     const result = await saveRecord(
       {
         saved_at: new Date().toISOString(),
-        ticket: active.ticket,
-        invoice: { ...active.invoice, invoice_number: invoiceNumber },
-        source: active.source,
-        ocr_text: active.ocr_text,
-        customer_profile_id: active.customer_profile_id,
-        truck_id: active.truck_id,
-        invoice_batch_id: active.batch_id,
+        ticket: placed.ticket,
+        invoice: { ...placed.invoice, invoice_number: invoiceNumber },
+        source: placed.source,
+        ocr_text: placed.ocr_text,
+        customer_profile_id: placed.customer_profile_id,
+        truck_id: placed.truck_id,
+        invoice_batch_id: placed.batch_id,
         // Somebody has just been through the fields on the review screen and
         // saved them, which is what being checked means. An edit to a saved
         // ticket is marked the same way (see `applyRecordEdit`); what is filed
@@ -1584,7 +1590,9 @@ export default function LoadDesk() {
     const markSaved = (item: QueueItem): QueueItem => {
       const saved = {
         ...item,
-        invoice: { ...item.invoice, invoice_number: invoiceNumber },
+        // Where it was put, which is where it is from now on.
+        batch_id: placed.batch_id,
+        invoice: { ...placed.invoice, invoice_number: invoiceNumber },
         saved_record_id: record.id,
       };
       return { ...saved, baseline: editKey(saved) };
@@ -1617,6 +1625,7 @@ export default function LoadDesk() {
     toast.add({
       title: t('Saved ticket {label}', { label }),
       description: [
+        movedNote(move, placed),
         lineTotal(record.ticket) === null
           ? t('Invoice {number} is a draft until its rate is complete.', { number: invoiceNumber })
           : t('Invoice {number} created.', { number: invoiceNumber }),
@@ -1632,28 +1641,96 @@ export default function LoadDesk() {
    * Saves changes to saved tickets, then marks what was sent as saved. Edits
    * typed while it saves stay unsaved. Returns an error message, or null.
    */
-  async function persistChanges(items: QueueItem[]): Promise<string | null> {
-    const edits = items.map(editOf);
+  async function persistChanges(
+    items: QueueItem[],
+    moved: { id: string; batchId: string } | null = null,
+  ): Promise<string | null> {
+    const edits = items.map((item) =>
+      editOf(item, moved && item.id === moved.id ? moved.batchId : undefined),
+    );
     const result = await updateSavedRecords(edits);
     if ('error' in result) return result.error;
-    const sent = new Map(items.map((item, index) => [item.id, edits[index]]));
+    const sent = new Map(items.map((item, index) => [item.id, [item, edits[index]] as const]));
     setQueue((current) =>
       current.map((item) => {
-        const edit = sent.get(item.id);
-        if (!edit) return item;
+        const found = sent.get(item.id);
+        if (!found) return item;
+        const [saved, edit] = found;
         const number = edit.invoice.invoice_number;
+        // A ticket that went to another invoice is on it now: its batch and its
+        // invoice details are what was saved, not what the screen had.
+        const placed = edit.invoice_batch_id
+          ? { ...item, batch_id: edit.invoice_batch_id, invoice: saved.invoice }
+          : item;
         return {
-          ...item,
+          ...placed,
           invoice:
-            item.invoice.invoice_number.trim() === number
-              ? { ...item.invoice, invoice_number: number }
-              : item.invoice,
+            placed.invoice.invoice_number.trim() === number
+              ? { ...placed.invoice, invoice_number: number }
+              : placed.invoice,
           baseline: editKey(edit),
         };
       }),
     );
     return null;
   }
+
+  /**
+   * The active ticket on the invoice of its date, as it will be saved, and the
+   * move that put it there. Nothing changes for a ticket already where it
+   * belongs; a ticket whose date was corrected joins the invoice already filed
+   * for that date, or opens one when it is leaving other tickets behind.
+   *
+   * Read from the store, not this render's records, so a ticket saved a moment
+   * ago on another invoice of that date is found and joined.
+   */
+  function placedByDate(item: QueueItem): { item: QueueItem; move: InvoiceMove } {
+    const others = getRecordsSnapshot().records.filter(
+      (record) => record.id !== item.saved_record_id,
+    );
+    const queued = queue
+      .filter((other) => other.id !== item.id && other.saved_record_id === null)
+      .map((other) => ({ batchId: other.batch_id, date: other.ticket.ticket_date }));
+    const move = invoiceMoveFor(
+      { batchId: item.batch_id, date: item.ticket.ticket_date },
+      others,
+      queued,
+    );
+    if (move.kind === 'stay') return { item, move };
+    if (move.kind === 'join') {
+      return {
+        move,
+        item: {
+          ...item,
+          batch_id: move.batchId,
+          // Their invoice, details and all: it is one of theirs now.
+          invoice: { ...move.invoice, bill_to: { ...move.invoice.bill_to } },
+        },
+      };
+    }
+    return {
+      move,
+      item: {
+        ...item,
+        batch_id: move.batchId,
+        invoice: { ...item.invoice, invoice_number: move.invoiceNumber },
+      },
+    };
+  }
+
+  /** What to say about a ticket that went to another invoice, or nothing. */
+  const movedNote = (move: InvoiceMove, item: QueueItem) =>
+    move.kind === 'stay'
+      ? ''
+      : move.kind === 'join'
+        ? t('Moved to invoice {number}, with the other tickets for {date}.', {
+            number: shownInvoiceNumber(item.invoice.invoice_number) || t('(waiting)'),
+            date: date(item.ticket.ticket_date),
+          })
+        : t('Moved to its own invoice, {number}, for {date}.', {
+            number: item.invoice.invoice_number,
+            date: date(item.ticket.ticket_date),
+          });
 
   /** Saves the changes on this invoice's saved tickets together. */
   async function saveChanges() {
@@ -1663,11 +1740,15 @@ export default function LoadDesk() {
     );
     // Nothing to correct on a ticket nobody has checked yet is still something
     // to save: saving it is the checking.
-    const toSave =
+    const withActive =
       activeUnchecked && !changed.some((item) => item.id === active.id)
         ? [...changed, active]
         : changed;
-    if (!toSave.length) return;
+    if (!withActive.length) return;
+    // The active ticket goes to the invoice of its date, which is not this one
+    // if its date was corrected. The others stay where they are.
+    const { item: placed, move } = placedByDate(active);
+    const toSave = withActive.map((item) => (item.id === active.id ? placed : item));
     const clash = findInvoiceClash(
       records,
       toSave.map((item) => ({
@@ -1687,27 +1768,37 @@ export default function LoadDesk() {
       return;
     }
     setBusy(true);
-    const error = await persistChanges(toSave);
+    const error = await persistChanges(
+      toSave,
+      move.kind === 'stay' ? null : { id: active.id, batchId: placed.batch_id },
+    );
     setBusy(false);
     if (error) {
       setSaveStatus({ message: error, tone: 'error' });
       return;
     }
-    const invoiceNumber = active.invoice.invoice_number.trim();
+    const invoiceNumber = placed.invoice.invoice_number.trim();
     const label = active.ticket.ticket_number ?? active.source.file_name;
-    const message = !changed.length
-      ? t('Checked. Nothing needed changing.')
-      : toSave.length > 1
-        ? t('Saved changes to {tickets} on invoice {number}.', {
-            tickets: plural(toSave.length, 'ticket'),
-            number: invoiceNumber,
-          })
-        : t('Changes saved.');
+    const moved = movedNote(move, placed);
+    const message = moved
+      ? moved
+      : !changed.length
+        ? t('Checked. Nothing needed changing.')
+        : toSave.length > 1
+          ? t('Saved changes to {tickets} on invoice {number}.', {
+              tickets: plural(toSave.length, 'ticket'),
+              number: invoiceNumber,
+            })
+          : t('Changes saved.');
     // On to the next ticket waiting to be checked. This used to stay on the one
     // just finished unless every ticket in the queue happened to be saved and
     // unchanged, so a batch filed by "Review later" had to be picked out of the
-    // list again for each ticket in it.
-    const next = openNextToReview(queue, activeIndex);
+    // list again for each ticket in it. The queue as saved: the ticket on the
+    // invoice it went to, so the review carries on from where it is now.
+    const next = openNextToReview(
+      queue.map((item) => (item.id === active.id ? placed : item)),
+      activeIndex,
+    );
     if (next >= 0) {
       setSaveStatus({
         message: `${message} ${t('Now reviewing ticket {next}.', { next: next + 1 })}`,

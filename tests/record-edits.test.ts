@@ -105,3 +105,35 @@ void test('legacy tickets on the same invoice do not clash with each other', () 
     null,
   );
 });
+
+void test('an edit can move a ticket to another invoice', () => {
+  // A ticket whose date was corrected goes to the invoice of that date. The
+  // batch is what makes tickets one invoice, so the edit carries the batch it
+  // is joining, and applying it puts the record there.
+  const record = saved(7, '5', 'batch-2026-01-01');
+  const moved = applyRecordEdit(
+    record,
+    { ...edit(7, '6'), invoice_batch_id: 'batch-2026-01-02' },
+    '2026-09-18T10:00:00.000Z',
+  );
+  assert.equal(recordBatch(moved), 'batch-2026-01-02');
+  assert.equal(moved.invoice.invoice_number, '6');
+  // An ordinary edit leaves the ticket on its upload.
+  const stayed = applyRecordEdit(record, edit(7, '5'), '2026-09-18T10:00:00.000Z');
+  assert.equal(recordBatch(stayed), 'batch-2026-01-01');
+});
+
+void test('a move over the API names a real batch', () => {
+  const parsed = parseRecordEdits([{ ...edit(1, '6'), invoice_batch_id: 'batch-2026-01-02' }]);
+  assert.ok('value' in parsed);
+  assert.equal(parsed.value[0].invoice_batch_id, 'batch-2026-01-02');
+  const absent = parseRecordEdits([edit(1, '6')]);
+  assert.ok('value' in absent);
+  assert.equal('invoice_batch_id' in absent.value[0], false, 'not invented when absent');
+  assert.ok('error' in parseRecordEdits([{ ...edit(1, '6'), invoice_batch_id: '' }]), 'blank');
+  assert.ok('error' in parseRecordEdits([{ ...edit(1, '6'), invoice_batch_id: 42 }]), 'not text');
+  assert.ok(
+    'error' in parseRecordEdits([{ ...edit(1, '6'), invoice_batch_id: 'x'.repeat(65) }]),
+    'too long',
+  );
+});

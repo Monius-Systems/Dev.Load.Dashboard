@@ -567,6 +567,60 @@ export function batchInvoiceFor(
   };
 }
 
+/**
+ * Where a ticket goes once its date is what it is now.
+ *
+ * `stay`: it is already on the invoice of its date, or it is the only ticket on
+ * its invoice — in which case the invoice is simply re-dated with it and keeps
+ * its number, as a correction to one invoice should. `join`: another invoice
+ * already holds that date's tickets, and this one belongs with them; it takes
+ * their number and their invoice details. `open`: nothing is filed for that
+ * date and the ticket is leaving tickets behind, so it opens an invoice of its
+ * own, on the next number in the series.
+ */
+export type InvoiceMove =
+  | { kind: 'stay' }
+  | { kind: 'join'; batchId: string; invoice: InvoiceDraft }
+  | { kind: 'open'; batchId: string; invoiceNumber: string };
+
+/**
+ * A ticket belongs on the invoice of its date. Correcting the date on a ticket
+ * used to change the date on its invoice and leave it there — a ticket for the
+ * 2nd sitting on the 1st's invoice, or, worse, the 1st's invoice re-dated to
+ * the 2nd with all its other tickets still printed for the 1st. Now the ticket
+ * goes where its date goes.
+ *
+ * `others` is every other saved ticket; `queued` every other ticket in the
+ * queue that is not saved yet, with the upload it is on and its date as it is
+ * now. Both are needed to know whether the ticket is leaving anyone behind.
+ * Decided as the ticket is saved, from what is stored, not from what the
+ * screen showed before the edit.
+ */
+export function invoiceMoveFor(
+  ticket: { batchId: string; date: string | null },
+  others: SavedRecord[],
+  queued: { batchId: string; date: string | null }[] = [],
+): InvoiceMove {
+  const target = batchInvoiceFor(others, ticket.date);
+  if (!target.opened) {
+    // Its date is already filed. On this very invoice, nothing moves.
+    if (target.batch_id === ticket.batchId) return { kind: 'stay' };
+    const there = others.find((record) => recordBatch(record) === target.batch_id)!;
+    return { kind: 'join', batchId: target.batch_id, invoice: there.invoice };
+  }
+  const leftBehind =
+    others.some((record) => recordBatch(record) === ticket.batchId) ||
+    queued.some((item) => item.batchId === ticket.batchId);
+  if (!leftBehind) return { kind: 'stay' };
+  const numbers = [...others]
+    .sort((a, b) => a.id - b.id)
+    .map((record) => record.invoice.invoice_number);
+  const invoiceNumber = numbersForWaitingBatches(numbers, [
+    { batchId: target.batch_id, ticketDate: ticket.date },
+  ]).get(target.batch_id)!;
+  return { kind: 'open', batchId: target.batch_id, invoiceNumber };
+}
+
 export const ticketStatus = (record: SavedRecord) =>
   validateTicket(record.ticket).length ? 'needs_review' : 'valid';
 
