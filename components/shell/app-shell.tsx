@@ -20,11 +20,11 @@ import AccountMenu, { AccountLink } from '@/components/shell/account-menu';
 import DeskActivity from '@/components/shell/desk-activity';
 import { adoptSessionAccount } from '@/lib/account';
 import type { ShellAccount } from '@/lib/account-display';
-import { useCompanyName } from '@/components/shell/use-company-name';
+import { CompanyMark } from '@/components/shell/user-avatar';
+import { useCompanyLogo, useCompanyName } from '@/components/shell/use-company-name';
 import { usePageSwipe } from '@/hooks/use-page-swipe';
 import SectionPager from '@/components/shell/section-pager';
 import { useT } from '@/lib/i18n/use-t';
-import { companyInitials } from '@/lib/load-desk/business';
 import { shellConfig } from '@/lib/shell-config';
 
 function ShellNavigation({
@@ -36,6 +36,7 @@ function ShellNavigation({
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const { companyName } = useCompanyName();
+  const companyLogo = useCompanyLogo();
   const { t } = useT();
   const go = (href: string) => {
     router.push(href);
@@ -56,7 +57,11 @@ function ShellNavigation({
       </SidebarHeader>
       <SidebarContent>
         <div className="client-card">
-          <span className="client-avatar">{companyInitials(companyName)}</span>
+          {/* The company's own logo when it has uploaded one, and its initials
+              until then. Decorative: the name is on the line beside it. */}
+          <span className="client-avatar">
+            <CompanyMark name={companyName} src={companyLogo} />
+          </span>
           <span className="client-card-copy">
             <strong title={companyName}>{companyName}</strong>
           </span>

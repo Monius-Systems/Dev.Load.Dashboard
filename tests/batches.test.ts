@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { batchDate, batchInvoiceFor, needsReview } from '../lib/load-desk/records.ts';
+import {
+  batchDate,
+  batchesByRecency,
+  batchInvoiceFor,
+  needsReview,
+} from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
 
 let nextId = 0;
@@ -77,5 +82,45 @@ void test('a ticket is waiting until somebody has checked it', () => {
       }),
     ),
     false,
+  );
+});
+
+void test('batches are ordered by when they were last added to, not by ticket date', () => {
+  // A ticket from January, photographed this morning. The pile being worked
+  // through is the one just added to, so it heads the list even though two
+  // newer ticket dates are already on file.
+  const records = [
+    saved('2026-09-15', '1001', { saved_at: '2026-09-15T09:00:00.000Z' }),
+    saved('2026-09-16', '1002', { saved_at: '2026-09-16T09:00:00.000Z' }),
+    saved('2026-01-04', '1003', { saved_at: '2026-09-18T08:00:00.000Z' }),
+  ];
+  assert.deepEqual(
+    batchesByRecency(records).map((batch) => batch.date),
+    ['2026-01-04', '2026-09-16', '2026-09-15'],
+  );
+});
+
+void test('a batch is as recent as the newest ticket in it', () => {
+  // The January batch was opened long ago and added to today; it is judged by
+  // the ticket that went in today, not by the one that opened it.
+  const records = [
+    saved('2026-01-04', '1001', { saved_at: '2026-01-04T09:00:00.000Z' }),
+    saved('2026-01-04', '1001', { saved_at: '2026-09-18T08:00:00.000Z' }),
+    saved('2026-09-16', '1002', { saved_at: '2026-09-16T09:00:00.000Z' }),
+  ];
+  assert.deepEqual(
+    batchesByRecency(records).map((batch) => batch.date),
+    ['2026-01-04', '2026-09-16'],
+  );
+});
+
+void test('two batches saved in the same second keep the order they went in', () => {
+  const at = '2026-09-18T08:00:00.000Z';
+  const first = saved('2026-09-01', '1001', { saved_at: at });
+  const second = saved('2026-09-02', '1002', { saved_at: at });
+  assert.ok(second.id > first.id);
+  assert.deepEqual(
+    batchesByRecency([first, second]).map((batch) => batch.date),
+    ['2026-09-02', '2026-09-01'],
   );
 });

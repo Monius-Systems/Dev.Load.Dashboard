@@ -676,6 +676,14 @@ html[lang='pl']
 .client-avatar {
   overflow: hidden;
 }
+/* A logo is whatever shape it was drawn, so it is fitted inside the tile
+   rather than filled into it: a wide one keeps its proportions and the space
+   above and below it stays the tile's own. */
+.client-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
 .avatar-photo {
   display: block;
   width: 100%;

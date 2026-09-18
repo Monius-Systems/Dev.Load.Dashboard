@@ -87,6 +87,12 @@ export const PL_TEXT: Record<string, string> = {
   'It shows in the sidebar and account menu.': 'Jest widoczne na pasku bocznym i w menu konta.',
   'Photo removed': 'Zdjęcie usunięte',
   'Your initials show instead.': 'Zamiast niego widać Twoje inicjały.',
+  'Logo saved': 'Logo zapisane',
+  'Logo removed': 'Logo usunięte',
+  'The company initials show again.': 'Znów widać inicjały firmy.',
+  'Add company logo': 'Dodaj logo firmy',
+  'Change logo': 'Zmień logo',
+  'Remove logo': 'Usuń logo',
   'Profile saved': 'Profil zapisany',
   'Saved in this browser for the local preview.':
     'Zapisano w tej przeglądarce na potrzeby podglądu lokalnego.',
@@ -173,6 +179,15 @@ export const PL_TEXT: Record<string, string> = {
   // Messages from the account and photo services
   'Choose an image file (JPG, PNG or WebP).': 'Wybierz plik obrazu (JPG, PNG lub WebP).',
   'Choose a photo under 20 MB.': 'Wybierz zdjęcie mniejsze niż 20 MB.',
+  'Choose a logo under 20 MB.': 'Wybierz logo mniejsze niż 20 MB.',
+  'Use a logo under 2 MB.': 'Użyj logo mniejszego niż 2 MB.',
+  'Use a JPG, PNG or WebP image.': 'Użyj obrazu JPG, PNG lub WebP.',
+  'Choose a logo.': 'Wybierz logo.',
+  'That image could not be read.': 'Nie udało się odczytać tego obrazu.',
+  'Could not save the logo. Please try again.':
+    'Nie udało się zapisać logo. Spróbuj ponownie.',
+  'Could not remove the logo. Please try again.':
+    'Nie udało się usunąć logo. Spróbuj ponownie.',
   'That photo could not be read. Use a JPG, PNG or WebP image.':
     'Nie udało się odczytać zdjęcia. Użyj obrazu JPG, PNG lub WebP.',
   'That photo could not be read.': 'Nie udało się odczytać zdjęcia.',

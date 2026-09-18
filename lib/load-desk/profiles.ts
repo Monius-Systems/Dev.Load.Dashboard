@@ -61,6 +61,12 @@ export type CompanyProfile = {
   address_lines: [string, string];
   /** The client new invoices start billed to, or nothing for no default. */
   default_client_id?: number | null;
+  /**
+   * The company logo shown in place of its initials, as the version name the
+   * picture is stored under (see lib/server/logo-store.ts). Absent or null
+   * means no logo has been uploaded and the initials stand.
+   */
+  logo_version?: string | null;
   updated_at: string;
 };
 
@@ -145,6 +151,9 @@ function isCompany(value: unknown): value is CompanyProfile {
     (company.default_client_id === undefined ||
       company.default_client_id === null ||
       typeof company.default_client_id === 'number') &&
+    (company.logo_version === undefined ||
+      company.logo_version === null ||
+      typeof company.logo_version === 'string') &&
     Array.isArray(company.address_lines) &&
     company.address_lines.length === 2 &&
     isStringList(company.address_lines)
@@ -398,6 +407,7 @@ export async function saveCompanyDetails(
     ...(current?.default_client_id != null
       ? { default_client_id: current.default_client_id }
       : {}),
+    ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: clean(name),
     address_lines: [clean(addressLines[0]), clean(addressLines[1])],
     updated_at: new Date().toISOString(),
@@ -414,6 +424,7 @@ export async function saveDefaultClient(clientId: number | null): Promise<string
   return writeCompany({
     ...(current?.display_name ? { display_name: current.display_name } : {}),
     ...(clientId === null ? {} : { default_client_id: clientId }),
+    ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: sellerName(current).trim(),
     address_lines: [street, city],
     updated_at: new Date().toISOString(),
@@ -439,10 +450,87 @@ export async function saveCompanyDisplayName(displayName: string): Promise<strin
     ...(current?.default_client_id != null
       ? { default_client_id: current.default_client_id }
       : {}),
+    ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: sellerName(current).trim(),
     address_lines: [street, city],
     updated_at: new Date().toISOString(),
   });
+}
+
+/**
+ * Where the workspace's logo is served from, or null when it has none and its
+ * initials stand instead. The address carries the version, so a new logo is a
+ * new address and no browser shows the old one.
+ */
+export const companyLogoUrl = (company: CompanyProfile | null): string | null =>
+  company?.logo_version ? `/api/workspace/logo?v=${company.logo_version}` : null;
+
+/** Longest edge of a stored logo. Larger than any place it is shown. */
+const MAX_LOGO_EDGE = 512;
+
+/**
+ * The picture at a size worth keeping, as a PNG.
+ *
+ * Not squared off the way a profile photo is: a logo is whatever shape it was
+ * drawn, and cropping one to a circle takes the name off half of them. PNG
+ * because a logo with a cut-out background should keep it — a JPEG would fill
+ * it in white and it would sit on the page as a white tile.
+ */
+async function logoImage(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, MAX_LOGO_EDGE / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const surface = Object.assign(document.createElement('canvas'), { width, height });
+  const context = surface.getContext('2d');
+  if (!context) throw new Error('That image could not be read.');
+  context.drawImage(bitmap, 0, 0, width, height);
+  bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) =>
+    surface.toBlob(resolve, 'image/png'),
+  );
+  if (!blob) throw new Error('That image could not be read.');
+  return blob;
+}
+
+/**
+ * Replaces the workspace's logo. Returns null when it saved, or the message to
+ * show. Everyone signed in to the workspace sees it: it stands for the company,
+ * not for the person who uploaded it.
+ */
+export async function saveCompanyLogo(file: File): Promise<string | null> {
+  if (!file.type.startsWith('image/')) return 'Choose an image file (JPG, PNG or WebP).';
+  if (file.size > 20_000_000) return 'Choose a logo under 20 MB.';
+  if (snapshot.mode !== 'remote') {
+    return 'Not available in the local preview, which saves in the browser.';
+  }
+  let logo: Blob;
+  try {
+    logo = await logoImage(file);
+  } catch (error) {
+    return error instanceof Error ? error.message : 'That image could not be read.';
+  }
+  const result = await apiJson<{ company: CompanyProfile }>('/api/workspace/logo', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/png' },
+    body: logo,
+  });
+  if (!result.ok) return result.error;
+  publish({ ...snapshot, company: result.data.company });
+  return null;
+}
+
+/** Removes the workspace's logo; its initials show again. */
+export async function removeCompanyLogo(): Promise<string | null> {
+  if (snapshot.mode !== 'remote') {
+    return 'Not available in the local preview, which saves in the browser.';
+  }
+  const result = await apiJson<{ company: CompanyProfile }>('/api/workspace/logo', {
+    method: 'DELETE',
+  });
+  if (!result.ok) return result.error;
+  publish({ ...snapshot, company: result.data.company });
+  return null;
 }
 
 async function writeCompany(profile: Omit<CompanyProfile, 'id'>): Promise<string | null> {

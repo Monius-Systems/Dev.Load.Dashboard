@@ -103,6 +103,7 @@ import {
   findInvoiceClash,
   needsReview,
   invoiceLines,
+  batchesByRecency,
   groupByTicketDate,
   invoiceNumberForDate,
   joinsInvoiceFor,
@@ -2055,14 +2056,14 @@ export default function LoadDesk() {
         })
       : t('Choose a truck; its number goes on the invoice.');
 
-  // One batch per ticket date, newest first, with how many of its tickets
-  // nobody has checked yet. This is the pile the invoicing is done from.
-  const batchesByDate = groupByTicketDate(records, (record) => record.ticket.ticket_date)
-    .map((group) => ({
-      ...group,
-      waiting: group.items.filter(needsReview).length,
-    }))
-    .reverse();
+  // One batch per ticket date, the one added to most recently first, with how
+  // many of its tickets nobody has checked yet. This is the pile the invoicing
+  // is done from, so it is ordered by when the work happened rather than by
+  // the date printed on the paper (see batchesByRecency).
+  const batchesByDate = batchesByRecency(records).map((group) => ({
+    ...group,
+    waiting: group.items.filter(needsReview).length,
+  }));
 
   const STEPS = ['Ticket', 'Customer and job', 'Weight', 'Invoice'];
   const lastStep = STEPS.length - 1;

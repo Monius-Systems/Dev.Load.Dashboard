@@ -7,12 +7,14 @@ import {
   Camera,
   Check,
   Globe,
+  ImagePlus,
   KeyRound,
   Languages,
   LogOut,
   MonitorSmartphone,
   Pencil,
   ReceiptText,
+  Trash2,
   ShieldCheck,
   Truck,
 } from 'lucide-react';
@@ -52,21 +54,23 @@ import {
 import { setLocale } from '@/lib/i18n/store';
 import { LOCALES, translate, type Locale } from '@/lib/i18n/translate';
 import { useT } from '@/lib/i18n/use-t';
-import { companyInitials, sellerAddressLines, sellerName } from '@/lib/load-desk/business';
+import { sellerAddressLines, sellerName } from '@/lib/load-desk/business';
 import { PHONE_MASK, phoneDisplay, phoneEdit } from '@/lib/phone';
 import {
   getProfilesSnapshot,
   getServerProfilesSnapshot,
   saveCompanyDetails,
+  removeCompanyLogo,
   saveCompanyDisplayName,
+  saveCompanyLogo,
   saveDefaultClient,
   subscribeProfiles,
   type ClientProfile,
   type CompanyProfile,
 } from '@/lib/load-desk/profiles';
 import { shellConfig } from '@/lib/shell-config';
-import { useCompanyName } from '@/components/shell/use-company-name';
-import { AvatarContent } from '@/components/shell/user-avatar';
+import { useCompanyLogo, useCompanyName } from '@/components/shell/use-company-name';
+import { AvatarContent, CompanyMark } from '@/components/shell/user-avatar';
 
 const shortDate = (locale: Locale, iso: string | null | undefined) =>
   iso
@@ -513,10 +517,44 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
   const fieldId = useId();
   const { t } = useT();
   const { companyName, ready } = useCompanyName();
+  const companyLogo = useCompanyLogo();
   // The name being typed, or null when not editing.
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const logoInput = useRef<HTMLInputElement>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+
+  async function chooseLogo(files: FileList | null) {
+    const file = files?.[0];
+    // Reset so choosing the same file again still fires a change event.
+    if (logoInput.current) logoInput.current.value = '';
+    if (!file || logoBusy) return;
+    setLogoBusy(true);
+    setError(null);
+    const message = await saveCompanyLogo(file);
+    setLogoBusy(false);
+    if (message) return setError(message);
+    toast.add({
+      title: t('Logo saved'),
+      description: t('It shows in the sidebar and menus for everyone in the workspace.'),
+      type: 'success',
+    });
+  }
+
+  async function dropLogo() {
+    if (logoBusy) return;
+    setLogoBusy(true);
+    setError(null);
+    const message = await removeCompanyLogo();
+    setLogoBusy(false);
+    if (message) return setError(message);
+    toast.add({
+      title: t('Logo removed'),
+      description: t('The company initials show again.'),
+      type: 'success',
+    });
+  }
 
   async function saveName(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -545,8 +583,10 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
         id="ac-workspace-title"
       />
       <div className="ac-identity">
+        {/* What the sidebar shows: the uploaded logo, or the initials until
+            there is one. */}
         <span className="client-avatar" aria-hidden="true">
-          {companyInitials(draft?.trim() || companyName)}
+          <CompanyMark name={draft?.trim() || companyName} src={companyLogo} />
         </span>
         {draft === null ? (
           <>
@@ -616,6 +656,39 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
         {t('It shows in the sidebar and menus for everyone in the workspace.')}
       </p>
       <div className="ac-workspace-links">
+        {canEdit ? (
+          <>
+            <input
+              ref={logoInput}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              onChange={(event) => void chooseLogo(event.target.files)}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={logoBusy}
+              onClick={() => logoInput.current?.click()}
+            >
+              <ImagePlus data-icon="inline-start" />
+              {companyLogo ? t('Change logo') : t('Add company logo')}
+            </Button>
+            {companyLogo ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={logoBusy}
+                onClick={() => void dropLogo()}
+              >
+                <Trash2 data-icon="inline-start" />
+                {t('Remove logo')}
+              </Button>
+            ) : null}
+          </>
+        ) : null}
         <Link href="/fleet" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
           <Truck data-icon="inline-start" />
           {t('Truck Fleet')}

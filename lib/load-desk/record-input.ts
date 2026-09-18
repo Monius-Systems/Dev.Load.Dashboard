@@ -30,6 +30,8 @@ export type ProfileKind = 'customer' | 'truck' | 'company' | 'client';
 export const MAX_ORIGINAL_BYTES = 20 * 1024 * 1024;
 export const SHA256 = /^[0-9a-f]{64}$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+/** Mirrors LOGO_VERSION in lib/server/logo-store.ts, which this may not import. */
+const LOGO_VERSION = /^[a-z0-9]{8,40}$/;
 
 type Parsed<T> = { value: T } | { error: string };
 
@@ -334,6 +336,14 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
       (typeof value.default_client_id === 'number' &&
         Number.isInteger(value.default_client_id) &&
         value.default_client_id > 0)
+    ) ||
+    // Kept as it is found, never set from here: the logo is written by the
+    // route that stores the picture. Checked all the same, because anything
+    // this function passes through is stored.
+    !(
+      value.logo_version === undefined ||
+      value.logo_version === null ||
+      (typeof value.logo_version === 'string' && LOGO_VERSION.test(value.logo_version))
     )
   ) {
     return { error: 'The company name and address are not valid.' };
@@ -349,6 +359,11 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
       ...(displayName ? { display_name: displayName } : {}),
       ...(typeof value.default_client_id === 'number'
         ? { default_client_id: value.default_client_id }
+        : {}),
+      // Without this, saving the company name would drop the logo: everything
+      // this function does not name is thrown away.
+      ...(typeof value.logo_version === 'string'
+        ? { logo_version: value.logo_version }
         : {}),
       name,
       address_lines: [street, city],

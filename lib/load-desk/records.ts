@@ -42,6 +42,38 @@ export function groupByTicketDate<T>(
     .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
 }
 
+/** The most recently saved record of a batch; id settles a tie within a second. */
+const lastSavedIn = (items: SavedRecord[]) =>
+  items.reduce((latest, item) =>
+    item.saved_at > latest.saved_at ||
+    (item.saved_at === latest.saved_at && item.id > latest.id)
+      ? item
+      : latest,
+  );
+
+/**
+ * The batches on Load Desk, most recently added to first.
+ *
+ * A batch is a ticket date, but what makes one recent is when something last
+ * went into it rather than the date printed on the paper: a ticket photographed
+ * this morning puts its batch at the top even when the ticket itself is from
+ * last month, because that is the pile being worked through. Sorting by the
+ * printed date instead buried this morning's work behind every newer ticket
+ * date already on file.
+ *
+ * Every group `groupByTicketDate` returns holds at least one record, which is
+ * what `lastSavedIn` needs.
+ */
+export function batchesByRecency(records: SavedRecord[]) {
+  return groupByTicketDate(records, (record) => record.ticket.ticket_date)
+    .map((group) => ({ ...group, lastSaved: lastSavedIn(group.items) }))
+    .sort(
+      (a, b) =>
+        b.lastSaved.saved_at.localeCompare(a.lastSaved.saved_at) ||
+        b.lastSaved.id - a.lastSaved.id,
+    );
+}
+
 /**
  * The upload a saved ticket belongs to. Tickets saved before uploads were
  * recorded are grouped by their invoice number instead.

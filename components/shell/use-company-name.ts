@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import { workspaceCompanyName } from '@/lib/load-desk/business';
 import {
+  companyLogoUrl,
   getProfilesSnapshot,
   getServerProfilesSnapshot,
   subscribeProfiles,
@@ -24,4 +25,18 @@ export function useCompanyName(): { companyName: string; ready: boolean } {
   );
   const { t } = useT();
   return { companyName: workspaceCompanyName(company, t('Your company')), ready };
+}
+
+/**
+ * The workspace's own logo, or null while there is none and its initials stand
+ * instead. Updated everywhere as soon as one is uploaded, the same way the
+ * company name is.
+ */
+export function useCompanyLogo(): string | null {
+  const { company } = useSyncExternalStore(
+    subscribeProfiles,
+    getProfilesSnapshot,
+    getServerProfilesSnapshot,
+  );
+  return companyLogoUrl(company);
 }
