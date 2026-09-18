@@ -1906,22 +1906,15 @@ details[open] > .ld-section-summary .ld-section-chevron {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* The picture in the column beside the form, which opens the whole thing. A
-   button around it and nothing else: what it looks like is the picture. */
-.ld-aside-open {
-  display: block;
-  width: 100%;
-  margin: 0;
-  border: 0;
-  padding: 0;
-  background: none;
-  text-align: inherit;
+/* The magnifying glass over the picture in the column beside the form: the
+   lens follows the pointer, so the pointer says what it is for.
+   Nothing is said here about the picture inside it. The lens draws the same
+   preview a second time over the first, and it has to lay out exactly as the
+   first did — anything that changed its height or its fit would magnify a
+   differently shaped picture than the one being pointed at. */
+.ld-aside-lens {
+  border-radius: var(--ui-radius-md);
   cursor: zoom-in;
-}
-.ld-aside-open:focus-visible {
-  outline: 2px solid var(--ui-focus);
-  outline-offset: 3px;
-  border-radius: var(--ui-radius-sm);
 }
 /* Zooming without fingers: the wheel and a drag do it, and these say so and
    give anyone who would rather press something a way in. */

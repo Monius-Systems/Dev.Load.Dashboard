@@ -402,8 +402,7 @@ export const PL_PAGES: Record<string, string> = {
   'Zoom in': 'Przybliż',
   'Zoom out': 'Oddal',
   'Fit to screen': 'Dopasuj do ekranu',
-  'Open to zoom': 'Otwórz, aby przybliżyć',
-  'Open the original to zoom in': 'Otwórz oryginał, aby przybliżyć',
+  'Magnify the original ticket': 'Powiększ oryginał kwitu',
   'This browser cannot preview {name}. It is still stored with the record.':
     'Ta przeglądarka nie może wyświetlić {name}. Plik jest nadal zapisany z rekordem.',
   'use PDF, PNG, JPG, TIFF, WebP or text': 'użyj PDF, PNG, JPG, TIFF, WebP lub pliku tekstowego',

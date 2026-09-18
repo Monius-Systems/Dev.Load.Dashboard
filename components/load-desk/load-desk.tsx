@@ -44,6 +44,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Lens } from '@/components/ui/lens';
 import {
   Progress,
   ProgressLabel,
@@ -2069,6 +2070,16 @@ export default function LoadDesk() {
   const lastStep = STEPS.length - 1;
   const atStep = Math.min(step, lastStep);
 
+  /**
+   * Whether the picture beside the form is one a magnifying glass can do
+   * anything with: a photograph that has arrived. A PDF is the browser's own
+   * viewer, and the other states are a line of text in a box.
+   */
+  const zoomablePreview =
+    !!active &&
+    active.preview_status === 'ready' &&
+    /^image\/(png|jpe?g|webp|gif)$/.test(active.source.type);
+
   const batchItems = active
     ? queue.filter((item) => item.batch_id === active.batch_id)
     : [];
@@ -3440,19 +3451,29 @@ export default function LoadDesk() {
                 <aside className="ld-aside" aria-label={t('Source ticket')}>
                   <div>
                     <h3>{t('Original')}</h3>
-                    {/* The column is as wide as the column is; a weight printed
-                        small on a photographed ticket is not readable at that
-                        size. Opening it puts the picture over the whole screen,
-                        where it can be zoomed into and moved about. */}
-                    <button
-                      type="button"
-                      className="ld-aside-open"
-                      title={t('Open to zoom')}
-                      aria-label={t('Open the original to zoom in')}
-                      onClick={() => setViewingTicket(true)}
-                    >
+                    {/* The column is as wide as the column is, and a weight
+                        printed small on a photographed ticket is not readable
+                        at that size. Rather than send the reviewer to another
+                        screen and back for every field, the pointer carries a
+                        magnifying glass over the picture: the file is far
+                        larger than the box it is shown in, so what the lens
+                        enlarges is detail that was already there.
+                        Only over a photograph. A PDF is the browser's own
+                        viewer in an iframe — drawing it twice would load it
+                        twice — and the rest are words in a box, which do not
+                        need magnifying. */}
+                    {zoomablePreview ? (
+                      <Lens
+                        className="ld-aside-lens"
+                        zoomFactor={2.4}
+                        lensSize={190}
+                        ariaLabel={t('Magnify the original ticket')}
+                      >
+                        <SourcePreview item={active} />
+                      </Lens>
+                    ) : (
                       <SourcePreview item={active} />
-                    </button>
+                    )}
                     <p className="ld-aside-note">
                       {active.source.file_name} · {fileSize(active.source.size)} ·
                       SHA-256 <code>{active.source.sha256.slice(0, 12)}</code>

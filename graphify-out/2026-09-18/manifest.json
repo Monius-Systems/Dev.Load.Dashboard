@@ -768,50 +768,50 @@
     "semantic_hash": "4526cad9fbe090942fa36521105970dd"
   },
   "public/ocr/pdf.worker.min.mjs": {
-    "mtime": 1789737260.3572407,
-    "seen": 1789737303.6248682,
+    "mtime": 1789737593.857127,
+    "seen": 1789737634.435528,
     "ast_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e",
     "semantic_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e"
   },
   "public/ocr/tesseract-core-lstm.wasm.js": {
-    "mtime": 1789737260.3756163,
-    "seen": 1789737303.624869,
+    "mtime": 1789737593.8671317,
+    "seen": 1789737634.435529,
     "ast_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3",
     "semantic_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3"
   },
   "public/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": {
-    "mtime": 1789737260.3928196,
-    "seen": 1789737303.6248698,
+    "mtime": 1789737593.8751848,
+    "seen": 1789737634.43553,
     "ast_hash": "f267f4efd6219843707c73b3a9a70604",
     "semantic_hash": "f267f4efd6219843707c73b3a9a70604"
   },
   "public/ocr/tesseract-core-relaxedsimd.wasm.js": {
-    "mtime": 1789737260.4132385,
-    "seen": 1789737303.6248698,
+    "mtime": 1789737593.8847017,
+    "seen": 1789737634.435531,
     "ast_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb",
     "semantic_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb"
   },
   "public/ocr/tesseract-core-simd-lstm.wasm.js": {
-    "mtime": 1789737260.4356515,
-    "seen": 1789737303.624871,
+    "mtime": 1789737593.894833,
+    "seen": 1789737634.435531,
     "ast_hash": "2bd630487581a49b7d7cce1bfe42314c",
     "semantic_hash": "2bd630487581a49b7d7cce1bfe42314c"
   },
   "public/ocr/tesseract-core-simd.wasm.js": {
-    "mtime": 1789737260.4552057,
-    "seen": 1789737303.624872,
+    "mtime": 1789737593.903135,
+    "seen": 1789737634.435532,
     "ast_hash": "3fb1f6589c0569134cc593e0155acec4",
     "semantic_hash": "3fb1f6589c0569134cc593e0155acec4"
   },
   "public/ocr/tesseract-core.wasm.js": {
-    "mtime": 1789737260.4779458,
-    "seen": 1789737303.624872,
+    "mtime": 1789737593.9491906,
+    "seen": 1789737634.435533,
     "ast_hash": "7ec67b8a67ab4d41b74dd8df49db9224",
     "semantic_hash": "7ec67b8a67ab4d41b74dd8df49db9224"
   },
   "public/ocr/worker.min.js": {
-    "mtime": 1789737260.3623223,
-    "seen": 1789737303.624873,
+    "mtime": 1789737593.8585033,
+    "seen": 1789737634.435534,
     "ast_hash": "b1ab464237e687b323da236fff45ba05",
     "semantic_hash": "b1ab464237e687b323da236fff45ba05"
   },
@@ -1386,9 +1386,21 @@
     "semantic_hash": ""
   },
   "components/account/image-cropper.tsx": {
-    "mtime": 1789736736.0973222,
-    "seen": 1789736820.078938,
-    "ast_hash": "5aff85b8590448a9879cac01303f94aa",
+    "mtime": 1789737548.7000372,
+    "seen": 1789737634.4354188,
+    "ast_hash": "e8edf32d3359442d1c50fd6489e60af4",
+    "semantic_hash": ""
+  },
+  "lib/crop-box.ts": {
+    "mtime": 1789737548.6867487,
+    "seen": 1789737634.435478,
+    "ast_hash": "338f0b038a3354d42b1945453c10e5a3",
+    "semantic_hash": ""
+  },
+  "tests/crop-box.test.ts": {
+    "mtime": 1789737573.944808,
+    "seen": 1789737634.4355452,
+    "ast_hash": "fabc3771faf6a0741d2b9256d1378a94",
     "semantic_hash": ""
   }
 }
