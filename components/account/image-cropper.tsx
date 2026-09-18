@@ -2,53 +2,61 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Minus, Plus } from 'lucide-react';
 import {
-  movedBox,
-  resizedBox,
-  wholeOf,
-  type Box,
-  type Corner,
+  clampOffset,
+  coverScale,
+  sourceRect,
+  MAX_ZOOM,
+  type Offset,
+  type Size,
 } from '@/lib/crop-box';
 import { useT } from '@/lib/i18n/use-t';
 
 /**
- * Choosing what part of a picture is kept, before it is uploaded.
+ * Fitting a picture into the shape it will be shown in.
  *
- * A photo taken on a phone is whatever was in frame, and a logo arrives with
- * whatever white space the file was saved with. Taking the middle of it and
- * hoping is what this replaces: a box over the picture, moved by dragging it
- * and resized by its corners, and what is inside the box is what is stored.
+ * The window is that shape and it does not move: a circle for a person, a
+ * rounded square for a company, the same shapes the app draws those icons in.
+ * What moves is the picture behind it — dragged about, and zoomed with the
+ * wheel, the buttons or the slider — until the part worth keeping is the part
+ * showing through.
  *
- * The box is held in pixels of the picture as it is displayed rather than in
- * fractions of the original, because that is the space the fingers and the
- * pointer work in; it is scaled back up to the original when it is cut.
+ * The window is always full, whatever is done to the picture, because zoom is
+ * measured from the scale at which the picture just covers it and the drag is
+ * held inside its edges. There is no way to leave a corner of nothing in an
+ * icon, which a box dragged freely over a picture allowed.
+ *
+ * What is cut is the square behind that window, not the shape: the shape is the
+ * app's, drawn in CSS wherever the icon appears, and a person's photo is stored
+ * as a JPEG, which has no transparent corners to cut into.
  */
+
+/** The window on the screen. The stored picture is larger; see the uploads. */
+const FRAME = 280;
 
 export default function ImageCropper({
   file,
-  square = false,
+  shape,
   title,
   onCancel,
   onCropped,
 }: {
   file: File;
-  /** Locks the box to a square, for a picture shown in a round or square slot. */
-  square?: boolean;
+  /** The shape this picture is shown in, once it is in place. */
+  shape: 'circle' | 'rounded';
   title: string;
   onCancel: () => void;
   onCropped: (cropped: File) => void;
 }) {
   const { t } = useT();
   const dialog = useRef<HTMLDialogElement>(null);
-  const picture = useRef<HTMLImageElement>(null);
   // Made once, for the file this cropper was mounted with, and let go of when
-  // it closes. Not in an effect: an effect that sets state on mount renders the
-  // picture a frame late and costs a second pass for nothing.
+  // it closes.
   const [url] = useState(() => URL.createObjectURL(file));
-  const [box, setBox] = useState<Box | null>(null);
-  // The size the picture was last measured at, for keeping the box on the same
-  // part of it when the window changes shape.
-  const shownSize = useRef({ width: 0, height: 0 });
+  const [natural, setNatural] = useState<Size | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,66 +71,42 @@ export default function ImageCropper({
     };
   }, []);
 
-  /**
-   * The box follows the size of the picture as it is shown.
-   *
-   * Not `onLoad`: the picture can finish decoding before the effect above has
-   * called showModal(), and a dialog that is not open yet has no layout — the
-   * measurement comes back 0 and the box is never drawn at all. An observer
-   * asks the other way round, and answers again if the window is resized,
-   * where the box would otherwise be left describing a picture of another size.
-   */
-  useEffect(() => {
-    const shown = picture.current;
-    if (!shown) return;
-    const observer = new ResizeObserver(() => {
-      const width = shown.clientWidth;
-      const height = shown.clientHeight;
-      if (!width || !height) return;
-      const was = shownSize.current;
-      shownSize.current = { width, height };
-      setBox((current) =>
-        current && was.width && was.height
-          ? {
-              x: current.x * (width / was.width),
-              y: current.y * (height / was.height),
-              w: current.w * (width / was.width),
-              h: current.h * (height / was.height),
-            }
-          : wholeOf(width, height, square),
-      );
-    });
-    observer.observe(shown);
-    return () => observer.disconnect();
-  }, [square]);
+  // The scale the picture is actually drawn at: covering the window, times the
+  // zoom asked for.
+  const drawScale = natural ? coverScale(natural, FRAME) * zoom : 1;
 
-  /** Back to the whole picture, for the Reset button. */
-  function fitBox() {
-    const shown = picture.current;
-    if (!shown?.clientWidth || !shown.clientHeight) return;
-    setBox(wholeOf(shown.clientWidth, shown.clientHeight, square));
+  /** Zooms, and pulls the picture back inside the window if that left a gap. */
+  function zoomTo(next: number) {
+    const held = Math.min(MAX_ZOOM, Math.max(1, next));
+    setZoom(held);
+    if (natural) {
+      setOffset((current) =>
+        clampOffset(current, natural, FRAME, coverScale(natural, FRAME) * held),
+      );
+    }
   }
 
-  /** Dragging the box itself, or one of its corners. */
-  function grab(event: React.PointerEvent, corner: Corner | null) {
-    const shown = picture.current;
-    if (!shown || !box) return;
+  function reset() {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  }
+
+  /** Dragging the picture behind the window. */
+  function grab(event: React.PointerEvent) {
+    if (!natural) return;
     event.preventDefault();
-    event.stopPropagation();
-    const limit = { width: shown.clientWidth, height: shown.clientHeight };
     const fromX = event.clientX;
     const fromY = event.clientY;
-    const start = box;
-
-    const move = (moved: PointerEvent) => {
-      const dx = moved.clientX - fromX;
-      const dy = moved.clientY - fromY;
-      setBox(
-        corner
-          ? resizedBox(start, corner, dx, dy, limit, square)
-          : movedBox(start, dx, dy, limit),
+    const start = offset;
+    const move = (moved: PointerEvent) =>
+      setOffset(
+        clampOffset(
+          { x: start.x + (moved.clientX - fromX), y: start.y + (moved.clientY - fromY) },
+          natural,
+          FRAME,
+          drawScale,
+        ),
       );
-    };
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
@@ -133,36 +117,35 @@ export default function ImageCropper({
     window.addEventListener('pointercancel', up);
   }
 
-  /** Cuts the box out of the original, at the original's own resolution. */
+  /** Cuts the square behind the window out of the original, at its own size. */
   async function keep() {
-    const shown = picture.current;
-    if (!shown || !box || busy) return;
+    if (!natural || busy) return;
     setBusy(true);
     setError(null);
     try {
+      const rect = sourceRect(natural, FRAME, drawScale, offset);
       const bitmap = await createImageBitmap(file);
-      const scaleX = bitmap.width / shown.clientWidth;
-      const scaleY = bitmap.height / shown.clientHeight;
-      const width = Math.max(1, Math.round(box.w * scaleX));
-      const height = Math.max(1, Math.round(box.h * scaleY));
-      const surface = Object.assign(document.createElement('canvas'), { width, height });
+      // Never larger than what was actually there to cut.
+      const side = Math.max(1, Math.round(Math.min(rect.size, 1024)));
+      const surface = Object.assign(document.createElement('canvas'), {
+        width: side,
+        height: side,
+      });
       const context = surface.getContext('2d');
       if (!context) throw new Error('This browser cannot prepare the picture.');
       context.imageSmoothingQuality = 'high';
       context.drawImage(
         bitmap,
-        box.x * scaleX,
-        box.y * scaleY,
-        box.w * scaleX,
-        box.h * scaleY,
+        rect.x,
+        rect.y,
+        rect.size,
+        rect.size,
         0,
         0,
-        width,
-        height,
+        side,
+        side,
       );
       bitmap.close();
-      // PNG: a logo with a cut-out background keeps it, and nothing downstream
-      // is the worse for it — both uploads re-encode at the size they store.
       const blob = await new Promise<Blob | null>((resolve) =>
         surface.toBlob(resolve, 'image/png'),
       );
@@ -187,37 +170,71 @@ export default function ImageCropper({
       }}
     >
       <p className="ac-cropper-title">{title}</p>
-      <div className="ac-cropper-stage">
+      {/* The window, and the picture behind it. The drag is on this whole
+          square rather than on anything drawn over it: there is one thing to
+          take hold of and nothing to miss. */}
+      <div
+        className="ac-cropper-frame"
+        data-shape={shape}
+        onPointerDown={grab}
+        onWheel={(event) => zoomTo(zoom * Math.exp(-event.deltaY * 0.002))}
+      >
         {/* Not next/image: an object URL for a file picked a moment ago, whose
             size is not known until the browser has decoded it. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          ref={picture}
           src={url}
           alt=""
-          className="ac-cropper-picture"
-          onLoad={fitBox}
           draggable={false}
+          className="ac-cropper-picture"
+          style={
+            natural
+              ? {
+                  width: natural.width * drawScale,
+                  height: natural.height * drawScale,
+                  transform: `translate(${offset.x}px, ${offset.y}px)`,
+                }
+              : { visibility: 'hidden' }
+          }
+          onLoad={(event) => {
+            const shown = event.currentTarget;
+            setNatural({ width: shown.naturalWidth, height: shown.naturalHeight });
+          }}
         />
-        {box ? (
-          <div
-            className="ac-cropper-box"
-            style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
-            onPointerDown={(event) => grab(event, null)}
-          >
-            {(['nw', 'ne', 'sw', 'se'] as Corner[]).map((corner) => (
-              <span
-                key={corner}
-                className="ac-cropper-corner"
-                data-corner={corner}
-                onPointerDown={(event) => grab(event, corner)}
-              />
-            ))}
-          </div>
-        ) : null}
+        {/* The shape, cut out of a dim sheet. It takes no pointer events, so
+            the picture under it stays the thing being dragged. */}
+        <span className="ac-cropper-mask" data-shape={shape} aria-hidden="true" />
+      </div>
+      <div className="ac-cropper-zoom">
+        <button
+          type="button"
+          aria-label={t('Zoom out')}
+          onClick={() => zoomTo(zoom / 1.3)}
+          disabled={busy}
+        >
+          <Minus size={16} />
+        </button>
+        <input
+          type="range"
+          min={1}
+          max={MAX_ZOOM}
+          step={0.01}
+          value={zoom}
+          aria-label={t('Zoom')}
+          disabled={busy || !natural}
+          onChange={(event) => zoomTo(Number(event.target.value))}
+        />
+        <button
+          type="button"
+          aria-label={t('Zoom in')}
+          onClick={() => zoomTo(zoom * 1.3)}
+          disabled={busy}
+        >
+          <Plus size={16} />
+        </button>
       </div>
       <p className="ac-cropper-hint">
-        {t('Drag the box to move it, and its corners to change what is kept.')}
+        {t('Drag the picture to move it, and zoom until it sits the way you want.')}
       </p>
       {error ? (
         <p className="ld-status" data-tone="error" role="alert">
@@ -225,13 +242,18 @@ export default function ImageCropper({
         </p>
       ) : null}
       <div className="ac-cropper-actions">
-        <button type="button" className="ac-cropper-reset" onClick={fitBox} disabled={busy}>
+        <button type="button" className="ac-cropper-reset" onClick={reset} disabled={busy}>
           {t('Reset')}
         </button>
         <button type="button" className="ac-cropper-cancel" onClick={onCancel} disabled={busy}>
           {t('Cancel')}
         </button>
-        <button type="button" className="ac-cropper-save" onClick={() => void keep()} disabled={busy}>
+        <button
+          type="button"
+          className="ac-cropper-save"
+          onClick={() => void keep()}
+          disabled={busy || !natural}
+        >
           {busy ? t('Saving…') : t('Save')}
         </button>
       </div>

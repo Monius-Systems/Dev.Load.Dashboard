@@ -657,11 +657,11 @@
 }
 
 /* ===================================================== choosing what is kept */
-/* A picture with a box over it: dragged by its middle, resized by its corners,
-   and what is inside it is what is uploaded. A real dialog, so it is in the top
-   layer over the page and Escape is the browser's business. */
+/* The picture is fitted into the shape it will be shown in: a window that does
+   not move, and a picture behind it that does. A real dialog, so it is in the
+   top layer over the page and Escape is the browser's business. */
 .ac-cropper {
-  width: min(560px, calc(100vw - 2 * var(--ui-space-4)));
+  width: min(420px, calc(100vw - 2 * var(--ui-space-4)));
   max-width: none;
   max-height: calc(100dvh - 2 * var(--ui-space-4));
   margin: auto;
@@ -681,78 +681,86 @@
   margin: 0 0 var(--ui-space-4);
   font-size: var(--type-base);
   font-weight: var(--type-medium);
+  text-align: center;
 }
-/* Shrink-wrapped to the picture, so the box's coordinates and the picture's
-   are the same coordinates. */
-.ac-cropper-stage {
+/* The one thing to take hold of. Everything drawn over it is see-through to
+   the pointer, so a drag anywhere on this square moves the picture. */
+.ac-cropper-frame {
   position: relative;
-  display: block;
-  width: fit-content;
-  max-width: 100%;
+  display: grid;
+  place-items: center;
+  width: 280px;
+  height: 280px;
   margin: 0 auto;
-  /* The box dims everything around it with one enormous shadow, and this is
-     what keeps that shadow on the picture: without it the dim spreads across
-     the dialog and out over the page. */
   overflow: hidden;
-  border-radius: var(--ui-radius-sm);
-  /* The drag is this element's, not the browser's scroll. touch-action does
-     not inherit, so the box and its corners say it again for themselves. */
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-fill);
+  cursor: grab;
+  /* The drag is this element's, not the browser's scroll, and the wheel over
+     it is a zoom rather than the page moving. */
   touch-action: none;
   user-select: none;
 }
+.ac-cropper-frame:active {
+  cursor: grabbing;
+}
+/* Sized and moved from script; it is the picture, laid out behind the shape. */
 .ac-cropper-picture {
   display: block;
-  max-width: 100%;
-  /* Room for the buttons and the hint under it on a short window. */
-  max-height: min(56dvh, 420px);
-  width: auto;
-  height: auto;
-  border-radius: var(--ui-radius-sm);
+  max-width: none;
+  grid-area: 1 / 1;
+  pointer-events: none;
 }
-/* Everything outside the box is dimmed by the box's own giant shadow, which
-   costs nothing and needs no second element over the picture. */
-.ac-cropper-box {
+/* The shape itself, drawn as an enormous shadow *outside* it: a box-shadow
+   follows the border-radius, so what it paints is everything the shape does not
+   cover — the corners of the square — and the frame's own clipping cuts the
+   rest of it off. No second element, and no hole to keep in register.
+   It takes no pointer events, so the picture under it stays the thing being
+   dragged. */
+.ac-cropper-mask {
   position: absolute;
-  box-sizing: border-box;
-  border: 2px solid #fff;
-  box-shadow: 0 0 0 9999px rgb(16 24 40 / 55%);
-  cursor: move;
-  touch-action: none;
+  inset: 0;
+  pointer-events: none;
 }
-/* Inside the corners, not straddling them: the stage clips what leaves it, and
-   a box drawn tight to the edge of the picture — which is where a logo's box
-   starts — would have had half of every handle cut off. */
-.ac-cropper-corner {
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  border: 2px solid #fff;
-  background: var(--ui-accent);
-  touch-action: none;
+.ac-cropper-mask[data-shape='circle'] {
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 9999px rgb(16 24 40 / 58%),
+    inset 0 0 0 2px rgb(255 255 255 / 85%);
 }
-.ac-cropper-corner[data-corner='nw'] {
-  top: 0;
-  left: 0;
-  border-radius: 4px 0 0 0;
-  cursor: nwse-resize;
+/* The radius the company tile is drawn with (--ui-radius-sm on a 34px tile),
+   as a share of the side, so the window shows the shape the icon really has. */
+.ac-cropper-mask[data-shape='rounded'] {
+  border-radius: 23%;
+  box-shadow:
+    0 0 0 9999px rgb(16 24 40 / 58%),
+    inset 0 0 0 2px rgb(255 255 255 / 85%);
 }
-.ac-cropper-corner[data-corner='ne'] {
-  top: 0;
-  right: 0;
-  border-radius: 0 4px 0 0;
-  cursor: nesw-resize;
+.ac-cropper-zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  margin-top: var(--ui-space-4);
 }
-.ac-cropper-corner[data-corner='sw'] {
-  bottom: 0;
-  left: 0;
-  border-radius: 0 0 0 4px;
-  cursor: nesw-resize;
+.ac-cropper-zoom input[type='range'] {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--ui-accent);
 }
-.ac-cropper-corner[data-corner='se'] {
-  bottom: 0;
-  right: 0;
-  border-radius: 0 0 4px 0;
-  cursor: nwse-resize;
+.ac-cropper-zoom button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ui-fill);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+.ac-cropper-zoom button:hover {
+  background: var(--ui-fill-strong);
 }
 .ac-cropper-hint {
   margin: var(--ui-space-3) 0 0;
@@ -788,7 +796,8 @@
   background: var(--ui-accent);
   color: #fff;
 }
-.ac-cropper-actions button:disabled {
+.ac-cropper-actions button:disabled,
+.ac-cropper-zoom button:disabled {
   opacity: 0.6;
   cursor: default;
 }

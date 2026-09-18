@@ -92,8 +92,9 @@ export const PL_TEXT: Record<string, string> = {
   'on another invoice': 'na innej fakturze',
   'Crop your photo': 'Przytnij zdjęcie',
   'Crop the logo': 'Przytnij logo',
-  'Drag the box to move it, and its corners to change what is kept.':
-    'Przeciągnij ramkę, aby ją przesunąć, a jej rogi, aby zmienić przycięcie.',
+  'Drag the picture to move it, and zoom until it sits the way you want.':
+    'Przeciągnij obraz, aby go przesunąć, i przybliż, aż będzie leżał jak trzeba.',
+  Zoom: 'Powiększenie',
   Reset: 'Przywróć',
   'That picture could not be read.': 'Nie udało się odczytać tego obrazu.',
   'This browser cannot prepare the picture.':

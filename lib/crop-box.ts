@@ -1,72 +1,71 @@
-// The box that says what part of a picture is kept, and the two things that
-// happen to it: it is moved, or one of its corners is dragged. Kept apart from
-// the cropper itself so the arithmetic can be checked without a browser — it is
-// the part of cropping that is easy to get subtly wrong and hard to see.
+// Fitting a picture into the shape it will be shown in.
 //
-// Every measurement is in pixels of the picture as it is shown on the screen,
-// which is the space the finger or the pointer works in. The cropper scales it
-// up to the original only at the moment it cuts.
+// The window is the shape the icon has in the app — a circle for a person, a
+// rounded square for a company — and it does not move. What moves is the
+// picture behind it: dragged about and zoomed until the part worth keeping is
+// the part showing through. This is the same way a phone crops a contact photo,
+// and it has the property that matters here: whatever the person does, the
+// window is always full. A free-form box can be dragged half off the picture
+// and leave a corner of nothing in the icon; this cannot.
+//
+// Kept apart from the cropper so the arithmetic can be checked without a
+// browser. Everything is in pixels of the original picture except `offset`,
+// which is in pixels of the screen, because that is what a finger moves.
 
-export type Box = { x: number; y: number; w: number; h: number };
-export type Corner = 'nw' | 'ne' | 'sw' | 'se';
-export type Limit = { width: number; height: number };
+export type Size = { width: number; height: number };
+export type Offset = { x: number; y: number };
+/** The square of the original that ends up in the window. */
+export type Source = { x: number; y: number; size: number };
 
-/** Small enough to crop tightly, large enough to still have corners to grab. */
-export const MIN_SIDE = 64;
+/** As far in as the picture may be pushed. Past this it is showing its grain. */
+export const MAX_ZOOM = 5;
 
-/** The whole picture, or the largest square inside it. */
-export function wholeOf(width: number, height: number, square: boolean): Box {
-  const side = Math.min(width, height);
-  return square
-    ? { x: (width - side) / 2, y: (height - side) / 2, w: side, h: side }
-    : { x: 0, y: 0, w: width, h: height };
+/**
+ * The scale at which the picture just fills the window — its shorter side
+ * exactly spanning it. Zoom is measured from here, so zoom 1 is always a full
+ * window whatever shape the picture arrived in.
+ */
+export function coverScale(natural: Size, frame: number): number {
+  const shorter = Math.min(natural.width, natural.height);
+  return shorter > 0 ? frame / shorter : 1;
 }
 
-/** The same box, dragged by (dx, dy) and kept inside the picture. */
-export function movedBox(start: Box, dx: number, dy: number, limit: Limit): Box {
+/**
+ * The offset, held so the picture never pulls away from an edge of the window.
+ * At zoom 1 along the picture's shorter side there is no room to move at all,
+ * and the offset is pinned to nothing.
+ */
+export function clampOffset(
+  offset: Offset,
+  natural: Size,
+  frame: number,
+  drawScale: number,
+): Offset {
+  const roomX = Math.max(0, (natural.width * drawScale - frame) / 2);
+  const roomY = Math.max(0, (natural.height * drawScale - frame) / 2);
   return {
-    ...start,
-    x: Math.min(limit.width - start.w, Math.max(0, start.x + dx)),
-    y: Math.min(limit.height - start.h, Math.max(0, start.y + dy)),
+    x: Math.min(roomX, Math.max(-roomX, offset.x)),
+    y: Math.min(roomY, Math.max(-roomY, offset.y)),
   };
 }
 
 /**
- * One corner dragged by (dx, dy). The corner opposite it does not move, the box
- * never leaves the picture and never shrinks past MIN_SIDE, and with `square`
- * it stays as tall as it is wide.
+ * The square of the original showing through the window, ready to be cut out.
+ *
+ * The picture is drawn centred in the window and then moved by `offset`, so a
+ * point at `n` in the original lands at `frame / 2 + offset + (n - natural / 2)
+ * * drawScale`. This reads that backwards for the two corners of the window.
  */
-export function resizedBox(
-  start: Box,
-  corner: Corner,
-  dx: number,
-  dy: number,
-  limit: Limit,
-  square: boolean,
-): Box {
-  const right = start.x + start.w;
-  const bottom = start.y + start.h;
-  const west = corner === 'nw' || corner === 'sw';
-  const north = corner === 'nw' || corner === 'ne';
-
-  let x = west ? Math.min(right - MIN_SIDE, Math.max(0, start.x + dx)) : start.x;
-  let y = north ? Math.min(bottom - MIN_SIDE, Math.max(0, start.y + dy)) : start.y;
-  let w = west
-    ? right - x
-    : Math.min(limit.width - start.x, Math.max(MIN_SIDE, start.w + dx));
-  let h = north
-    ? bottom - y
-    : Math.min(limit.height - start.y, Math.max(MIN_SIDE, start.h + dy));
-
-  if (square) {
-    // The smaller of the two, so a square corner never pushes the box out of
-    // the picture on the axis that had less room left.
-    const side = Math.max(MIN_SIDE, Math.min(w, h));
-    w = h = side;
-    // The fixed corner stays fixed: the sides that moved are the ones that
-    // take up the difference.
-    if (west) x = right - side;
-    if (north) y = bottom - side;
-  }
-  return { x, y, w, h };
+export function sourceRect(
+  natural: Size,
+  frame: number,
+  drawScale: number,
+  offset: Offset,
+): Source {
+  const size = frame / drawScale;
+  return {
+    x: natural.width / 2 - size / 2 - offset.x / drawScale,
+    y: natural.height / 2 - size / 2 - offset.y / drawScale,
+    size,
+  };
 }

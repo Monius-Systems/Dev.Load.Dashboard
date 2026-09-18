@@ -309,7 +309,7 @@ function ProfileHero({
         <ImageCropper
           key={`${cropping.name}-${cropping.size}`}
           file={cropping}
-          square
+          shape="circle"
           title={t('Crop your photo')}
           onCancel={() => setCropping(null)}
           onCropped={(cropped) => void savePhoto(cropped)}
@@ -741,6 +741,7 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
         <ImageCropper
           key={`${croppingLogo.name}-${croppingLogo.size}`}
           file={croppingLogo}
+          shape="rounded"
           title={t('Crop the logo')}
           onCancel={() => setCroppingLogo(null)}
           onCropped={(cropped) => void saveLogo(cropped)}
