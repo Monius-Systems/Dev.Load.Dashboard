@@ -2,7 +2,32 @@ import { sellerAddressLines, sellerName } from './business.ts';
 import { watchForChanges } from './live.ts';
 import { apiJson, dataMode, type DataMode } from './data-mode.ts';
 import { lineTotal } from './format.ts';
-import type { BillTo, FuelType, RateType, SavedRecord, Ticket } from './types.ts';
+import type { BillTo, SavedRecord, Ticket } from './types.ts';
+import type { FuelType, RateType } from './types.ts';
+import {
+  customerAddresses,
+  customerLocationRates,
+  locationRateFor,
+  normalizeAddress,
+  normalizeName,
+  rateFor,
+  type LocationRate,
+  type RateSet,
+} from './customer-rates.ts';
+
+// The address and site-rate arithmetic lives in customer-rates.ts, which has no
+// store in it, so the server's request parser can use it without bringing this
+// module's browser-side store along. Re-exported here so callers have one place
+// to look.
+export {
+  customerAddresses,
+  customerLocationRates,
+  locationRateFor,
+  normalizeAddress,
+  normalizeName,
+  rateFor,
+};
+export type { LocationRate, RateSet };
 
 // Customer and truck profiles. Signed-in members use the workspace database
 // through /api/profiles; the unprotected local preview keeps them in this
@@ -23,6 +48,13 @@ export type CustomerProfile = {
    * before addresses existed have none.
    */
   addresses?: string[];
+  /**
+   * Rates that apply at particular job sites, for a customer whose loads go to
+   * several places at different prices. Each names one of `addresses`; a site
+   * without one is charged at the customer's own rate below. Profiles saved
+   * before site rates existed have none.
+   */
+  location_rates?: LocationRate[];
   /**
    * Default rate filled into matching tickets, charged as rate_type (per load,
    * hour or ton). Null means the rate is entered per ticket. The name predates
@@ -124,6 +156,16 @@ function isCustomer(value: unknown): value is CustomerProfile {
     isStringList(customer.ticket_customer_ids) &&
     isStringList(customer.ticket_names) &&
     (customer.addresses === undefined || isStringList(customer.addresses)) &&
+    (customer.location_rates === undefined ||
+      (Array.isArray(customer.location_rates) &&
+        customer.location_rates.every(
+          (site) =>
+            !!site &&
+            typeof site === 'object' &&
+            typeof site.address === 'string' &&
+            isAmount(site.flat_rate) &&
+            isAmount(site.fuel_charge),
+        ))) &&
     isAmount(customer.flat_rate) &&
     (customer.rate_type === undefined || typeof customer.rate_type === 'string') &&
     (customer.fuel_type === undefined || typeof customer.fuel_type === 'string') &&
@@ -560,13 +602,6 @@ async function writeCompany(profile: Omit<CompanyProfile, 'id'>): Promise<string
 export const nextId = (items: { id: number }[]) =>
   items.reduce((max, item) => Math.max(max, item.id), 0) + 1;
 
-/** "Witech Company, Inc." -> "WITECH COMPANY INC". */
-export const normalizeName = (value: string) =>
-  value
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, ' ')
-    .trim();
-
 /** Identifiers compare without spaces or punctuation: "ZF-0321" = "zf0321". */
 export const normalizeKey = (value: string) =>
   value.toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -574,29 +609,6 @@ export const normalizeKey = (value: string) =>
 const sameText = (a: string, b: string) =>
   a.replace(/\s+/g, ' ').trim().toLowerCase() ===
   b.replace(/\s+/g, ' ').trim().toLowerCase();
-
-/** An address as it is stored: one line, single spaces, no trailing comma. */
-export const normalizeAddress = (value: string) =>
-  value.replace(/\s+/g, ' ').replace(/[\s,]+$/, '').trim();
-
-/**
- * A customer's saved job-site addresses, cleaned and without repeats. Profiles
- * saved before addresses existed have none.
- */
-export function customerAddresses(
-  customer: Pick<CustomerProfile, 'addresses'> | null | undefined,
-): string[] {
-  const seen = new Set<string>();
-  const addresses: string[] = [];
-  for (const line of customer?.addresses ?? []) {
-    const address = normalizeAddress(line);
-    const key = normalizeName(address);
-    if (!address || seen.has(key)) continue;
-    seen.add(key);
-    addresses.push(address);
-  }
-  return addresses;
-}
 
 /**
  * The customer's addresses with this one added, or the list unchanged when it

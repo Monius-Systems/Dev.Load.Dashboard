@@ -246,6 +246,41 @@
     height: 13px;
   }
 }
+/* A customer's job sites, each an address and, where it is charged differently
+   from the customer's usual rate, the figures for it. The address keeps the
+   chip the printed names use; the figures sit under it in one row, the same
+   four controls as the customer's own rate, so the eye reads them the same. */
+.pf-sites {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.pf-site-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pf-site-rate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--ui-space-2);
+  margin: 6px 0 2px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+@media (max-width: 767px) {
+  .pf-site-rate {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.pf-site-count {
+  display: block;
+  margin-top: 2px;
+  color: var(--ui-text-3);
+}
 .pf-alias-empty {
   margin-bottom: 2px;
   font-size: var(--type-xs);

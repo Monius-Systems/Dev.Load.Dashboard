@@ -84,6 +84,8 @@ import {
   addCustomerAddress,
   clientForBillTo,
   customerAddresses,
+  customerLocationRates,
+  rateFor,
   defaultClient,
   getProfilesSnapshot,
   getServerProfilesSnapshot,
@@ -331,26 +333,27 @@ type ProfileContext = {
 };
 
 /** Links a queue item to a customer profile and fills its rate and rate type. */
+/**
+ * Links a queue item to a customer profile and rates the ticket the way that
+ * customer is charged where this load went: the site's own rate where the
+ * delivery address has one, the customer's usual rate otherwise. A customer
+ * with no rate leaves whatever is on the ticket.
+ */
 function applyCustomer(
   item: QueueItem,
   customer: CustomerProfile | null,
 ): QueueItem {
   if (!customer) return { ...item, customer_profile_id: null };
+  const rated = rateFor(customer, item.ticket.project_address);
   return {
     ...item,
     customer_profile_id: customer.id,
     ticket: {
       ...item.ticket,
-      rate: customer.flat_rate ?? item.ticket.rate,
-      rate_type:
-        customer.flat_rate !== null
-          ? (customer.rate_type ?? 'flat')
-          : item.ticket.rate_type,
-      fuel_charge: customer.fuel_charge ?? item.ticket.fuel_charge,
-      fuel_type:
-        customer.fuel_charge !== null
-          ? (customer.fuel_type ?? 'flat')
-          : item.ticket.fuel_type,
+      rate: rated.flat_rate ?? item.ticket.rate,
+      rate_type: rated.flat_rate !== null ? rated.rate_type : item.ticket.rate_type,
+      fuel_charge: rated.fuel_charge ?? item.ticket.fuel_charge,
+      fuel_type: rated.fuel_charge !== null ? rated.fuel_type : item.ticket.fuel_type,
     },
   };
 }
@@ -817,12 +820,26 @@ export default function LoadDesk() {
       // say, and re-dating them along with it, as this used to, printed a
       // whole invoice for a day most of its tickets were not.
       const moveInvoiceDate = name === 'ticket_date' && typeof value === 'string';
+      // The rate follows the delivery address: a customer charged differently
+      // at this site than at the last one has its rate changed with the
+      // address. Only then — an address correction that makes no difference to
+      // the price leaves a rate typed by hand for this ticket alone.
+      const customer =
+        name === 'project_address' && target.customer_profile_id !== null
+          ? (customers.find((known) => known.id === target.customer_profile_id) ?? null)
+          : null;
       return current.map((item, index) => {
         if (index !== activeIndex) return item;
-        const next = { ...item, ticket: { ...item.ticket, [name]: value } };
-        return moveInvoiceDate
-          ? { ...next, invoice: { ...next.invoice, invoice_date: value as string } }
-          : next;
+        let next = { ...item, ticket: { ...item.ticket, [name]: value } };
+        if (moveInvoiceDate) {
+          next = { ...next, invoice: { ...next.invoice, invoice_date: value as string } };
+        }
+        if (customer) {
+          const was = rateFor(customer, item.ticket.project_address);
+          const now = rateFor(customer, next.ticket.project_address);
+          if (JSON.stringify(was) !== JSON.stringify(now)) next = applyCustomer(next, customer);
+        }
+        return next;
       });
     });
 
@@ -2120,6 +2137,7 @@ export default function LoadDesk() {
         ticket_customer_ids: activeCustomer.ticket_customer_ids,
         ticket_names: [...activeCustomer.ticket_names, printedName],
         addresses: customerAddresses(activeCustomer),
+        location_rates: customerLocationRates(activeCustomer),
         flat_rate: activeCustomer.flat_rate,
         rate_type: activeCustomer.rate_type ?? 'flat',
         fuel_charge: activeCustomer.fuel_charge,
@@ -2166,6 +2184,7 @@ export default function LoadDesk() {
         ticket_customer_ids: activeCustomer.ticket_customer_ids,
         ticket_names: activeCustomer.ticket_names,
         addresses: addCustomerAddress(activeCustomer, typedAddress),
+        location_rates: customerLocationRates(activeCustomer),
         flat_rate: activeCustomer.flat_rate,
         rate_type: activeCustomer.rate_type ?? 'flat',
         fuel_charge: activeCustomer.fuel_charge,

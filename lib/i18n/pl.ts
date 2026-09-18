@@ -310,6 +310,7 @@ export const PL_NOUNS: Record<string, [string, string, string]> = {
   client: ['płatnik', 'płatnicy', 'płatników'],
   'truck number': ['numer ciężarówki', 'numery ciężarówek', 'numerów ciężarówek'],
   'ticket name': ['nazwa z kwitu', 'nazwy z kwitów', 'nazw z kwitów'],
+  site: ['miejsce', 'miejsca', 'miejsc'],
   'saved ticket': ['zapisany kwit', 'zapisane kwity', 'zapisanych kwitów'],
   invoice: ['faktura', 'faktury', 'faktur'],
   truck: ['ciężarówka', 'ciężarówki', 'ciężarówek'],

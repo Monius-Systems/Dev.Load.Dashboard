@@ -48,6 +48,7 @@ import {
   addCustomerAddress,
   customerAddresses,
   customerIdFor,
+  customerLocationRates,
   deleteProfile,
   normalizeAddress,
   normalizeKey,
@@ -55,6 +56,7 @@ import {
   saveProfile,
   summarize,
   type CustomerProfile,
+  type LocationRate,
 } from '@/lib/load-desk/profiles';
 import {
   FUEL_TYPES,
@@ -74,6 +76,25 @@ const fuelText = ({ t }: Translator, customer: CustomerProfile) =>
       })}`
     : '';
 
+/**
+ * What a site is charged, as typed: blank figures mean the customer's own.
+ * Keyed by address in the draft, because a site's rate is a property of that
+ * address and goes when the address goes.
+ */
+type SiteRateDraft = {
+  rateType: RateType;
+  flatRate: string;
+  fuelCharge: string;
+  fuelType: FuelType;
+};
+
+const blankSiteRate = (): SiteRateDraft => ({
+  rateType: 'flat',
+  flatRate: '',
+  fuelCharge: '',
+  fuelType: 'flat',
+});
+
 type Draft = {
   id: number | null;
   name: string;
@@ -82,6 +103,8 @@ type Draft = {
   names: string[];
   /** Job-site addresses, ready to pick while reviewing a scan. */
   addresses: string[];
+  /** Rates at particular sites, by address; a site not here takes the customer's. */
+  siteRates: Record<string, SiteRateDraft>;
   rateType: RateType;
   flatRate: string;
   fuelCharge: string;
@@ -95,6 +118,7 @@ const blankDraft = (): Draft => ({
   ids: '',
   names: [],
   addresses: [],
+  siteRates: {},
   rateType: 'flat',
   flatRate: '',
   fuelCharge: '',
@@ -108,6 +132,17 @@ const draftFrom = (customer: CustomerProfile): Draft => ({
   ids: customer.ticket_customer_ids.join(', '),
   names: [...customer.ticket_names],
   addresses: customerAddresses(customer),
+  siteRates: Object.fromEntries(
+    customerLocationRates(customer).map((site) => [
+      site.address,
+      {
+        rateType: site.rate_type ?? 'flat',
+        flatRate: site.flat_rate === null ? '' : String(site.flat_rate),
+        fuelCharge: site.fuel_charge === null ? '' : String(site.fuel_charge),
+        fuelType: site.fuel_type ?? 'flat',
+      },
+    ]),
+  ),
   rateType: customer.rate_type ?? 'flat',
   flatRate: customer.flat_rate === null ? '' : String(customer.flat_rate),
   fuelCharge: customer.fuel_charge === null ? '' : String(customer.fuel_charge),
@@ -218,6 +253,29 @@ export default function CustomersPage() {
       setFormError(t('Rates must be blank, zero or a positive amount.'));
       return;
     }
+    // Each site's figures, read the same way; a site with nothing typed for it
+    // is charged at the customer's rate and is not kept.
+    const locationRates: LocationRate[] = [];
+    for (const address of draft.addresses) {
+      const site = draft.siteRates[address];
+      if (!site) continue;
+      const siteRate = parseAmount(site.flatRate);
+      const siteFuel = parseAmount(site.fuelCharge);
+      if (siteRate === 'invalid' || siteFuel === 'invalid') {
+        setFormError(
+          t('The rate at {address} must be blank, zero or a positive amount.', { address }),
+        );
+        return;
+      }
+      if (siteRate === null && siteFuel === null) continue;
+      locationRates.push({
+        address,
+        flat_rate: siteRate,
+        rate_type: site.rateType,
+        fuel_charge: siteFuel,
+        fuel_type: site.fuelType,
+      });
+    }
     const ids = listFrom(draft.ids);
     const clash = customers.find(
       (customer) =>
@@ -244,6 +302,7 @@ export default function CustomersPage() {
         ticket_customer_ids: ids,
         ticket_names: draft.names,
         addresses: draft.addresses,
+        location_rates: locationRates,
         flat_rate: flatRate,
         rate_type: draft.rateType,
         fuel_charge: fuelCharge,
@@ -304,10 +363,29 @@ export default function CustomersPage() {
     if (!value || !draft) return;
     setDraftField({ addresses: addCustomerAddress({ addresses: draft.addresses }, value) });
   };
-  const removeAddress = (value: string) =>
+  const removeAddress = (value: string) => {
+    // The site's rate is a property of the address, and goes with it.
+    const { [value]: _gone, ...siteRates } = draft?.siteRates ?? {};
     setDraftField({
       addresses: draft?.addresses.filter((address) => address !== value) ?? [],
+      siteRates,
     });
+  };
+
+  /** Opens the figures for a site, or changes one of them. */
+  const setSiteRate = (address: string, patch: Partial<SiteRateDraft>) =>
+    setDraftField({
+      siteRates: {
+        ...draft?.siteRates,
+        [address]: { ...(draft?.siteRates[address] ?? blankSiteRate()), ...patch },
+      },
+    });
+
+  /** Back to the customer's own rate at this site. */
+  const clearSiteRate = (address: string) => {
+    const { [address]: _gone, ...siteRates } = draft?.siteRates ?? {};
+    setDraftField({ siteRates });
+  };
 
   const rowActions = (customer: CustomerProfile) => (
     <div className="pf-actions">
@@ -433,6 +511,13 @@ export default function CustomersPage() {
                             </small>
                           </>
                         )}
+                        {customerLocationRates(customer).length ? (
+                          <small className="pf-site-count">
+                            {t('{count} with its own rate', {
+                              count: plural(customerLocationRates(customer).length, 'site'),
+                            })}
+                          </small>
+                        ) : null}
                       </td>
                       <PeriodCells summary={summary} />
                       <td className="pf-num">{money(summary.billed)}</td>
@@ -648,19 +733,114 @@ export default function CustomersPage() {
                     {t('Delivery addresses')}
                   </span>
                   {draft.addresses.length ? (
-                    <ul className="pf-aliases">
-                      {draft.addresses.map((address) => (
-                        <li key={address} className="pf-alias">
-                          <span className="ui-literal">{address}</span>
-                          <button
-                            type="button"
-                            aria-label={t('Remove {name}', { name: address })}
-                            onClick={() => removeAddress(address)}
-                          >
-                            <X aria-hidden="true" />
-                          </button>
-                        </li>
-                      ))}
+                    <ul className="pf-sites">
+                      {draft.addresses.map((address) => {
+                        const site = draft.siteRates[address];
+                        const siteId = `${fieldId}-site-${normalizeKey(address)}`;
+                        return (
+                          <li key={address} className="pf-site">
+                            <div className="pf-site-head">
+                              <span className="pf-alias">
+                                <span className="ui-literal">{address}</span>
+                                <button
+                                  type="button"
+                                  aria-label={t('Remove {name}', { name: address })}
+                                  onClick={() => removeAddress(address)}
+                                >
+                                  <X aria-hidden="true" />
+                                </button>
+                              </span>
+                              {/* Some customers are hauled to several sites at
+                                  different prices. A site charged at the
+                                  customer's usual rate shows nothing more; one
+                                  charged differently opens its own figures. */}
+                              {site ? (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="xs"
+                                  onClick={() => clearSiteRate(address)}
+                                >
+                                  {t('Use the customer’s rate')}
+                                </Button>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="xs"
+                                  onClick={() => setSiteRate(address, {})}
+                                >
+                                  <Coins data-icon="inline-start" />
+                                  {t('Different rate here')}
+                                </Button>
+                              )}
+                            </div>
+                            {site ? (
+                              <fieldset
+                                className="pf-site-rate"
+                                aria-label={t('Rate at {address}', { address })}
+                              >
+                                <SelectField
+                                  id={`${siteId}-rate-type`}
+                                  aria-label={t('Rate type')}
+                                  value={site.rateType}
+                                  onValueChange={(value) =>
+                                    setSiteRate(address, {
+                                      rateType: isRateType(value) ? value : 'flat',
+                                    })
+                                  }
+                                  options={RATE_TYPES.map((type) => ({
+                                    value: type,
+                                    label: t(RATE_TYPE_LABELS[type]),
+                                  }))}
+                                />
+                                <Input
+                                  id={`${siteId}-rate`}
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  aria-label={t('Rate {unit}', { unit: rateUnit(site.rateType) })}
+                                  placeholder={t('Customer’s rate')}
+                                  value={site.flatRate}
+                                  onChange={(event) =>
+                                    setSiteRate(address, { flatRate: event.target.value })
+                                  }
+                                />
+                                <SelectField
+                                  id={`${siteId}-fuel-type`}
+                                  aria-label={t('Fuel charge type')}
+                                  value={site.fuelType}
+                                  onValueChange={(value) =>
+                                    setSiteRate(address, {
+                                      fuelType: isFuelType(value) ? value : 'flat',
+                                    })
+                                  }
+                                  options={FUEL_TYPES.map((type) => ({
+                                    value: type,
+                                    label: t(FUEL_TYPE_LABELS[type]),
+                                  }))}
+                                />
+                                <Input
+                                  id={`${siteId}-fuel`}
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  aria-label={
+                                    site.fuelType === 'percent'
+                                      ? t('Fuel charge (% of rate)')
+                                      : t('Fuel charge per load ($)')
+                                  }
+                                  placeholder={t('Customer’s fuel')}
+                                  value={site.fuelCharge}
+                                  onChange={(event) =>
+                                    setSiteRate(address, { fuelCharge: event.target.value })
+                                  }
+                                />
+                              </fieldset>
+                            ) : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   ) : (
                     <p className="pf-alias-empty">{t('No addresses yet.')}</p>

@@ -116,6 +116,16 @@ export const PL_PAGES: Record<string, string> = {
   'Fuel charge (% of rate)': 'Dopłata paliwowa (% stawki)',
   'Fuel charge %': 'Dopłata paliwowa %',
   'Rate type': 'Rodzaj stawki',
+  // Rates at particular job sites, for a customer hauled to several at
+  // different prices.
+  'Different rate here': 'Inna stawka w tym miejscu',
+  'Use the customer’s rate': 'Użyj stawki klienta',
+  'Rate at {address}': 'Stawka w {address}',
+  'Customer’s rate': 'Stawka klienta',
+  'Customer’s fuel': 'Paliwo klienta',
+  '{count} with its own rate': '{count} z własną stawką',
+  'The rate at {address} must be blank, zero or a positive amount.':
+    'Stawka w {address} musi być pusta, zerowa lub dodatnia.',
   'Rate {unit}': 'Stawka {unit}',
   Rate: 'Stawka',
   '+ {amount} fuel': '+ {amount} za paliwo',

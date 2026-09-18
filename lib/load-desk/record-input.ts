@@ -14,6 +14,7 @@ import type {
   CustomerProfile,
   TruckProfile,
 } from './profiles.ts';
+import { customerLocationRates, type LocationRate } from './customer-rates.ts';
 import { datedFromTicket } from './invoice-dates.ts';
 
 // Validation for data the browser sends to the server. Everything is checked
@@ -268,6 +269,31 @@ const cleanAddresses = (value: unknown): string[] =>
     .map((line) => line.replace(/\s+/g, ' ').trim())
     .filter(Boolean);
 
+/**
+ * A site's own rate, as sent: one of the customer's addresses with the figures
+ * that differ there. Cleaned against the address list by
+ * `customerLocationRates` after parsing; here only the shape is checked.
+ */
+const isLocationRate = (value: unknown) =>
+  isObject(value) &&
+  text(value.address, 200) &&
+  !!(value.address as string).trim() &&
+  amount(value.flat_rate) &&
+  !(typeof value.flat_rate === 'number' && value.flat_rate < 0) &&
+  (value.rate_type === undefined || value.rate_type === null || isRateType(value.rate_type)) &&
+  amount(value.fuel_charge) &&
+  !(typeof value.fuel_charge === 'number' && value.fuel_charge < 0) &&
+  (value.fuel_type === undefined || value.fuel_type === null || isFuelType(value.fuel_type));
+
+const cleanLocationRates = (value: unknown): LocationRate[] =>
+  ((value as Record<string, unknown>[] | undefined) ?? []).map((site) => ({
+    address: (site.address as string).replace(/\s+/g, ' ').trim(),
+    flat_rate: site.flat_rate as number | null,
+    ...(isRateType(site.rate_type) ? { rate_type: site.rate_type } : {}),
+    fuel_charge: site.fuel_charge as number | null,
+    ...(isFuelType(site.fuel_type) ? { fuel_type: site.fuel_type } : {}),
+  }));
+
 export function parseCustomer(value: unknown): Parsed<NewCustomer> {
   if (
     !isObject(value) ||
@@ -277,6 +303,13 @@ export function parseCustomer(value: unknown): Parsed<NewCustomer> {
     !stringList(value.ticket_names, 20, 160) ||
     // Job-site addresses are optional: profiles saved before them have none.
     !(value.addresses === undefined || stringList(value.addresses, 40, 200)) ||
+    // As are rates at particular sites.
+    !(
+      value.location_rates === undefined ||
+      (Array.isArray(value.location_rates) &&
+        value.location_rates.length <= 40 &&
+        value.location_rates.every(isLocationRate))
+    ) ||
     !amount(value.flat_rate) ||
     !(value.rate_type === undefined || value.rate_type === null || isRateType(value.rate_type)) ||
     !(value.fuel_type === undefined || value.fuel_type === null || isFuelType(value.fuel_type)) ||
@@ -294,6 +327,10 @@ export function parseCustomer(value: unknown): Parsed<NewCustomer> {
       ticket_customer_ids: value.ticket_customer_ids as string[],
       ticket_names: value.ticket_names as string[],
       addresses: cleanAddresses(value.addresses),
+      location_rates: customerLocationRates({
+        addresses: cleanAddresses(value.addresses),
+        location_rates: cleanLocationRates(value.location_rates),
+      }),
       flat_rate: value.flat_rate as number | null,
       rate_type: isRateType(value.rate_type) ? value.rate_type : 'flat',
       fuel_type: isFuelType(value.fuel_type) ? value.fuel_type : 'flat',
