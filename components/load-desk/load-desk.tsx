@@ -108,6 +108,7 @@ import {
   groupByTicketDate,
   openingInvoiceNumber,
   joinsInvoiceFor,
+  numbersByTicketDate,
   numbersForWaitingBatches,
   recordBatch,
 } from '@/lib/load-desk/records';
@@ -859,9 +860,14 @@ export default function LoadDesk() {
     return null;
   };
 
-  /** Saved, then queued, invoice numbers, oldest first, for numbering the next invoice. */
+  /**
+   * Saved, then queued, invoice numbers, oldest first, for numbering the next
+   * invoice. Read from the store rather than this render's records: both callers
+   * run after an upload has saved or renumbered something, and a number worked
+   * out from the list as it was before that would repeat one just given out.
+   */
   const invoiceNumbersInOrder = (items: QueueItem[]) => [
-    ...[...records]
+    ...[...getRecordsSnapshot().records]
       .sort((a, b) => a.id - b.id)
       .map((record) => record.invoice.invoice_number),
     ...items.map((item) => item.invoice.invoice_number),
@@ -896,6 +902,52 @@ export default function LoadDesk() {
         ? { ...item, invoice: { ...item.invoice, invoice_number: number } }
         : item;
     });
+  };
+
+  /**
+   * Puts the invoice numbers of one upload's batches into ticket-date order.
+   *
+   * The numbers were handed out as each page was filed, which is the order the
+   * pictures were taken in. Now that the whole upload is in, the dates are known
+   * and the run is put right — the oldest date first — by renumbering the saved
+   * tickets of the batches this upload created. Nothing already on file moves.
+   *
+   * A failed write changes nothing: the numbers stay as they were, which is a
+   * run out of order rather than a ticket lost, and it says so.
+   */
+  const inTicketDateOrder = async (
+    filed: QueueItem[],
+  ): Promise<{ items: QueueItem[]; error: string | null }> => {
+    const batchIds = [...new Set(filed.map((item) => item.batch_id))];
+    if (!batchIds.length) return { items: filed, error: null };
+    const { records } = getRecordsSnapshot();
+    const wanted = numbersByTicketDate(records, batchIds);
+    const edits: RecordEdit[] = [];
+    for (const record of records) {
+      const number = wanted.get(recordBatch(record));
+      if (number === undefined || number === record.invoice.invoice_number) continue;
+      edits.push({
+        id: record.id,
+        ticket: record.ticket,
+        invoice: { ...record.invoice, invoice_number: number },
+        ocr_text: record.ocr_text,
+        // A record saved before these were kept has neither; an edit needs both.
+        customer_profile_id: record.customer_profile_id ?? null,
+        truck_id: record.truck_id ?? null,
+      });
+    }
+    if (!edits.length) return { items: filed, error: null };
+    const result = await updateSavedRecords(edits);
+    if ('error' in result) return { items: filed, error: result.error };
+    return {
+      items: filed.map((item) => {
+        const number = wanted.get(item.batch_id);
+        return number
+          ? { ...item, invoice: { ...item.invoice, invoice_number: number } }
+          : item;
+      }),
+      error: null,
+    };
   };
 
   /**
@@ -1043,16 +1095,21 @@ export default function LoadDesk() {
       );
     }
     {
-      // One invoice per ticket date, dated that day, oldest first. Invoice
-      // numbers continue in order after the latest saved or queued invoice, and
-      // a workspace with none yet starts its series here.
-      const numbers = invoiceNumbersInOrder(queue);
       const billTo = recentClientBillTo();
-      // A ticket already filed on its own date's invoice keeps it: fileInBatch
-      // put it there and saved it. Renumbering it here is what used to pull a
-      // day's tickets onto another day's bill.
-      const filed = elsewhere.filter((item) => item.saved_record_id !== null);
+      // A ticket already filed on its own date's invoice keeps that invoice:
+      // fileInBatch put it there and saved it. Only the number moves, and only
+      // into date order — moving the ticket itself is what used to pull a day's
+      // tickets onto another day's bill.
+      const wasFiled = elsewhere.filter((item) => item.saved_record_id !== null);
       const unfiled = elsewhere.filter((item) => item.saved_record_id === null);
+      const ordered = await inTicketDateOrder(wasFiled);
+      const filed = ordered.items;
+      if (ordered.error) failures.push(ordered.error);
+      // One invoice per ticket date, dated that day, oldest first. Invoice
+      // numbers continue in order after the latest saved or queued invoice —
+      // read after the renumbering above, so they follow it — and a workspace
+      // with none yet starts its series here.
+      const numbers = invoiceNumbersInOrder(queue);
       const groups = groupByTicketDate(unfiled, (item) => item.ticket.ticket_date);
       grouped = groups.flatMap((group) => {
         const batchId = makeId();

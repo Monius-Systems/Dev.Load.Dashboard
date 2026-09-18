@@ -6,6 +6,7 @@ import {
   batchInvoiceFor,
   FIRST_INVOICE_NUMBER,
   needsReview,
+  numbersByTicketDate,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
 
@@ -130,4 +131,70 @@ void test('two batches saved in the same second keep the order they went in', ()
     batchesByRecency([first, second]).map((batch) => batch.date),
     ['2026-09-02', '2026-09-01'],
   );
+});
+
+void test('an upload’s numbers are put into ticket-date order afterwards', () => {
+  // Invoice 1 is already on file for the 15th of December. Two more dates are
+  // uploaded, the January one photographed first — so it was filed first and
+  // took the lower number. Once both are in, the run is put right: the 19th of
+  // December takes 2 and the 6th of January takes 3.
+  const december15 = saved('2025-12-15', '1');
+  const january6 = saved('2026-01-06', '2');
+  const december19 = saved('2025-12-19', '3');
+  const wanted = numbersByTicketDate(
+    [december15, january6, december19],
+    [january6.invoice_batch_id!, december19.invoice_batch_id!],
+  );
+  assert.equal(wanted.get(december19.invoice_batch_id!), '2', 'the 19th of December');
+  assert.equal(wanted.get(january6.invoice_batch_id!), '3', 'the 6th of January');
+  assert.equal(wanted.has(december15.invoice_batch_id!), false, 'invoice 1 does not move');
+});
+
+void test('however many dates are uploaded, the run follows them', () => {
+  const onFile = saved('2025-12-15', '1');
+  const uploaded = [
+    saved('2026-02-10', 'x'),
+    saved('2025-12-19', 'x'),
+    saved('2026-01-06', 'x'),
+    saved('2025-12-31', 'x'),
+  ];
+  const wanted = numbersByTicketDate(
+    [onFile, ...uploaded],
+    uploaded.map((record) => record.invoice_batch_id!),
+  );
+  assert.deepEqual(
+    [...wanted].map(([batch, number]) => [batch, number]).sort(),
+    [
+      ['batch-2025-12-19', '2'],
+      ['batch-2025-12-31', '3'],
+      ['batch-2026-01-06', '4'],
+      ['batch-2026-02-10', '5'],
+    ].sort(),
+  );
+});
+
+void test('every ticket of a renumbered date moves together', () => {
+  // Two pages of one day's scan are one invoice, so they take one number.
+  const first = saved('2026-01-06', '2');
+  const second = saved('2026-01-06', '2');
+  const older = saved('2025-12-19', '3');
+  const wanted = numbersByTicketDate(
+    [saved('2025-12-15', '1'), first, second, older],
+    [first.invoice_batch_id!, second.invoice_batch_id!, older.invoice_batch_id!],
+  );
+  assert.equal(wanted.get(older.invoice_batch_id!), '2');
+  assert.equal(wanted.get(first.invoice_batch_id!), '3');
+  assert.equal(wanted.get(second.invoice_batch_id!), '3', 'both pages, one number');
+});
+
+void test('a prefix and its padding survive being put in order', () => {
+  const onFile = saved('2025-12-15', 'INV-0099');
+  const later = saved('2026-01-06', 'INV-0100');
+  const earlier = saved('2025-12-19', 'INV-0101');
+  const wanted = numbersByTicketDate(
+    [onFile, later, earlier],
+    [later.invoice_batch_id!, earlier.invoice_batch_id!],
+  );
+  assert.equal(wanted.get(earlier.invoice_batch_id!), 'INV-0100');
+  assert.equal(wanted.get(later.invoice_batch_id!), 'INV-0101');
 });

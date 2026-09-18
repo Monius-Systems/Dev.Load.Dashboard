@@ -174,6 +174,42 @@ export function numbersForWaitingBatches(
   return assigned;
 }
 
+/**
+ * The numbers the given batches should carry so that they run in ticket-date
+ * order, oldest first.
+ *
+ * An upload is read a page at a time and each page is filed the moment it lands,
+ * so the first numbers handed out follow the order the pictures were taken. A
+ * photograph of the 6th taken before one of the 19th took the lower number, and
+ * the ledger then climbed in numbers while jumping about in dates. Once the
+ * whole upload is in, every date is known and the run can be put right.
+ *
+ * Only these batches move. Every other invoice keeps the number it has, because
+ * one that has been sent cannot be renamed, so the run continues after the
+ * highest number outside this set rather than rearranging the whole ledger: an
+ * invoice 1 for the 15th, and an upload of the 19th and the 6th, gives the 19th
+ * 2 and the 6th 3.
+ */
+export function numbersByTicketDate(
+  records: SavedRecord[],
+  batchIds: string[],
+): Map<string, string> {
+  const renumbering = new Set(batchIds);
+  const moving: SavedRecord[] = [];
+  const staying: SavedRecord[] = [];
+  for (const record of records) {
+    (renumbering.has(recordBatch(record)) ? moving : staying).push(record);
+  }
+  const oldestFirst = (a: SavedRecord, b: SavedRecord) => a.id - b.id;
+  return numbersForWaitingBatches(
+    [...staying].sort(oldestFirst).map((record) => record.invoice.invoice_number),
+    [...moving].sort(oldestFirst).map((record) => ({
+      batchId: recordBatch(record),
+      ticketDate: record.ticket.ticket_date,
+    })),
+  );
+}
+
 /** Every saved ticket on an invoice, in print order. */
 export function invoiceLines(
   records: SavedRecord[],
