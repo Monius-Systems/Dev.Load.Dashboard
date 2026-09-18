@@ -198,3 +198,65 @@ void test('a prefix and its padding survive being put in order', () => {
   assert.equal(wanted.get(earlier.invoice_batch_id!), 'INV-0100');
   assert.equal(wanted.get(later.invoice_batch_id!), 'INV-0101');
 });
+
+
+void test('a ticket joining an invoice already on file does not renumber it', () => {
+  // The leak: a ticket photographed for a date that was already invoiced was
+  // filed into that invoice's batch, and the batch then went in with the
+  // upload's own to be put in date order — so invoice 1, already sent, came
+  // back as invoice 2 and this morning's upload held number 1. An invoice on
+  // file keeps its number; only the batches an upload opened move.
+  const sent = saved('2025-12-15', '1');
+  const joined = saved('2025-12-15', '1');
+  const older = saved('2025-12-10', '2');
+  const opened = batchInvoiceFor([sent], '2025-12-15');
+  assert.equal(opened.opened, false, 'the 15th was filed already');
+  assert.equal(
+    batchInvoiceFor([sent], '2025-12-10').opened,
+    true,
+    'the 10th opens a batch of its own',
+  );
+  const wanted = numbersByTicketDate(
+    [sent, joined, older],
+    // Only what this upload opened: the 15th joined an invoice already numbered.
+    [older.invoice_batch_id!],
+  );
+  assert.equal(wanted.get(older.invoice_batch_id!), '2', 'the new date follows the ledger');
+  assert.equal(wanted.has(sent.invoice_batch_id!), false, 'invoice 1 does not move');
+});
+
+void test('an upload of ten dates is numbered by date whatever order it arrived in', () => {
+  const onFile = saved('2026-03-10', '25');
+  const jumbled = [
+    '2026-03-18', '2026-03-12', '2026-03-25', '2026-03-11', '2026-03-20',
+    '2026-04-02', '2026-03-31', '2026-03-13', '2026-04-01', '2026-03-09',
+  ];
+  const uploaded = jumbled.map((date) => saved(date, 'x'));
+  const wanted = numbersByTicketDate(
+    [onFile, ...uploaded],
+    uploaded.map((record) => record.invoice_batch_id!),
+  );
+  const oldestFirst = [...jumbled].sort((a, b) => a.localeCompare(b));
+  assert.deepEqual(
+    oldestFirst.map((date) => wanted.get(`batch-${date}`)),
+    oldestFirst.map((_, index) => String(26 + index)),
+  );
+  // The 9th of March is older than the invoice on file; it still follows it,
+  // because an invoice already numbered is not renumbered behind its back.
+  assert.equal(wanted.get('batch-2026-03-09'), '26');
+  assert.equal(new Set(wanted.values()).size, jumbled.length, 'no number twice');
+});
+
+void test('a ticket date written as it is on the paper is placed by its day', () => {
+  // A record whose date reached it as M/D/YYYY rather than ISO: as text the
+  // January one sorts first, and it used to take the lower number.
+  const onFile = saved('12/15/2025', '1');
+  const january = saved('1/6/2026', '2');
+  const december = saved('12/19/2025', '3');
+  const wanted = numbersByTicketDate(
+    [onFile, january, december],
+    [january.invoice_batch_id!, december.invoice_batch_id!],
+  );
+  assert.equal(wanted.get(december.invoice_batch_id!), '2');
+  assert.equal(wanted.get(january.invoice_batch_id!), '3');
+});

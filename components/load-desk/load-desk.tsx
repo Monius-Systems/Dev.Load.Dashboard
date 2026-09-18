@@ -452,14 +452,20 @@ async function buildQueueItem(
  * straight into that date's batch, unreviewed, and whoever does the invoicing
  * picks the batch up later — on the phone, or on the desk.
  *
- * Returns the item as a saved one. If it cannot be filed — no signal in a yard,
- * a session that has ended — the item is handed back exactly as it was, so it
- * stays in the queue to be saved by hand rather than being lost.
+ * Returns the item as a saved one, and the batch if this ticket opened one —
+ * the number a new batch claims here is only the next one free as the page is
+ * read, so those are the batches whose numbers go into date order once the
+ * whole upload is in. A ticket joining a batch already on file reports none:
+ * that invoice is numbered already and does not move.
+ *
+ * If it cannot be filed — no signal in a yard, a session that has ended — the
+ * item is handed back exactly as it was, so it stays in the queue to be saved
+ * by hand rather than being lost.
  */
 async function fileInBatch(
   original: QueueItem,
   records: SavedRecord[],
-): Promise<{ item: QueueItem; error: string | null }> {
+): Promise<{ item: QueueItem; error: string | null; opened: string | null }> {
   const item = invoiceDated(original);
   const batch = batchInvoiceFor(records, item.ticket.ticket_date);
   const result = await saveRecord(
@@ -477,7 +483,7 @@ async function fileInBatch(
     },
     item.original,
   );
-  if ('error' in result) return { item, error: result.error };
+  if ('error' in result) return { item, error: result.error, opened: null };
   const filed: QueueItem = {
     ...item,
     invoice: result.record.invoice,
@@ -490,7 +496,11 @@ async function fileInBatch(
   // What was filed is what is on the screen, so that is the mark to measure
   // later edits against. Without it nothing typed afterwards reads as a change
   // and the ticket sits on "Saved" with the button disabled, unsaveable.
-  return { item: { ...filed, baseline: editKey(filed) }, error: null };
+  return {
+    item: { ...filed, baseline: editKey(filed) },
+    error: null,
+    opened: batch.opened ? batch.batch_id : null,
+  };
 }
 
 function nextUnsaved(queue: QueueItem[], from: number) {
@@ -917,8 +927,14 @@ export default function LoadDesk() {
    */
   const inTicketDateOrder = async (
     filed: QueueItem[],
+    opened: Set<string>,
   ): Promise<{ items: QueueItem[]; error: string | null }> => {
-    const batchIds = [...new Set(filed.map((item) => item.batch_id))];
+    // Only the batches this upload opened. A ticket photographed for a date
+    // that was already invoiced joined that invoice, and an invoice already on
+    // file — possibly already sent — keeps the number it was filed under.
+    const batchIds = [...new Set(filed.map((item) => item.batch_id))].filter(
+      (batchId) => opened.has(batchId),
+    );
     if (!batchIds.length) return { items: filed, error: null };
     const { records } = getRecordsSnapshot();
     const wanted = numbersByTicketDate(records, batchIds);
@@ -968,6 +984,9 @@ export default function LoadDesk() {
     const start = queue.length;
     const added: QueueItem[] = [];
     const failures: string[] = [];
+    // The batches this upload opened, whose numbers are still this upload's to
+    // put into ticket-date order once every page has been read.
+    const openedBatches = new Set<string>();
     setUploadStatus(null);
     for (const [index, entry] of entries.entries()) {
       const show = (fraction: number, label: string) =>
@@ -1006,6 +1025,7 @@ export default function LoadDesk() {
             // Kept before anyone is asked to look at it.
             const filed = await fileInBatch(built, getRecordsSnapshot().records);
             if (filed.error) failures.push(`${entry.name}: ${t(filed.error)}`);
+            if (filed.opened) openedBatches.add(filed.opened);
             added.push(filed.item);
           }
         }
@@ -1102,7 +1122,7 @@ export default function LoadDesk() {
       // tickets onto another day's bill.
       const wasFiled = elsewhere.filter((item) => item.saved_record_id !== null);
       const unfiled = elsewhere.filter((item) => item.saved_record_id === null);
-      const ordered = await inTicketDateOrder(wasFiled);
+      const ordered = await inTicketDateOrder(wasFiled, openedBatches);
       const filed = ordered.items;
       if (ordered.error) failures.push(ordered.error);
       // One invoice per ticket date, dated that day, oldest first. Invoice

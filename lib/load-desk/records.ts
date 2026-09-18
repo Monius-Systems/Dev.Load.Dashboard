@@ -15,6 +15,51 @@ export const byTicketDate = (a: SavedRecord, b: SavedRecord) =>
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
+const ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
+const SLASHED_DATE = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/;
+
+/**
+ * The day a ticket date names, as a number to order days by.
+ *
+ * Dates are put in order as days, never as the text they are written in.
+ * "1/6/2026" sorts before "12/19/2025" as a string, which is how January's
+ * tickets came to be invoiced ahead of December's. Both the ISO dates the app
+ * stores and the M/D/YYYY a ticket is written in are read here, so a date that
+ * reached a record in another shape still falls in the right place.
+ *
+ * Null for a blank date, and for a day the calendar does not have — a misread
+ * has no position in a run of days, so it is treated as an undated ticket.
+ */
+export function ticketDateValue(value: string | null | undefined): number | null {
+  const text = value?.trim();
+  if (!text) return null;
+  const iso = ISO_DATE.exec(text);
+  const slashed = iso ? null : SLASHED_DATE.exec(text);
+  if (!iso && !slashed) return null;
+  const [year, month, day] = iso
+    ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
+    : [
+        Number(slashed![3].length === 2 ? `20${slashed![3]}` : slashed![3]),
+        Number(slashed![1]),
+        Number(slashed![2]),
+      ];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return date.getTime();
+}
+
+/** Oldest day first. A ticket with no day to place goes after every dated one. */
+const byDay = (a: number | null, b: number | null) => {
+  if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1;
+  return a - b;
+};
+
 export const recordTons = (record: SavedRecord) =>
   record.ticket.net_tons ??
   (record.ticket.net_lb === null ? 0 : record.ticket.net_lb / 2000);
@@ -38,8 +83,13 @@ export function groupByTicketDate<T>(
     groups.set(date, [...(groups.get(date) ?? []), item]);
   }
   return [...groups]
-    .map(([date, grouped]) => ({ date, items: grouped }))
-    .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+    .map(([date, grouped], arrived) => ({ date, items: grouped, arrived }))
+    .sort(
+      (a, b) =>
+        byDay(ticketDateValue(a.date), ticketDateValue(b.date)) ||
+        a.arrived - b.arrived,
+    )
+    .map(({ date, items }) => ({ date, items }));
 }
 
 /** The most recently saved record of a batch; id settles a tie within a second. */
@@ -150,25 +200,34 @@ export function numbersForWaitingBatches(
   waiting: { batchId: string; ticketDate: string | null }[],
 ): Map<string, string> {
   // One entry per batch: the tickets of a batch share its number.
-  const batches: { batchId: string; date: string; arrived: number }[] = [];
+  const batches: { batchId: string; day: number | null; arrived: number }[] = [];
   for (const item of waiting) {
     if (batches.some((batch) => batch.batchId === item.batchId)) continue;
     batches.push({
       batchId: item.batchId,
-      date: item.ticketDate?.trim() || '',
+      day: ticketDateValue(item.ticketDate),
       arrived: batches.length,
     });
   }
   const numbers = [...numbersOldestFirst];
+  const taken = new Set(numbers.map(invoiceKey));
   const assigned = new Map<string, string>();
-  const ordered = [...batches].sort((a, b) => {
-    // Exactly one of them is undated: the dated one belongs in the run.
-    if (!a.date !== !b.date) return a.date ? -1 : 1;
-    return a.date.localeCompare(b.date) || a.arrived - b.arrived;
-  });
+  const ordered = [...batches].sort(
+    (a, b) => byDay(a.day, b.day) || a.arrived - b.arrived,
+  );
   for (const batch of ordered) {
-    const next = openingInvoiceNumber(numbers);
+    let next = openingInvoiceNumber(numbers);
+    // Never hand out a number something already carries. Two uploads finishing
+    // within a moment of each other both read the ledger before either has
+    // written to it, and the series each works out from it can overlap; the
+    // second walks past what the first took rather than billing twice on one
+    // number. Each step is past the highest number of that prefix, so this ends.
+    while (taken.has(invoiceKey(next))) {
+      numbers.push(next);
+      next = openingInvoiceNumber(numbers);
+    }
     numbers.push(next);
+    taken.add(invoiceKey(next));
     assigned.set(batch.batchId, next);
   }
   return assigned;
@@ -189,6 +248,13 @@ export function numbersForWaitingBatches(
  * highest number outside this set rather than rearranging the whole ledger: an
  * invoice 1 for the 15th, and an upload of the 19th and the 6th, gives the 19th
  * 2 and the 6th 3.
+ *
+ * `batchIds` must therefore be batches the upload *opened* — never one it only
+ * added a page to. A batch already on file is an invoice already numbered, and
+ * handing it in here took its number away from it: a ticket photographed for a
+ * date that was already invoiced pulled invoice 1 into the renumbering and left
+ * it as invoice 2, with a batch uploaded this morning holding number 1.
+ * `batchInvoiceFor` says which batches an upload opened.
  */
 export function numbersByTicketDate(
   records: SavedRecord[],
@@ -328,19 +394,28 @@ export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
 export function batchInvoiceFor(
   records: SavedRecord[],
   ticketDate: string | null,
-): { invoice_number: string; batch_id: string } {
+): { invoice_number: string; batch_id: string; opened: boolean } {
   const date = ticketDate?.trim() || 'undated';
   const existing = records.find((record) => batchDate(record) === date);
   if (existing) {
     return {
       invoice_number: existing.invoice.invoice_number,
       batch_id: recordBatch(existing),
+      opened: false,
     };
   }
   const numbers = [...records]
     .sort((a, b) => a.id - b.id)
     .map((record) => record.invoice.invoice_number);
-  return { invoice_number: openingInvoiceNumber(numbers), batch_id: `batch-${date}` };
+  return {
+    invoice_number: openingInvoiceNumber(numbers),
+    batch_id: `batch-${date}`,
+    // The number above is the next one free at this moment, claimed a page at a
+    // time as the reader works through the upload — so it follows the order the
+    // pictures were taken. `opened` marks it as this upload's to move: once
+    // every page is in, `numbersByTicketDate` puts the run into date order.
+    opened: true,
+  };
 }
 
 export const ticketStatus = (record: SavedRecord) =>

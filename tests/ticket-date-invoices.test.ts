@@ -6,6 +6,7 @@ import {
   openingInvoiceNumber,
   joinsInvoiceFor,
   numbersForWaitingBatches,
+  ticketDateValue,
 } from '../lib/load-desk/records.ts';
 
 /** Batches as the queue hands them over: a batch per date, tickets in it. */
@@ -213,5 +214,164 @@ void test('with no series to continue the numbering starts', () => {
       ['batch-2026-09-12', '1'],
       ['batch-2026-09-13', '2'],
     ],
+  );
+});
+
+
+/** Oldest day first, for reading the expected run off a jumbled upload. */
+const byDay = (a: string, b: string) => ticketDateValue(a)! - ticketDateValue(b)!;
+
+/**
+ * The numbers an upload of these ticket dates comes out with, keyed by date.
+ *
+ * `uploaded` is the order the pictures arrived in — which is the one thing that
+ * must make no difference to the answer.
+ */
+const numbersFor = (onFile: string[], uploaded: string[]) => {
+  const assigned = numbersForWaitingBatches(
+    onFile,
+    waiting(uploaded.map((date) => [`batch-${date}`, date])),
+  );
+  return Object.fromEntries(
+    [...assigned].map(([batchId, number]) => [batchId.replace('batch-', ''), number]),
+  );
+};
+
+void test('a date is placed by the day it names, not by the text it is written in', () => {
+  assert.equal(
+    ticketDateValue('2025-12-19')! < ticketDateValue('2026-01-06')!,
+    true,
+    'December 2025 before January 2026',
+  );
+  // The comparison the app must never make: as text, "1/6/2026" sorts first.
+  const [december, january] = ['12/19/2025', '1/6/2026'];
+  assert.equal(december < january, false, 'the string order is the wrong one');
+  assert.equal(
+    ticketDateValue(december)! < ticketDateValue(january)!,
+    true,
+    'the day order is the right one',
+  );
+  assert.equal(ticketDateValue('2026-01-06'), Date.UTC(2026, 0, 6));
+  assert.equal(ticketDateValue('1/6/26'), Date.UTC(2026, 0, 6));
+  assert.equal(ticketDateValue(null), null);
+  assert.equal(ticketDateValue('  '), null);
+  assert.equal(ticketDateValue('2026-02-31'), null, 'a day the calendar has not got');
+  assert.equal(ticketDateValue('sometime'), null);
+});
+
+void test('tickets uploaded oldest first are numbered oldest first', () => {
+  assert.deepEqual(numbersFor(['1'], ['2025-12-19', '2026-01-06']), {
+    '2025-12-19': '2',
+    '2026-01-06': '3',
+  });
+});
+
+void test('tickets uploaded newest first are still numbered oldest first', () => {
+  // The case from the yard: the January ticket was photographed first, and it
+  // must not take the number the December one belongs on.
+  assert.deepEqual(numbersFor(['1'], ['2026-01-06', '2025-12-19']), {
+    '2025-12-19': '2',
+    '2026-01-06': '3',
+  });
+});
+
+void test('however the upload is shuffled the numbering comes out the same', () => {
+  const dates = ['2026-03-18', '2026-03-12', '2026-03-25', '2026-03-11', '2026-03-20'];
+  const expected = {
+    '2026-03-11': '26',
+    '2026-03-12': '27',
+    '2026-03-18': '28',
+    '2026-03-20': '29',
+    '2026-03-25': '30',
+  };
+  assert.deepEqual(numbersFor(['25'], dates), expected, 'as uploaded');
+  assert.deepEqual(numbersFor(['25'], [...dates].reverse()), expected, 'reversed');
+  const inDateOrder = [...dates].sort(byDay);
+  assert.deepEqual(numbersFor(['25'], inDateOrder), expected, 'oldest first');
+  assert.deepEqual(
+    numbersFor(['25'], [...inDateOrder].reverse()),
+    expected,
+    'newest first',
+  );
+});
+
+void test('an upload spanning months runs through the months in order', () => {
+  assert.deepEqual(
+    numbersFor(['1000'], ['2026-03-02', '2026-01-30', '2026-02-14', '2026-01-05']),
+    {
+      '2026-01-05': '1001',
+      '2026-01-30': '1002',
+      '2026-02-14': '1003',
+      '2026-03-02': '1004',
+    },
+  );
+});
+
+void test('an upload spanning years runs through the years in order', () => {
+  // Every month sorted as text puts 2026-01 behind 2025-12 only because the
+  // years are ISO; written as they are on the paper the text order inverts.
+  assert.deepEqual(
+    numbersFor(['1'], ['1/6/2026', '12/19/2025', '12/31/2025', '1/2/2027']),
+    { '12/19/2025': '2', '12/31/2025': '3', '1/6/2026': '4', '1/2/2027': '5' },
+  );
+});
+
+void test('a day\u2019s tickets are one invoice however many pages there are', () => {
+  // Three tickets for the 19th and one for the 6th: two invoices, not four.
+  const assigned = numbersForWaitingBatches(
+    ['1'],
+    waiting([
+      ['batch-2026-01-06', '2026-01-06'],
+      ['batch-2025-12-19', '2025-12-19'],
+      ['batch-2025-12-19', '2025-12-19'],
+      ['batch-2025-12-19', '2025-12-19'],
+    ]),
+  );
+  assert.equal(assigned.size, 2, 'two invoices');
+  assert.equal(assigned.get('batch-2025-12-19'), '2');
+  assert.equal(assigned.get('batch-2026-01-06'), '3');
+});
+
+void test('a batch follows the highest number on file, not the last one read', () => {
+  // The ledger is not in number order in the list handed over; the series still
+  // continues after the highest invoice in it.
+  assert.deepEqual(numbersFor(['25', '3', '17'], ['2026-04-01']), { '2026-04-01': '26' });
+  assert.deepEqual(numbersFor([], ['2026-04-02', '2026-04-01']), {
+    '2026-04-01': '1',
+    '2026-04-02': '2',
+  });
+});
+
+void test('a number already on file is never handed out a second time', () => {
+  // Two uploads finishing together both read the ledger before either wrote to
+  // it, so the series worked out from it overlaps what is already there.
+  const assigned = numbersForWaitingBatches(
+    ['1', '3', '2'],
+    waiting([
+      ['batch-a', '2026-04-01'],
+      ['batch-b', '2026-04-02'],
+    ]),
+  );
+  assert.deepEqual([...assigned], [['batch-a', '4'], ['batch-b', '5']]);
+  assert.equal(new Set(assigned.values()).size, 2, 'no two batches share one');
+});
+
+void test('a dozen dates uploaded in a jumble read in order afterwards', () => {
+  const jumbled = [
+    '2026-05-09', '2025-11-02', '2026-01-17', '2026-05-01', '2025-12-25',
+    '2026-02-28', '2025-11-30', '2026-03-03', '2026-01-01', '2026-04-15',
+    '2025-12-01', '2026-02-02',
+  ];
+  const assigned = numbersFor(['1041'], jumbled);
+  const oldestFirst = [...jumbled].sort(byDay);
+  assert.deepEqual(
+    oldestFirst.map((date) => assigned[date]),
+    oldestFirst.map((_, index) => String(1042 + index)),
+    'the numbers climb with the dates',
+  );
+  assert.equal(
+    new Set(Object.values(assigned)).size,
+    jumbled.length,
+    'one number each, none repeated',
   );
 });

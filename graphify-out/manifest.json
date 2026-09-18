@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789743147.841938,
-    "seen": 1789743210.843648,
-    "ast_hash": "58a5799c59f48f474f5fe4924bd36c17",
+    "mtime": 1789744214.4695106,
+    "seen": 1789744259.1860712,
+    "ast_hash": "31db0bc995471156d7c2f18441235607",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/records.ts": {
-    "mtime": 1789743078.6102705,
-    "seen": 1789743210.8437161,
-    "ast_hash": "04d01d9a9e57955e6b5e7ac01611135d",
+    "mtime": 1789744214.4702625,
+    "seen": 1789744259.186146,
+    "ast_hash": "619367d7b7e27a032d44350aa959b566",
     "semantic_hash": ""
   },
   "lib/load-desk/same-order.ts": {
@@ -978,9 +978,9 @@
     "semantic_hash": "ccadf2794cec78f3caa0c6a99fdc61ab"
   },
   "tests/ticket-date-invoices.test.ts": {
-    "mtime": 1789741864.7261705,
-    "seen": 1789741903.6515021,
-    "ast_hash": "78c10c09302bcd781c8648dd4c621149",
+    "mtime": 1789744231.6735764,
+    "seen": 1789744259.18622,
+    "ast_hash": "d364cd04df4f294a6678ee035f7b9672",
     "semantic_hash": ""
   },
   "tests/ticket-expected.ts": {
@@ -1128,9 +1128,9 @@
     "semantic_hash": ""
   },
   "tests/batches.test.ts": {
-    "mtime": 1789743183.7998939,
-    "seen": 1789743210.843754,
-    "ast_hash": "4a32bdf247edb7c1cafa2c9010478653",
+    "mtime": 1789744231.6738515,
+    "seen": 1789744259.1861918,
+    "ast_hash": "d1bcbfb0cfba35edcaa15bcf016daa7b",
     "semantic_hash": ""
   },
   "tests/customer-addresses.test.ts": {
