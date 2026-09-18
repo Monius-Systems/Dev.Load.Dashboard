@@ -691,8 +691,12 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 280px;
-  height: 280px;
+  /* Never wider than the dialog holding it. A window wider than the screen puts
+     part of the shape being aimed with out of sight, and the picture is then
+     framed against an edge nobody can see. Square at whatever width that is,
+     and the script measures it rather than assuming the 280. */
+  width: min(280px, 100%);
+  aspect-ratio: 1;
   margin: 0 auto;
   overflow: hidden;
   border-radius: var(--ui-radius-md);

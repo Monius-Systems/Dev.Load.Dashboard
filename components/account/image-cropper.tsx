@@ -33,7 +33,13 @@ import { suspendSmoothCursor } from '@/components/shell/cursor-suspend';
  * as a JPEG, which has no transparent corners to cut into.
  */
 
-/** The window on the screen. The stored picture is larger; see the uploads. */
+/**
+ * The window's size at its largest. It is narrower than this on a screen too
+ * narrow for it, which is why the real one is measured rather than taken from
+ * here: every sum below is in terms of the window, so a window that is not the
+ * size the arithmetic thinks it is both holds the picture back from an edge it
+ * could reach and cuts a square that is not the one shown through it.
+ */
 const FRAME = 280;
 
 export default function ImageCropper({
@@ -53,6 +59,7 @@ export default function ImageCropper({
   const { t } = useT();
   const dialog = useRef<HTMLDialogElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  const picture = useRef<HTMLImageElement>(null);
   // Made once, for the file this cropper was mounted with, and let go of when
   // it closes.
   const [url] = useState(() => URL.createObjectURL(file));
@@ -61,6 +68,8 @@ export default function ImageCropper({
   const [offset, setOffset] = useState<Offset>({ x: 0, y: 0 });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The window as it really is on this screen. FRAME until it has been read.
+  const [frameSize, setFrameSize] = useState(FRAME);
 
   useEffect(() => () => URL.revokeObjectURL(url), [url]);
 
@@ -77,17 +86,45 @@ export default function ImageCropper({
     };
   }, []);
 
+  useEffect(() => {
+    const box = frame.current;
+    if (!box) return;
+    const read = () => {
+      const seen = box.getBoundingClientRect();
+      const side = Math.min(seen.width, seen.height);
+      // Sub-pixel noise is not a resize; re-rendering on it would not end.
+      if (side > 0) {
+        setFrameSize((current) => (Math.abs(current - side) < 0.5 ? current : side));
+      }
+    };
+    // Observing reports the current size straight away.
+    const observer = new ResizeObserver(read);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, []);
+
   // The scale the picture is actually drawn at: covering the window, times the
   // zoom asked for.
-  const drawScale = natural ? coverScale(natural, FRAME) * zoom : 1;
+  const drawScale = natural ? coverScale(natural, frameSize) * zoom : 1;
+
+  /**
+   * Where the picture actually sits: what was asked for, held inside the edges
+   * of the window as it is now.
+   *
+   * Worked out here rather than written back to the offset, so a window that
+   * changes size — a dialog opening at a width the picture was not framed at,
+   * or a phone turned on its side — simply draws and cuts from the held figure.
+   * Everything below uses this one, never the raw offset.
+   */
+  const held = natural ? clampOffset(offset, natural, frameSize, drawScale) : offset;
 
   // What the gesture below reads. It is bound once, so it cannot close over
   // this render's values; written after each commit rather than during the
   // render, which is not a ref's to change.
-  const live = useRef({ natural, zoom, offset });
+  const live = useRef({ natural, zoom, offset: held, frameSize });
   useEffect(() => {
-    live.current = { natural, zoom, offset };
-  }, [natural, zoom, offset]);
+    live.current = { natural, zoom, offset: held, frameSize };
+  }, [natural, zoom, held, frameSize]);
 
   /** Zooms, and pulls the picture back inside the window if that left a gap. */
   function zoomTo(next: number) {
@@ -95,7 +132,7 @@ export default function ImageCropper({
     setZoom(held);
     if (natural) {
       setOffset((current) =>
-        clampOffset(current, natural, FRAME, coverScale(natural, FRAME) * held),
+        clampOffset(current, natural, frameSize, coverScale(natural, frameSize) * held),
       );
     }
   }
@@ -138,8 +175,8 @@ export default function ImageCropper({
       return { x: seen.left + seen.width / 2, y: seen.top + seen.height / 2 };
     };
     const scaleAt = (zoomed: number) => {
-      const size = live.current.natural;
-      return size ? coverScale(size, FRAME) * zoomed : 1;
+      const { natural: size, frameSize: window } = live.current;
+      return size ? coverScale(size, window) * zoomed : 1;
     };
 
     /**
@@ -195,7 +232,8 @@ export default function ImageCropper({
         const [a, b] = points;
         const span = Math.hypot(a.x - b.x, a.y - b.y);
         const next = Math.min(MAX_ZOOM, Math.max(1, (fromZoom * span) / fromSpan));
-        const scale = coverScale(size, FRAME) * next;
+        const window = live.current.frameSize;
+        const scale = coverScale(size, window) * next;
         const centre = middleOfFrame();
         const mid = { x: (a.x + b.x) / 2 - centre.x, y: (a.y + b.y) / 2 - centre.y };
         setZoom(next);
@@ -203,7 +241,7 @@ export default function ImageCropper({
           clampOffset(
             { x: mid.x - anchor.x * scale, y: mid.y - anchor.y * scale },
             size,
-            FRAME,
+            window,
             scale,
           ),
         );
@@ -220,7 +258,7 @@ export default function ImageCropper({
               y: fromOffset.y + (point.y - fromPoint.y),
             },
             size,
-            FRAME,
+            live.current.frameSize,
             scaleAt(live.current.zoom),
           ),
         );
@@ -258,16 +296,35 @@ export default function ImageCropper({
     };
   }, []);
 
-  /** Cuts the square behind the window out of the original, at its own size. */
+  /**
+   * Cuts the square behind the window out of the original, at its own size.
+   *
+   * Out of the picture on the screen, not out of the file again. A photograph
+   * from a phone carries the way it was held as a tag rather than in its rows of
+   * pixels, and the two ways of opening it do not agree about whose job it is to
+   * turn it upright: the picture shown here is turned, while a browser that
+   * decodes the file a second time may hand back the untouched one, a quarter
+   * turn from what was on the screen. The square is then measured off one
+   * picture and cut out of another — the same numbers, an entirely different
+   * part of the photograph, and further out of true the more it was zoomed.
+   *
+   * The picture on the screen is the one that was framed, so it is the one cut,
+   * and what is saved cannot disagree with what was shown.
+   */
   async function keep() {
-    if (!natural || busy) return;
+    const shown = picture.current;
+    if (!natural || !shown || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const rect = sourceRect(natural, FRAME, drawScale, offset);
-      const bitmap = await createImageBitmap(file);
+      const rect = sourceRect(natural, frameSize, drawScale, held);
+      // Whole pixels, and never off the edge: a square that reaches past the
+      // picture is drawn with nothing in the overhang.
+      const size = Math.min(rect.size, natural.width, natural.height);
+      const left = Math.min(Math.max(0, rect.x), natural.width - size);
+      const top = Math.min(Math.max(0, rect.y), natural.height - size);
       // Never larger than what was actually there to cut.
-      const side = Math.max(1, Math.round(Math.min(rect.size, 1024)));
+      const side = Math.max(1, Math.round(Math.min(size, 1024)));
       const surface = Object.assign(document.createElement('canvas'), {
         width: side,
         height: side,
@@ -275,18 +332,7 @@ export default function ImageCropper({
       const context = surface.getContext('2d');
       if (!context) throw new Error('This browser cannot prepare the picture.');
       context.imageSmoothingQuality = 'high';
-      context.drawImage(
-        bitmap,
-        rect.x,
-        rect.y,
-        rect.size,
-        rect.size,
-        0,
-        0,
-        side,
-        side,
-      );
-      bitmap.close();
+      context.drawImage(shown, left, top, size, size, 0, 0, side, side);
       const blob = await new Promise<Blob | null>((resolve) =>
         surface.toBlob(resolve, 'image/png'),
       );
@@ -324,6 +370,7 @@ export default function ImageCropper({
             size is not known until the browser has decoded it. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          ref={picture}
           src={url}
           alt=""
           draggable={false}
@@ -333,7 +380,7 @@ export default function ImageCropper({
               ? {
                   width: natural.width * drawScale,
                   height: natural.height * drawScale,
-                  transform: `translate(${offset.x}px, ${offset.y}px)`,
+                  transform: `translate(${held.x}px, ${held.y}px)`,
                 }
               : { visibility: 'hidden' }
           }

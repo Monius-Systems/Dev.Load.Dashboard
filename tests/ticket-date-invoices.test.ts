@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   groupByTicketDate,
   invoiceKey,
-  invoiceNumberForDate,
+  openingInvoiceNumber,
   joinsInvoiceFor,
   numbersForWaitingBatches,
 } from '../lib/load-desk/records.ts';
@@ -96,27 +96,30 @@ void test('an invoice with no date of its own takes the first ticket', () => {
 });
 
 void test('two dates never share an invoice, even before the first numbered one', () => {
-  // The leak: with only drafts saved, nextInvoiceNumber has no series to
-  // continue, both dates came back as "" and keyed to the same invoice — so a
-  // day's tickets were billed on another day's.
+  // The leak: with no series to continue, both dates came back as "" and keyed
+  // to the same invoice — so a day's tickets were billed on another day's.
   const numbers = ['DRAFT-2026-01-05'];
-  const first = invoiceNumberForDate(numbers, '2026-01-06');
+  const first = openingInvoiceNumber(numbers);
   numbers.push(first);
-  const second = invoiceNumberForDate(numbers, '2026-01-07');
+  const second = openingInvoiceNumber(numbers);
   assert.notEqual(invoiceKey(first), invoiceKey(second));
   assert.ok(first.trim(), 'an invoice number is never blank');
   assert.ok(second.trim(), 'an invoice number is never blank');
 });
 
-void test('a date opens a draft named for itself when there is no series yet', () => {
-  assert.equal(invoiceNumberForDate([], '2026-01-06'), 'DRAFT-2026-01-06');
-  assert.equal(invoiceNumberForDate(['DRAFT-x'], null), 'DRAFT-undated');
+void test('a batch opens on a real number, never a draft named for its date', () => {
+  // What the review screen shows is what the invoice will carry. A workspace
+  // with nothing to follow starts the series; the old drafts left over from
+  // before this are skipped rather than continued.
+  assert.equal(openingInvoiceNumber([]), '1');
+  assert.equal(openingInvoiceNumber(['DRAFT-2026-01-05']), '1');
+  assert.ok(!/draft/i.test(openingInvoiceNumber(['DRAFT-x'])), 'no draft number');
 });
 
 void test('a real series is still continued', () => {
-  // Once a numbered invoice exists, the next date takes the next number.
-  assert.equal(invoiceNumberForDate(['1041', '1042'], '2026-01-06'), '1043');
-  assert.equal(invoiceNumberForDate(['DRAFT-2026-01-05', '1042'], '2026-01-07'), '1043');
+  // Once a numbered invoice exists, the next batch takes the next number.
+  assert.equal(openingInvoiceNumber(['1041', '1042']), '1043');
+  assert.equal(openingInvoiceNumber(['DRAFT-2026-01-05', '1042']), '1043');
 });
 
 void test('waiting batches take their numbers in ticket-date order', () => {
@@ -194,13 +197,21 @@ void test('two undated batches keep the order they arrived in', () => {
   );
 });
 
-void test('with no series to continue nothing is numbered', () => {
-  // A workspace whose only invoices are drafts waits for the first real number
-  // to be typed in, rather than inventing one.
+void test('with no series to continue the numbering starts', () => {
+  // Every batch leaves here with a real number, so none reaches the review
+  // screen blank or as a draft named for its date.
   const assigned = numbersForWaitingBatches(
     ['DRAFT-2026-09-12'],
-    waiting([['batch-2026-09-12', '2026-09-12']]),
+    waiting([
+      ['batch-2026-09-13', '2026-09-13'],
+      ['batch-2026-09-12', '2026-09-12'],
+    ]),
   );
-  assert.equal(assigned.size, 0);
-  assert.equal(numbersForWaitingBatches([], waiting([['batch-a', '2026-09-12']])).size, 0);
+  assert.deepEqual(
+    [...assigned],
+    [
+      ['batch-2026-09-12', '1'],
+      ['batch-2026-09-13', '2'],
+    ],
+  );
 });

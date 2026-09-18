@@ -4,6 +4,7 @@ import {
   batchDate,
   batchesByRecency,
   batchInvoiceFor,
+  FIRST_INVOICE_NUMBER,
   needsReview,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
@@ -38,17 +39,23 @@ const saved = (
 });
 
 void test('a ticket photographed for a date joins that date’s batch', () => {
-  const monday = saved('2026-01-06', 'DRAFT-2026-01-06');
+  const monday = saved('2026-01-06', '1042');
   const joined = batchInvoiceFor([monday], '2026-01-06');
-  assert.equal(joined.invoice_number, 'DRAFT-2026-01-06');
+  assert.equal(joined.invoice_number, '1042');
   assert.equal(joined.batch_id, monday.invoice_batch_id);
 });
 
-void test('the first ticket of a date opens a batch of its own', () => {
-  const monday = saved('2026-01-06', 'DRAFT-2026-01-06');
+void test('the first ticket of a date opens a batch on the next number', () => {
+  // The number shown is the one the invoice will carry, so there is nothing to
+  // type over on the review screen.
+  const monday = saved('2026-01-06', '1042');
   const tuesday = batchInvoiceFor([monday], '2026-01-07');
-  assert.equal(tuesday.invoice_number, 'DRAFT-2026-01-07');
+  assert.equal(tuesday.invoice_number, '1043');
   assert.notEqual(tuesday.batch_id, monday.invoice_batch_id);
+});
+
+void test('a workspace with no invoices yet starts its numbering', () => {
+  assert.equal(batchInvoiceFor([], '2026-01-06').invoice_number, FIRST_INVOICE_NUMBER);
 });
 
 void test('a batch already invoiced keeps its real number', () => {
@@ -60,12 +67,12 @@ void test('a batch already invoiced keeps its real number', () => {
 
 void test('a ticket whose date could not be read is still filed somewhere', () => {
   // Never dropped for want of a date: it goes somewhere visible and fixable.
-  const undated = batchInvoiceFor([], null);
-  assert.equal(undated.invoice_number, 'DRAFT-undated');
-  assert.equal(batchDate(saved(null, 'DRAFT-undated')), 'undated');
-  assert.equal(batchDate(saved('  ', 'DRAFT-undated')), 'undated');
+  const undated = batchInvoiceFor([saved('2026-01-06', '1042')], null);
+  assert.equal(undated.invoice_number, '1043');
+  assert.equal(batchDate(saved(null, '1043')), 'undated');
+  assert.equal(batchDate(saved('  ', '1043')), 'undated');
   // And a second undated scan joins the first rather than piling up batches.
-  const first = saved(null, 'DRAFT-undated');
+  const first = saved(null, '1043');
   assert.equal(batchInvoiceFor([first], null).batch_id, first.invoice_batch_id);
 });
 

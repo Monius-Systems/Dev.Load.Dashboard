@@ -142,9 +142,8 @@ export function nextInvoiceNumber(numbersOldestFirst: string[]): string | null {
  *
  * A batch whose tickets carry no date has no place in a run of dates: it goes
  * after every dated one, keeping the order it arrived in. Returns nothing for
- * batches past the point where the series runs out, which is a workspace with
- * no numbered invoice yet — those wait for one to be typed in, exactly as
- * before.
+ * A workspace with no invoice to follow yet starts its numbering at
+ * `FIRST_INVOICE_NUMBER`, so a batch is never left without a number.
  */
 export function numbersForWaitingBatches(
   numbersOldestFirst: string[],
@@ -168,9 +167,7 @@ export function numbersForWaitingBatches(
     return a.date.localeCompare(b.date) || a.arrived - b.arrived;
   });
   for (const batch of ordered) {
-    const next = nextInvoiceNumber(numbers);
-    // No series to continue, and there will not be one further down the list.
-    if (!next) break;
+    const next = openingInvoiceNumber(numbers);
     numbers.push(next);
     assigned.set(batch.batchId, next);
   }
@@ -236,23 +233,25 @@ export function invoiceGroups(records: SavedRecord[]): InvoiceGroup[] {
     );
 }
 
+/** Where a workspace's numbering starts when it has no invoice to follow yet. */
+export const FIRST_INVOICE_NUMBER = '1';
+
 /**
- * The invoice number a date's tickets open on.
+ * The invoice number a new batch opens on: the next in the series, or the first
+ * number when there is no series to continue.
  *
- * The next in the series when one can be worked out. When it cannot — a
- * workspace whose only invoices so far are drafts, which is every workspace
- * since scans began being filed on the day they were taken — a draft named for
- * the date. Never an empty string: two dates that both came back empty keyed
- * to the same invoice, and a day's tickets were billed on another day's.
+ * Always a real number. Tickets used to open on a draft named for their date
+ * ("DRAFT-2026-01-06") so that a week of scanning could not burn a run of
+ * numbers on invoices nobody sent; the cost was that the number on the review
+ * screen was never the number the invoice would carry, and it had to be typed
+ * over by hand every time. The number is claimed at the scan instead.
+ *
+ * Never an empty string: invoices are the saved tickets that share a number, so
+ * two batches that both came back empty would key to one invoice and a day's
+ * tickets would be billed on another day's.
  */
-export function invoiceNumberForDate(
-  numbersOldestFirst: string[],
-  ticketDate: string | null,
-): string {
-  return (
-    nextInvoiceNumber(numbersOldestFirst) ??
-    `DRAFT-${ticketDate?.trim() || 'undated'}`
-  );
+export function openingInvoiceNumber(numbersOldestFirst: string[]): string {
+  return nextInvoiceNumber(numbersOldestFirst) ?? FIRST_INVOICE_NUMBER;
 }
 
 /**
@@ -283,12 +282,12 @@ export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
 
 /**
  * The invoice a ticket photographed for `ticketDate` belongs on: the one the
- * other tickets of that date are already on, or a new draft named for the date.
+ * other tickets of that date are already on, or the next number in the series
+ * for a date not filed yet.
  *
- * A draft number rather than the next real one on purpose. The next number in
- * the series is claimed when the batch is actually invoiced, so a week of
- * scanning does not burn a run of invoice numbers that were never sent, and
- * nextInvoiceNumber already knows to skip anything starting "DRAFT".
+ * The number is the one the invoice will carry, so the review screen shows what
+ * will be sent rather than a placeholder to type over. Each date's tickets are
+ * one invoice, and a date already filed keeps the number it was filed under.
  */
 export function batchInvoiceFor(
   records: SavedRecord[],
@@ -296,12 +295,16 @@ export function batchInvoiceFor(
 ): { invoice_number: string; batch_id: string } {
   const date = ticketDate?.trim() || 'undated';
   const existing = records.find((record) => batchDate(record) === date);
-  return existing
-    ? {
-        invoice_number: existing.invoice.invoice_number,
-        batch_id: recordBatch(existing),
-      }
-    : { invoice_number: `DRAFT-${date}`, batch_id: `batch-${date}` };
+  if (existing) {
+    return {
+      invoice_number: existing.invoice.invoice_number,
+      batch_id: recordBatch(existing),
+    };
+  }
+  const numbers = [...records]
+    .sort((a, b) => a.id - b.id)
+    .map((record) => record.invoice.invoice_number);
+  return { invoice_number: openingInvoiceNumber(numbers), batch_id: `batch-${date}` };
 }
 
 export const ticketStatus = (record: SavedRecord) =>

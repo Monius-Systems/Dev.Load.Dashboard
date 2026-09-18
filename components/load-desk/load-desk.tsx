@@ -106,7 +106,7 @@ import {
   invoiceLines,
   batchesByRecency,
   groupByTicketDate,
-  invoiceNumberForDate,
+  openingInvoiceNumber,
   joinsInvoiceFor,
   numbersForWaitingBatches,
   recordBatch,
@@ -1044,8 +1044,8 @@ export default function LoadDesk() {
     }
     {
       // One invoice per ticket date, dated that day, oldest first. Invoice
-      // numbers continue in order after the latest saved or queued invoice;
-      // the very first one is typed in.
+      // numbers continue in order after the latest saved or queued invoice, and
+      // a workspace with none yet starts its series here.
       const numbers = invoiceNumbersInOrder(queue);
       const billTo = recentClientBillTo();
       // A ticket already filed on its own date's invoice keeps it: fileInBatch
@@ -1056,7 +1056,7 @@ export default function LoadDesk() {
       const groups = groupByTicketDate(unfiled, (item) => item.ticket.ticket_date);
       grouped = groups.flatMap((group) => {
         const batchId = makeId();
-        const number = invoiceNumberForDate(numbers, group.date);
+        const number = openingInvoiceNumber(numbers);
         numbers.push(number);
         return group.items.map((item) => ({
           ...item,

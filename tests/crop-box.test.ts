@@ -78,3 +78,58 @@ void test('dragging right shows what was to the left of the window', () => {
   const dragged = sourceRect(natural, FRAME, draw, { x: 70, y: 0 });
   assert.ok(dragged.x < middle.x);
 });
+
+void test('the picture can be moved until the window is at its very edge', () => {
+  // The complaint: zoomed in, the picture stopped short of its own edges. That
+  // is what a window measured wrongly does — the room to move is worked out
+  // from the window's size, so a window believed to be wider than it really is
+  // holds the picture back from an edge it could have reached.
+  const natural = { width: 1600, height: 900 };
+  for (const frame of [280, 240, 187.5]) {
+    for (const zoom of [1, 2, 4]) {
+      const draw = coverScale(natural, frame) * zoom;
+      const where = `window ${frame} at zoom ${zoom}`;
+      const left = clampOffset({ x: 9999, y: 0 }, natural, frame, draw);
+      near(sourceRect(natural, frame, draw, left).x, 0, `${where}: left edge`);
+      const right = clampOffset({ x: -9999, y: 0 }, natural, frame, draw);
+      const far = sourceRect(natural, frame, draw, right);
+      near(far.x + far.size, natural.width, `${where}: right edge`);
+    }
+  }
+});
+
+void test('the same framing cuts the same square whatever size the window is', () => {
+  // The window is measured rather than assumed, so every sum is in terms of
+  // whatever size it really is. A narrower dialog shows a smaller window onto
+  // the same picture, not a different part of it — which is what cutting with
+  // one size while framing with another did.
+  const natural = { width: 1600, height: 900 };
+  for (const zoom of [1, 2.5]) {
+    const big = sourceRect(natural, 280, coverScale(natural, 280) * zoom, { x: 0, y: 0 });
+    const small = sourceRect(
+      natural,
+      187.5,
+      coverScale(natural, 187.5) * zoom,
+      { x: 0, y: 0 },
+    );
+    near(small.size, big.size, `zoom ${zoom}: size`);
+    near(small.x, big.x, `zoom ${zoom}: x`);
+    near(small.y, big.y, `zoom ${zoom}: y`);
+  }
+});
+
+void test('zooming in opens up room to move up and down', () => {
+  // A wide picture really has none at zoom 1 — its height exactly spans the
+  // window — but zooming in has to give it some.
+  const natural = { width: 1600, height: 900 };
+  const frame = 280;
+  const flat = clampOffset({ x: 0, y: 99 }, natural, frame, coverScale(natural, frame));
+  assert.equal(flat.y, 0, 'nothing to move at zoom 1');
+  const zoomed = clampOffset(
+    { x: 0, y: 99 },
+    natural,
+    frame,
+    coverScale(natural, frame) * 2,
+  );
+  assert.ok(zoomed.y > 0, 'zoomed in there is room up and down');
+});
