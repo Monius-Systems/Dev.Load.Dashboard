@@ -582,7 +582,7 @@ export const PL_PAGES: Record<string, string> = {
     'Trwale usuwa zapisany rekord i jego oryginał dla wszystkich w obszarze roboczym oraz zdejmuje jego pozycję z faktury {number}. Ten sam plik można potem przesłać ponownie; numer faktury można użyć ponownie po usunięciu wszystkich jej kwitów.',
 
   // Ticket checks and line totals
-  'Rate is missing; invoice remains a draft': 'Brak stawki; faktura pozostaje szkicem',
+  'Rate is missing': 'Brak stawki',
   'Hours are missing for the hourly rate; invoice remains a draft':
     'Brak godzin dla stawki godzinowej; faktura pozostaje szkicem',
   'Net tons do not match net pounds / 2,000': 'Tony netto nie zgadzają się z funtami netto / 2000',

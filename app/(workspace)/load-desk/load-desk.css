@@ -1362,18 +1362,18 @@ details[open] > .ld-section-summary .ld-section-chevron {
     margin-right: calc(-1 * var(--ui-space-2));
     color: var(--ui-text-3);
   }
-  /* The chip on the head line carries a tick, so it is a row and not a word,
-     and the untoned one — nobody has checked this yet — reads as quiet rather
-     than as a warning. */
+  /* The chip on the head line carries a tick, so it is a row and not a word.
+     A ticket nobody has checked yet wears the amber the list of things to
+     check before saving wears, because it is saying the same thing about the
+     same ticket: it takes its colour from .ld-chip itself, which is that
+     amber already. */
   .ld-mobile-head-row .ld-chip {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     align-self: center;
     padding: 4px 10px;
-    background: var(--ui-fill);
     font-size: var(--type-xs);
-    color: var(--ui-text-2);
   }
   .ld-mobile-head-row .ld-chip[data-tone='good'] {
     background: var(--ui-success-soft);

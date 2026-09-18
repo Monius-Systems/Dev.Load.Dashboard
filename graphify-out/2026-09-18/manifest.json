@@ -258,9 +258,9 @@
     "semantic_hash": ""
   },
   "components/scanner/document-scanner.tsx": {
-    "mtime": 1789690010.0835772,
-    "seen": 1789734258.7815301,
-    "ast_hash": "60fafb171b140a2ed52659dd766475d8",
+    "mtime": 1789689088.5137765,
+    "seen": 1789689115.8542159,
+    "ast_hash": "7e0a662f32a8448d3c09c89754210cd8",
     "semantic_hash": ""
   },
   "components/shell/account-menu.tsx": {
@@ -510,10 +510,10 @@
     "semantic_hash": "859a4e90302379a1a12e2a18083120c7"
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1789690129.6473658,
-    "seen": 1789734258.781573,
-    "ast_hash": "64d42ffb3dd9a8a50e391f9023dbfc4f",
-    "semantic_hash": ""
+    "mtime": 1789572737.8515718,
+    "seen": 1789579699.985238,
+    "ast_hash": "9cd722f261034d621e8b7a619250d540",
+    "semantic_hash": "9cd722f261034d621e8b7a619250d540"
   },
   "lib/i18n/pl.ts": {
     "mtime": 1789498889.6600606,
@@ -654,10 +654,10 @@
     "semantic_hash": ""
   },
   "lib/load-desk/validate.ts": {
-    "mtime": 1789690129.6464326,
-    "seen": 1789734258.7816,
-    "ast_hash": "cbce950020d64f6e00b18ea6e10ddeb9",
-    "semantic_hash": ""
+    "mtime": 1789467556.264355,
+    "seen": 1789579699.985255,
+    "ast_hash": "af75038d326bba0f8d07dc30ab4cf1bb",
+    "semantic_hash": "af75038d326bba0f8d07dc30ab4cf1bb"
   },
   "lib/phone.ts": {
     "mtime": 1789570900.3973014,
@@ -768,50 +768,50 @@
     "semantic_hash": "4526cad9fbe090942fa36521105970dd"
   },
   "public/ocr/pdf.worker.min.mjs": {
-    "mtime": 1789734238.9663253,
-    "seen": 1789734258.781622,
+    "mtime": 1789689518.59628,
+    "seen": 1789689547.175851,
     "ast_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e",
     "semantic_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e"
   },
   "public/ocr/tesseract-core-lstm.wasm.js": {
-    "mtime": 1789734238.981861,
-    "seen": 1789734258.7816231,
+    "mtime": 1789689518.6074913,
+    "seen": 1789689547.175852,
     "ast_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3",
     "semantic_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3"
   },
   "public/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": {
-    "mtime": 1789734239.0025723,
-    "seen": 1789734258.7816231,
+    "mtime": 1789689518.6180308,
+    "seen": 1789689547.175853,
     "ast_hash": "f267f4efd6219843707c73b3a9a70604",
     "semantic_hash": "f267f4efd6219843707c73b3a9a70604"
   },
   "public/ocr/tesseract-core-relaxedsimd.wasm.js": {
-    "mtime": 1789734239.0215602,
-    "seen": 1789734258.781624,
+    "mtime": 1789689518.6309803,
+    "seen": 1789689547.175854,
     "ast_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb",
     "semantic_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb"
   },
   "public/ocr/tesseract-core-simd-lstm.wasm.js": {
-    "mtime": 1789734239.0422492,
-    "seen": 1789734258.781625,
+    "mtime": 1789689518.641661,
+    "seen": 1789689547.175854,
     "ast_hash": "2bd630487581a49b7d7cce1bfe42314c",
     "semantic_hash": "2bd630487581a49b7d7cce1bfe42314c"
   },
   "public/ocr/tesseract-core-simd.wasm.js": {
-    "mtime": 1789734239.063749,
-    "seen": 1789734258.7816262,
+    "mtime": 1789689518.653175,
+    "seen": 1789689547.1758552,
     "ast_hash": "3fb1f6589c0569134cc593e0155acec4",
     "semantic_hash": "3fb1f6589c0569134cc593e0155acec4"
   },
   "public/ocr/tesseract-core.wasm.js": {
-    "mtime": 1789734239.085093,
-    "seen": 1789734258.7816262,
+    "mtime": 1789689518.6630783,
+    "seen": 1789689547.175856,
     "ast_hash": "7ec67b8a67ab4d41b74dd8df49db9224",
     "semantic_hash": "7ec67b8a67ab4d41b74dd8df49db9224"
   },
   "public/ocr/worker.min.js": {
-    "mtime": 1789734238.967707,
-    "seen": 1789734258.781627,
+    "mtime": 1789689518.5979,
+    "seen": 1789689547.1758568,
     "ast_hash": "b1ab464237e687b323da236fff45ba05",
     "semantic_hash": "b1ab464237e687b323da236fff45ba05"
   },
@@ -990,9 +990,9 @@
     "semantic_hash": "7204427b671b2ef1d77cc78c75ec5ab7"
   },
   "tests/ticket-parser.test.ts": {
-    "mtime": 1789690129.646805,
-    "seen": 1789734258.781662,
-    "ast_hash": "5686259e987dc9b0184844a85b47369a",
+    "mtime": 1789595608.089748,
+    "seen": 1789684604.783998,
+    "ast_hash": "ec909a2e8e9d194b3bc3c811d31b6407",
     "semantic_hash": ""
   },
   "tests/website-login.test.ts": {

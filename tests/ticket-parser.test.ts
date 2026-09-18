@@ -66,9 +66,7 @@ void test('browser OCR of the Ontario Trap Rock page matches every printed field
   const { ticket, error } = browserTicket(1);
   assert.equal(error, null);
   assert.deepEqual(mismatches(ticket, EXPECTED.ontario), []);
-  assert.deepEqual(validateTicket(ticket), [
-    'Rate is missing; invoice remains a draft',
-  ]);
+  assert.deepEqual(validateTicket(ticket), ['Rate is missing']);
 });
 
 void test('browser OCR of the Heidelberg page matches every field it can read reliably', () => {
@@ -80,9 +78,7 @@ void test('browser OCR of the Heidelberg page matches every field it can read re
   const { dispatch_number: _unreadable, ...readable } = EXPECTED.heidelberg;
   assert.deepEqual(mismatches(ticket, readable), []);
   assert.equal(ticket.dispatch_number, null);
-  assert.deepEqual(validateTicket(ticket), [
-    'Rate is missing; invoice remains a draft',
-  ]);
+  assert.deepEqual(validateTicket(ticket), ['Rate is missing']);
 });
 
 void test('missing dispatch number, ordered and remaining loads are not flagged', () => {

@@ -45,10 +45,10 @@
   padding: 72px 0 calc(var(--chrome) - 72px);
 }
 
-/* The overlay maps the detector's 0–1 coordinates straight onto this box, so
-   it has to stay exactly the camera's aspect ratio with the video letterboxed
-   inside it. Cropping the video to fill the screen would slide the outline off
-   the ticket. */
+/* Exactly the camera's aspect ratio, with the video letterboxed inside it:
+   what is on the screen is what the photograph will be, and cropping the video
+   to fill the screen would take the edges of the ticket out of the picture
+   without saying so. */
 .frame {
   position: relative;
   max-width: 100%;
@@ -66,31 +66,6 @@
   width: 100%;
   object-fit: contain;
 }
-.outline {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-}
-.outline polygon {
-  fill: rgb(52 229 164 / 5%);
-  stroke: rgb(255 255 255 / 90%);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  transition:
-    fill 220ms ease,
-    stroke 220ms ease,
-    stroke-width 220ms ease;
-}
-/* Locked on: the outline stops being a hint and becomes a confirmation, which
-   is the moment the shutter is about to fire by itself. */
-.outline[data-locked='true'] polygon {
-  fill: rgb(52 229 164 / 9%);
-  stroke: var(--lock);
-  stroke-width: 3.5;
-}
-
 /* Corner marks for where to hold the ticket, faint enough to ignore. */
 .brackets {
   position: absolute;
@@ -131,12 +106,6 @@
   border-top: 0;
   border-radius: 0 0 0 8px;
 }
-/* Out of the way once the detector has the ticket. */
-.outline[data-locked='true'] ~ .brackets i {
-  border-color: transparent;
-  transition: border-color 220ms ease;
-}
-
 /* Sized to the photo itself rather than to the space around it, so the
    rounded corners land on the picture instead of on an invisible box. */
 .preview {
@@ -240,12 +209,6 @@
 .status svg {
   flex-shrink: 0;
   opacity: 0.9;
-}
-/* Holding still: the phone is about to take the photo on its own. */
-.hint[data-tone='lock'] {
-  background: rgb(52 229 164 / 20%);
-  box-shadow: inset 0 0 0 0.5px rgb(52 229 164 / 45%);
-  color: #b6ffe6;
 }
 .hint[data-tone='error'] {
   background: rgb(255 159 10 / 20%);
@@ -440,7 +403,6 @@
   .flash {
     animation-duration: 1ms;
   }
-  .outline polygon,
   .shutter span,
   .primary,
   .secondary {

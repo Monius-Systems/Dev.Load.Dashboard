@@ -5,7 +5,7 @@ export const WEIGHT_TOLERANCE_LB = 20;
 export const TON_TOLERANCE = 0.05;
 
 /** The only issue on a ticket that is otherwise ready: it has no rate yet. */
-export const RATE_MISSING_ISSUE = 'Rate is missing; invoice remains a draft';
+export const RATE_MISSING_ISSUE = 'Rate is missing';
 
 /** An hourly ticket without hours yet. */
 export const HOURS_MISSING_ISSUE =
