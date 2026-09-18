@@ -210,6 +210,16 @@ export default function ImageCropper({
       mode = 'none';
     };
 
+    /**
+     * Lets go of one pointer, however the news arrived. Releasing the capture
+     * reports itself back here, which finds the pointer already gone and stops.
+     */
+    const release = (pointerId: number) => {
+      if (!down.delete(pointerId)) return;
+      if (box.hasPointerCapture(pointerId)) box.releasePointerCapture(pointerId);
+      begin();
+    };
+
     const onDown = (event: PointerEvent) => {
       if (!live.current.natural) return;
       // Two is all a pinch needs; a third finger is left out of it.
@@ -222,6 +232,15 @@ export default function ImageCropper({
 
     const onMove = (event: PointerEvent) => {
       if (!down.has(event.pointerId)) return;
+      // A mouse with no button held is not dragging anything. The capture can be
+      // lost without the release ever reaching us — the pointer leaves the
+      // window, a context menu opens, the tab loses focus — and without this the
+      // picture goes on following the mouse long after the hand let go of it,
+      // undoing the framing on the way to the Save button.
+      if (event.pointerType === 'mouse' && event.buttons === 0) {
+        release(event.pointerId);
+        return;
+      }
       const size = live.current.natural;
       if (!size) return;
       event.preventDefault();
@@ -265,13 +284,7 @@ export default function ImageCropper({
       }
     };
 
-    const onUp = (event: PointerEvent) => {
-      if (!down.delete(event.pointerId)) return;
-      if (box.hasPointerCapture(event.pointerId)) {
-        box.releasePointerCapture(event.pointerId);
-      }
-      begin();
-    };
+    const onUp = (event: PointerEvent) => release(event.pointerId);
 
     // Safari sends its own page pinch alongside the touches on some versions,
     // which would zoom the dialog instead of the picture.
@@ -281,6 +294,7 @@ export default function ImageCropper({
     box.addEventListener('pointermove', onMove, { passive: false });
     box.addEventListener('pointerup', onUp);
     box.addEventListener('pointercancel', onUp);
+    box.addEventListener('lostpointercapture', onUp);
     box.addEventListener('gesturestart', refuse);
     box.addEventListener('gesturechange', refuse);
     return () => {
@@ -291,6 +305,7 @@ export default function ImageCropper({
       box.removeEventListener('pointermove', onMove);
       box.removeEventListener('pointerup', onUp);
       box.removeEventListener('pointercancel', onUp);
+      box.removeEventListener('lostpointercapture', onUp);
       box.removeEventListener('gesturestart', refuse);
       box.removeEventListener('gesturechange', refuse);
     };

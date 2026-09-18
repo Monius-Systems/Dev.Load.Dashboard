@@ -58056,7 +58056,7 @@
       "file_type": "code",
       "norm_label": "keep()",
       "source_file": "components/account/image-cropper.tsx",
-      "source_location": "L314"
+      "source_location": "L329"
     },
     {
       "id": "components_account_image_cropper_imagecropper_reset",
@@ -86540,7 +86540,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/account/image-cropper.tsx",
-      "source_location": "L320",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
@@ -86576,7 +86576,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/account/image-cropper.tsx",
-      "source_location": "L320",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
@@ -180164,7 +180164,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/account/image-cropper.tsx",
-      "source_location": "L314",
+      "source_location": "L329",
       "weight": 1.0
     },
     {
@@ -285600,5 +285600,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "3ea580a4d4061c2d0b480568d7e9412059a453fb"
+  "built_at_commit": "5c0590e8892298b418946c33d5df500b2a576097"
 }
