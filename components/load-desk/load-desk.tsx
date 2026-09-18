@@ -3465,7 +3465,7 @@ export default function LoadDesk() {
                     {zoomablePreview ? (
                       <Lens
                         className="ld-aside-lens"
-                        zoomFactor={2.4}
+                        zoomFactor={1.8}
                         lensSize={190}
                         ariaLabel={t('Magnify the original ticket')}
                       >

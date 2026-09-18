@@ -76,7 +76,15 @@ export function Lens({
   return (
     <div
       ref={container}
-      className={cn('relative z-20 overflow-hidden', className)}
+      className={cn(
+        'relative z-20 overflow-hidden',
+        // While the lens is up, the lens is the pointer: an arrow sitting on
+        // top of it points at the magnified copy rather than at the thing
+        // being magnified, and there are two marks on the picture where the
+        // eye wants one.
+        hovering && !isStatic && 'cursor-none',
+        className,
+      )}
       role="region"
       aria-label={ariaLabel}
       onMouseEnter={() => setHovering(true)}

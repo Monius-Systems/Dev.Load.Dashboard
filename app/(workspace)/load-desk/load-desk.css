@@ -1914,6 +1914,9 @@ details[open] > .ld-section-summary .ld-section-chevron {
    differently shaped picture than the one being pointed at. */
 .ld-aside-lens {
   border-radius: var(--ui-radius-md);
+  /* Only until the lens is up, which is the moment the pointer arrives: the
+     lens itself then hides the cursor (see components/ui/lens.tsx), and this is
+     what the pointer shows on the way in rather than a plain arrow. */
   cursor: zoom-in;
 }
 /* Zooming without fingers: the wheel and a drag do it, and these say so and
