@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789754623.340709,
-    "seen": 1789754699.7252889,
-    "ast_hash": "9ff9a17705a3853fc11cb9c976c01803",
+    "mtime": 1789755752.787847,
+    "seen": 1789755775.14623,
+    "ast_hash": "dba322b9301978540ed7adacb4ad14b8",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1789753793.40129,
-    "seen": 1789753847.8826041,
-    "ast_hash": "6eccd9e3f7382a2d660c4741b0d60540",
+    "mtime": 1789755546.6433122,
+    "seen": 1789755739.92431,
+    "ast_hash": "33c8d0559a57a1442d5c140e923208c8",
     "semantic_hash": ""
   },
   "lib/i18n/pl.ts": {
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/records.ts": {
-    "mtime": 1789753722.6033638,
-    "seen": 1789753847.8826208,
-    "ast_hash": "19859bda031d8aff1e2fa2773f7c69e2",
+    "mtime": 1789755453.3618007,
+    "seen": 1789755739.924327,
+    "ast_hash": "55796d586414eeb9057383bd700916c3",
     "semantic_hash": ""
   },
   "lib/load-desk/same-order.ts": {
@@ -960,9 +960,9 @@
     "semantic_hash": "8161a0760ee6c9742100e8e5b568906d"
   },
   "tests/records.test.ts": {
-    "mtime": 1789753825.5435343,
-    "seen": 1789753847.882687,
-    "ast_hash": "26ce73fc1c9fa65640f8a538da7b0c3e",
+    "mtime": 1789755531.8406656,
+    "seen": 1789755739.9243908,
+    "ast_hash": "3f10c90689a8881c52dbb0ac40a2d808",
     "semantic_hash": ""
   },
   "tests/scanner-environment.test.ts": {

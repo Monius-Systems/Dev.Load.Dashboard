@@ -412,25 +412,119 @@ export function joinsInvoiceFor(
 export const needsReview = (record: SavedRecord) => !record.reviewed_at;
 
 /**
- * Where to go after checking the ticket at `from`: the next one in the queue
- * still waiting to be checked, or -1 when there is none.
+ * One ticket of a review, as the navigation sees it.
  *
- * Reviewing runs on without going back to a list. The one just checked is never
- * offered again, and neither is one already checked — the queue holds tickets
- * filed unchecked by "Review later" alongside tickets already gone over, and
- * walking it by position landed on whichever came next whether it needed
- * looking at or not. What follows the current ticket comes first, because that
- * is the order on the screen; only when nothing after it is waiting does this
- * turn back to what was skipped earlier in the queue.
- *
- * `reviewed` is the queue in the order it is shown, each entry saying whether
- * that ticket has been checked. Read after the save has been stored, so the
- * ticket just finished counts as checked and is passed over.
+ * `invoice` is the batch the ticket is on, which is what makes tickets one
+ * invoice in this app — `recordBatch` for a saved one, `batch_id` on a queued
+ * one. `day` is the day that invoice is dated, which is the day on its tickets;
+ * it orders the invoices among themselves. `reviewed` is the ticket's own
+ * `reviewed_at`, read after the save has been stored.
  */
-export function nextToReview(reviewed: boolean[], from: number): number {
-  const later = reviewed.findIndex((done, index) => index > from && !done);
-  if (later >= 0) return later;
-  return reviewed.findIndex((done, index) => index < from && !done);
+export type ReviewStop = { invoice: string; day: number | null; reviewed: boolean };
+
+/**
+ * The tickets on one invoice, as positions in the queue, in the order the queue
+ * shows them. That order is the review's own within an invoice: it is what the
+ * numbered steps across the top of the panel are.
+ */
+export function invoiceStopsOf(stops: ReviewStop[], invoice: string): number[] {
+  return stops.flatMap((stop, index) => (stop.invoice === invoice ? [index] : []));
+}
+
+/**
+ * The invoices of a review, in the order it works through them: oldest invoice
+ * date first, and where two fall on the same day the one whose first ticket
+ * comes first in the queue. An invoice with no date to place goes last.
+ *
+ * The same order the numbers were handed out in, because an invoice is dated by
+ * its tickets and the numbering runs by that date — so reviewing runs through
+ * them the way the books read.
+ */
+function invoicesInOrder(stops: ReviewStop[]): string[] {
+  const opens = new Map<string, { day: number | null; at: number }>();
+  for (const [at, stop] of stops.entries()) {
+    if (!opens.has(stop.invoice)) opens.set(stop.invoice, { day: stop.day, at });
+  }
+  return [...opens]
+    .sort(([, a], [, b]) => byDay(a.day, b.day) || a.at - b.at)
+    .map(([invoice]) => invoice);
+}
+
+/** Whether any ticket on this invoice is still waiting to be checked. */
+const invoiceWaiting = (stops: ReviewStop[], invoice: string) =>
+  invoiceStopsOf(stops, invoice).some((index) => !stops[index].reviewed);
+
+/**
+ * The first ticket waiting on the next invoice that has one, or -1.
+ *
+ * The invoice after this one in the order above, and if every invoice after it
+ * is done with, one before it that is not: an invoice skipped past by hand is
+ * still an invoice to finish, and the review does not end with work left on it.
+ */
+function nextWaitingInvoiceStop(stops: ReviewStop[], invoice: string): number {
+  const order = invoicesInOrder(stops);
+  const at = order.indexOf(invoice);
+  const waiting = (other: string) => other !== invoice && invoiceWaiting(stops, other);
+  const next = order.slice(at + 1).find(waiting) ?? order.slice(0, at).find(waiting);
+  if (next === undefined) return -1;
+  return invoiceStopsOf(stops, next).find((index) => !stops[index].reviewed) ?? -1;
+}
+
+/**
+ * Where the review goes after the ticket at `from`, or -1 when nothing anywhere
+ * is left to check.
+ *
+ * An invoice at a time, because an invoice is what gets sent: the rest of this
+ * invoice first, then the next invoice with work on it. Within the invoice, what
+ * follows the current ticket comes first — that is the order on the screen — and
+ * only when nothing after it is waiting does this turn back to a ticket skipped
+ * earlier on the same invoice. A ticket already checked is never offered again,
+ * and neither is the one just finished.
+ *
+ * -1 means every invoice of the review is done with, and only then.
+ */
+export function nextReviewStop(stops: ReviewStop[], from: number): number {
+  const current = stops[from];
+  if (!current) return -1;
+  const here = invoiceStopsOf(stops, current.invoice);
+  const later = here.find((index) => index > from && !stops[index].reviewed);
+  if (later !== undefined) return later;
+  const skipped = here.find((index) => index !== from && !stops[index].reviewed);
+  if (skipped !== undefined) return skipped;
+  return nextWaitingInvoiceStop(stops, current.invoice);
+}
+
+/**
+ * Where the back and next arrows go from `from`, or null when there is nowhere.
+ *
+ * They step through the invoice being reviewed, which is what the numbered steps
+ * beside them are. At its far end they carry on rather than stopping dead:
+ * forward to the first ticket waiting on the next invoice with work on it, back
+ * to the last ticket of the invoice before. Crossing over is only ever at an
+ * end — the invoice details on the panel belong to whichever invoice is open, so
+ * landing on another one by accident in the middle of a run is what this avoids
+ * — and back goes wherever forward came from, so the way on is never one-way.
+ */
+export function stepReviewStop(
+  stops: ReviewStop[],
+  from: number,
+  direction: -1 | 1,
+): number | null {
+  const current = stops[from];
+  if (!current) return null;
+  const here = invoiceStopsOf(stops, current.invoice);
+  if (direction === 1) {
+    const later = here.find((index) => index > from);
+    if (later !== undefined) return later;
+    const onward = nextWaitingInvoiceStop(stops, current.invoice);
+    return onward >= 0 ? onward : null;
+  }
+  const earlier = here.filter((index) => index < from).at(-1);
+  if (earlier !== undefined) return earlier;
+  const order = invoicesInOrder(stops);
+  const before = order[order.indexOf(current.invoice) - 1];
+  if (before === undefined) return null;
+  return invoiceStopsOf(stops, before).at(-1) ?? null;
 }
 
 /** The date a ticket is filed under; undated scans have a batch of their own. */

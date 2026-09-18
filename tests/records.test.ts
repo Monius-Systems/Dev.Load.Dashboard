@@ -4,9 +4,11 @@ import {
   invoiceGroups,
   invoiceLines,
   invoicesCsv,
-  nextToReview,
+  nextReviewStop,
   recordMatches,
+  stepReviewStop,
   ticketStatus,
+  type ReviewStop,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord, type Ticket } from '../lib/load-desk/types.ts';
 
@@ -108,56 +110,123 @@ void test('invoice CSV has one row per invoice', () => {
   assert.match(lines[1], /,45\.3,345,rated$/);
 });
 
-/** A queue as the review screen shows it: each ticket, checked or waiting. */
-const reviewQueue = (checked: string) =>
-  Array.from(checked, (mark) => mark === 'r');
+/**
+ * A review, written as the invoices it runs through: each invoice a run of
+ * tickets, `r` for one already checked and `.` for one still waiting. Every
+ * invoice is dated a day later than the one before it, in the order given.
+ *
+ *   review(['.r.', '..'])  →  invoice A: 3 tickets, the middle one checked
+ *                             invoice B: 2 tickets, both waiting
+ */
+const review = (invoices: string[]): ReviewStop[] =>
+  invoices.flatMap((tickets, invoice) =>
+    Array.from(tickets, (mark) => ({
+      invoice: `invoice-${invoice}`,
+      day: Date.UTC(2026, 0, 1 + invoice),
+      reviewed: mark === 'r',
+    })),
+  );
 
-void test('finishing a ticket opens the next one waiting to be checked', () => {
-  // Five tickets, none checked: reviewing runs straight on from the first.
-  assert.equal(nextToReview(reviewQueue('.....'), 0), 1);
-  assert.equal(nextToReview(reviewQueue('r....'), 1), 2);
+void test('reviewing runs through the invoice it is on before any other', () => {
+  // One invoice of three: straight down it, and only then is it done with.
+  const stops = review(['...']);
+  assert.equal(nextReviewStop(stops, 0), 1);
+  assert.equal(nextReviewStop(review(['r..']), 1), 2);
 });
 
-void test('a ticket already checked is passed over', () => {
-  // Tickets 1 and 3 are checked, ticket 2 has just been finished: ticket 4 is
-  // the next one waiting, and ticket 3 is not offered again.
-  assert.equal(nextToReview(reviewQueue('rrr.'), 1), 3);
+void test('a finished invoice hands on to the next one with work on it', () => {
+  // Two tickets on the first invoice, three on the second. Finishing the second
+  // ticket finishes the invoice, so the review opens the next invoice's first.
+  const stops = review(['rr', '...']);
+  assert.equal(nextReviewStop(stops, 1), 2, 'the first ticket of invoice B');
+  assert.equal(nextReviewStop(review(['rr', 'r..']), 1), 3, 'its first one waiting');
 });
 
-void test('the ticket just finished is never offered again', () => {
-  // Read after the save is stored, so the current one counts as checked; it is
-  // skipped either way, which is what keeps reviewing from standing still.
-  assert.equal(nextToReview(reviewQueue('.r..'), 0), 2);
-  assert.equal(nextToReview(reviewQueue('rr..'), 0), 2);
+void test('an invoice already finished is stepped over', () => {
+  // Invoice A is done, B is done, C is not: the review does not stop at B.
+  const stops = review(['rr', 'rr', '..']);
+  assert.equal(nextReviewStop(stops, 1), 4);
 });
 
-void test('the last ticket in the list turns back to what was skipped', () => {
-  // Nothing after it is waiting, and an earlier ticket still is.
-  assert.equal(nextToReview(reviewQueue('.rrr'), 3), 0);
-  assert.equal(nextToReview(reviewQueue('r.rr'), 3), 1);
+void test('a ticket skipped earlier on the invoice is come back to', () => {
+  // Checked out of order by hand: the first is still waiting when the last is
+  // finished, and the invoice is not left half done.
+  const stops = review(['.rr', '..']);
+  assert.equal(nextReviewStop(stops, 2), 0, 'back to the one skipped');
 });
 
-void test('the last ticket waiting sends the review back to the scan page', () => {
-  assert.equal(nextToReview(reviewQueue('rrrr'), 3), -1);
-  assert.equal(nextToReview(reviewQueue('rrrr'), 0), -1);
-  assert.equal(nextToReview(reviewQueue('r'), 0), -1, 'one ticket, now checked');
-  assert.equal(nextToReview([], 0), -1, 'an empty queue');
+void test('an invoice skipped earlier is come back to before the review ends', () => {
+  // The last invoice is finished but the first was never started. Nothing after
+  // it is waiting, so the review turns back rather than calling itself done.
+  const stops = review(['..', 'rr', 'rr']);
+  assert.equal(nextReviewStop(stops, 5), 0);
 });
 
-void test('every ticket is offered exactly once, whatever order they are in', () => {
-  // Walking a queue of ten: each pass checks the ticket it was handed, and the
-  // walk ends on the scan page having visited every one of them.
-  for (const start of [0, 4, 9]) {
-    const reviewed = Array.from({ length: 10 }, () => false);
+void test('the review ends only when every invoice of it is finished', () => {
+  assert.equal(nextReviewStop(review(['rr', 'r', 'rrr']), 0), -1);
+  assert.equal(nextReviewStop(review(['r']), 0), -1, 'one invoice of one ticket');
+  assert.equal(nextReviewStop(review([]), 0), -1, 'nothing to review');
+  // Work left anywhere at all keeps it going.
+  assert.notEqual(nextReviewStop(review(['rr', 'r.', 'rrr']), 0), -1);
+});
+
+void test('every ticket of every invoice is offered exactly once', () => {
+  // Three invoices of 3, 1 and 2. Each pass checks the ticket it was handed;
+  // the walk ends only once all six have been seen, each of them once, and it
+  // never leaves an invoice with work still on it.
+  for (const start of [0, 3, 5]) {
+    const stops = review(['...', '.', '..']);
     const seen: number[] = [];
     let at = start;
     while (at >= 0) {
-      assert.equal(reviewed[at], false, `ticket ${at} was offered twice`);
-      reviewed[at] = true;
+      assert.equal(stops[at].reviewed, false, `ticket ${at} was offered twice`);
+      stops[at] = { ...stops[at], reviewed: true };
       seen.push(at);
-      at = nextToReview(reviewed, at);
+      // An invoice is never left part-finished behind the review.
+      const left = stops.findIndex((stop, index) => !stop.reviewed && index < at);
+      at = nextReviewStop(stops, at);
+      if (at > left && left >= 0 && stops[left].invoice === stops[at]?.invoice) {
+        assert.fail('left a ticket behind on the invoice being reviewed');
+      }
     }
-    assert.equal(seen.length, 10, `started at ${start}`);
-    assert.deepEqual([...seen].sort((a, b) => a - b), [...Array(10).keys()]);
+    assert.equal(seen.length, 6, `started at ${start}`);
   }
+});
+
+void test('the arrows step through the invoice being reviewed', () => {
+  const stops = review(['...', '..']);
+  assert.equal(stepReviewStop(stops, 0, 1), 1);
+  assert.equal(stepReviewStop(stops, 1, 1), 2);
+  assert.equal(stepReviewStop(stops, 2, -1), 1);
+  assert.equal(stepReviewStop(stops, 0, -1), null, 'nowhere before the first');
+});
+
+void test('an arrow at the end of an invoice carries on to the next', () => {
+  // Pressed at the far end rather than stopping dead, and back goes wherever
+  // forward came from, so crossing over is never one-way.
+  const stops = review(['rr', '..']);
+  assert.equal(stepReviewStop(stops, 1, 1), 2, 'on to the next invoice');
+  assert.equal(stepReviewStop(stops, 2, -1), 1, 'and back to the one before');
+  assert.equal(
+    stepReviewStop(review(['rr', 'rr']), 1, 1),
+    null,
+    'nothing waiting anywhere, so forward stops',
+  );
+});
+
+void test('invoices are worked through oldest first, whatever order they queued in', () => {
+  // The order the numbers were handed out in: an invoice is dated by its
+  // tickets, and the numbering runs by that date.
+  const stops: ReviewStop[] = [
+    { invoice: 'january', day: Date.UTC(2026, 0, 6), reviewed: true },
+    { invoice: 'december', day: Date.UTC(2025, 11, 19), reviewed: false },
+  ];
+  // Finishing the January ticket turns back to the older December invoice.
+  assert.equal(nextReviewStop(stops, 0), 1);
+  // And an undated invoice has no place in a run of days, so it comes last.
+  const undated: ReviewStop[] = [
+    { invoice: 'undated', day: null, reviewed: true },
+    { invoice: 'dated', day: Date.UTC(2026, 0, 6), reviewed: false },
+  ];
+  assert.equal(nextReviewStop(undated, 0), 1);
 });

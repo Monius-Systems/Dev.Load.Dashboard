@@ -773,6 +773,22 @@ h2 {
     /* Clear of the clock and the battery on a notched phone, where the
        breadcrumb was printing underneath the status bar. */
     padding: max(12px, env(safe-area-inset-top)) 16px 12px;
+    /* Room for the scan's progress to drop below the breadcrumb; see
+       .desk-activity just under here. */
+    flex-wrap: wrap;
+  }
+/* Load Desk's progress while another page is open. On a screen with room it sits
+   at the right of the bar, after the breadcrumb. On a phone there is no room for
+   it there: the page title and the account button leave it a sliver, and a
+   percentage nobody can read is not worth the space it takes. It goes to the
+   left instead, where a phone's eye starts — on its own line under the
+   breadcrumb, because taking the corner itself would move the menu button that
+   has always been in it. Nothing else shifts, and the pill keeps its own width
+   rather than being stretched across the bar. */
+.desk-activity {
+    order: 1;
+    margin-left: 0;
+    margin-right: auto;
   }
 .page-content {
     padding: 24px 20px;

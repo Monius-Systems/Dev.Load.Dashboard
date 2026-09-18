@@ -108,12 +108,15 @@ import {
   groupByTicketDate,
   openingInvoiceNumber,
   joinsInvoiceFor,
-  nextToReview,
+  nextReviewStop,
   numbersByTicketDate,
   numbersForWaitingBatches,
   recordBatch,
   isPendingInvoiceNumber,
   shownInvoiceNumber,
+  stepReviewStop,
+  ticketDateValue,
+  type ReviewStop,
 } from '@/lib/load-desk/records';
 import {
   claimFinalize,
@@ -516,16 +519,28 @@ async function fileInBatch(
 }
 
 /**
- * Whether this queue item has been checked against its picture.
+ * The review as the navigation reads it: every queued ticket, the invoice it is
+ * on and whether it has been checked.
  *
- * Read off the stored record rather than the queue, because being checked is
- * the record's own `reviewed_at` and nothing else. A ticket not saved at all is
- * waiting by definition: saving it after looking at it is the checking.
+ * Being checked is the stored record's own `reviewed_at` and nothing else, so it
+ * is read off the records rather than the queue; a ticket not saved at all is
+ * waiting by definition, because saving it after looking at it is the checking.
+ * The invoice is the ticket's batch, which is what makes tickets one invoice
+ * here, and the day is the one its invoice is dated — the day on the ticket,
+ * which is the same thing (see invoice-dates.ts) and is what orders the invoices
+ * among themselves.
  */
-const itemReviewed = (item: QueueItem, saved: SavedRecord[]) => {
-  if (item.saved_record_id === null) return false;
-  const record = saved.find((stored) => stored.id === item.saved_record_id);
-  return record ? !needsReview(record) : false;
+const reviewStops = (items: QueueItem[], saved: SavedRecord[]): ReviewStop[] => {
+  // Worked out once for the whole queue rather than per ticket: this runs on
+  // every render of the page, and a workspace's ledger is long.
+  const checked = new Set(
+    saved.filter((record) => !needsReview(record)).map((record) => record.id),
+  );
+  return items.map((item) => ({
+    invoice: item.batch_id,
+    day: ticketDateValue(item.invoice.invoice_date || item.ticket.ticket_date),
+    reviewed: item.saved_record_id !== null && checked.has(item.saved_record_id),
+  }));
 };
 
 /** The fields a person edits, compared to spot unsaved changes. */
@@ -1751,10 +1766,7 @@ export default function LoadDesk() {
    */
   const openNextToReview = (items: QueueItem[], from: number): number => {
     const { records: saved } = getRecordsSnapshot();
-    const next = nextToReview(
-      items.map((item) => itemReviewed(item, saved)),
-      from,
-    );
+    const next = nextReviewStop(reviewStops(items, saved), from);
     if (next >= 0) {
       setActiveIndex(next);
       scrollToReview();
@@ -2396,18 +2408,31 @@ export default function LoadDesk() {
    * on the screen at all, and the summary below reads straight off the ticket.
    */
   /**
-   * The tickets the selector may reach: the ones on the invoice being
-   * reviewed. Stepping from one invoice's ticket straight onto another's
-   * changes what is being billed without saying so, and the invoice details on
-   * the last step belong to whichever invoice is open.
+   * The tickets the selector steps through: the ones on the invoice being
+   * reviewed, and only those. An invoice is what gets sent, so it is the unit
+   * being worked through — the count beside the steps is this invoice's tickets,
+   * not everything that came off the reader, and a run of three on invoice 20
+   * reads "Ticket 2 of 3" rather than "Ticket 2 of 6".
+   *
+   * The arrows carry on past either end of it (`stepReviewStop`), which is the
+   * one place a step lands on another invoice: the invoice details on the panel
+   * belong to whichever invoice is open, and crossing over in the middle of a
+   * run is what confining the numbered steps avoids.
    */
   const invoiceStops = active
     ? queue.flatMap((item, index) => (item.batch_id === active.batch_id ? [index] : []))
     : [];
   const stopHere = invoiceStops.indexOf(activeIndex);
-  const previousStop = stopHere > 0 ? invoiceStops[stopHere - 1] : null;
-  const nextStop =
-    stopHere >= 0 && stopHere < invoiceStops.length - 1 ? invoiceStops[stopHere + 1] : null;
+  const stops = active ? reviewStops(queue, records) : [];
+  const previousStop = active ? stepReviewStop(stops, activeIndex, -1) : null;
+  const nextStop = active ? stepReviewStop(stops, activeIndex, 1) : null;
+  /**
+   * Whether the arrows are shown at all. An invoice of one ticket is a run of
+   * one, and two arrows either side of it is a way round offered for a journey
+   * that does not exist; reviewing it moves on by itself. The numbered steps
+   * stay, because they say which ticket is open and how it stands.
+   */
+  const canStep = invoiceStops.length > 1;
 
   /**
    * Anything still to be filled in before this ticket is done with — a missing
@@ -2427,21 +2452,35 @@ export default function LoadDesk() {
             <div>
               <p className="ld-step">{t('02 · Review')}</p>
               <h2 id="ld-review-title">
-                {t('Ticket {index} of {total}', { index: activeIndex + 1, total: queue.length })}
+                {/* This invoice's own run, and which invoice it is: the count
+                    used to be every ticket of the upload, so a ticket on the
+                    second of three invoices read as one of six. */}
+                {shownInvoiceNumber(active.invoice.invoice_number)
+                  ? t('Invoice {number} · Ticket {index} of {total}', {
+                      number: shownInvoiceNumber(active.invoice.invoice_number),
+                      index: stopHere + 1,
+                      total: invoiceStops.length,
+                    })
+                  : t('Ticket {index} of {total}', {
+                      index: stopHere + 1,
+                      total: invoiceStops.length,
+                    })}
               </h2>
             </div>
             <nav className="ld-queue" aria-label={t('Ticket queue')}>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="ld-queue-step"
-                data-step="previous"
-                aria-label={t('Previous ticket')}
-                disabled={previousStop === null}
-                onClick={() => previousStop !== null && setActiveIndex(previousStop)}
-              >
-                <ChevronLeft />
-              </Button>
+              {canStep ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="ld-queue-step"
+                  data-step="previous"
+                  aria-label={t('Previous ticket')}
+                  disabled={previousStop === null}
+                  onClick={() => previousStop !== null && setActiveIndex(previousStop)}
+                >
+                  <ChevronLeft />
+                </Button>
+              ) : null}
               {queue.map((item, index) => {
                 const changed = hasChanges(item);
                 const saved = item.saved_record_id !== null && !changed;
@@ -2481,17 +2520,19 @@ export default function LoadDesk() {
                   </button>
                 );
               })}
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="ld-queue-step"
-                data-step="next"
-                aria-label={t('Next ticket')}
-                disabled={nextStop === null}
-                onClick={() => nextStop !== null && setActiveIndex(nextStop)}
-              >
-                <ChevronRight />
-              </Button>
+              {canStep ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  className="ld-queue-step"
+                  data-step="next"
+                  aria-label={t('Next ticket')}
+                  disabled={nextStop === null}
+                  onClick={() => nextStop !== null && setActiveIndex(nextStop)}
+                >
+                  <ChevronRight />
+                </Button>
+              ) : null}
               <span className="ld-queue-count">
                 {t('{saved} of {total} saved', { saved: savedInQueue, total: queue.length })}
               </span>
