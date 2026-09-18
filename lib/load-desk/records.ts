@@ -411,6 +411,28 @@ export function joinsInvoiceFor(
 /** Photographed and read, but nobody has checked it against the picture yet. */
 export const needsReview = (record: SavedRecord) => !record.reviewed_at;
 
+/**
+ * Where to go after checking the ticket at `from`: the next one in the queue
+ * still waiting to be checked, or -1 when there is none.
+ *
+ * Reviewing runs on without going back to a list. The one just checked is never
+ * offered again, and neither is one already checked — the queue holds tickets
+ * filed unchecked by "Review later" alongside tickets already gone over, and
+ * walking it by position landed on whichever came next whether it needed
+ * looking at or not. What follows the current ticket comes first, because that
+ * is the order on the screen; only when nothing after it is waiting does this
+ * turn back to what was skipped earlier in the queue.
+ *
+ * `reviewed` is the queue in the order it is shown, each entry saying whether
+ * that ticket has been checked. Read after the save has been stored, so the
+ * ticket just finished counts as checked and is passed over.
+ */
+export function nextToReview(reviewed: boolean[], from: number): number {
+  const later = reviewed.findIndex((done, index) => index > from && !done);
+  if (later >= 0) return later;
+  return reviewed.findIndex((done, index) => index < from && !done);
+}
+
 /** The date a ticket is filed under; undated scans have a batch of their own. */
 export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
   record.ticket.ticket_date?.trim() || 'undated';

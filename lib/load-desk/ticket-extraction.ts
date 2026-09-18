@@ -21,6 +21,8 @@ export type ExtractedTicket = {
   project_location: string | null;
   product_number: string | null;
   product: string | null;
+  gross_weight: number | null;
+  tare_weight: number | null;
   net_weight: number | null;
   net_tons: number | null;
   carrier: string | null;
@@ -37,6 +39,8 @@ export const EXTRACTION_FIELDS = [
   'project_location',
   'product_number',
   'product',
+  'gross_weight',
+  'tare_weight',
   'net_weight',
   'net_tons',
   'carrier',
@@ -65,6 +69,14 @@ export const EXTRACTION_SCHEMA = {
     project_location: { ...text, description: 'The job site address, city, state and ZIP.' },
     product_number: { ...text, description: 'Product code, never invented.' },
     product: { ...text, description: 'Product description, e.g. IN #53.' },
+    gross_weight: {
+      ...number,
+      description: 'Gross weight in pounds, a number without commas.',
+    },
+    tare_weight: {
+      ...number,
+      description: 'Tare weight in pounds, a number without commas.',
+    },
     net_weight: { ...number, description: 'Net weight in pounds, a number without commas.' },
     net_tons: { ...number, description: 'Net tons as a number.' },
     carrier: { ...text, description: 'The trucking or transport company.' },
@@ -84,11 +96,15 @@ Return:
 STRAWBERRY RD AND IN-2
 Do not make aggressive guesses with numeric identifiers.
 For BOL, Customer #, and Product #, if a digit cannot reasonably be determined from the image, do not invent it.
-Net Weight must be returned in pounds as a number without commas.
+Gross Weight, Tare Weight and Net Weight must each be returned in pounds as a number without commas.
 Net Tons must be returned as a numeric value.
-If Gross and Tare are visible, use:
+Read Gross and Tare from the weights printed on the ticket, alongside Net.
+Return each of them as printed, and do not work one out from the other two: a
+weight nobody can read is null, and three figures that do not balance are worth
+knowing about.
+Use:
 Gross - Tare = Net Weight
-as supporting evidence.
+as supporting evidence for reading a damaged digit in any of the three.
 Also use:
 Net Weight / 2000 ≈ Net Tons
 as a validation check.
@@ -129,11 +145,17 @@ export function readExtracted(value: unknown): ExtractedTicket {
     project_location: trimmed(source.project_location),
     product_number: trimmed(source.product_number),
     product: trimmed(source.product),
+    gross_weight: finite(source.gross_weight),
+    tare_weight: finite(source.tare_weight),
     net_weight: finite(source.net_weight),
     net_tons: finite(source.net_tons),
     carrier: trimmed(source.carrier),
   };
 }
+
+/** Pounds as the tons printed beside them, to the hundredth. */
+const tonsOf = (pounds: number | null) =>
+  pounds === null ? null : Math.round((pounds / 2000) * 100) / 100;
 
 /** M/D/YYYY, M/D/YY or an ISO date, as the ISO date the app stores. */
 export function extractedDate(printed: string | null): string | null {
@@ -150,13 +172,19 @@ export function extractedDate(printed: string | null): string | null {
 }
 
 /**
- * The model's answer as one of the app's tickets. Only the thirteen fields
- * asked for are filled; everything else on a Ticket stays null and is entered
- * in review, exactly as it is for a field the reader could not make out.
+ * The model's answer as one of the app's tickets. Only the fields asked for are
+ * filled; everything else on a Ticket stays null and is entered in review,
+ * exactly as it is for a field the reader could not make out.
  *
  * Net tons are worked out from the pounds when the model gave one and not the
  * other, and left as read when it gave both — the invoice is billed on them,
  * so a figure that came off the ticket is never quietly replaced by a sum.
+ *
+ * Gross and tare are carried across as read, and their tons worked out from
+ * their pounds, the same way the browser's own reader does it. Nothing balances
+ * them against net here: the three weights are what the paper says, and where
+ * they do not add up `validateTicket` says so in review rather than a sum
+ * quietly replacing whichever figure was wrong.
  */
 export function ticketFromExtraction(extracted: ExtractedTicket): Ticket {
   const ticket = emptyTicket();
@@ -170,12 +198,12 @@ export function ticketFromExtraction(extracted: ExtractedTicket): Ticket {
   ticket.project_address = extracted.project_location;
   ticket.product_code = extracted.product_number;
   ticket.product_description = extracted.product;
+  ticket.gross_lb = extracted.gross_weight;
+  ticket.tare_lb = extracted.tare_weight;
+  ticket.gross_tons = tonsOf(extracted.gross_weight);
+  ticket.tare_tons = tonsOf(extracted.tare_weight);
   ticket.net_lb = extracted.net_weight;
-  ticket.net_tons =
-    extracted.net_tons ??
-    (extracted.net_weight === null
-      ? null
-      : Math.round((extracted.net_weight / 2000) * 100) / 100);
+  ticket.net_tons = extracted.net_tons ?? tonsOf(extracted.net_weight);
   ticket.carrier_name = extracted.carrier;
   return ticket;
 }

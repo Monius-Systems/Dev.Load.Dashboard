@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789752947.9965959,
-    "seen": 1789752989.997988,
-    "ast_hash": "d9fb221964a8e9a868b1144f2dd2e959",
+    "mtime": 1789753759.5143929,
+    "seen": 1789753847.882554,
+    "ast_hash": "f2d644b83f8ca4779c815a2378c12a92",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1789752813.1724555,
-    "seen": 1789752989.99804,
-    "ast_hash": "3994353487a9d778965873c2d2b01243",
+    "mtime": 1789753793.40129,
+    "seen": 1789753847.8826041,
+    "ast_hash": "6eccd9e3f7382a2d660c4741b0d60540",
     "semantic_hash": ""
   },
   "lib/i18n/pl.ts": {
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/records.ts": {
-    "mtime": 1789752896.4307761,
-    "seen": 1789752989.998057,
-    "ast_hash": "a1ed178438b3b02d61f90048e366cb29",
+    "mtime": 1789753722.6033638,
+    "seen": 1789753847.8826208,
+    "ast_hash": "19859bda031d8aff1e2fa2773f7c69e2",
     "semantic_hash": ""
   },
   "lib/load-desk/same-order.ts": {
@@ -960,10 +960,10 @@
     "semantic_hash": "8161a0760ee6c9742100e8e5b568906d"
   },
   "tests/records.test.ts": {
-    "mtime": 1789443145.330008,
-    "seen": 1789579699.985291,
-    "ast_hash": "19002aa80a276262f8105e34d136a72a",
-    "semantic_hash": "19002aa80a276262f8105e34d136a72a"
+    "mtime": 1789753825.5435343,
+    "seen": 1789753847.882687,
+    "ast_hash": "26ce73fc1c9fa65640f8a538da7b0c3e",
+    "semantic_hash": ""
   },
   "tests/scanner-environment.test.ts": {
     "mtime": 1789563204.1056724,
@@ -1098,9 +1098,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/ticket-extraction.ts": {
-    "mtime": 1789598292.1624207,
-    "seen": 1789684604.783935,
-    "ast_hash": "b8e94b24231f80b3d3737c8103768877",
+    "mtime": 1789754011.7905574,
+    "seen": 1789754079.312939,
+    "ast_hash": "77e1ab3e1f6ea4feef9a5566f6b154b6",
     "semantic_hash": ""
   },
   "lib/scanner/enhance.ts": {
@@ -1158,9 +1158,9 @@
     "semantic_hash": ""
   },
   "tests/ticket-extraction.test.ts": {
-    "mtime": 1789598556.0918114,
-    "seen": 1789684604.7839968,
-    "ast_hash": "30745cc1511ccdf63e32f4948a29cc15",
+    "mtime": 1789754056.9867675,
+    "seen": 1789754079.313012,
+    "ast_hash": "3b46c9fcb09a601e72e0e14c8d4d991f",
     "semantic_hash": ""
   },
   ".claude/CLAUDE.md": {

@@ -439,6 +439,9 @@ export const PL_PAGES: Record<string, string> = {
   'Invoice number {number} is already used by another upload. Choose another.':
     'Numer faktury {number} jest już użyty przy innym przesłaniu. Wybierz inny.',
   'Saved {label}. Now reviewing ticket {next}.': 'Zapisano {label}. Teraz sprawdzasz kwit {next}.',
+  // Reviewing runs on from one ticket to the next without going back to a list.
+  'All tickets reviewed ({tickets}).': 'Sprawdzono wszystkie kwity ({tickets}).',
+  'Now reviewing ticket {next}.': 'Teraz sprawdzasz kwit {next}.',
   'Every ticket in the queue is saved ({tickets}).':
     'Wszystkie kwity w kolejce są zapisane ({tickets}).',
   'Saved ticket {label}': 'Zapisano kwit {label}',

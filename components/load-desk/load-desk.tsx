@@ -108,6 +108,7 @@ import {
   groupByTicketDate,
   openingInvoiceNumber,
   joinsInvoiceFor,
+  nextToReview,
   numbersByTicketDate,
   numbersForWaitingBatches,
   recordBatch,
@@ -514,14 +515,18 @@ async function fileInBatch(
   };
 }
 
-function nextUnsaved(queue: QueueItem[], from: number) {
-  const later = queue.findIndex(
-    (item, index) => index > from && item.saved_record_id === null,
-  );
-  return later >= 0
-    ? later
-    : queue.findIndex((item) => item.saved_record_id === null);
-}
+/**
+ * Whether this queue item has been checked against its picture.
+ *
+ * Read off the stored record rather than the queue, because being checked is
+ * the record's own `reviewed_at` and nothing else. A ticket not saved at all is
+ * waiting by definition: saving it after looking at it is the checking.
+ */
+const itemReviewed = (item: QueueItem, saved: SavedRecord[]) => {
+  if (item.saved_record_id === null) return false;
+  const record = saved.find((stored) => stored.id === item.saved_record_id);
+  return record ? !needsReview(record) : false;
+};
 
 /** The fields a person edits, compared to spot unsaved changes. */
 const editKey = (edit: Omit<RecordEdit, 'id'>) =>
@@ -744,6 +749,7 @@ export default function LoadDesk() {
     setStep(0);
   }
   const reviewPanel = useRef<HTMLElement>(null);
+  const scanPanel = useRef<HTMLElement>(null);
 
   const active = queue[activeIndex] ?? null;
   const ticket = active?.ticket ?? null;
@@ -1543,6 +1549,11 @@ export default function LoadDesk() {
         customer_profile_id: active.customer_profile_id,
         truck_id: active.truck_id,
         invoice_batch_id: active.batch_id,
+        // Somebody has just been through the fields on the review screen and
+        // saved them, which is what being checked means. An edit to a saved
+        // ticket is marked the same way (see `applyRecordEdit`); what is filed
+        // unchecked is a scan nobody has looked at yet.
+        reviewed_at: new Date().toISOString(),
       },
       active.original,
     );
@@ -1571,20 +1582,18 @@ export default function LoadDesk() {
     );
     // A first invoice number sets the order for uploads still waiting for one.
     setQueue(numberWaitingBatches);
-    const next = nextUnsaved(updated, activeIndex);
+    // Straight on to the next ticket waiting to be checked, by what is stored
+    // rather than by position in the queue.
+    const reviewed = updated.length;
+    const next = openNextToReview(updated, activeIndex);
     if (next >= 0) {
-      setActiveIndex(next);
       setSaveStatus({
         message: t('Saved {label}. Now reviewing ticket {next}.', { label, next: next + 1 }),
         tone: 'info',
       });
     } else {
-      // Every ticket has been reviewed: the review block closes and the page is
-      // ready for the next upload. The tickets are on Saved Tickets below.
-      const reviewed = updated.length;
-      clearQueue();
       setUploadStatus({
-        message: t('Every ticket in the queue is saved ({tickets}).', {
+        message: t('All tickets reviewed ({tickets}).', {
           tickets: plural(reviewed, 'ticket'),
         }),
         tone: 'info',
@@ -1679,15 +1688,18 @@ export default function LoadDesk() {
             number: invoiceNumber,
           })
         : t('Changes saved.');
-    // Nothing is left to review once every ticket is saved and unchanged.
-    const allReviewed =
-      queue.every((item) => item.saved_record_id !== null) &&
-      queue.filter(hasChanges).length === changed.length;
-    if (allReviewed) {
-      clearQueue();
-      setUploadStatus({ message, tone: 'info' });
+    // On to the next ticket waiting to be checked. This used to stay on the one
+    // just finished unless every ticket in the queue happened to be saved and
+    // unchanged, so a batch filed by "Review later" had to be picked out of the
+    // list again for each ticket in it.
+    const next = openNextToReview(queue, activeIndex);
+    if (next >= 0) {
+      setSaveStatus({
+        message: `${message} ${t('Now reviewing ticket {next}.', { next: next + 1 })}`,
+        tone: 'info',
+      });
     } else {
-      setSaveStatus({ message, tone: 'info' });
+      setUploadStatus({ message, tone: 'info' });
     }
     toast.add({
       title:
@@ -1719,6 +1731,39 @@ export default function LoadDesk() {
       }
       reviewPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+
+  /** Back to the scan panel, which is where the next upload starts. */
+  const scrollToScan = () =>
+    requestAnimationFrame(() =>
+      scanPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+
+  /**
+   * Opens the next ticket still waiting to be checked, and returns where it is
+   * in the queue. -1 when none is left: the review closes and the page goes back
+   * to the scan panel, ready for the next load of tickets.
+   *
+   * Called after the save has been stored, never before, and the marks it goes
+   * by are read from the store rather than from this render — the ticket just
+   * finished is checked by then, so it is passed over instead of being offered
+   * again. `items` is the queue in the order it is shown, which is the order
+   * reviewing follows.
+   */
+  const openNextToReview = (items: QueueItem[], from: number): number => {
+    const { records: saved } = getRecordsSnapshot();
+    const next = nextToReview(
+      items.map((item) => itemReviewed(item, saved)),
+      from,
+    );
+    if (next >= 0) {
+      setActiveIndex(next);
+      scrollToReview();
+      return next;
+    }
+    clearQueue();
+    scrollToScan();
+    return -1;
+  };
 
   /** Reopens a saved ticket, with the other saved tickets on its invoice, to edit. */
   function editSaved(record: SavedRecord) {
@@ -2667,7 +2712,11 @@ export default function LoadDesk() {
       <div className="page-sheet">
 
         <div className="ld-grid">
-          <section className="ld-panel" aria-labelledby="ld-upload-title">
+          <section
+            ref={scanPanel}
+            className="ld-panel"
+            aria-labelledby="ld-upload-title"
+          >
             <div className="ld-panel-head">
               <div>
                 <p className="ld-step">{t('01 · Upload')}</p>

@@ -9,6 +9,7 @@ import {
   weightDisagreement,
   type ExtractedTicket,
 } from '../lib/load-desk/ticket-extraction.ts';
+import { validateTicket } from '../lib/load-desk/validate.ts';
 
 /** The reading of the Angelo Iafrate ticket, as the model returns it. */
 const answer = (patch: Partial<ExtractedTicket> = {}): ExtractedTicket => ({
@@ -22,6 +23,8 @@ const answer = (patch: Partial<ExtractedTicket> = {}): ExtractedTicket => ({
   project_location: 'NEW CARLISLE, IN 46552 US',
   product_number: '56001204',
   product: 'IN #53',
+  gross_weight: 72360,
+  tare_weight: 27740,
   net_weight: 44620,
   net_tons: 22.31,
   carrier: 'Z FORCE TRANSPORT',
@@ -54,8 +57,13 @@ void test('a reading becomes a ticket the rest of the app already understands', 
   assert.equal(ticket.net_lb, 44620);
   assert.equal(ticket.net_tons, 22.31);
   assert.equal(ticket.carrier_name, 'Z FORCE TRANSPORT');
-  // Nothing was asked for beyond the thirteen, so nothing else is invented.
-  assert.equal(ticket.gross_lb, null);
+  // The weights the load is billed on: all three read off the ticket, with the
+  // tons beside them worked out from the pounds as the browser's reader does.
+  assert.equal(ticket.gross_lb, 72360);
+  assert.equal(ticket.tare_lb, 27740);
+  assert.equal(ticket.gross_tons, 36.18);
+  assert.equal(ticket.tare_tons, 13.87);
+  // Nothing else was asked for, so nothing else is invented.
   assert.equal(ticket.rate, null);
   assert.equal(ticket.order_number, null);
 });
@@ -105,4 +113,45 @@ void test('an answer is taken as it comes and tidied, never trusted blindly', ()
   assert.equal(read.project, null, 'a field the model omitted is null');
   // Every field is present whatever came back, so callers never see undefined.
   for (const field of EXTRACTION_FIELDS) assert.ok(field in read);
+});
+
+void test('a weight nobody could read stays unread, not worked out', () => {
+  // The three weights are what the paper says. Filling a missing one in from
+  // the other two would put a figure on the invoice that is not on the ticket,
+  // and would hide the very disagreement worth looking at.
+  const noTare = ticketFromExtraction(answer({ tare_weight: null }));
+  assert.equal(noTare.tare_lb, null);
+  assert.equal(noTare.tare_tons, null);
+  assert.equal(noTare.gross_lb, 72360, 'what was read is still read');
+  assert.equal(noTare.net_lb, 44620);
+  const noGross = ticketFromExtraction(answer({ gross_weight: null }));
+  assert.equal(noGross.gross_lb, null);
+  assert.equal(noGross.gross_tons, null);
+});
+
+void test('weights that do not balance are put in front of whoever reviews it', () => {
+  // Gross - Tare = Net is the ticket's own arithmetic, and the check for it was
+  // already here waiting for the figures; reading gross and tare is what turns
+  // it on for a scanned ticket.
+  const balanced = ticketFromExtraction(answer());
+  assert.equal(
+    validateTicket(balanced).some((issue) => issue.includes('Weight arithmetic')),
+    false,
+    '72,360 - 27,740 = 44,620',
+  );
+  const off = ticketFromExtraction(answer({ tare_weight: 27000 }));
+  const flagged = validateTicket(off).find((issue) => issue.includes('Weight arithmetic'));
+  assert.ok(flagged, 'the ticket is held for review');
+  assert.match(flagged, /740/, 'and says by how much');
+});
+
+void test('a weight the model wrote with commas is still a number', () => {
+  const read = readExtracted({ gross_weight: '72,360', tare_weight: ' 27,740 ' });
+  assert.equal(read.gross_weight, 72360);
+  assert.equal(read.tare_weight, 27740);
+  assert.equal(
+    readExtracted({ gross_weight: 'illegible' }).gross_weight,
+    null,
+    'unreadable is null, not NaN',
+  );
 });
