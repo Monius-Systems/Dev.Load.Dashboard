@@ -322,13 +322,15 @@
   gap: var(--ui-space-2);
   min-width: 0;
 }
+/* The name has the first line to itself, however wide the panel is, so the
+   buttons below it always read as being about the name above rather than as a
+   row the field was squeezed into. */
 .ac-name-form input {
-  flex: 1 1 200px;
+  flex: 1 1 100%;
   min-width: 0;
 }
-/* The logo's own buttons, and then the name's. On a wide panel they sit on the
-   line the name is typed on, the name taking what is left; narrower, the row
-   wraps under it rather than squeezing the field down to nothing. */
+/* Under the name: the logo's own buttons on the left, and the name's Save and
+   Cancel pushed to the right of the same line. */
 .ac-name-logo {
   display: flex;
   flex-wrap: wrap;

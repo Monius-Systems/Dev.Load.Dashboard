@@ -130,6 +130,53 @@ export function nextInvoiceNumber(numbersOldestFirst: string[]): string | null {
   return `${prefix}${String(highest + 1).padStart(digits.length, '0')}`;
 }
 
+/**
+ * The invoice number each batch waiting for one takes, keyed by batch.
+ *
+ * The series is continued in ticket-date order, oldest first, whatever order
+ * the batches were read in. One upload can hold several days' tickets, and the
+ * pages come out of the reader in whatever order they were photographed, so
+ * numbering them as they arrive puts invoice 1043 on the 14th and 1044 on the
+ * 12th. Books read in number order, so the oldest date takes the number after
+ * the last invoice on file and each later date takes the one after that.
+ *
+ * A batch whose tickets carry no date has no place in a run of dates: it goes
+ * after every dated one, keeping the order it arrived in. Returns nothing for
+ * batches past the point where the series runs out, which is a workspace with
+ * no numbered invoice yet — those wait for one to be typed in, exactly as
+ * before.
+ */
+export function numbersForWaitingBatches(
+  numbersOldestFirst: string[],
+  waiting: { batchId: string; ticketDate: string | null }[],
+): Map<string, string> {
+  // One entry per batch: the tickets of a batch share its number.
+  const batches: { batchId: string; date: string; arrived: number }[] = [];
+  for (const item of waiting) {
+    if (batches.some((batch) => batch.batchId === item.batchId)) continue;
+    batches.push({
+      batchId: item.batchId,
+      date: item.ticketDate?.trim() || '',
+      arrived: batches.length,
+    });
+  }
+  const numbers = [...numbersOldestFirst];
+  const assigned = new Map<string, string>();
+  const ordered = [...batches].sort((a, b) => {
+    // Exactly one of them is undated: the dated one belongs in the run.
+    if (!a.date !== !b.date) return a.date ? -1 : 1;
+    return a.date.localeCompare(b.date) || a.arrived - b.arrived;
+  });
+  for (const batch of ordered) {
+    const next = nextInvoiceNumber(numbers);
+    // No series to continue, and there will not be one further down the list.
+    if (!next) break;
+    numbers.push(next);
+    assigned.set(batch.batchId, next);
+  }
+  return assigned;
+}
+
 /** Every saved ticket on an invoice, in print order. */
 export function invoiceLines(
   records: SavedRecord[],

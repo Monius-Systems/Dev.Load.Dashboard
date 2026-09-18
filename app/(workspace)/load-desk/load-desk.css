@@ -1849,20 +1849,6 @@ details[open] > .ld-section-summary .ld-section-chevron {
   .ld-ledger-csv {
     display: none;
   }
-  /* Reading a ticket takes over the screen: one bar, and what it is doing. */
-  .ld-extracting {
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    display: grid;
-    align-content: center;
-    gap: var(--ui-space-5);
-    padding: var(--ui-space-8);
-    background: var(--ui-surface-1);
-  }
-  .ld-extracting .ld-progress {
-    width: 100%;
-  }
 }
 
 

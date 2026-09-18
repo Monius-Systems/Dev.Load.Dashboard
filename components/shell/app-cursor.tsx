@@ -2,6 +2,10 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { SmoothCursor } from '@/components/ui/smooth-cursor';
+import {
+  smoothCursorSuspended,
+  watchSmoothCursorSuspended,
+} from '@/components/shell/cursor-suspend';
 
 const POINTER = '(any-hover: hover) and (any-pointer: fine)';
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)';
@@ -21,9 +25,19 @@ const wanted = () =>
  * Magic UI's smooth cursor for mouse and trackpad users. While it is on, the
  * system pointer is hidden everywhere (globals.css), including over buttons and
  * fields. It stays off on touch screens and when reduced motion is requested.
+ *
+ * It also stands down while a dialog in the browser's top layer is open, which
+ * is painted over this cursor and would otherwise leave the pointer invisible
+ * there; see cursor-suspend.ts.
  */
 export default function AppCursor() {
-  const enabled = useSyncExternalStore(subscribe, wanted, () => false);
+  const wantsCursor = useSyncExternalStore(subscribe, wanted, () => false);
+  const suspended = useSyncExternalStore(
+    watchSmoothCursorSuspended,
+    smoothCursorSuspended,
+    () => false,
+  );
+  const enabled = wantsCursor && !suspended;
 
   useEffect(() => {
     if (!enabled) return;

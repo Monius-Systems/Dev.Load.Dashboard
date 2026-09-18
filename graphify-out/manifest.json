@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789738722.421044,
-    "seen": 1789738744.8860958,
-    "ast_hash": "702269457478861e51364bc367789182",
+    "mtime": 1789740691.3786082,
+    "seen": 1789740768.3296452,
+    "ast_hash": "ad6c392dddd03e251c9685b67d3df588",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -270,10 +270,10 @@
     "semantic_hash": ""
   },
   "components/shell/app-cursor.tsx": {
-    "mtime": 1789496474.1473343,
-    "seen": 1789579699.985207,
-    "ast_hash": "701d74f6165929fda01fd35eaef30275",
-    "semantic_hash": "701d74f6165929fda01fd35eaef30275"
+    "mtime": 1789740038.6427426,
+    "seen": 1789740165.0970829,
+    "ast_hash": "d3927595314425f3660aff8451745164",
+    "semantic_hash": ""
   },
   "components/shell/app-shell.tsx": {
     "mtime": 1789734998.594178,
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/records.ts": {
-    "mtime": 1789734669.1786194,
-    "seen": 1789735114.5844429,
-    "ast_hash": "5eaadff90feff37798de92c170b19a7a",
+    "mtime": 1789740711.579271,
+    "seen": 1789740768.3297129,
+    "ast_hash": "66a242ac80278f0af03f2249e5dacf4a",
     "semantic_hash": ""
   },
   "lib/load-desk/same-order.ts": {
@@ -768,50 +768,50 @@
     "semantic_hash": "4526cad9fbe090942fa36521105970dd"
   },
   "public/ocr/pdf.worker.min.mjs": {
-    "mtime": 1789739600.9594817,
-    "seen": 1789739633.029017,
+    "mtime": 1789740744.0655782,
+    "seen": 1789740768.32974,
     "ast_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e",
     "semantic_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e"
   },
   "public/ocr/tesseract-core-lstm.wasm.js": {
-    "mtime": 1789739600.9770327,
-    "seen": 1789739633.0290182,
+    "mtime": 1789740744.0749261,
+    "seen": 1789740768.329741,
     "ast_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3",
     "semantic_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3"
   },
   "public/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": {
-    "mtime": 1789739600.9928672,
-    "seen": 1789739633.0290189,
+    "mtime": 1789740744.0837247,
+    "seen": 1789740768.3297422,
     "ast_hash": "f267f4efd6219843707c73b3a9a70604",
     "semantic_hash": "f267f4efd6219843707c73b3a9a70604"
   },
   "public/ocr/tesseract-core-relaxedsimd.wasm.js": {
-    "mtime": 1789739601.0155678,
-    "seen": 1789739633.0290198,
+    "mtime": 1789740744.0949783,
+    "seen": 1789740768.3297422,
     "ast_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb",
     "semantic_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb"
   },
   "public/ocr/tesseract-core-simd-lstm.wasm.js": {
-    "mtime": 1789739601.0360742,
-    "seen": 1789739633.0290198,
+    "mtime": 1789740744.1064782,
+    "seen": 1789740768.3297431,
     "ast_hash": "2bd630487581a49b7d7cce1bfe42314c",
     "semantic_hash": "2bd630487581a49b7d7cce1bfe42314c"
   },
   "public/ocr/tesseract-core-simd.wasm.js": {
-    "mtime": 1789739601.0593135,
-    "seen": 1789739633.029021,
+    "mtime": 1789740744.1175659,
+    "seen": 1789740768.3297439,
     "ast_hash": "3fb1f6589c0569134cc593e0155acec4",
     "semantic_hash": "3fb1f6589c0569134cc593e0155acec4"
   },
   "public/ocr/tesseract-core.wasm.js": {
-    "mtime": 1789739601.0857716,
-    "seen": 1789739633.029022,
+    "mtime": 1789740744.1305766,
+    "seen": 1789740768.3297439,
     "ast_hash": "7ec67b8a67ab4d41b74dd8df49db9224",
     "semantic_hash": "7ec67b8a67ab4d41b74dd8df49db9224"
   },
   "public/ocr/worker.min.js": {
-    "mtime": 1789739600.9632168,
-    "seen": 1789739633.029023,
+    "mtime": 1789740744.0665321,
+    "seen": 1789740768.3297448,
     "ast_hash": "b1ab464237e687b323da236fff45ba05",
     "semantic_hash": "b1ab464237e687b323da236fff45ba05"
   },
@@ -978,9 +978,9 @@
     "semantic_hash": "ccadf2794cec78f3caa0c6a99fdc61ab"
   },
   "tests/ticket-date-invoices.test.ts": {
-    "mtime": 1789610232.3027842,
-    "seen": 1789684604.7839959,
-    "ast_hash": "903300176cedf9e3f994b3cf139eba18",
+    "mtime": 1789740731.222501,
+    "seen": 1789740768.329777,
+    "ast_hash": "f3d86bf29e563d663ef07589ec0e2e74",
     "semantic_hash": ""
   },
   "tests/ticket-expected.ts": {
@@ -1374,9 +1374,9 @@
     "semantic_hash": ""
   },
   "components/account/image-cropper.tsx": {
-    "mtime": 1789738428.754875,
-    "seen": 1789738546.817686,
-    "ast_hash": "6668d3a3051238df2aaac45d6562756b",
+    "mtime": 1789740083.9651103,
+    "seen": 1789740165.097068,
+    "ast_hash": "c5f1536fd15eacc683cdaf8a355d3f26",
     "semantic_hash": ""
   },
   "lib/crop-box.ts": {
@@ -1401,6 +1401,12 @@
     "mtime": 1789739269.3293526,
     "seen": 1789739385.316098,
     "ast_hash": "abcf1fb602bbf717bb7d7e84bafb2742",
+    "semantic_hash": ""
+  },
+  "components/shell/cursor-suspend.ts": {
+    "mtime": 1789740027.6385684,
+    "seen": 1789740165.097085,
+    "ast_hash": "56de05d62a1c37543dd5ff4cdbd174bc",
     "semantic_hash": ""
   }
 }

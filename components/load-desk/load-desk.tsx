@@ -108,7 +108,7 @@ import {
   groupByTicketDate,
   invoiceNumberForDate,
   joinsInvoiceFor,
-  nextInvoiceNumber,
+  numbersForWaitingBatches,
   recordBatch,
 } from '@/lib/load-desk/records';
 import { SAMPLE_TICKET } from '@/lib/load-desk/samples';
@@ -869,26 +869,32 @@ export default function LoadDesk() {
 
   /**
    * Gives uploads still waiting without an invoice number the next numbers in
-   * order, once there is a number to follow.
+   * the series, once there is a number to follow.
+   *
+   * In ticket-date order, not the order the files came out of the reader: a
+   * morning's photographs can be taken in any order, and a run of invoices
+   * whose numbers climb while their dates jump about is not a set of books
+   * anyone wants to send. See `numbersForWaitingBatches`.
    */
   const numberWaitingBatches = (items: QueueItem[]) => {
-    const numbers = invoiceNumbersInOrder(
-      items.filter((item) => item.invoice.invoice_number.trim()),
+    const waiting = items.filter(
+      (item) => item.saved_record_id === null && !item.invoice.invoice_number.trim(),
     );
-    const assigned = new Map<string, string>();
+    const assigned = numbersForWaitingBatches(
+      invoiceNumbersInOrder(items.filter((item) => item.invoice.invoice_number.trim())),
+      waiting.map((item) => ({
+        batchId: item.batch_id,
+        ticketDate: item.ticket.ticket_date,
+      })),
+    );
     return items.map((item) => {
       if (item.saved_record_id !== null || item.invoice.invoice_number.trim()) {
         return item;
       }
-      let number = assigned.get(item.batch_id);
-      if (number === undefined) {
-        const next = nextInvoiceNumber(numbers);
-        if (!next) return item;
-        number = next;
-        numbers.push(next);
-        assigned.set(item.batch_id, next);
-      }
-      return { ...item, invoice: { ...item.invoice, invoice_number: number } };
+      const number = assigned.get(item.batch_id);
+      return number
+        ? { ...item, invoice: { ...item.invoice, invoice_number: number } }
+        : item;
     });
   };
 
@@ -2118,29 +2124,14 @@ export default function LoadDesk() {
     : '';
 
   /**
-   * Reading a ticket, over the whole screen on a phone. It is the only thing
-   * happening, it takes a few seconds, and a bar tucked inside a card halfway
-   * down a page reads as though the app has simply stopped.
+   * Reading a ticket. The bar sits under the Extract button on every screen,
+   * phone included: it used to take over the phone's whole screen, which hid
+   * the page it was working on and the tickets already waiting on it.
    *
-   * A quiet one shows nothing at all, here or anywhere else: "Review later"
-   * means the page stays exactly as it was, ready for the next photograph, and
-   * the status line under the button says where the ticket went once it lands.
+   * A quiet one shows nothing at all: "Review later" means the page stays
+   * exactly as it was, ready for the next photograph, and the status line under
+   * the button says where the ticket went once it lands.
    */
-  const phoneExtracting =
-    isPhone && extraction && !extraction.quiet ? (
-      <output className="ld-extracting" aria-live="polite">
-        <Progress value={extraction.percent} className="ld-progress">
-          <div className="ld-progress-head">
-            <ProgressLabel className="ld-progress-label">
-              {t('Reading the ticket')}
-            </ProgressLabel>
-            <ProgressValue className="ld-progress-value" />
-          </div>
-          <p className="ld-progress-detail">{t(extraction.label)}</p>
-        </Progress>
-      </output>
-    ) : null;
-
   const extractionProgress = extraction && !extraction.quiet ? (
     <Progress value={extraction.percent} className="ld-progress">
       <div className="ld-progress-head">
@@ -2506,7 +2497,6 @@ export default function LoadDesk() {
 
   return (
     <>
-      {phoneExtracting}
       {/* The band every page opens on. While a ticket is being checked on a
           phone it carries the review's head instead of this page's title and
           figures: what the band is for is saying where you are, and where you
@@ -3180,7 +3170,10 @@ export default function LoadDesk() {
                           {truckHint}
                         </small>
                       </div>
-                      {/* Rate type, rate, fuel type and fuel charge share a row; the line total sits under the rate. */}
+                      {/* Rate type, rate, fuel type and fuel charge share a row,
+                          and an hourly rate puts its hours at the end of it: the
+                          hours are part of what the line is worked out from, so
+                          they come before the total rather than after it. */}
                       <div className="ld-field" data-new-row>
                         <label htmlFor={`${fieldId}-rate-type`}>{t('Rate type')}</label>
                         <SelectField
@@ -3218,6 +3211,9 @@ export default function LoadDesk() {
                           fuelType === 'percent' ? 'Fuel charge %' : 'Fuel charge ($)',
                         step: '0.01',
                       })}
+                      {rateType === 'hourly'
+                        ? renderField({ name: 'hours', label: 'Hours', step: '0.25' })
+                        : null}
                       <div className="ld-field" data-span={2} data-new-row>
                         <span>{t('Line total')}</span>
                         <output className="ld-output" aria-describedby={`${fieldId}-line-math`}>
@@ -3227,9 +3223,6 @@ export default function LoadDesk() {
                           {t(lineBreakdown(ticket))}
                         </small>
                       </div>
-                      {rateType === 'hourly'
-                        ? renderField({ name: 'hours', label: 'Hours', step: '0.25' })
-                        : null}
                       <div className="ld-field" data-span={2} data-new-row>
                         <label htmlFor={`${fieldId}-client`}>
                           {t('Bill to client')}
