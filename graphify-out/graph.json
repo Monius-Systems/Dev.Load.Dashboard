@@ -17789,7 +17789,7 @@
       "file_type": "code",
       "norm_label": "deskactivity()",
       "source_file": "components/shell/desk-activity.tsx",
-      "source_location": "L22"
+      "source_location": "L31"
     },
     {
       "id": "lib_load_desk_desk_session_announce",
@@ -90980,7 +90980,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/shell/desk-activity.tsx",
-      "source_location": "L25",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -212896,7 +212896,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "components/shell/desk-activity.tsx",
-      "source_location": "L22",
+      "source_location": "L31",
       "weight": 1.0
     },
     {
@@ -282437,7 +282437,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "components/shell/desk-activity.tsx",
-      "source_location": "L23",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -282449,7 +282449,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "components/shell/desk-activity.tsx",
-      "source_location": "L23",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -282461,7 +282461,7 @@
       "confidence_score": 0.85,
       "context": "argument",
       "source_file": "components/shell/desk-activity.tsx",
-      "source_location": "L23",
+      "source_location": "L32",
       "weight": 1.0
     },
     {
@@ -287746,5 +287746,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "b9a0086d0edf4c3f270bbe492d2cbd717865a569"
+  "built_at_commit": "203b873939fe7056affee0ed8b4133d131f30881"
 }

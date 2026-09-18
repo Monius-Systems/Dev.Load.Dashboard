@@ -497,6 +497,7 @@ export const PL_PAGES: Record<string, string> = {
   'Weights do not balance': 'Wagi się nie zgadzają',
   'Extracting file {index} of {total}': 'Odczytywanie pliku {index} z {total}',
   'Extracting tickets': 'Odczytywanie kwitów',
+  'Extracting tickets…': 'Odczytywanie kwitów…',
   'Nothing entered yet': 'Nic jeszcze nie wpisano',
   Saved: 'Zapisano',
   'Save & review next': 'Zapisz i sprawdź następny',

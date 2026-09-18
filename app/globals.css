@@ -486,11 +486,20 @@ html[lang='pl']
   -webkit-line-clamp: 2;
 }
 /* What Load Desk is doing, carried in the top bar of every other page. */
+/* Load Desk's progress while another page is open: on the left of the bar, after
+   the breadcrumb, with the account button staying where it is at the right.
+   `margin-right: auto` rather than a place in the row's spacing, because the bar
+   spreads its three parts apart and that put the pill in the middle of it — an
+   auto margin takes the free space before the spacing does, so the pill sits
+   against the breadcrumb and everything after it is pushed to the far edge. It
+   holds its own width and never shrinks: a percentage squeezed to nothing is not
+   worth the space it takes. */
 .desk-activity {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  margin-right: auto;
+  flex: none;
   padding: 5px 12px;
   border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius-pill);
@@ -773,22 +782,18 @@ h2 {
     /* Clear of the clock and the battery on a notched phone, where the
        breadcrumb was printing underneath the status bar. */
     padding: max(12px, env(safe-area-inset-top)) 16px 12px;
-    /* Room for the scan's progress to drop below the breadcrumb; see
-       .desk-activity just under here. */
-    flex-wrap: wrap;
   }
-/* Load Desk's progress while another page is open. On a screen with room it sits
-   at the right of the bar, after the breadcrumb. On a phone there is no room for
-   it there: the page title and the account button leave it a sliver, and a
-   percentage nobody can read is not worth the space it takes. It goes to the
-   left instead, where a phone's eye starts — on its own line under the
-   breadcrumb, because taking the corner itself would move the menu button that
-   has always been in it. Nothing else shifts, and the pill keeps its own width
-   rather than being stretched across the bar. */
-.desk-activity {
-    order: 1;
-    margin-left: 0;
-    margin-right: auto;
+/* One row at every width, so nothing about the bar moves when a scan starts.
+   What gives way on a phone is the page title, which is the one thing here that
+   can be cut short and still be read: the menu button keeps the corner, the
+   progress keeps its figures, and the account button keeps the far edge. */
+.breadcrumb {
+    min-width: 0;
+  }
+.breadcrumb strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 .page-content {
     padding: 24px 20px;
