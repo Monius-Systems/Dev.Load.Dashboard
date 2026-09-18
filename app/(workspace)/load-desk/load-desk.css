@@ -341,6 +341,26 @@
   background: var(--ui-success);
   color: #fff;
 }
+/* A ticket still missing something it cannot be invoiced without wears a cross
+   and the colour of the list of things to check, so the row says at a glance
+   which ticket the work is on. After the saved rules on purpose: a ticket can
+   be saved and still be short a required field, and what is missing is the
+   more useful of the two things to know. */
+.ld-queue-tab[data-incomplete] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.ld-queue-tab[data-incomplete][aria-current='true'] {
+  background: var(--ui-warning);
+  color: #fff;
+}
+/* Tickets on another invoice: still shown, because the queue is what has been
+   uploaded, but not a step away — the invoice details on the last step belong
+   to the invoice that is open. */
+.ld-queue-tab:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 .ld-queue-count {
   margin: 0 var(--ui-space-2);
   font-size: var(--type-xs);
@@ -1754,11 +1774,15 @@ details[open] > .ld-section-summary .ld-section-chevron {
   }
   /* Which one you are on cannot then be a second colour, so it is a ring —
      white, because that is the one thing on the band with nothing else
-     wearing it. */
+     wearing it. The ring only: the fill is left to say what the ticket is,
+     which is how a missing field still shows on the ticket being reviewed. */
   .page-heading[data-review] .ld-queue-tab[aria-current='true'] {
-    background: var(--ui-success-soft);
-    color: var(--ui-success);
     box-shadow: 0 0 0 2px #fff;
+  }
+  /* Amber on the blue for a ticket short of something, as on a desk. */
+  .page-heading[data-review] .ld-queue-tab[data-incomplete] {
+    background: var(--ui-warning-soft);
+    color: var(--ui-warning);
   }
   .page-heading[data-review] .ld-queue [data-slot='button'] {
     color: rgb(255 255 255 / 80%);

@@ -139,7 +139,7 @@ import {
   type TextField,
   type Ticket,
 } from '@/lib/load-desk/types';
-import { validateTicket, WEIGHT_TOLERANCE_LB } from '@/lib/load-desk/validate';
+import { RATING_ISSUES, validateTicket, WEIGHT_TOLERANCE_LB } from '@/lib/load-desk/validate';
 import {
   deskSnapshot,
   serverDeskSnapshot,
@@ -2218,6 +2218,28 @@ export default function LoadDesk() {
    * the page, including the one where the queue is empty and the review is not
    * on the screen at all, and the summary below reads straight off the ticket.
    */
+  /**
+   * The tickets the selector may reach: the ones on the invoice being
+   * reviewed. Stepping from one invoice's ticket straight onto another's
+   * changes what is being billed without saying so, and the invoice details on
+   * the last step belong to whichever invoice is open.
+   */
+  const invoiceStops = active
+    ? queue.flatMap((item, index) => (item.batch_id === active.batch_id ? [index] : []))
+    : [];
+  const stopHere = invoiceStops.indexOf(activeIndex);
+  const previousStop = stopHere > 0 ? invoiceStops[stopHere - 1] : null;
+  const nextStop =
+    stopHere >= 0 && stopHere < invoiceStops.length - 1 ? invoiceStops[stopHere + 1] : null;
+
+  /**
+   * Missing what a ticket cannot be invoiced without. A rate nobody has entered
+   * yet is not that: it keeps the invoice a draft but the ticket itself is
+   * whole, which is the line RATING_ISSUES draws.
+   */
+  const missingInformation = (item: QueueItem) =>
+    validateTicket(item.ticket).some((issue) => !RATING_ISSUES.has(issue));
+
   const queueRow =
     active && ticket ? (
     <>
@@ -2233,14 +2255,32 @@ export default function LoadDesk() {
                 variant="ghost"
                 size="icon-sm"
                 aria-label={t('Previous ticket')}
-                disabled={activeIndex <= 0}
-                onClick={() => setActiveIndex(activeIndex - 1)}
+                disabled={previousStop === null}
+                onClick={() => previousStop !== null && setActiveIndex(previousStop)}
               >
                 <ChevronLeft />
               </Button>
               {queue.map((item, index) => {
                 const changed = hasChanges(item);
                 const saved = item.saved_record_id !== null && !changed;
+                const incomplete = missingInformation(item);
+                const elsewhere = item.batch_id !== active.batch_id;
+                // A cross for a ticket still missing something, a tick for one
+                // saved and whole, and its number until it is either.
+                const mark = incomplete ? (
+                  <X aria-hidden="true" />
+                ) : saved ? (
+                  <Check aria-hidden="true" />
+                ) : (
+                  index + 1
+                );
+                const state = incomplete
+                  ? `, ${t('missing information')}`
+                  : saved
+                    ? `, ${t('saved')}`
+                    : changed
+                      ? `, ${t('unsaved changes')}`
+                      : '';
                 return (
                   <button
                     key={item.id}
@@ -2249,10 +2289,13 @@ export default function LoadDesk() {
                     aria-current={index === activeIndex ? 'true' : undefined}
                     data-saved={saved}
                     data-changed={changed}
-                    aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${saved ? `, ${t('saved')}` : changed ? `, ${t('unsaved changes')}` : ''}`}
+                    data-incomplete={incomplete || undefined}
+                    disabled={elsewhere}
+                    title={elsewhere ? t('On another invoice') : undefined}
+                    aria-label={`${t('Ticket {index}: {name}', { index: index + 1, name: item.source.file_name })}${state}${elsewhere ? `, ${t('on another invoice')}` : ''}`}
                     onClick={() => setActiveIndex(index)}
                   >
-                    {saved ? <Check aria-hidden="true" /> : index + 1}
+                    {mark}
                   </button>
                 );
               })}
@@ -2260,8 +2303,8 @@ export default function LoadDesk() {
                 variant="ghost"
                 size="icon-sm"
                 aria-label={t('Next ticket')}
-                disabled={activeIndex >= queue.length - 1}
-                onClick={() => setActiveIndex(activeIndex + 1)}
+                disabled={nextStop === null}
+                onClick={() => nextStop !== null && setActiveIndex(nextStop)}
               >
                 <ChevronRight />
               </Button>
