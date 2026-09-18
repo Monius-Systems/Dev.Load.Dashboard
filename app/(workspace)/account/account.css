@@ -323,12 +323,22 @@
   min-width: 0;
 }
 .ac-name-form input {
-  flex: 1 1 180px;
+  flex: 1 1 200px;
   min-width: 0;
+}
+/* The logo's own buttons, and then the name's. On a wide panel they sit on the
+   line the name is typed on, the name taking what is left; narrower, the row
+   wraps under it rather than squeezing the field down to nothing. */
+.ac-name-logo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
 }
 .ac-name-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--ui-space-2);
+  margin-left: auto;
 }
 .ac-workspace-note {
   margin-top: var(--ui-space-3);

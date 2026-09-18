@@ -660,6 +660,42 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
               disabled={saving}
               onChange={(event) => setDraft(event.target.value)}
             />
+            {/* The logo belongs to the name: both are what the workspace is
+                called, so they are changed in the one box rather than in a row
+                of links under the panel. These act at once — the logo is
+                uploaded or removed when pressed — while Save and Cancel below
+                are the name's. */}
+            <div className="ac-name-logo">
+              <input
+                ref={logoInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                hidden
+                onChange={(event) => chooseLogo(event.target.files)}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={logoBusy}
+                onClick={() => logoInput.current?.click()}
+              >
+                <ImagePlus data-icon="inline-start" />
+                {companyLogo ? t('Change logo') : t('Add company logo')}
+              </Button>
+              {companyLogo ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={logoBusy}
+                  onClick={() => void dropLogo()}
+                >
+                  <Trash2 data-icon="inline-start" />
+                  {t('Remove logo')}
+                </Button>
+              ) : null}
+            </div>
             <div className="ac-name-actions">
               <Button
                 type="button"
@@ -689,42 +725,6 @@ function WorkspacePanel({ local, canEdit }: { local: boolean; canEdit: boolean }
         {t('It shows in the sidebar and menus for everyone in the workspace.')}
       </p>
       <div className="ac-workspace-links">
-        {/* The logo is part of changing what the workspace is called, so it
-            keeps that company: while the name is being edited, and out of the
-            way the rest of the time. */}
-        {canEdit && draft !== null ? (
-          <>
-            <input
-              ref={logoInput}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              hidden
-              onChange={(event) => chooseLogo(event.target.files)}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              disabled={logoBusy}
-              onClick={() => logoInput.current?.click()}
-            >
-              <ImagePlus data-icon="inline-start" />
-              {companyLogo ? t('Change logo') : t('Add company logo')}
-            </Button>
-            {companyLogo ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={logoBusy}
-                onClick={() => void dropLogo()}
-              >
-                <Trash2 data-icon="inline-start" />
-                {t('Remove logo')}
-              </Button>
-            ) : null}
-          </>
-        ) : null}
         <Link href="/fleet" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
           <Truck data-icon="inline-start" />
           {t('Truck Fleet')}
