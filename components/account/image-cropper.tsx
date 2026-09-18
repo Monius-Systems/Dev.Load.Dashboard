@@ -7,6 +7,7 @@ import {
   clampOffset,
   coverScale,
   sourceRect,
+  sourceRectFromBoxes,
   MAX_ZOOM,
   type Offset,
   type Size,
@@ -325,14 +326,30 @@ export default function ImageCropper({
    *
    * The picture on the screen is the one that was framed, so it is the one cut,
    * and what is saved cannot disagree with what was shown.
+   *
+   * Which square to cut is measured off the window and the picture as they stand
+   * on the screen at the moment Save is pressed, rather than worked out again
+   * from the numbers they were drawn with. The two are meant to come to the same
+   * thing; when they did not, what was saved was the middle of the photograph
+   * however it had been dragged, and nothing said so. A measurement cannot drift
+   * from the thing it measures.
    */
   async function keep() {
     const shown = picture.current;
+    const window = frame.current;
     if (!natural || !shown || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const rect = sourceRect(natural, frameSize, drawScale, held);
+      const rect =
+        (window &&
+          sourceRectFromBoxes(
+            window.getBoundingClientRect(),
+            shown.getBoundingClientRect(),
+            natural,
+          )) ||
+        // Nothing laid out to measure: the sums, which describe the same square.
+        sourceRect(natural, frameSize, drawScale, held);
       // Whole pixels, and never off the edge: a square that reaches past the
       // picture is drawn with nothing in the overhang.
       const size = Math.min(rect.size, natural.width, natural.height);
@@ -395,7 +412,13 @@ export default function ImageCropper({
               ? {
                   width: natural.width * drawScale,
                   height: natural.height * drawScale,
-                  transform: `translate(${held.x}px, ${held.y}px)`,
+                  // Half its own size back from the middle of the window, then
+                  // the drag. Placed from the centre rather than laid out in the
+                  // window, because the window clips what it holds and an
+                  // oversized picture centred in one is pushed back to its
+                  // top-left corner — which is not where any of the arithmetic
+                  // above believes it is.
+                  transform: `translate(-50%, -50%) translate(${held.x}px, ${held.y}px)`,
                 }
               : { visibility: 'hidden' }
           }

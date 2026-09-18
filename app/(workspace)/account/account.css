@@ -710,11 +710,21 @@
 .ac-cropper-frame:active {
   cursor: grabbing;
 }
-/* Sized and moved from script; it is the picture, laid out behind the shape. */
+/* Sized and moved from script; it is the picture, laid out behind the shape.
+   Placed from the centre of the window rather than laid out in it: the frame
+   clips what it holds, and an oversized item in a box that clips is pushed back
+   to the top-left corner instead of being centred — content centred out of a
+   scroll container's reach is clamped to its start edge. The arithmetic that
+   cuts the square reads the picture as centred, so the two disagreed and the
+   cut came from the middle of the photograph wherever it had been dragged.
+   Half its own size back from the middle of the window is the same position the
+   sums describe, and nothing clamps it. */
 .ac-cropper-picture {
   display: block;
   max-width: none;
-  grid-area: 1 / 1;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   pointer-events: none;
 }
 /* The shape itself, drawn as an enormous shadow *outside* it: a box-shadow

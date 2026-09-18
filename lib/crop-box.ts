@@ -16,6 +16,8 @@ export type Size = { width: number; height: number };
 export type Offset = { x: number; y: number };
 /** The square of the original that ends up in the window. */
 export type Source = { x: number; y: number; size: number };
+/** A box as the browser laid it out, in the screen's own coordinates. */
+export type Box = { left: number; top: number; width: number; height: number };
 
 /** As far in as the picture may be pushed. Past this it is showing its grain. */
 export const MAX_ZOOM = 5;
@@ -67,5 +69,36 @@ export function sourceRect(
     x: natural.width / 2 - size / 2 - offset.x / drawScale,
     y: natural.height / 2 - size / 2 - offset.y / drawScale,
     size,
+  };
+}
+
+/**
+ * The same square, read off the two boxes as the browser actually laid them
+ * out rather than worked out from the numbers that were meant to produce them.
+ *
+ * This is what is cut, because it cannot disagree with what was on the screen.
+ * `sourceRect` describes a picture centred in the window, and for a while the
+ * browser was not centring it: a box that clips its contents pushes an
+ * oversized item back to its top-left corner, so the window showed the left of
+ * a wide photograph while the sums cut its middle. Nothing that is measured can
+ * drift from the thing it measures, however the picture comes to be placed.
+ *
+ * `picture` is the box the picture occupies on the screen, transform and all,
+ * and `frame` the window in front of it. Both in the same coordinates — two
+ * `getBoundingClientRect()` readings taken together.
+ */
+export function sourceRectFromBoxes(
+  frame: Box,
+  picture: Box,
+  natural: Size,
+): Source | null {
+  // Drawn pixels per pixel of the original. Zero before the picture has been
+  // laid out, and there is nothing to measure until it has.
+  const scale = natural.width > 0 ? picture.width / natural.width : 0;
+  if (!(scale > 0)) return null;
+  return {
+    x: (frame.left - picture.left) / scale,
+    y: (frame.top - picture.top) / scale,
+    size: Math.min(frame.width, frame.height) / scale,
   };
 }

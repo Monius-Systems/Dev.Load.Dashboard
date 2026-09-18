@@ -339,6 +339,39 @@ export function invoiceGroups(records: SavedRecord[]): InvoiceGroup[] {
 export const FIRST_INVOICE_NUMBER = '1';
 
 /**
+ * What a batch carries between being filed and being numbered.
+ *
+ * A ticket is filed the moment it is read, and at that moment its invoice number
+ * is not knowable: the numbers of an upload run in ticket-date order, and the
+ * last page may turn out to be the oldest. So the batch is filed under a mark
+ * instead, and the numbering runs once, when every page of the upload is in.
+ * Claiming a real number per page as it landed is what put invoice 1043 on the
+ * 14th and 1044 on the 12th.
+ *
+ * It names the batch, so two batches filed before either is numbered can never
+ * key to one invoice — invoices are the saved tickets that share a number, and a
+ * day's tickets on another day's bill is the thing that must not happen. It
+ * begins with DRAFT, which `nextInvoiceNumber` already passes over, so a mark is
+ * never mistaken for a number to count from.
+ */
+export const PENDING_PREFIX = 'DRAFT-';
+
+export const pendingInvoiceNumber = (batchId: string) => `${PENDING_PREFIX}${batchId}`;
+
+/** Whether this batch is filed but not yet numbered. */
+export const isPendingInvoiceNumber = (invoiceNumber: string) =>
+  /^draft-/i.test(invoiceNumber.trim());
+
+/**
+ * The number to put in front of somebody: nothing at all while the batch is
+ * waiting for the rest of its upload. The mark is the app's own bookkeeping and
+ * means nothing to whoever is invoicing, and showing it would be showing a
+ * number that is not the one the invoice will carry.
+ */
+export const shownInvoiceNumber = (invoiceNumber: string) =>
+  isPendingInvoiceNumber(invoiceNumber) ? '' : invoiceNumber.trim();
+
+/**
  * The invoice number a new batch opens on: the next in the series, or the first
  * number when there is no series to continue.
  *
@@ -384,12 +417,14 @@ export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
 
 /**
  * The invoice a ticket photographed for `ticketDate` belongs on: the one the
- * other tickets of that date are already on, or the next number in the series
- * for a date not filed yet.
+ * other tickets of that date are already on, or a new batch for a date not filed
+ * yet.
  *
- * The number is the one the invoice will carry, so the review screen shows what
- * will be sent rather than a placeholder to type over. Each date's tickets are
- * one invoice, and a date already filed keeps the number it was filed under.
+ * A date already filed keeps the number it was filed under — that invoice
+ * exists, may well have been sent, and the ticket simply joins it. A date not
+ * filed yet opens a batch with no number, only the mark that says it is waiting
+ * for one, because the number depends on dates that may still be in the reader.
+ * `numbersByTicketDate` gives it its number when the upload is in.
  */
 export function batchInvoiceFor(
   records: SavedRecord[],
@@ -404,16 +439,14 @@ export function batchInvoiceFor(
       opened: false,
     };
   }
-  const numbers = [...records]
-    .sort((a, b) => a.id - b.id)
-    .map((record) => record.invoice.invoice_number);
+  const batchId = `batch-${date}`;
   return {
-    invoice_number: openingInvoiceNumber(numbers),
-    batch_id: `batch-${date}`,
-    // The number above is the next one free at this moment, claimed a page at a
-    // time as the reader works through the upload — so it follows the order the
-    // pictures were taken. `opened` marks it as this upload's to move: once
-    // every page is in, `numbersByTicketDate` puts the run into date order.
+    // Filed, not numbered. Whatever number is free at this moment would be one
+    // claimed in the order the pictures were taken; the run is worked out in
+    // ticket-date order once every page of the upload has been read.
+    invoice_number: pendingInvoiceNumber(batchId),
+    batch_id: batchId,
+    // This upload's batch, so this upload's to number.
     opened: true,
   };
 }

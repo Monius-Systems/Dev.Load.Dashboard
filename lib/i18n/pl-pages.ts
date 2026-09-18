@@ -445,6 +445,14 @@ export const PL_PAGES: Record<string, string> = {
   'Invoice {number} is a draft until its rate is complete.':
     'Faktura {number} jest szkicem, dopóki stawka nie zostanie uzupełniona.',
   'Invoice {number} created.': 'Utworzono fakturę {number}.',
+  // A batch filed but not yet numbered: the numbers of an upload are handed out
+  // in ticket-date order once every page of it has been read.
+  'Waiting for the rest of this upload': 'Czeka na resztę tego przesłania',
+  'Waiting for the rest of this upload to be read.':
+    'Czeka na odczytanie reszty tego przesłania.',
+  'Filed. Waiting for the rest of this upload':
+    'Zapisano. Czeka na resztę tego przesłania',
+  'Finalizing invoice numbers…': 'Ustalanie numerów faktur…',
   'The original could not be stored in this browser.':
     'Nie udało się zapisać oryginału w tej przeglądarce.',
   'Saved changes to {tickets} on invoice {number}.':

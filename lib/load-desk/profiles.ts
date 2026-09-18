@@ -477,7 +477,9 @@ const MAX_LOGO_EDGE = 512;
  * it in white and it would sit on the page as a white tile.
  */
 async function logoImage(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
+  // Upright as the cropper showed it: a file can carry the way the camera was
+  // held as a tag, which decoding the file again would otherwise ignore.
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   const scale = Math.min(1, MAX_LOGO_EDGE / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));

@@ -111,7 +111,18 @@ import {
   numbersByTicketDate,
   numbersForWaitingBatches,
   recordBatch,
+  isPendingInvoiceNumber,
+  shownInvoiceNumber,
 } from '@/lib/load-desk/records';
+import {
+  claimFinalize,
+  completeSession,
+  extracted,
+  noteTicket,
+  openSession,
+  releaseFinalize,
+  type UploadSession,
+} from '@/lib/load-desk/upload-session';
 import { SAMPLE_TICKET } from '@/lib/load-desk/samples';
 import { PHONE_MASK, phoneDisplay, phoneEdit } from '@/lib/phone';
 import {
@@ -915,27 +926,37 @@ export default function LoadDesk() {
   };
 
   /**
-   * Puts the invoice numbers of one upload's batches into ticket-date order.
+   * Gives this upload's batches their invoice numbers, in ticket-date order.
    *
-   * The numbers were handed out as each page was filed, which is the order the
-   * pictures were taken in. Now that the whole upload is in, the dates are known
-   * and the run is put right — the oldest date first — by renumbering the saved
-   * tickets of the batches this upload created. Nothing already on file moves.
+   * This is the moment a number is decided, and the only one. Every page of the
+   * upload has been read by now, so every date is known; the batches are put in
+   * date order, oldest first, and take the numbers after the highest invoice on
+   * file. Until this runs the batches carry a mark rather than a number, because
+   * a number claimed while pages were still in the reader would be a number
+   * claimed in the order the pictures were taken.
    *
-   * A failed write changes nothing: the numbers stay as they were, which is a
-   * run out of order rather than a ticket lost, and it says so.
+   * Only this upload's own batches. A ticket photographed for a date that was
+   * already invoiced joined that invoice, and an invoice already on file —
+   * possibly already sent — keeps the number it was filed under.
+   *
+   * The session gates it, so an upload is numbered once however many pages ask.
+   * A failed write hands the session back and changes nothing: the batches stay
+   * marked as waiting rather than half-numbered, and it says so.
    */
-  const inTicketDateOrder = async (
+  const finalizeInvoiceNumbers = async (
+    session: UploadSession,
     filed: QueueItem[],
     opened: Set<string>,
   ): Promise<{ items: QueueItem[]; error: string | null }> => {
-    // Only the batches this upload opened. A ticket photographed for a date
-    // that was already invoiced joined that invoice, and an invoice already on
-    // file — possibly already sent — keeps the number it was filed under.
     const batchIds = [...new Set(filed.map((item) => item.batch_id))].filter(
       (batchId) => opened.has(batchId),
     );
-    if (!batchIds.length) return { items: filed, error: null };
+    if (!batchIds.length) {
+      completeSession(session);
+      return { items: filed, error: null };
+    }
+    // Nothing of this upload is still being read, and nobody else has taken it.
+    if (!claimFinalize(session)) return { items: filed, error: null };
     const { records } = getRecordsSnapshot();
     const wanted = numbersByTicketDate(records, batchIds);
     const edits: RecordEdit[] = [];
@@ -952,9 +973,16 @@ export default function LoadDesk() {
         truck_id: record.truck_id ?? null,
       });
     }
-    if (!edits.length) return { items: filed, error: null };
+    if (!edits.length) {
+      completeSession(session);
+      return { items: filed, error: null };
+    }
     const result = await updateSavedRecords(edits);
-    if ('error' in result) return { items: filed, error: result.error };
+    if ('error' in result) {
+      releaseFinalize(session);
+      return { items: filed, error: result.error };
+    }
+    completeSession(session);
     return {
       items: filed.map((item) => {
         const number = wanted.get(item.batch_id);
@@ -984,9 +1012,19 @@ export default function LoadDesk() {
     const start = queue.length;
     const added: QueueItem[] = [];
     const failures: string[] = [];
-    // The batches this upload opened, whose numbers are still this upload's to
-    // put into ticket-date order once every page has been read.
+    // The batches this upload opened, whose numbers are this upload's to hand
+    // out once every page has been read.
     const openedBatches = new Set<string>();
+    /**
+     * This upload, held open until nothing in it is still being read. Every page
+     * reports itself into it, and no invoice number is decided until they are all
+     * terminal — read and filed, failed, or dropped. A page that comes out of the
+     * reader first does not take the first number for it.
+     */
+    const session = openSession(makeId());
+    for (const [index] of entries.entries()) {
+      noteTicket(session, `file-${index}`, 'queued');
+    }
     setUploadStatus(null);
     for (const [index, entry] of entries.entries()) {
       const show = (fraction: number, label: string) =>
@@ -999,6 +1037,7 @@ export default function LoadDesk() {
           quiet: !open,
         });
       show(0, 'Starting');
+      noteTicket(session, `file-${index}`, 'extracting');
       try {
         if (kind === 'upload') {
           if (!ACCEPTED_NAME.test(entry.name)) {
@@ -1011,6 +1050,7 @@ export default function LoadDesk() {
         }
         if (kind === 'sample') {
           added.push(await buildQueueItem(entry, kind, profileContext));
+          noteTicket(session, `file-${index}`, 'extracted');
         } else {
           const pages = await extractPages(
             entry.blob,
@@ -1028,9 +1068,18 @@ export default function LoadDesk() {
             if (filed.opened) openedBatches.add(filed.opened);
             added.push(filed.item);
           }
+          // Read and filed. Not numbered: that waits for its siblings.
+          noteTicket(session, `file-${index}`, 'extracted');
+          if (index < entries.length - 1) {
+            show(1, 'Filed. Waiting for the rest of this upload');
+          }
         }
       } catch (error) {
         failures.push(`${entry.name}: ${t(errorMessage(error))}`);
+        // Terminal either way. A file nothing could be read from must not hold
+        // the upload open, or one unreadable scan would leave every other ticket
+        // of the morning waiting for a number that never came.
+        noteTicket(session, `file-${index}`, 'failed');
       }
     }
     setExtraction(null);
@@ -1122,7 +1171,11 @@ export default function LoadDesk() {
       // tickets onto another day's bill.
       const wasFiled = elsewhere.filter((item) => item.saved_record_id !== null);
       const unfiled = elsewhere.filter((item) => item.saved_record_id === null);
-      const ordered = await inTicketDateOrder(wasFiled, openedBatches);
+      // Every page is terminal by here, which is what opens the barrier.
+      if (extracted(session).length) {
+        setUploadStatus({ message: t('Finalizing invoice numbers…'), tone: 'info' });
+      }
+      const ordered = await finalizeInvoiceNumbers(session, wasFiled, openedBatches);
       const filed = ordered.items;
       if (ordered.error) failures.push(ordered.error);
       // One invoice per ticket date, dated that day, oldest first. Invoice
@@ -2869,7 +2922,13 @@ export default function LoadDesk() {
                         <span className="ld-record-meta">
                           {record.ticket.customer_name ?? t('No customer')} ·{' '}
                           {pounds(record.ticket.net_lb)} ·{' '}
-                          <span>{t('Invoice {number}', { number: record.invoice.invoice_number })}</span>
+                          <span>
+                            {shownInvoiceNumber(record.invoice.invoice_number)
+                              ? t('Invoice {number}', {
+                                  number: shownInvoiceNumber(record.invoice.invoice_number),
+                                })
+                              : t('Waiting for the rest of this upload')}
+                          </span>
                         </span>
                       </div>
                       <span
@@ -3037,9 +3096,9 @@ export default function LoadDesk() {
                         {t('Add tickets to this invoice')}
                       </Button>
                       <small className="ld-field-hint">
-                        {active.invoice.invoice_number.trim()
+                        {shownInvoiceNumber(active.invoice.invoice_number)
                           ? t('They join invoice {number}, whatever their ticket dates.', {
-                              number: active.invoice.invoice_number.trim(),
+                              number: shownInvoiceNumber(active.invoice.invoice_number),
                             })
                           : t('They join the invoice being reviewed, whatever their ticket dates.')}
                       </small>
@@ -3048,14 +3107,18 @@ export default function LoadDesk() {
                     <div className="ld-fields">
                       {invoiceField(
                         t('Invoice number'),
-                        active.invoice.invoice_number,
+                        // Never the waiting mark: it is bookkeeping, not a
+                        // number, and not the one this invoice will carry.
+                        shownInvoiceNumber(active.invoice.invoice_number),
                         (value) => setInvoice({ invoice_number: value }),
                         {
                           required: true,
                           placeholder: t('e.g. 1001'),
-                          hint: active.invoice.invoice_number.trim()
+                          hint: shownInvoiceNumber(active.invoice.invoice_number)
                             ? undefined
-                            : t('Enter your first invoice number. The ones after it follow in order.'),
+                            : isPendingInvoiceNumber(active.invoice.invoice_number)
+                              ? t('Waiting for the rest of this upload to be read.')
+                              : t('Enter your first invoice number. The ones after it follow in order.'),
                         },
                       )}
                       {/* Read-only on purpose: an invoice is dated by its

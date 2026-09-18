@@ -4,9 +4,10 @@ import {
   batchDate,
   batchesByRecency,
   batchInvoiceFor,
-  FIRST_INVOICE_NUMBER,
+  isPendingInvoiceNumber,
   needsReview,
   numbersByTicketDate,
+  shownInvoiceNumber,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
 
@@ -46,17 +47,35 @@ void test('a ticket photographed for a date joins that date’s batch', () => {
   assert.equal(joined.batch_id, monday.invoice_batch_id);
 });
 
-void test('the first ticket of a date opens a batch on the next number', () => {
-  // The number shown is the one the invoice will carry, so there is nothing to
-  // type over on the review screen.
+void test('the first ticket of a date opens a batch with no number yet', () => {
+  // The leak this closes: the batch took whatever number was free the moment the
+  // page came out of the reader, so the page photographed first took the lower
+  // number whatever day was printed on it. A batch is filed waiting for its
+  // number, and the numbering runs once the whole upload is in.
   const monday = saved('2026-01-06', '1042');
   const tuesday = batchInvoiceFor([monday], '2026-01-07');
-  assert.equal(tuesday.invoice_number, '1043');
+  assert.equal(isPendingInvoiceNumber(tuesday.invoice_number), true, 'waiting');
+  assert.equal(shownInvoiceNumber(tuesday.invoice_number), '', 'nothing to show yet');
   assert.notEqual(tuesday.batch_id, monday.invoice_batch_id);
+  assert.equal(tuesday.opened, true, 'this upload opened it, so it numbers it');
 });
 
-void test('a workspace with no invoices yet starts its numbering', () => {
-  assert.equal(batchInvoiceFor([], '2026-01-06').invoice_number, FIRST_INVOICE_NUMBER);
+void test('two dates waiting for numbers are still two invoices', () => {
+  // Invoices are the saved tickets that share a number, so a mark that did not
+  // name its own batch would key a day's tickets onto another day's bill.
+  const monday = batchInvoiceFor([], '2026-01-06');
+  const tuesday = batchInvoiceFor(
+    [saved('2026-01-06', monday.invoice_number)],
+    '2026-01-07',
+  );
+  assert.notEqual(monday.invoice_number, tuesday.invoice_number);
+});
+
+void test('a workspace with no invoices yet also files before numbering', () => {
+  assert.equal(
+    isPendingInvoiceNumber(batchInvoiceFor([], '2026-01-06').invoice_number),
+    true,
+  );
 });
 
 void test('a batch already invoiced keeps its real number', () => {
@@ -69,7 +88,7 @@ void test('a batch already invoiced keeps its real number', () => {
 void test('a ticket whose date could not be read is still filed somewhere', () => {
   // Never dropped for want of a date: it goes somewhere visible and fixable.
   const undated = batchInvoiceFor([saved('2026-01-06', '1042')], null);
-  assert.equal(undated.invoice_number, '1043');
+  assert.equal(isPendingInvoiceNumber(undated.invoice_number), true);
   assert.equal(batchDate(saved(null, '1043')), 'undated');
   assert.equal(batchDate(saved('  ', '1043')), 'undated');
   // And a second undated scan joins the first rather than piling up batches.

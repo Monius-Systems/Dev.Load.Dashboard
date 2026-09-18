@@ -1,6 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampOffset, coverScale, sourceRect } from '../lib/crop-box.ts';
+import {
+  clampOffset,
+  coverScale,
+  sourceRect,
+  sourceRectFromBoxes,
+} from '../lib/crop-box.ts';
 
 const FRAME = 280;
 const near = (a: number, b: number, what: string) =>
@@ -132,4 +137,88 @@ void test('zooming in opens up room to move up and down', () => {
     coverScale(natural, frame) * 2,
   );
   assert.ok(zoomed.y > 0, 'zoomed in there is room up and down');
+});
+
+/** The two boxes the browser lays out for a picture framed this way. */
+const boxes = (
+  natural: { width: number; height: number },
+  frame: number,
+  drawScale: number,
+  offset: { x: number; y: number },
+) => ({
+  frame: { left: 0, top: 0, width: frame, height: frame },
+  // Centred on the window, then dragged: what the cropper's CSS now produces.
+  picture: {
+    left: frame / 2 - (natural.width * drawScale) / 2 + offset.x,
+    top: frame / 2 - (natural.height * drawScale) / 2 + offset.y,
+    width: natural.width * drawScale,
+    height: natural.height * drawScale,
+  },
+});
+
+void test('the square measured off the screen is the square the sums describe', () => {
+  // The leak: the picture was laid out in a box that clips what it holds, and
+  // an oversized one centred in such a box is pushed back to its top-left
+  // corner instead. The window then showed the left of a wide photograph while
+  // the sums cut its middle, so a saved icon was the middle of the picture
+  // however it had been dragged. Measuring cannot drift from what is shown.
+  const natural = { width: 1600, height: 900 };
+  for (const frame of [280, 187.5]) {
+    for (const zoom of [1, 2, 3.5]) {
+      for (const wanted of [
+        { x: 0, y: 0 },
+        { x: 9999, y: 0 },
+        { x: -9999, y: 40 },
+      ]) {
+        const draw = coverScale(natural, frame) * zoom;
+        const held = clampOffset(wanted, natural, frame, draw);
+        const { frame: window, picture } = boxes(natural, frame, draw, held);
+        const measured = sourceRectFromBoxes(window, picture, natural)!;
+        const sums = sourceRect(natural, frame, draw, held);
+        const where = `window ${frame} at zoom ${zoom}, offset ${wanted.x},${wanted.y}`;
+        near(measured.x, sums.x, `${where}: x`);
+        near(measured.y, sums.y, `${where}: y`);
+        near(measured.size, sums.size, `${where}: size`);
+      }
+    }
+  }
+});
+
+void test('a picture pushed into a corner is cut from that corner, not the middle', () => {
+  // The layout that caused it, measured: the picture sitting at the window's
+  // top-left rather than centred on it. What is cut follows the picture.
+  const natural = { width: 1600, height: 900 };
+  const frame = 280;
+  const draw = coverScale(natural, frame);
+  const cornered = sourceRectFromBoxes(
+    { left: 0, top: 0, width: frame, height: frame },
+    {
+      left: 0,
+      top: 0,
+      width: natural.width * draw,
+      height: natural.height * draw,
+    },
+    natural,
+  )!;
+  near(cornered.x, 0, 'the left of the picture');
+  near(cornered.size, 900, 'the window holds its full height');
+  const centred = sourceRect(natural, frame, draw, { x: 0, y: 0 });
+  near(centred.x, 350, 'where the sums alone would have cut');
+});
+
+void test('nothing is measured off a picture that has not been laid out', () => {
+  const empty = { left: 0, top: 0, width: 0, height: 0 };
+  const frame = { left: 0, top: 0, width: 280, height: 280 };
+  assert.equal(
+    sourceRectFromBoxes(frame, empty, { width: 800, height: 600 }),
+    null,
+  );
+  assert.equal(
+    sourceRectFromBoxes(
+      frame,
+      { ...empty, width: 100 },
+      { width: 0, height: 0 },
+    ),
+    null,
+  );
 });

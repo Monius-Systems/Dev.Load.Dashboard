@@ -216,11 +216,26 @@ export async function saveAccountProfile(profile: {
   return null;
 }
 
-/** A square, center-cropped JPEG of the photo, small enough to store and load fast. */
+/**
+ * The photo as a square JPEG, small enough to store and load fast.
+ *
+ * What arrives here has already been cut to the square the person chose in the
+ * cropper, so there is nothing left to choose and this only shrinks it. The
+ * middle is taken only from a picture that is not square at all — one that
+ * reached here without going through the cropper — because a photo has to end up
+ * square and there is no chosen square to use. A picture that was framed is
+ * never re-cut here: that would put the middle of the photograph back whatever
+ * the person had dragged into the window.
+ *
+ * `from-image` because a photograph off a phone carries the way it was held as a
+ * tag rather than in its rows of pixels, and this decodes the file rather than
+ * the upright picture that was on the screen. Without it a portrait photo is
+ * stored a quarter turn over.
+ */
 async function squarePhoto(file: File): Promise<Blob> {
   let bitmap: ImageBitmap;
   try {
-    bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   } catch {
     throw new Error('That photo could not be read. Use a JPG, PNG or WebP image.');
   }
