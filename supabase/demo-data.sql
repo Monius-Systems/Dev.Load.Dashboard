@@ -30,12 +30,10 @@
 -- invoices, printing, totals, customers, trucks, the charts — works normally.
 --
 -- READING TICKETS IN THIS WORKSPACE
---   Uploading a new ticket here sends it to be read, and each workspace reads
---   on its own OpenAI key. For 'Monius Trucking' that is the server variable
---   OPENAI_API_KEY_MONIUS_TRUCKING (the workspace id in capitals, with
---   anything that is not a letter or digit as an underscore). Set it as a
---   secret on the host, or in .dev.vars locally. Without it, and without a
---   shared OPENAI_API_KEY, an upload says which variable is missing.
+--   Uploading a new ticket here sends it to be read on the one Monius OpenAI
+--   key, the server variable OPENAI_API_KEY, which every workspace on the
+--   deployment shares. Set it as a secret on the host, or in .dev.vars
+--   locally. Without it an upload says the reader is not configured.
 
 do $$
 declare

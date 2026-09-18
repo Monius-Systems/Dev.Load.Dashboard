@@ -31,6 +31,14 @@ export default defineConfig(async () => {
           // host so one build can serve more than one project, and a
           // service-role or secret key never belongs in any of them.
           // `.dev.vars` still wins locally, so AUTH_MODE=local keeps working.
+          //
+          // OPENAI_API_KEY, which reads load tickets, is deliberately NOT here.
+          // Everything in `vars` is committed to this file and deployed as
+          // plaintext, and a var also shadows a secret of the same name, so
+          // naming it here would both publish the key and quietly replace the
+          // real one. It is set as a secret on the host and locally in
+          // `.dev.vars`; Cloudflare needs no declaration for a secret, which is
+          // why nothing is added below. See CLIENT-LAUNCH.md step 3.
           vars: {
             AUTH_MODE: 'supabase',
             WEBSITE_URL: 'https://moniussystems.com',

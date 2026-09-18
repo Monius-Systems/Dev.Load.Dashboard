@@ -156,9 +156,17 @@ project and never overwrites the website.
    | `SUPABASE_URL` | `https://ivpnwmpyoauymvjtjwmd.supabase.co` |
    | `SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_r-Y7LuRlb_yE5yTWwP3LxA_Zd0ZLqVH` |
    | `WEBSITE_URL` | `https://moniussystems.com` |
+   | `OPENAI_API_KEY` | the Monius OpenAI key — set as a **secret**, value not recorded here |
 
    `WEBSITE_URL` is what lets the website's Client Login sign people in; see
    step 4 for why its exact spelling matters.
+
+   `OPENAI_API_KEY` is what reads load tickets. One Monius key serves every
+   client workspace, so onboarding a client adds no variable of its own; which
+   company a ticket belongs to is decided by the signed-in member's workspace.
+   It is read only on the server, in `app/api/extract/route.ts`, and never
+   reaches the browser. Without it, uploading a ticket says the reader is not
+   configured and everything else still works.
 
 3. Point `dashboard.moniussystems.com` at the project, as the host's custom-domain
    setup asks. The website keeps `moniussystems.com`. They have to be separate
