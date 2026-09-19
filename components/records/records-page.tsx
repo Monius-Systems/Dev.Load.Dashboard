@@ -730,10 +730,16 @@ export default function RecordsPage() {
                           onClick={() => toggleInvoice(group.key)}
                         >
                           <ChevronDown aria-hidden="true" />
-                          <strong>{invoiceHeading(tr, group)}</strong>
-                          <span>{dateRange(tr, group)}</span>
-                          <span>{plural(group.records.length, 'ticket')}</span>
-                          <span>{group.needsRate ? t('Needs a rate') : money(group.total)}</span>
+                          <span className="rec-invoice-name">
+                            <strong>{invoiceHeading(tr, group)}</strong>
+                            <small>
+                              {[
+                                dateRange(tr, group),
+                                plural(group.records.length, 'ticket'),
+                                group.needsRate ? t('Needs a rate') : money(group.total),
+                              ].join(' · ')}
+                            </small>
+                          </span>
                         </button>
                       </th>
                     </tr>
@@ -809,10 +815,15 @@ export default function RecordsPage() {
                     onClick={() => toggleInvoice(group.key)}
                   >
                     <ChevronDown aria-hidden="true" />
-                    <strong>{invoiceHeading(tr, group)}</strong>
-                    <span>
-                      {dateRange(tr, group)} · {plural(group.records.length, 'ticket')} ·{' '}
-                      {group.needsRate ? t('Needs a rate') : money(group.total)}
+                    <span className="rec-invoice-name">
+                      <strong>{invoiceHeading(tr, group)}</strong>
+                      <small>
+                        {[
+                          dateRange(tr, group),
+                          plural(group.records.length, 'ticket'),
+                          group.needsRate ? t('Needs a rate') : money(group.total),
+                        ].join(' · ')}
+                      </small>
                     </span>
                   </button>
                   {open ? (

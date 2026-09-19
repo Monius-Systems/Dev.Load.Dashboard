@@ -209,41 +209,46 @@
 
 /* ======================================== tickets under their invoices */
 /* On the Tickets tab a ticket sits under the invoice it is on, and the invoice
-   is a line that opens onto them. Closed, the page reads as a list of invoices
-   each saying how many tickets it holds; open, the tickets are the rows they
-   always were. The chevron turns to say which. */
+   is a line that opens onto them. The line is set the way the Invoices tab
+   sets an invoice — its number in the link colour over a grey line of facts —
+   so the two tabs read as one thing, with a chevron in front to say it opens.
+   Open, the tickets are the rows they always were, set in a little. */
 .rec-invoice-row th {
   padding: 0;
-  background: var(--ui-fill);
 }
 .rec-invoice-toggle {
   display: flex;
   align-items: center;
   gap: var(--ui-space-3);
   width: 100%;
-  padding: 10px var(--ui-space-6);
+  padding: 12px var(--ui-space-6);
   border: 0;
   background: none;
   font: inherit;
-  font-size: var(--type-sm);
   text-align: left;
-  color: var(--ui-text-2);
+  color: var(--ui-text);
   cursor: pointer;
 }
-.rec-invoice-toggle:hover {
-  color: var(--ui-text);
+.rec-invoice-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
-.rec-invoice-toggle strong {
-  font-weight: var(--type-semibold);
-  color: var(--ui-text);
+.rec-invoice-name strong {
+  font-size: var(--type-base);
+  font-weight: var(--type-medium);
+  color: var(--ui-accent-ink);
 }
-/* Read as one line, left to right: the table can be wider than the panel and
-   scroll, and anything pushed to its far edge would sit in the part that is
-   scrolled out of sight. */
-.rec-invoice-toggle > span + span::before {
-  content: '·';
-  margin-right: var(--ui-space-3);
+.rec-invoice-toggle:hover .rec-invoice-name strong {
+  text-decoration: underline;
+}
+.rec-invoice-name small {
+  /* Inside a table header cell, which is bold by default; the facts are not. */
+  font-size: var(--type-xs);
+  font-weight: var(--type-regular);
   color: var(--ui-text-3);
+  white-space: normal;
 }
 .rec-invoice-toggle svg {
   flex-shrink: 0;
@@ -252,13 +257,16 @@
   color: var(--ui-text-3);
   transition: transform var(--ui-duration) var(--ui-ease);
 }
-[data-open] > .rec-invoice-toggle svg,
-.rec-invoice-row [aria-expanded='true'] svg {
+.rec-invoice-toggle[aria-expanded='true'] svg {
   transform: rotate(180deg);
 }
-/* A ticket row under an open invoice is set in a little from its invoice. */
+/* A ticket row under an open invoice is set in from its invoice, and the
+   tickets sit on a barely-there tint so the invoice line reads as their head. */
 .rec-invoice-body[data-open] > tr:not(.rec-invoice-row) > th:first-child {
   padding-left: calc(var(--ui-space-6) + 28px);
+}
+.rec-invoice-body[data-open] > tr:not(.rec-invoice-row) {
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
 }
 /* On a phone the invoice is a card, and its tickets are cards inside it. */
 .rec-invoice-card {
@@ -268,13 +276,6 @@
 }
 .rec-invoice-card > .rec-invoice-toggle {
   padding: var(--ui-space-4) 0;
-  flex-wrap: wrap;
-}
-.rec-invoice-card > .rec-invoice-toggle > span {
-  flex-basis: 100%;
-  padding-left: calc(16px + var(--ui-space-3));
-  font-size: var(--type-xs);
-  color: var(--ui-text-3);
 }
 .rec-invoice-tickets {
   padding-left: var(--ui-space-4);
