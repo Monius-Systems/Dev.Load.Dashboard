@@ -716,8 +716,17 @@ export const settingsChanged = (day: MileageDay, current: TruckIfta) =>
     JSON.stringify(toRoutingProfile(day.profile_snapshot)) !== JSON.stringify(toRoutingProfile(current)));
 
 /**
+ * A day worth asking about again without anything having changed: it
+ * failed, or it waits on an address the provider could not place — which a
+ * newer provider answer, or a place set by hand, may since have settled.
+ */
+export const retryable = (day: MileageDay) =>
+  day.status === 'failed' ||
+  (day.status === 'needs_review' && day.review_reasons.some((reason) => reason.code === 'place_unresolved'));
+
+/**
  * Whether the page should ask the server for this day: nothing stored, the
- * tickets changed since, or a failure that has not been retried this visit.
+ * tickets changed since, or a retryable state not yet retried this visit.
  */
 export function needsRecalculation(
   day: MileageDay | undefined,
@@ -731,7 +740,7 @@ export function needsRecalculation(
     return Number.isNaN(started) || Date.now() - started > CLAIM_TIMEOUT_MS;
   }
   if (day.input_hash !== expected.input_hash) return true;
-  return day.status === 'failed' && retryFailed;
+  return retryFailed && retryable(day);
 }
 
 // ----------------------------------------------------------------- summaries

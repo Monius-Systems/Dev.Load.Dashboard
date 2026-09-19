@@ -1,7 +1,7 @@
-import { parsePlaceFixBody } from '@/lib/load-desk/mileage';
+import { parsePlaceFixBody, placeKey } from '@/lib/load-desk/mileage';
 import { boundedJson } from '@/lib/server/json';
 import { badRequest, memberRoute } from '@/lib/server/member-route';
-import { getPlaces, upsertPlace } from '@/lib/server/mileage-store';
+import { getPlaces, listTrucks, upsertPlace } from '@/lib/server/mileage-store';
 import { routingProvider } from '@/lib/server/routing-provider';
 
 /**
@@ -30,9 +30,19 @@ export function POST(request: Request) {
         parsed.value.place_key,
       );
       if (!existing) return Response.json({ error: 'That place is not on any ticket.' }, { status: 404 });
+      // Looked up near a truck's yard, as the calculation does: the provider
+      // ranks by distance, and the same street number exists in many towns.
+      const yards = (await listTrucks(client, member.workspaceId))
+        .map((truck) => truck.ifta?.yard_address ?? '')
+        .filter(Boolean)
+        .map(placeKey);
+      const yard = [...(await getPlaces(client, member.workspaceId, [...new Set(yards)])).values()].find(
+        (place) => place.status === 'resolved' && place.lat !== null && place.lon !== null,
+      );
+      const bias = yard ? { lat: yard.lat as number, lon: yard.lon as number } : undefined;
       // A person typed this, so a match on the street alone is accepted when
       // the provider has no house number there (see GeocodeOptions).
-      const answer = await provider.geocode(parsed.value.address, undefined, { acceptStreet: true });
+      const answer = await provider.geocode(parsed.value.address, bias, { acceptStreet: true });
       if (!answer.ok) {
         return Response.json(
           {
@@ -48,7 +58,7 @@ export function POST(request: Request) {
       const place = await upsertPlace(client, member.workspaceId, {
         place_key: parsed.value.place_key,
         query_text: existing.query_text,
-        provider: provider.name,
+        provider: `${provider.name}@${provider.version}`,
         status: 'resolved',
         position: answer.position,
         label: answer.label,

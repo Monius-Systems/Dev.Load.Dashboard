@@ -3,6 +3,7 @@ import {
   dayKey,
   MAX_DAYS_PER_REQUEST,
   needsRecalculation,
+  retryable,
   type MileageDay,
   type TruckDay,
 } from './mileage.ts';
@@ -212,7 +213,8 @@ export function settleDays(expected: TruckDay[]): Promise<void> {
             hash: day.input_hash,
             count: tried && tried.hash === day.input_hash ? tried.count + 1 : 1,
           });
-          if (snapshot.days[day.key]?.status === 'failed') retriedFailed.add(day.key);
+          const stored = snapshot.days[day.key];
+          if (stored && retryable(stored)) retriedFailed.add(day.key);
         }
         const error = await recalculate(needed.map((day) => ({ truck_id: day.truck_id, date: day.date })));
         if (error) {

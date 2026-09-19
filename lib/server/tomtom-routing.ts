@@ -1,3 +1,4 @@
+import { normalizeName } from '@/lib/load-desk/customer-rates';
 import {
   ProviderError,
   type GeocodeResult,
@@ -17,7 +18,7 @@ import {
 
 const ROUTING = 'https://api.tomtom.com/routing/1/calculateRoute';
 const GEOCODE = 'https://api.tomtom.com/search/2/search';
-const VERSION = 'routing/1;search/2-fuzzy';
+const VERSION = 'routing/1;search/2-fuzzy2';
 const TIMEOUT_MS = 10_000;
 const RETRY_AFTER_MS = 500;
 const METERS_PER_MILE = 1609.344;
@@ -36,6 +37,62 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const finite = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 const clean = (message: string) => message.replace(/https?:\/\/\S+/g, '[url]').slice(0, 300);
+
+type Candidate = {
+  type: string;
+  confidence: number | null;
+  lat: number | null;
+  lon: number | null;
+  municipality: string;
+  localName: string;
+  postalCode: string;
+  formatted: string;
+  streetName: string;
+  poiName: string;
+};
+
+/** Words in a street name that do not tell one street from another. */
+const STREET_FILLER = new Set(
+  'N S E W NORTH SOUTH EAST WEST NE NW SE SW ST STREET RD ROAD AVE AVENUE BLVD BOULEVARD DR DRIVE LN LANE CT COURT HWY HIGHWAY PKWY PARKWAY TRL TRAIL WAY PL PLACE CIR CIRCLE TER TERRACE STATE COUNTY ROUTE RTE US IL IN'.split(' '),
+);
+const streetTokens = (name: string) =>
+  normalizeName(name)
+    .split(' ')
+    .filter((token) => token && !STREET_FILLER.has(token));
+
+const DIRECTIONS: Record<string, string> = {
+  N: 'N', NORTH: 'N', S: 'S', SOUTH: 'S', E: 'E', EAST: 'E', W: 'W', WEST: 'W',
+  NE: 'NE', NW: 'NW', SE: 'SE', SW: 'SW',
+};
+/** The compass prefixes in a street name or address: "S Williams St" → ["S"]. */
+const directions = (text: string) =>
+  normalizeName(text)
+    .split(' ')
+    .map((token) => DIRECTIONS[token])
+    .filter((direction): direction is string => !!direction);
+
+/** One search result, read field by field; nothing else of it is kept. */
+function readResult(result: Record<string, unknown>): Candidate {
+  const address = isObject(result.address) ? result.address : {};
+  const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+  const entry =
+    Array.isArray(result.entryPoints) && isObject(result.entryPoints[0]) && isObject(result.entryPoints[0].position)
+      ? result.entryPoints[0].position
+      : null;
+  const position = entry ?? (isObject(result.position) ? result.position : null);
+  return {
+    type: text(result.type),
+    confidence: isObject(result.matchConfidence) ? finite(result.matchConfidence.score) : null,
+    lat: position ? finite(position.lat) : null,
+    lon: position ? finite(position.lon) : null,
+    municipality: text(address.municipality),
+    localName: text(address.localName),
+    postalCode: text(address.postalCode).slice(0, 5),
+    formatted: text(address.freeformAddress),
+    streetName: text(address.streetName),
+    poiName: isObject(result.poi) ? text(result.poi.name) : '',
+  };
+}
 
 /** A metre or kilogram figure the API takes; zero means "ignore", so never zero. */
 const positive = (value: number, digits: number) =>
@@ -138,67 +195,124 @@ export function tomtomProvider(apiKey: string): RoutingProvider {
     },
 
     async geocode(query, bias, options = {}): Promise<GeocodeResult> {
-      const url = new URL(`${GEOCODE}/${encodeURIComponent(query.slice(0, 200))}.json`);
-      url.searchParams.set('key', apiKey);
-      url.searchParams.set('countrySet', 'US');
-      url.searchParams.set('limit', '3');
-      // Addresses and places only; no categories or brands.
-      url.searchParams.set('idxSet', 'PAD,Addr,Str,Xstr,Geo,POI');
-      if (bias) {
-        url.searchParams.set('lat', String(bias.lat));
-        url.searchParams.set('lon', String(bias.lon));
-      }
-      const body = await fetchJson(url, 'geocoding');
-      const results = isObject(body) && Array.isArray(body.results) ? body.results.filter(isObject) : [];
-      const read = (result: Record<string, unknown>) => {
-        const address = isObject(result.address) ? result.address : {};
-        const confidence = isObject(result.matchConfidence) ? finite(result.matchConfidence.score) : null;
-        const entry = Array.isArray(result.entryPoints) && isObject(result.entryPoints[0]) && isObject(result.entryPoints[0].position)
-          ? result.entryPoints[0].position
-          : null;
-        const position = entry ?? (isObject(result.position) ? result.position : null);
-        const lat = position ? finite(position.lat) : null;
-        const lon = position ? finite(position.lon) : null;
-        const text = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
-        return {
-          type: text(result.type),
-          confidence,
-          lat,
-          lon,
-          municipality: text(address.municipality) || text(address.localName),
-          formatted: text(address.freeformAddress),
-        };
+      const search = async (idxSet: string) => {
+        const url = new URL(`${GEOCODE}/${encodeURIComponent(query.slice(0, 200))}.json`);
+        url.searchParams.set('key', apiKey);
+        url.searchParams.set('countrySet', 'US');
+        url.searchParams.set('limit', '5');
+        url.searchParams.set('idxSet', idxSet);
+        if (bias) {
+          url.searchParams.set('lat', String(bias.lat));
+          url.searchParams.set('lon', String(bias.lon));
+        }
+        const body = await fetchJson(url, 'geocoding');
+        const results = isObject(body) && Array.isArray(body.results) ? body.results.filter(isObject) : [];
+        return results.map(readResult);
       };
-      const [top, second] = results.map(read);
+      const wanted = normalizeName(query);
+      // "700 E Joe Orr Rd" alone names no town, and the provider's best is taken.
+      const queryNamesPlace = /\d{5}/.test(query) || query.includes(',');
+      /** The result is in a town or ZIP the query names. */
+      const inNamedTown = (result: Candidate) => {
+        const towns = [result.municipality, result.localName].map(normalizeName).filter(Boolean);
+        return towns.some((town) => wanted.includes(town)) || (!!result.postalCode && wanted.includes(result.postalCode));
+      };
+      /** As above, or the query names no town at all. */
+      const inQueryTown = (result: Candidate) => inNamedTown(result) || !queryNamesPlace;
+      const placed = (result: Candidate) => result.lat !== null && result.lon !== null;
+      /**
+       * The result's street is the one the query names: every telling word of
+       * it ("WILLIAMS", "159TH") appears in the query. Fuzzy search otherwise
+       * happily offers the same house number on another street in town.
+       */
+      const queryDirections = directions(query);
+      const onQueryStreet = (result: Candidate, every = true) => {
+        const tokens = streetTokens(result.streetName);
+        if (!tokens.length) return false;
+        const hits = tokens.filter((token) => wanted.includes(token));
+        if (!(every ? hits.length === tokens.length : hits.length > 0)) return false;
+        // "S Williams St" is not "North Williams Street".
+        const theirs = directions(result.streetName);
+        return !theirs.length || !queryDirections.length || theirs.some((d) => queryDirections.includes(d));
+      };
+      /** The town the ticket named, when the result is in it; else the provider's. */
+      const townLabel = (result: Candidate) =>
+        [result.localName, result.municipality].find((town) => town && wanted.includes(normalizeName(town))) ||
+        result.municipality ||
+        result.localName;
+      const accept = (result: Candidate, approximate: boolean): GeocodeResult => ({
+        ok: true,
+        position: { lat: result.lat as number, lon: result.lon as number },
+        label: townLabel(result) || result.formatted || query,
+        formatted: result.formatted || query,
+        type: result.type,
+        confidence: result.confidence,
+        approximate,
+      });
+
+      // First the building: addresses only, so a street does not outrank the
+      // house number that is on it (fuzzy search ranks them the other way).
+      const addresses = (await search('PAD,Addr')).filter(
+        (result) => PRECISE_TYPES.has(result.type) && placed(result) && onQueryStreet(result),
+      );
+      const building = addresses.find(inQueryTown);
+      if (building) {
+        if (building.confidence !== null && building.confidence < MIN_CONFIDENCE) {
+          return { ok: false, reason: 'low_confidence', suggestion: building.formatted || null };
+        }
+        // Without a town in the query, the same house number in another town
+        // that scores as well is a coin toss, and a coin is not tossed.
+        const rival = queryNamesPlace
+          ? undefined
+          : addresses.find(
+              (other) =>
+                other !== building && normalizeName(other.municipality) !== normalizeName(building.municipality),
+            );
+        const tied =
+          !!rival &&
+          (rival.confidence === null || building.confidence === null
+            ? true
+            : building.confidence - rival.confidence < TIE_MARGIN);
+        if (tied) return { ok: false, reason: 'ambiguous', suggestion: building.formatted || null };
+        return accept(building, false);
+      }
+
+      // Then everything else: a business by name, a road or a crossing.
+      const others = (await search('PAD,Addr,Str,Xstr,Geo,POI')).filter(placed);
+      const top = others[0];
       if (!top) return { ok: false, reason: 'no_match', suggestion: null };
       const suggestion = top.formatted || null;
-      const precise = PRECISE_TYPES.has(top.type);
-      const street = options.acceptStreet === true && STREET_TYPES.has(top.type);
-      if (!(precise || street) || top.lat === null || top.lon === null) {
-        return { ok: false, reason: 'low_confidence', suggestion };
+      const hasNumber = /^\d{1,6}[A-Z]?\s/i.test(query.trim());
+      const nameOf = (text: string) => normalizeName(text.split(',')[0]);
+      // A business whose name is what the ticket printed, in the town it named.
+      const business = others.find(
+        (result) => result.type === 'POI' && result.poiName && nameOf(result.poiName) === nameOf(query) && inQueryTown(result),
+      );
+      if (business) return accept(business, false);
+      // A road or crossing: exactly what a ticket names when there is no
+      // street number to give, placed on that road in the town the ticket
+      // names. A bare word ("THORNTON") names a town, not a road, and waits.
+      if (!hasNumber && queryNamesPlace) {
+        const crossing = /\b(AND|&|AT)\b/i.test(query)
+          ? others.find((result) => result.type === 'Cross Street' && inNamedTown(result) && onQueryStreet(result, false))
+          : undefined;
+        const road =
+          crossing ??
+          others.find((result) => result.type === 'Street' && inNamedTown(result) && onQueryStreet(result));
+        if (road) return accept(road, true);
       }
-      if (top.confidence !== null && top.confidence < MIN_CONFIDENCE) {
-        return { ok: false, reason: 'low_confidence', suggestion };
+      // A person typed and confirmed this: the street they named, or the
+      // place, will do.
+      if (options.acceptStreet === true) {
+        const confirmed = others.find(
+          (result) =>
+            (STREET_TYPES.has(result.type) && onQueryStreet(result, false)) ||
+            (PRECISE_TYPES.has(result.type) && onQueryStreet(result)) ||
+            result.type === 'POI',
+        );
+        if (confirmed) return accept(confirmed, STREET_TYPES.has(confirmed.type));
       }
-      if (
-        second &&
-        second.confidence !== null &&
-        top.confidence !== null &&
-        top.confidence - second.confidence < TIE_MARGIN &&
-        second.municipality &&
-        second.municipality !== top.municipality
-      ) {
-        return { ok: false, reason: 'ambiguous', suggestion };
-      }
-      return {
-        ok: true,
-        position: { lat: top.lat, lon: top.lon },
-        label: top.municipality || top.formatted || query,
-        formatted: top.formatted || query,
-        type: top.type,
-        confidence: top.confidence,
-        approximate: !precise,
-      };
+      return { ok: false, reason: 'low_confidence', suggestion };
     },
   };
 }

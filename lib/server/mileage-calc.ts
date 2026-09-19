@@ -62,9 +62,12 @@ async function resolvePlaces(
   // The yard first, so the rest can be looked up near it.
   const order = [...wanted.values()].sort((a, b) => Number(b.kind === 'yard') - Number(a.kind === 'yard'));
   let bias: LatLon | undefined;
+  // What answered a stored place. One the provider could not place under an
+  // earlier version of its rules is asked about once more under this one.
+  const stamp = `${provider.name}@${provider.version}`;
   for (const stop of order) {
     let place = places.get(stop.place_key);
-    if (!place) {
+    if (!place || (place.status === 'unresolved' && place.provider !== stamp)) {
       const answer = await provider.geocode(stop.query, bias);
       place = await upsertPlace(
         client,
@@ -73,7 +76,7 @@ async function resolvePlaces(
           ? {
               place_key: stop.place_key,
               query_text: stop.query,
-              provider: provider.name,
+              provider: stamp,
               status: 'resolved',
               position: answer.position,
               label: answer.label,
@@ -86,7 +89,7 @@ async function resolvePlaces(
           : {
               place_key: stop.place_key,
               query_text: stop.query,
-              provider: provider.name,
+              provider: stamp,
               status: 'unresolved',
               reason: answer.reason,
               suggestion: answer.suggestion,
@@ -181,7 +184,7 @@ export async function recalculateDay(
       if (!place || noted.has(stop.place_key)) continue;
       if (place.provider_type === 'Street' || place.provider_type === 'Cross Street') {
         noted.add(stop.place_key);
-        warnings.push(`${stop.query} is placed at street level; the map has no house number there.`);
+        warnings.push(`${stop.query} is placed on the named road, not at a street number.`);
       }
     }
 

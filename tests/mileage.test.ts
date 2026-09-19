@@ -351,6 +351,11 @@ void test('the page knows a stale, current or failed day from its hash', () => {
   assert.equal(needsRecalculation(row({ input_hash: 'old' }), expected, false), true);
   assert.equal(needsRecalculation(row({ status: 'failed' }), expected, true), true);
   assert.equal(needsRecalculation(row({ status: 'failed' }), expected, false), false);
+  const waiting = row({ status: 'needs_review', review_reasons: [{ code: 'place_unresolved', place_key: 'X' }] });
+  assert.equal(needsRecalculation(waiting, expected, true), true, 'an unplaced address is worth one more ask per visit');
+  assert.equal(needsRecalculation(waiting, expected, false), false);
+  const ambiguous = row({ status: 'needs_review', review_reasons: [{ code: 'order_ambiguous' }] });
+  assert.equal(needsRecalculation(ambiguous, expected, true), false, 'only a person can fix the order');
   assert.equal(needsRecalculation(row({ status: 'calculating', calc_started_at: new Date().toISOString() }), expected, true), false);
   assert.equal(needsRecalculation(row({ status: 'calculating', calc_started_at: '2020-01-01T00:00:00Z' }), expected, false), true);
   assert.deepEqual(
