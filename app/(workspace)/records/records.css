@@ -206,3 +206,78 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ======================================== tickets under their invoices */
+/* On the Tickets tab a ticket sits under the invoice it is on, and the invoice
+   is a line that opens onto them. Closed, the page reads as a list of invoices
+   each saying how many tickets it holds; open, the tickets are the rows they
+   always were. The chevron turns to say which. */
+.rec-invoice-row th {
+  padding: 0;
+  background: var(--ui-fill);
+}
+.rec-invoice-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  width: 100%;
+  padding: 10px var(--ui-space-6);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--type-sm);
+  text-align: left;
+  color: var(--ui-text-2);
+  cursor: pointer;
+}
+.rec-invoice-toggle:hover {
+  color: var(--ui-text);
+}
+.rec-invoice-toggle strong {
+  font-weight: var(--type-semibold);
+  color: var(--ui-text);
+}
+/* Read as one line, left to right: the table can be wider than the panel and
+   scroll, and anything pushed to its far edge would sit in the part that is
+   scrolled out of sight. */
+.rec-invoice-toggle > span + span::before {
+  content: '·';
+  margin-right: var(--ui-space-3);
+  color: var(--ui-text-3);
+}
+.rec-invoice-toggle svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--ui-text-3);
+  transition: transform var(--ui-duration) var(--ui-ease);
+}
+[data-open] > .rec-invoice-toggle svg,
+.rec-invoice-row [aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+/* A ticket row under an open invoice is set in a little from its invoice. */
+.rec-invoice-body[data-open] > tr:not(.rec-invoice-row) > th:first-child {
+  padding-left: calc(var(--ui-space-6) + 28px);
+}
+/* On a phone the invoice is a card, and its tickets are cards inside it. */
+.rec-invoice-card {
+  gap: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+.rec-invoice-card > .rec-invoice-toggle {
+  padding: var(--ui-space-4) 0;
+  flex-wrap: wrap;
+}
+.rec-invoice-card > .rec-invoice-toggle > span {
+  flex-basis: 100%;
+  padding-left: calc(16px + var(--ui-space-3));
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.rec-invoice-tickets {
+  padding-left: var(--ui-space-4);
+  border-left: 2px solid var(--ui-separator);
+  margin-bottom: var(--ui-space-3);
+}

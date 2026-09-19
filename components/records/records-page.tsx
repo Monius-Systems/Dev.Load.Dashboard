@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import Link from 'next/link';
 import { setDeskField } from '@/lib/load-desk/desk-session';
 import {
+  ChevronDown,
   Download,
   FileSearch,
   Pencil,
@@ -111,11 +112,22 @@ function dateRange({ t, date }: Translator, group: InvoiceGroup) {
 function invoiceName({ t }: Translator, group: Pick<InvoiceGroup, 'records' | 'invoice'>) {
   const number = shownInvoiceNumber(group.invoice.invoice_number);
   if (number) return number;
+  return invoiceStanding(t, group);
+}
+
+/** Why a group of tickets has no number to show: waiting for its date, or a number. */
+function invoiceStanding(t: Translator['t'], group: Pick<InvoiceGroup, 'records' | 'invoice'>) {
   const first = group.records[0];
   if (first && isUndatedBatch(recordBatch(first))) return t('Date not found');
   return isPendingInvoiceNumber(group.invoice.invoice_number)
     ? t('Waiting for a number')
     : group.invoice.invoice_number;
+}
+
+/** "Invoice 12" as a line to open, or why there is no number yet. */
+function invoiceHeading(tr: Translator, group: Pick<InvoiceGroup, 'records' | 'invoice'>) {
+  const number = shownInvoiceNumber(group.invoice.invoice_number);
+  return number ? tr.t('Invoice {number}', { number }) : invoiceStanding(tr.t, group);
 }
 
 export default function RecordsPage() {
@@ -137,6 +149,14 @@ export default function RecordsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
   const [toDelete, setToDelete] = useState<SavedRecord | null>(null);
+  /**
+   * On the Tickets tab the tickets sit under their invoice, and an invoice
+   * opens to show them. Closed until pressed — except while a search or filter
+   * is on, when what was searched for is what should be in view, so every
+   * invoice with a match starts open and pressing one closes it instead. So
+   * this is the set of invoices flipped from whichever way is the default.
+   */
+  const [flippedInvoices, setFlippedInvoices] = useState<Set<string>>(() => new Set());
 
   const ticketNumber = (record: SavedRecord) =>
     record.ticket.ticket_number ?? t('unnumbered');
@@ -182,6 +202,8 @@ export default function RecordsPage() {
     .filter(passes)
     .filter((record) => status === 'all' || ticketStatus(record) === status)
     .sort((a, b) => loadDate(b).localeCompare(loadDate(a)) || b.id - a.id);
+  // The same tickets, under their invoices, newest invoice first.
+  const ticketsByInvoice = invoiceGroups(shownTickets);
 
   const billed = groups.reduce((sum, group) => sum + group.total, 0);
   const drafts = groups.filter((group) => group.needsRate).length;
@@ -199,6 +221,15 @@ export default function RecordsPage() {
     setTab(next);
     setStatus('all');
   }
+
+  const invoiceOpen = (key: string) => flippedInvoices.has(key) !== filtersActive;
+  const toggleInvoice = (key: string) =>
+    setFlippedInvoices((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   function clearFilters() {
     setQuery('');
@@ -683,8 +714,30 @@ export default function RecordsPage() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {shownTickets.map((record) => (
+                  {ticketsByInvoice.map((group) => {
+                    const open = invoiceOpen(group.key);
+                    const headId = `${fieldId}-invoice-${group.key.replace(/[^a-z0-9]+/gi, '-')}`;
+                    return (
+                  <tbody key={group.key} id={headId} className="rec-invoice-body" data-open={open || undefined}>
+                    {/* The invoice, as a line that opens onto its tickets. */}
+                    <tr className="rec-invoice-row">
+                      <th scope="rowgroup" colSpan={9}>
+                        <button
+                          type="button"
+                          className="rec-invoice-toggle"
+                          aria-expanded={open}
+                          aria-controls={headId}
+                          onClick={() => toggleInvoice(group.key)}
+                        >
+                          <ChevronDown aria-hidden="true" />
+                          <strong>{invoiceHeading(tr, group)}</strong>
+                          <span>{dateRange(tr, group)}</span>
+                          <span>{plural(group.records.length, 'ticket')}</span>
+                          <span>{group.needsRate ? t('Needs a rate') : money(group.total)}</span>
+                        </button>
+                      </th>
+                    </tr>
+                    {open ? group.records.map((record) => (
                       <tr key={record.id}>
                         <th scope="row" className="pf-name">
                           <strong>
@@ -738,12 +791,33 @@ export default function RecordsPage() {
                         <td className="rec-wide-only">{recordStatus(record)}</td>
                         <td>{ticketActions(record)}</td>
                       </tr>
-                    ))}
+                    )) : null}
                   </tbody>
+                    );
+                  })}
                 </table>
               </div>
               <ul className="pf-cards">
-                {shownTickets.map((record) => (
+                {ticketsByInvoice.map((group) => {
+                  const open = invoiceOpen(group.key);
+                  return (
+                <li key={group.key} className="pf-card rec-invoice-card" data-open={open || undefined}>
+                  <button
+                    type="button"
+                    className="rec-invoice-toggle"
+                    aria-expanded={open}
+                    onClick={() => toggleInvoice(group.key)}
+                  >
+                    <ChevronDown aria-hidden="true" />
+                    <strong>{invoiceHeading(tr, group)}</strong>
+                    <span>
+                      {dateRange(tr, group)} · {plural(group.records.length, 'ticket')} ·{' '}
+                      {group.needsRate ? t('Needs a rate') : money(group.total)}
+                    </span>
+                  </button>
+                  {open ? (
+                  <ul className="pf-cards rec-invoice-tickets">
+                {group.records.map((record) => (
                   <li key={record.id} className="pf-card">
                     <div className="pf-card-head">
                       <div>
@@ -772,14 +846,15 @@ export default function RecordsPage() {
                       </div>
                     </dl>
                     <p className="pf-card-foot">
-                      {shownInvoiceNumber(record.invoice.invoice_number)
-                        ? t('Invoice {number}', { number: record.invoice.invoice_number })
-                        : invoiceName(tr, { records: [record], invoice: record.invoice })}{' '}
-                      ·{' '}
                       {invoiceDestination(record.ticket.project_address) || t('No destination')}
                     </p>
                   </li>
                 ))}
+                  </ul>
+                  ) : null}
+                </li>
+                  );
+                })}
               </ul>
             </>
           )}

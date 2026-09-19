@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789776672.7825153,
-    "seen": 1789776753.8070872,
-    "ast_hash": "109d703ce8f517a4d15056c06ab05e90",
+    "mtime": 1789777021.6334383,
+    "seen": 1789777109.6314151,
+    "ast_hash": "d0c26fd2cfa01ea15681bbd2b7458d0a",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1789776709.471783,
-    "seen": 1789776753.807143,
-    "ast_hash": "a4d4a465f620da7e47c827cb63da5d99",
+    "mtime": 1789777067.3753138,
+    "seen": 1789777109.631466,
+    "ast_hash": "4e5734bebbf5256ea9f04d405876c409",
     "semantic_hash": ""
   },
   "lib/i18n/pl.ts": {
