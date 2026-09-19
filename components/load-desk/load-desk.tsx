@@ -29,19 +29,8 @@ import {
   MapPin,
   Pencil,
   ReceiptText,
-  Trash2,
   X,
 } from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Lens } from '@/components/ui/lens';
@@ -104,6 +93,7 @@ import {
   batchInvoiceFor,
   findInvoiceClash,
   needsReview,
+  invoiceGroups,
   invoiceLines,
   invoiceMoveFor,
   batchesByRecency,
@@ -137,11 +127,9 @@ import { SAMPLE_TICKET } from '@/lib/load-desk/samples';
 import { PHONE_MASK, phoneDisplay, phoneEdit } from '@/lib/phone';
 import {
   clearLocalRecords,
-  deleteSavedRecord,
   getRecordsSnapshot,
   getServerRecordsSnapshot,
   loadStoredOriginal,
-  openStoredOriginal,
   saveRecord,
   subscribeRecords,
   updateSavedRecords,
@@ -744,9 +732,6 @@ export default function LoadDesk() {
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
   /** The photographed ticket, over the screen, while a field is being checked. */
   const [viewingTicket, setViewingTicket] = useState(false);
-  const [recordToDelete, setRecordToDelete] = useState<SavedRecord | null>(
-    null,
-  );
   const fileInput = useRef<HTMLInputElement>(null);
   /**
    * The camera is the session's, not this page's: "Scan ticket" on the home
@@ -1991,57 +1976,6 @@ export default function LoadDesk() {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  async function openOriginal(record: SavedRecord) {
-    try {
-      await openStoredOriginal(record);
-    } catch (error) {
-      toast.add({
-        title: t('Original unavailable'),
-        description: t(errorMessage(error)),
-        type: 'error',
-      });
-    }
-  }
-
-  async function confirmDelete() {
-    const record = recordToDelete;
-    if (!record) return;
-    const error = await deleteSavedRecord(records, record);
-    if (error) {
-      toast.add({ title: t('Delete failed'), description: t(error), type: 'error' });
-      return;
-    }
-    setRecordToDelete(null);
-    // A ticket reopened from saved records leaves the queue with its record;
-    // one uploaded in this tab can be saved again.
-    const reopened = (item: QueueItem) =>
-      item.from_saved && item.saved_record_id === record.id;
-    for (const item of queue) {
-      if (reopened(item) && item.preview_url) {
-        URL.revokeObjectURL(item.preview_url.split('#')[0]);
-      }
-    }
-    const remaining = queue
-      .filter((item) => !reopened(item))
-      .map((item) =>
-        item.saved_record_id === record.id
-          ? { ...item, saved_record_id: null, baseline: null }
-          : item,
-      );
-    setQueue(remaining);
-    setActiveIndex((index) => Math.min(index, remaining.length - 1));
-    toast.add({
-      title: t('Deleted ticket {number}', {
-        number: record.ticket.ticket_number ?? t('unnumbered'),
-      }),
-      description: t(
-        'Its line was removed from invoice {number}, and the stored original was deleted.',
-        { number: record.invoice.invoice_number },
-      ),
-      type: 'success',
-    });
-  }
-
   function clearUnreadableRecords() {
     if (
       window.confirm(
@@ -3148,90 +3082,81 @@ export default function LoadDesk() {
                       ? ` · ${t('{count} to check', { count: batch.waiting })}`
                       : ` · ${t('all checked')}`}
                   </span>
-                  {/* What "Review later" is later. The first ticket nobody has
-                      checked opens with the rest of its invoice behind it, the
-                      same as Edit on any one of them. */}
-                  {batch.waiting ? (
-                    <Button
-                      variant="secondary"
-                      size="xs"
-                      onClick={() => {
-                        const first = batch.items.find(needsReview);
-                        if (first) editSaved(first);
-                      }}
-                    >
-                      <Pencil />
-                      {t('Review batch')}
-                    </Button>
-                  ) : null}
                 </div>
+              {/* One line per invoice, not per ticket: the invoice is what is
+                  sent, and a batch is nearly always one of them. Edit opens
+                  every ticket on it in review, starting from the first one
+                  nobody has checked. The tickets themselves are listed on
+                  Invoices & Tickets. */}
               <ul className="ld-records">
-                {batch.items.map((record) => {
-                  const valid = validateTicket(record.ticket).length === 0;
-                  return (
-                    <li key={record.id} className="ld-record">
-                      <div className="ld-record-main">
-                        <strong>
-                          {record.ticket.ticket_number ?? t('Unnumbered')}
-                        </strong>
-                        <span className="ld-record-meta">
-                          {record.ticket.customer_name ?? t('No customer')} ·{' '}
-                          {pounds(record.ticket.net_lb)} ·{' '}
-                          <span>
-                            {shownInvoiceNumber(record.invoice.invoice_number)
-                              ? t('Invoice {number}', {
-                                  number: shownInvoiceNumber(record.invoice.invoice_number),
-                                })
-                              : isUndatedBatch(recordBatch(record))
+                {invoiceGroups(batch.items)
+                  .sort((a, b) => Math.min(...a.records.map((r) => r.id)) - Math.min(...b.records.map((r) => r.id)))
+                  .map((group) => {
+                    const first = group.records[0]!;
+                    const waiting = group.records.filter(needsReview).length;
+                    const incomplete = group.records.some(
+                      (record) => validateTicket(record.ticket).length > 0,
+                    );
+                    const number = shownInvoiceNumber(group.invoice.invoice_number);
+                    const customers = [
+                      ...new Set(
+                        group.records
+                          .map((record) => record.ticket.customer_name?.trim())
+                          .filter((name): name is string => Boolean(name)),
+                      ),
+                    ];
+                    return (
+                      <li key={group.key} className="ld-record">
+                        <div className="ld-record-main">
+                          <strong>
+                            {number
+                              ? t('Invoice {number}', { number })
+                              : isUndatedBatch(recordBatch(first))
                                 ? t('Date not found · no invoice yet')
                                 : t('Waiting for the rest of this upload')}
+                          </strong>
+                          <span className="ld-record-meta">
+                            {plural(group.records.length, 'ticket')} ·{' '}
+                            {customers.length ? customers.join(', ') : t('No customer')} ·{' '}
+                            {t('{tons} tons', { tons: group.tons.toFixed(2) })} ·{' '}
+                            <span>
+                              {group.needsRate
+                                ? t('Needs a rate')
+                                : money(group.total)}
+                            </span>
                           </span>
+                        </div>
+                        <span
+                          className="ld-chip"
+                          data-tone={waiting || incomplete ? 'warning' : 'good'}
+                        >
+                          {waiting
+                            ? t('{count} to check', { count: waiting })
+                            : incomplete
+                              ? t('Needs review')
+                              : t('All checked')}
                         </span>
-                      </div>
-                      <span
-                        className="ld-chip"
-                        data-tone={valid ? 'good' : 'warning'}
-                      >
-                        {valid ? t('Valid') : t('Needs review')}
-                      </span>
-                      <div className="ld-record-actions">
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => editSaved(record)}
-                        >
-                          <Pencil />
-                          {t('Edit')}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => setInvoiceView(savedInvoice(record))}
-                        >
-                          <ReceiptText />
-                          {t('Invoice')}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          onClick={() => void openOriginal(record)}
-                        >
-                          <FileSearch />
-                          {t('Original')}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="xs"
-                          className="ld-danger"
-                          onClick={() => setRecordToDelete(record)}
-                        >
-                          <Trash2 />
-                          {t('Delete')}
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
+                        <div className="ld-record-actions">
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => editSaved(group.records.find(needsReview) ?? first)}
+                          >
+                            <Pencil />
+                            {t('Edit')}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() => setInvoiceView(savedInvoice(first))}
+                          >
+                            <ReceiptText />
+                            {t('Invoice')}
+                          </Button>
+                        </div>
+                      </li>
+                    );
+                  })}
               </ul>
               </section>
               ))
@@ -3906,41 +3831,6 @@ export default function LoadDesk() {
 
       <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />
 
-      <AlertDialog
-        open={recordToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setRecordToDelete(null);
-        }}
-      >
-        <AlertDialogContent>
-          {recordToDelete ? (
-            <>
-              <AlertDialogHeader>
-                <AlertDialogTitle>
-                  {t('Delete ticket {number}?', {
-                    number: recordToDelete.ticket.ticket_number ?? t('unnumbered'),
-                  })}
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t(
-                    'This permanently removes the saved record and its stored original for everyone in your workspace, and takes its line off invoice {number}. The same file can then be uploaded again; the invoice number can be reused once every ticket on it is deleted.',
-                    { number: recordToDelete.invoice.invoice_number },
-                  )}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="destructive"
-                  onClick={() => void confirmDelete()}
-                >
-                  {t('Delete ticket')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </>
-          ) : null}
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

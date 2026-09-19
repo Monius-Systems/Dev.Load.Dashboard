@@ -496,6 +496,12 @@ export const PL_PAGES: Record<string, string> = {
   // A ticket with no date read off it waits on no invoice until the date is
   // entered.
   'Date not found': 'Nie znaleziono daty',
+  // The batch list on Load Desk: one line per invoice.
+  '{count} to check': '{count} do sprawdzenia',
+  'all checked': 'wszystkie sprawdzone',
+  'All checked': 'Wszystkie sprawdzone',
+  '{tons} tons': '{tons} t',
+  'Needs a rate': 'Wymaga stawki',
   'Date not found · no invoice yet': 'Nie znaleziono daty · jeszcze bez faktury',
   'Waiting for a number': 'Czeka na numer',
   'Date not found on {tickets}': 'Nie znaleziono daty na {tickets}',
