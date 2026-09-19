@@ -1884,7 +1884,19 @@ export default function LoadDesk() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      reviewPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const panel = reviewPanel.current;
+      if (!panel) return;
+      // Left as much room above it as the bar across the top of the page takes,
+      // so the panel opens where a page's content sits rather than hard against
+      // the top edge of the window with the bar scrolled out of sight. The bar
+      // is measured rather than assumed, so a bar that changes height keeps
+      // the same gap.
+      const bar = document.querySelector('.topbar');
+      const room = bar ? bar.getBoundingClientRect().height : 0;
+      window.scrollTo({
+        top: window.scrollY + panel.getBoundingClientRect().top - room,
+        behavior: 'smooth',
+      });
     });
 
   /** Back to the scan panel, which is where the next upload starts. */

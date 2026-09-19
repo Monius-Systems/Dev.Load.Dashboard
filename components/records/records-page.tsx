@@ -693,27 +693,6 @@ export default function RecordsPage() {
             <>
               <div className="pf-table-wrap">
                 <table className="pf-table rec-table-tickets">
-                  <thead>
-                    <tr>
-                      <th scope="col">{t('Ticket #')}</th>
-                      <th scope="col">{t('Ticket date')}</th>
-                      <th scope="col">{t('Customer · product')}</th>
-                      <th scope="col">{t('Origin → destination')}</th>
-                      <th scope="col" className="pf-num">
-                        {t('Net tons')}
-                      </th>
-                      <th scope="col">{t('Invoice · truck')}</th>
-                      <th scope="col" className="pf-num">
-                        {t('Line total')}
-                      </th>
-                      <th scope="col" className="rec-wide-only">
-                        {t('Status')}
-                      </th>
-                      <th scope="col">
-                        <span className="sr-only">{t('Actions')}</span>
-                      </th>
-                    </tr>
-                  </thead>
                   {ticketsByInvoice.map((group) => {
                     const open = invoiceOpen(group.key);
                     const headId = `${fieldId}-invoice-${group.key.replace(/[^a-z0-9]+/gi, '-')}`;
@@ -743,6 +722,30 @@ export default function RecordsPage() {
                         </button>
                       </th>
                     </tr>
+                    {/* The columns, named where the rows are: under the open
+                        invoice, not over the whole list, which read as a
+                        heading for columns the closed invoices do not have. */}
+                    {open ? (
+                      <tr className="rec-invoice-columns">
+                        <th scope="col">{t('Ticket #')}</th>
+                        <th scope="col">{t('Ticket date')}</th>
+                        <th scope="col">{t('Customer · product')}</th>
+                        <th scope="col">{t('Origin → destination')}</th>
+                        <th scope="col" className="pf-num">
+                          {t('Net tons')}
+                        </th>
+                        <th scope="col">{t('Invoice · truck')}</th>
+                        <th scope="col" className="pf-num">
+                          {t('Line total')}
+                        </th>
+                        <th scope="col" className="rec-wide-only">
+                          {t('Status')}
+                        </th>
+                        <th scope="col">
+                          <span className="sr-only">{t('Actions')}</span>
+                        </th>
+                      </tr>
+                    ) : null}
                     {open ? group.records.map((record) => (
                       <tr key={record.id}>
                         <th scope="row" className="pf-name">

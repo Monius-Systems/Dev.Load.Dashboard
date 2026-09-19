@@ -260,13 +260,30 @@
 .rec-invoice-toggle[aria-expanded='true'] svg {
   transform: rotate(180deg);
 }
+/* The column headings sit under the invoice they belong to, set the way the
+   table's own heading row is. The list has no heading row of its own: closed,
+   it is a list of invoices, and those columns are the tickets'. */
+.rec-invoice-columns th {
+  padding-block: 8px;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.rec-invoice-body[data-open] > .rec-invoice-columns > th:first-child {
+  padding-left: calc(var(--ui-space-6) + 28px);
+}
 /* A ticket row under an open invoice is set in from its invoice, and the
    tickets sit on a barely-there tint so the invoice line reads as their head. */
 .rec-invoice-body[data-open] > tr:not(.rec-invoice-row) > th:first-child {
   padding-left: calc(var(--ui-space-6) + 28px);
 }
-.rec-invoice-body[data-open] > tr:not(.rec-invoice-row) {
+.rec-invoice-body[data-open] > tr:not(.rec-invoice-row):not(.rec-invoice-columns) {
   background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+.pf-table tbody tr.rec-invoice-columns:hover {
+  background: none;
 }
 /* On a phone the invoice is a card, and its tickets are cards inside it. */
 .rec-invoice-card {
