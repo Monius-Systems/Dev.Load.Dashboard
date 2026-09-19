@@ -125,28 +125,42 @@ function invoiceStanding(t: Translator['t'], group: Pick<InvoiceGroup, 'records'
 }
 
 /**
- * The client an invoice is billed to, as a pill in that client's own colour.
+ * A company — the client an invoice is billed to, or a customer whose loads
+ * are on it — as a pill in that company's own colour.
  *
- * The colour is worked out from the name, so the same client is the same
- * colour on every invoice and on every visit, and two clients are two colours
- * — eight to go round, so a workspace with more than eight will see a repeat.
- * Nothing is stored for it.
+ * The colour is worked out from the name, so the same company is the same
+ * colour on every invoice and on every visit, and two companies are two
+ * colours — eight to go round, so a workspace with more than eight will see a
+ * repeat. Nothing is stored for it.
  */
-const CLIENT_TONES = 8;
-function clientTone(name: string): number {
+const COMPANY_TONES = 8;
+function companyTone(name: string): number {
   let hash = 0;
   for (const char of name.trim().toUpperCase()) {
     hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
   }
-  return hash % CLIENT_TONES;
+  return hash % COMPANY_TONES;
 }
 
-function ClientPill({ name }: { name: string }) {
+function CompanyPill({ name }: { name: string }) {
   const clean = name.trim();
   if (!clean) return <span className="pf-muted">—</span>;
   return (
-    <span className="rec-client ui-literal" data-tone={clientTone(clean)}>
+    <span className="rec-company ui-literal" data-tone={companyTone(clean)}>
       {clean}
+    </span>
+  );
+}
+
+/** Several companies, each its own pill, wrapping as they need to. */
+function CompanyPills({ names }: { names: string[] }) {
+  const unique = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
+  if (!unique.length) return <span className="pf-muted">—</span>;
+  return (
+    <span className="rec-companies">
+      {unique.map((name) => (
+        <CompanyPill key={name} name={name} />
+      ))}
     </span>
   );
 }
@@ -666,10 +680,10 @@ export default function RecordsPage() {
                           {date(group.invoice.invoice_date)}
                         </td>
                         <td className="rec-wrap rec-wide-only">
-                          <ClientPill name={group.invoice.bill_to.name} />
+                          <CompanyPill name={group.invoice.bill_to.name} />
                         </td>
                         <td className="rec-wrap">
-                          {[...new Set(group.records.map(customerName))].join(', ')}
+                          <CompanyPills names={group.records.map(customerName)} />
                         </td>
                         <td>{group.invoice.truck_number || '—'}</td>
                         <td className="pf-num">{group.records.length}</td>
@@ -695,7 +709,7 @@ export default function RecordsPage() {
                         </strong>
                         <small>
                           {date(group.invoice.invoice_date)} ·{' '}
-                          <ClientPill name={group.invoice.bill_to.name} />
+                          <CompanyPill name={group.invoice.bill_to.name} />
                         </small>
                       </div>
                       {invoiceActions(group)}
@@ -715,7 +729,7 @@ export default function RecordsPage() {
                       </div>
                     </dl>
                     <p className="pf-card-foot">
-                      {[...new Set(group.records.map(customerName))].join(', ')}
+                      <CompanyPills names={group.records.map(customerName)} />
                       {group.invoice.truck_number
                         ? ` · ${t('Truck #{number}', { number: group.invoice.truck_number })}`
                         : ''}{' '}

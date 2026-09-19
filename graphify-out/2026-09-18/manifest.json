@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789782628.8712654,
-    "seen": 1789782770.4773,
-    "ast_hash": "9c2863c66c7871a9f9faa88f65fabca1",
+    "mtime": 1789783096.1136882,
+    "seen": 1789783294.56356,
+    "ast_hash": "f6e465831a8d888c65d2a23948bc7df5",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -252,9 +252,9 @@
     "semantic_hash": "2b673cba53dfeade31cabe6e1006b0c9"
   },
   "components/records/records-page.tsx": {
-    "mtime": 1789781721.2074199,
-    "seen": 1789781770.791639,
-    "ast_hash": "5e7a7f60beb6cad2f822e330f5a6bcfd",
+    "mtime": 1789783142.8737385,
+    "seen": 1789783294.5635672,
+    "ast_hash": "f066f48ac7fdaa1df328bdc64bb49c40",
     "semantic_hash": ""
   },
   "components/scanner/document-scanner.tsx": {

@@ -252,9 +252,9 @@
     "semantic_hash": "2b673cba53dfeade31cabe6e1006b0c9"
   },
   "components/records/records-page.tsx": {
-    "mtime": 1789783142.8737385,
-    "seen": 1789783294.5635672,
-    "ast_hash": "f066f48ac7fdaa1df328bdc64bb49c40",
+    "mtime": 1789790185.9349048,
+    "seen": 1789790248.8258681,
+    "ast_hash": "54cd0ef5907d0d757b365d980453a58e",
     "semantic_hash": ""
   },
   "components/scanner/document-scanner.tsx": {
