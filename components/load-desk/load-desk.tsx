@@ -1886,13 +1886,13 @@ export default function LoadDesk() {
       }
       const panel = reviewPanel.current;
       if (!panel) return;
-      // Left as much room above it as the bar across the top of the page takes,
-      // so the panel opens where a page's content sits rather than hard against
-      // the top edge of the window with the bar scrolled out of sight. The bar
-      // is measured rather than assumed, so a bar that changes height keeps
-      // the same gap.
-      const bar = document.querySelector('.topbar');
-      const room = bar ? bar.getBoundingClientRect().height : 0;
+      // Level with the top of the menu down the left, which is fixed to the
+      // window and floats a little in from its edge: the panel and the menu
+      // then share a top line, rather than the panel sitting hard against the
+      // top of the window. Measured off the menu rather than assumed, so it
+      // stays level if the menu's inset ever changes.
+      const menu = document.querySelector('.workspace-sidebar [data-slot="sidebar-inner"]');
+      const room = menu ? menu.getBoundingClientRect().top : 0;
       window.scrollTo({
         top: window.scrollY + panel.getBoundingClientRect().top - room,
         behavior: 'smooth',

@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789780369.651066,
-    "seen": 1789780432.060862,
-    "ast_hash": "880beb24c6a0fb3577a1d315bc9c603b",
+    "mtime": 1789781160.7741344,
+    "seen": 1789781203.475911,
+    "ast_hash": "a8c555b723b30613739048c3da462d8a",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
