@@ -276,12 +276,14 @@ export type PlaceRow = {
   label: string | null;
   formatted: string | null;
   resolved_by: 'provider' | 'user' | null;
+  /** The provider's match type, e.g. "Point Address" or "Street". */
+  provider_type: string | null;
   reason: string | null;
   suggestion: string | null;
 };
 
 const PLACE_COLUMNS =
-  'id, place_key, query_text, status, lat, lon, label, formatted, resolved_by, reason, suggestion';
+  'id, place_key, query_text, status, lat, lon, label, formatted, resolved_by, provider_type, reason, suggestion';
 
 const readPlace = (row: Record<string, unknown>): PlaceRow => ({
   id: Number(row.id),
@@ -293,6 +295,7 @@ const readPlace = (row: Record<string, unknown>): PlaceRow => ({
   label: typeof row.label === 'string' ? row.label : null,
   formatted: typeof row.formatted === 'string' ? row.formatted : null,
   resolved_by: row.resolved_by === 'user' ? 'user' : row.resolved_by === 'provider' ? 'provider' : null,
+  provider_type: typeof row.provider_type === 'string' ? row.provider_type : null,
   reason: typeof row.reason === 'string' ? row.reason : null,
   suggestion: typeof row.suggestion === 'string' ? row.suggestion : null,
 });

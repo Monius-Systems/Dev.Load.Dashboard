@@ -172,6 +172,18 @@ export async function recalculateDay(
     if (unresolved.length) {
       return await state('needs_review', [...unresolved, ...plan.reasons], plan.warnings, null);
     }
+    // A stop a person placed at street level (the map has no house number
+    // there) is noted on the day, once per place, without holding it up.
+    const warnings = [...plan.warnings];
+    const noted = new Set<string>();
+    for (const stop of plan.stops) {
+      const place = places.get(stop.place_key);
+      if (!place || noted.has(stop.place_key)) continue;
+      if (place.provider_type === 'Street' || place.provider_type === 'Cross Street') {
+        noted.add(stop.place_key);
+        warnings.push(`${stop.query} is placed at street level; the map has no house number there.`);
+      }
+    }
 
     stage = 'routing';
     const profile = toRoutingProfile(ifta);
@@ -217,7 +229,7 @@ export async function recalculateDay(
                 },
                 ...plan.reasons,
               ],
-              plan.warnings,
+              warnings,
               null,
             );
           }
@@ -225,7 +237,7 @@ export async function recalculateDay(
             error instanceof ProviderError
               ? error.message
               : 'The routing service did not answer. Try again.';
-          return await state('failed', plan.reasons, plan.warnings, message);
+          return await state('failed', plan.reasons, warnings, message);
         }
         route = await putRoute(client, workspace, {
           route_key: key,
@@ -262,7 +274,7 @@ export async function recalculateDay(
       truck_number: truck.truck_number,
       status: plan.reasons.length ? 'needs_review' : 'current',
       review_reasons: plan.reasons,
-      warnings: plan.warnings,
+      warnings,
       input_hash: hash,
       ticket_ids: plan.ticket_ids,
       order_basis: plan.order_basis,

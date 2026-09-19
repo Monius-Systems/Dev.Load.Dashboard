@@ -30,14 +30,16 @@ export function POST(request: Request) {
         parsed.value.place_key,
       );
       if (!existing) return Response.json({ error: 'That place is not on any ticket.' }, { status: 404 });
-      const answer = await provider.geocode(parsed.value.address);
+      // A person typed this, so a match on the street alone is accepted when
+      // the provider has no house number there (see GeocodeOptions).
+      const answer = await provider.geocode(parsed.value.address, undefined, { acceptStreet: true });
       if (!answer.ok) {
         return Response.json(
           {
             error:
               answer.reason === 'no_match'
                 ? 'That address was not found. Check the street, city and state.'
-                : 'That address is not precise enough. Add the street number, city and state.',
+                : 'That address is not precise enough. Add the street, city and state, or use a nearby address or business name.',
             suggestion: answer.suggestion,
           },
           { status: 422 },

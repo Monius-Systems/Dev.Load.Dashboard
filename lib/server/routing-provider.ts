@@ -28,6 +28,8 @@ export type GeocodeResult =
       formatted: string;
       type: string;
       confidence: number | null;
+      /** The match names the street, not the building (see GeocodeOptions). */
+      approximate: boolean;
     }
   | {
       ok: false;
@@ -36,11 +38,20 @@ export type GeocodeResult =
       suggestion: string | null;
     };
 
+export type GeocodeOptions = {
+  /**
+   * Accept a match that names the street but not the building. Only for an
+   * address a person has typed and confirmed: automatic lookups take a
+   * building-level match or nothing, so no stop is ever guessed at.
+   */
+  acceptStreet?: boolean;
+};
+
 export interface RoutingProvider {
   readonly name: 'tomtom';
   /** Changes when the provider's API version changes, so stored days say what routed them. */
   readonly version: string;
-  geocode(query: string, bias?: LatLon): Promise<GeocodeResult>;
+  geocode(query: string, bias?: LatLon, options?: GeocodeOptions): Promise<GeocodeResult>;
   calculateTruckRoute(
     origin: LatLon,
     destination: LatLon,

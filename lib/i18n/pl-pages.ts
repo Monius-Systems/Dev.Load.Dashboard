@@ -796,8 +796,8 @@ export const PL_PAGES: Record<string, string> = {
     'Trasy prowadzą drogami dostępnymi dla skonfigurowanego profilu ciężarówki, na ile pozwalają dane TomTom. To szacunki, nie porada prawna, i nie są jeszcze dzielone na stany.',
   'That address was not found. Check the street, city and state.':
     'Nie znaleziono tego adresu. Sprawdź ulicę, miasto i stan.',
-  'That address is not precise enough. Add the street number, city and state.':
-    'Ten adres nie jest wystarczająco dokładny. Dodaj numer, miasto i stan.',
+  'That address is not precise enough. Add the street, city and state, or use a nearby address or business name.':
+    'Ten adres nie jest wystarczająco dokładny. Dodaj ulicę, miasto i stan albo podaj pobliski adres lub nazwę firmy.',
   'That place is not on any ticket.': 'Tego miejsca nie ma na żadnym kwicie.',
   'Your session has ended. Sign in again to see mileage.':
     'Sesja wygasła. Zaloguj się ponownie, aby zobaczyć przebieg.',

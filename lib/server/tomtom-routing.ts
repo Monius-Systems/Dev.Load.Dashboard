@@ -9,19 +9,23 @@ import {
 // provider's URLs, parameters and answer shapes.
 //
 // Routing uses Maps Routing API v1 (calculateRoute) because it takes truck
-// dimensions; Orbis routes cars only. Geocoding uses Search API v2. Every
-// answer is read field by field and never stored whole, and no error message
-// ever carries a URL, since the URL carries the key.
+// dimensions; Orbis routes cars only. Geocoding uses Search API v2 fuzzy
+// search (search/2/search): current TomTom plans allow that endpoint but not
+// the dedicated geocode one, and it answers in the same shape. Every answer
+// is read field by field and never stored whole, and no error message ever
+// carries a URL, since the URL carries the key.
 
 const ROUTING = 'https://api.tomtom.com/routing/1/calculateRoute';
-const GEOCODE = 'https://api.tomtom.com/search/2/geocode';
-const VERSION = 'routing/1;search/2';
+const GEOCODE = 'https://api.tomtom.com/search/2/search';
+const VERSION = 'routing/1;search/2-fuzzy';
 const TIMEOUT_MS = 10_000;
 const RETRY_AFTER_MS = 500;
 const METERS_PER_MILE = 1609.344;
 
 /** Geocode results that name one building or one stretch of a street. */
 const PRECISE_TYPES = new Set(['Point Address', 'Address Range']);
+/** Results that name the street only; taken when a person confirms them. */
+const STREET_TYPES = new Set(['Street', 'Cross Street']);
 const MIN_CONFIDENCE = 0.8;
 /** A second candidate this close, in another town, means the query is ambiguous. */
 const TIE_MARGIN = 0.05;
@@ -66,7 +70,11 @@ async function fetchJson(url: URL, what: string): Promise<unknown> {
         `The ${what} service answered ${response.status}.`,
     );
     if (response.status === 401 || response.status === 403) {
-      throw new ProviderError('The routing key is not accepted. Check the deployment settings.', 'config', response.status);
+      throw new ProviderError(
+        `The routing key is not accepted for ${what} (${message}). Check the key's products in the TomTom portal.`,
+        'config',
+        response.status,
+      );
     }
     if (response.status === 400 || response.status === 404) {
       throw new ProviderError(message, 'permanent', response.status);
@@ -129,11 +137,13 @@ export function tomtomProvider(apiKey: string): RoutingProvider {
       };
     },
 
-    async geocode(query, bias): Promise<GeocodeResult> {
+    async geocode(query, bias, options = {}): Promise<GeocodeResult> {
       const url = new URL(`${GEOCODE}/${encodeURIComponent(query.slice(0, 200))}.json`);
       url.searchParams.set('key', apiKey);
       url.searchParams.set('countrySet', 'US');
       url.searchParams.set('limit', '3');
+      // Addresses and places only; no categories or brands.
+      url.searchParams.set('idxSet', 'PAD,Addr,Str,Xstr,Geo,POI');
       if (bias) {
         url.searchParams.set('lat', String(bias.lat));
         url.searchParams.set('lon', String(bias.lon));
@@ -162,7 +172,9 @@ export function tomtomProvider(apiKey: string): RoutingProvider {
       const [top, second] = results.map(read);
       if (!top) return { ok: false, reason: 'no_match', suggestion: null };
       const suggestion = top.formatted || null;
-      if (!PRECISE_TYPES.has(top.type) || top.lat === null || top.lon === null) {
+      const precise = PRECISE_TYPES.has(top.type);
+      const street = options.acceptStreet === true && STREET_TYPES.has(top.type);
+      if (!(precise || street) || top.lat === null || top.lon === null) {
         return { ok: false, reason: 'low_confidence', suggestion };
       }
       if (top.confidence !== null && top.confidence < MIN_CONFIDENCE) {
@@ -185,6 +197,7 @@ export function tomtomProvider(apiKey: string): RoutingProvider {
         formatted: top.formatted || query,
         type: top.type,
         confidence: top.confidence,
+        approximate: !precise,
       };
     },
   };
