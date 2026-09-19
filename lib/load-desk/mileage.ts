@@ -19,7 +19,7 @@ export const CALC_VERSION = 1;
 export const MAX_DAYS_PER_REQUEST = 25;
 /** Tickets one truck-day may carry before it is sent for review instead. */
 export const MAX_TICKETS_PER_DAY = 60;
-/** The widest span GET /api/ifta answers. */
+/** The widest span GET /api/mileage answers. */
 export const MAX_RANGE_DAYS = 400;
 /** A day still marked calculating after this long is taken over. */
 export const CLAIM_TIMEOUT_MS = 3 * 60_000;
@@ -182,7 +182,7 @@ export function deliveryQuery(ticket: Ticket): string | null {
 
 // ------------------------------------------------------------------ ordering
 
-export type OrderBasis = 'time' | 'ticket_number' | 'saved_order';
+export type OrderBasis = 'time' | 'ticket_number' | 'saved_order' | 'confirmed';
 
 /** "07:45" from a printed time; null for anything else. */
 const clockOf = (value: string | null) => {
@@ -262,6 +262,52 @@ export function dedupeRecords(records: SavedRecord[]): {
   return { records: kept, warnings };
 }
 
+// ------------------------------------------------------------ stop order
+
+/**
+ * The order a person confirmed for a day, when the tickets could not say it
+ * themselves. It is tied to the day it was given for by `basis`.
+ */
+export type StopOrder = { ticket_ids: number[]; basis: string; confirmed_at: string };
+
+/**
+ * What a confirmed order is tied to: which tickets are on the day and where
+ * each one picks up and delivers. Times, rates and everything else may be
+ * edited without asking the person to confirm the order again; adding or
+ * removing a ticket, or moving one of its addresses, does ask.
+ */
+export function stopOrderBasis(records: SavedRecord[]): string {
+  const rows = [...records]
+    .sort((a, b) => a.id - b.id)
+    .map(({ id, ticket }) => [
+      id,
+      placeKey(pickupQuery(ticket) ?? ''),
+      placeKey(deliveryQuery(ticket) ?? ''),
+    ]);
+  return fnv1a(JSON.stringify({ v: CALC_VERSION, rows }));
+}
+
+/**
+ * Whether a stored order still describes this day: the same basis, and every
+ * ticket of the day named once. Anything else is a confirmation from before
+ * the day changed, and is ignored.
+ */
+export function stopOrderApplies(
+  stopOrder: StopOrder | null | undefined,
+  records: SavedRecord[],
+): boolean {
+  if (!stopOrder || !Array.isArray(stopOrder.ticket_ids)) return false;
+  if (stopOrder.basis !== stopOrderBasis(records)) return false;
+  const wanted = new Set(dedupeRecords(records).records.map((record) => record.id));
+  if (stopOrder.ticket_ids.length !== wanted.size) return false;
+  const seen = new Set<number>();
+  for (const id of stopOrder.ticket_ids) {
+    if (!wanted.has(id) || seen.has(id)) return false;
+    seen.add(id);
+  }
+  return true;
+}
+
 // ---------------------------------------------------------------------- plan
 
 export type ReviewCode =
@@ -277,6 +323,8 @@ export type ReviewCode =
 export type ReviewReason = {
   code: ReviewCode;
   ticket_id?: number;
+  /** The tickets the reason is about, in the order the plan used them. */
+  ticket_ids?: number[];
   place_key?: string;
   query?: string;
   suggestion?: string | null;
@@ -331,14 +379,29 @@ const legKind = (from: PlanStop, to: PlanStop): LegKind => {
 /**
  * Yard → P1 → D1 → … → Pn → Dn → Yard. Two stops in a row at the same place
  * are a leg of nothing, kept so the day reads whole. Missing addresses stop
- * the plan; an uncertain order or a missing MPG only flag it.
+ * the plan; an uncertain order or a missing MPG only flag it. An order a
+ * person confirmed for this day is taken as given, and nothing is flagged.
  */
-export function buildPlan(records: SavedRecord[], ifta: TruckIfta): DayPlan {
+export function buildPlan(
+  records: SavedRecord[],
+  ifta: TruckIfta,
+  stopOrder?: StopOrder | null,
+): DayPlan {
   const blocking: ReviewReason[] = [];
   const reasons: ReviewReason[] = [];
   const deduped = dedupeRecords(records);
   const warnings = [...deduped.warnings];
-  const ordered = orderRecords(deduped.records);
+  const ordered = stopOrderApplies(stopOrder, records)
+    ? {
+        records: [...deduped.records].sort(
+          (a, b) =>
+            (stopOrder as StopOrder).ticket_ids.indexOf(a.id) -
+            (stopOrder as StopOrder).ticket_ids.indexOf(b.id),
+        ),
+        basis: 'confirmed' as OrderBasis,
+        ambiguous: false,
+      }
+    : orderRecords(deduped.records);
   const yardQuery = normalizeAddress(oneLine(ifta.yard_address));
   if (!yardQuery) blocking.push({ code: 'yard_missing' });
   if (ordered.records.length > MAX_TICKETS_PER_DAY) {
@@ -362,6 +425,8 @@ export function buildPlan(records: SavedRecord[], ifta: TruckIfta): DayPlan {
   if (ordered.ambiguous) {
     reasons.push({
       code: 'order_ambiguous',
+      // The order the plan went with, so the page can offer it to be confirmed.
+      ticket_ids: ordered.records.map((record) => record.id),
       detail:
         ordered.basis === 'ticket_number'
           ? 'Ordered by ticket number. Enter Time out on each ticket to fix the order.'
@@ -591,7 +656,10 @@ export type MileageLeg = {
   cached: boolean;
 };
 
-/** A stored truck-day, as GET /api/ifta returns it. */
+/** A stored route's line on the map, as the provider encoded it. */
+export type RouteGeometry = { polyline: string; precision: 5 | 7 };
+
+/** A stored truck-day, as GET /api/mileage returns it. */
 export type MileageDay = {
   id: number;
   truck_id: number;
@@ -608,6 +676,8 @@ export type MileageDay = {
   ticket_ids: number[];
   ticket_count: number;
   order_basis: OrderBasis | null;
+  /** The order a person confirmed for this day, if they have. */
+  stop_order: StopOrder | null;
   legs: MileageLeg[];
   total_miles: number | null;
   total_seconds: number | null;
@@ -631,7 +701,19 @@ const str = (value: unknown): string | null => (typeof value === 'string' ? valu
 const isStatus = (value: unknown): value is MileageStatus =>
   value === 'calculating' || value === 'current' || value === 'needs_review' || value === 'failed';
 const isBasis = (value: unknown): value is OrderBasis =>
-  value === 'time' || value === 'ticket_number' || value === 'saved_order';
+  value === 'time' ||
+  value === 'ticket_number' ||
+  value === 'saved_order' ||
+  value === 'confirmed';
+
+/** A stored stop order, or null for anything that is not one. */
+function readStopOrder(value: unknown): StopOrder | null {
+  if (!isObject(value)) return null;
+  const ids = value.ticket_ids;
+  if (!Array.isArray(ids) || !ids.every((id) => typeof id === 'number')) return null;
+  if (typeof value.basis !== 'string' || typeof value.confirmed_at !== 'string') return null;
+  return { ticket_ids: [...ids], basis: value.basis, confirmed_at: value.confirmed_at };
+}
 
 /**
  * A database row as the app's day. Numeric columns come over the wire as
@@ -666,6 +748,7 @@ export function readMileageDay(row: Record<string, unknown>): MileageDay {
     ticket_ids: ticketIds.map(num).filter((id): id is number => id !== null),
     ticket_count: num(row.ticket_count) ?? 0,
     order_basis: isBasis(row.order_basis) ? row.order_basis : null,
+    stop_order: readStopOrder(row.stop_order),
     legs: legs.filter(
       (leg): leg is MileageLeg => !!leg && typeof leg === 'object' && typeof (leg as MileageLeg).seq === 'number',
     ),
@@ -834,6 +917,28 @@ export function parseRecalculateBody(body: unknown): Parsed<RecalculateRequest> 
     days.push({ truck_id: item.truck_id, date: item.date });
   }
   return { value: { days, force: body.force === true } };
+}
+
+/** { truck_id, date, ticket_ids } — the order a person put the day's stops in. */
+export function parseStopOrderBody(
+  body: unknown,
+): Parsed<{ truck_id: number; date: string; ticket_ids: number[] }> {
+  if (!isObject(body)) return { error: 'The request is not valid.' };
+  const { truck_id: truckId, date, ticket_ids: ticketIds } = body;
+  if (typeof truckId !== 'number' || !Number.isSafeInteger(truckId) || truckId <= 0 || !isIsoDate(date)) {
+    return { error: 'The day needs a truck and a date.' };
+  }
+  if (!Array.isArray(ticketIds) || !ticketIds.length || ticketIds.length > MAX_TICKETS_PER_DAY) {
+    return { error: `Send between 1 and ${MAX_TICKETS_PER_DAY} stops.` };
+  }
+  const seen = new Set<number>();
+  for (const id of ticketIds) {
+    if (typeof id !== 'number' || !Number.isSafeInteger(id) || id <= 0 || seen.has(id)) {
+      return { error: 'The stops are not valid.' };
+    }
+    seen.add(id);
+  }
+  return { value: { truck_id: truckId, date, ticket_ids: [...ticketIds] as number[] } };
 }
 
 export const PLACE_KEY = /^[A-Z0-9 ]{1,200}$/;

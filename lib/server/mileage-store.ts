@@ -8,6 +8,8 @@ import {
   type MileageStatus,
   type OrderBasis,
   type ReviewReason,
+  type RouteGeometry,
+  type StopOrder,
   type TruckRoutingProfile,
 } from '@/lib/load-desk/mileage';
 import type { TruckIfta, TruckProfile } from '@/lib/load-desk/profiles';
@@ -28,7 +30,7 @@ const unavailable = (what: string) =>
   new StoreError(`Could not ${what}. Please try again.`, 503);
 
 const DAY_COLUMNS =
-  'id, truck_id, truck_number, service_date, status, review_reasons, warnings, error, calc_started_at, last_attempt_at, input_hash, result_input_hash, ticket_ids, ticket_count, order_basis, legs, total_miles, total_seconds, mpg, est_gallons, profile_snapshot, profile_hash, calc_version, calculated_at';
+  'id, truck_id, truck_number, service_date, status, review_reasons, warnings, error, calc_started_at, last_attempt_at, input_hash, result_input_hash, ticket_ids, ticket_count, order_basis, stop_order, legs, total_miles, total_seconds, mpg, est_gallons, profile_snapshot, profile_hash, calc_version, calculated_at';
 
 // ---------------------------------------------------------------- lookups
 
@@ -249,6 +251,27 @@ export async function writeDayState(
   return readMileageDay(data as Record<string, unknown>);
 }
 
+/**
+ * The order a person confirmed for the day, or null to forget it. Only that
+ * column is written: a confirmation is neither state nor result, and nothing
+ * else about the day changes by making one.
+ */
+export async function setStopOrder(
+  client: SupabaseClient,
+  workspace: string,
+  truckId: number,
+  date: string,
+  order: StopOrder | null,
+): Promise<void> {
+  const { error } = await client
+    .from('load_desk_daily_mileage')
+    .update({ stop_order: order, updated_at: new Date().toISOString() })
+    .eq('workspace_id', workspace)
+    .eq('truck_id', truckId)
+    .eq('service_date', date);
+  if (error) throw unavailable('save the stop order');
+}
+
 export async function deleteDay(
   client: SupabaseClient,
   workspace: string,
@@ -437,6 +460,32 @@ export async function getRoutes(
       },
     ]),
   );
+}
+
+/**
+ * The stored lines of the given routes, by route id as text, for drawing a
+ * day on a map. Routes without a usable geometry are simply left out.
+ */
+export async function getRouteGeometries(
+  client: SupabaseClient,
+  workspace: string,
+  ids: number[],
+): Promise<Record<string, RouteGeometry>> {
+  if (!ids.length) return {};
+  const { data, error } = await client
+    .from('load_desk_routes')
+    .select('id, geometry, geometry_precision')
+    .eq('workspace_id', workspace)
+    .in('id', ids);
+  if (error) throw unavailable('load the route lines');
+  const lines: Record<string, RouteGeometry> = {};
+  for (const row of data) {
+    const precision = Number(row.geometry_precision);
+    if (typeof row.geometry !== 'string' || !row.geometry) continue;
+    if (precision !== 5 && precision !== 7) continue;
+    lines[String(row.id)] = { polyline: row.geometry, precision };
+  }
+  return lines;
 }
 
 export async function putRoute(

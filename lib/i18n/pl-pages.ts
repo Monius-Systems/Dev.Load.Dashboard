@@ -703,10 +703,33 @@ export const PL_PAGES: Record<string, string> = {
   'Could not write to browser storage. Nothing was changed.':
     'Nie udało się zapisać w pamięci przeglądarki. Nic nie zmieniono.',
 
-  // IFTA & Mileage
-  'IFTA & MILEAGE': 'IFTA I PRZEBIEG',
-  'IFTA & Mileage': 'IFTA i przebieg',
-  IFTA: 'IFTA',
+  // Mileage
+  MILEAGE: 'PRZEBIEG',
+  Mileage: 'Przebieg',
+  'IFTA reporting': 'Raportowanie IFTA',
+  'Selected day': 'Wybrany dzień',
+  'Truck #{number} · {date}': 'Ciężarówka nr {number} · {date}',
+  'Drive time': 'Czas jazdy',
+  'Pick a day to see its route, its legs and anything it needs.':
+    'Wybierz dzień, aby zobaczyć jego trasę, odcinki i to, czego wymaga.',
+  'Open truck {number} on {date}': 'Otwórz ciężarówkę {number} z dnia {date}',
+  'Route needs review': 'Trasa wymaga sprawdzenia',
+  Yard: 'Baza',
+  'No pickup address': 'Brak adresu załadunku',
+  'No delivery address': 'Brak adresu dostawy',
+  'Stop order': 'Kolejność przystanków',
+  'The stops in the order the estimate used. Move a load until it matches the day, then confirm it.':
+    'Przystanki w kolejności użytej do obliczeń. Przesuwaj ładunek, aż będzie zgodna z dniem, a potem ją potwierdź.',
+  'Confirm order': 'Potwierdź kolejność',
+  'Change order': 'Zmień kolejność',
+  'Order confirmed': 'Kolejność potwierdzona',
+  'Could not confirm the order': 'Nie udało się potwierdzić kolejności',
+  'The day has been worked out in the order you set.':
+    'Dzień został obliczony w ustawionej przez Ciebie kolejności.',
+  'Move ticket {number} earlier': 'Przesuń kwit {number} wcześniej',
+  'Move ticket {number} later': 'Przesuń kwit {number} później',
+  'The order of the loads is uncertain. Put them in the order they were hauled, or enter Time out on each ticket.':
+    'Kolejność ładunków jest niepewna. Ustaw ładunki w kolejności przewozu albo wpisz godzinę wyjazdu na każdym kwicie.',
   'Estimated road miles and fuel per truck and day, from saved tickets.':
     'Szacowane mile i paliwo na ciężarówkę i dzień, z zapisanych kwitów.',
   'Trucks with a yard': 'Ciężarówki z bazą',
@@ -740,7 +763,6 @@ export const PL_PAGES: Record<string, string> = {
   'Avg MPG': 'Śr. MPG',
   'Est. fuel used': 'Szac. zużycie paliwa',
   Details: 'Szczegóły',
-  'Details for truck {number} on {date}': 'Szczegóły ciężarówki {number} z dnia {date}',
   Miles: 'Mile',
   MPG: 'MPG',
   Fuel: 'Paliwo',
@@ -764,8 +786,6 @@ export const PL_PAGES: Record<string, string> = {
   'Could not place “{query}”.': 'Nie udało się zlokalizować „{query}”.',
   'Ticket {number} has no pickup address.': 'Kwit {number} nie ma adresu załadunku.',
   'Ticket {number} has no delivery address.': 'Kwit {number} nie ma adresu dostawy.',
-  'The order of the loads is uncertain. Enter Time out on each ticket to fix it.':
-    'Kolejność ładunków jest niepewna. Wpisz godzinę wyjazdu na każdym kwicie, aby ją ustalić.',
   'No truck route found: {detail}': 'Nie znaleziono trasy dla ciężarówki: {detail}',
   'Too many tickets on one day to route ({count}).':
     'Za dużo kwitów jednego dnia, aby wyznaczyć trasę ({count}).',
@@ -801,26 +821,78 @@ export const PL_PAGES: Record<string, string> = {
   'That place is not on any ticket.': 'Tego miejsca nie ma na żadnym kwicie.',
   'Your session has ended. Sign in again to see mileage.':
     'Sesja wygasła. Zaloguj się ponownie, aby zobaczyć przebieg.',
-  'Calculation failed. Try again.': 'Obliczenie nie powiodło się. Spróbuj ponownie.',
-  'The routing key is not accepted. Check the deployment settings.':
-    'Klucz do wyznaczania tras nie został przyjęty. Sprawdź ustawienia wdrożenia.',
   'The routing service did not answer. Try again.':
     'Usługa wyznaczania tras nie odpowiedziała. Spróbuj ponownie.',
 
-  'IFTA periods': 'Okresy IFTA',
-  'Quarterly reports': 'Raporty kwartalne',
-  'Every quarter since the first saved ticket. Open a quarter to calculate and see its days.':
-    'Każdy kwartał od pierwszego zapisanego kwitu. Otwórz kwartał, aby przeliczyć i zobaczyć jego dni.',
+  // Mileage: the route map
+  'Route map': 'Mapa trasy',
+  'Open in Google Maps': 'Otwórz w Mapach Google',
+  'The day’s route, {stops} stops and {legs} legs':
+    'Trasa dnia: przystanki {stops}, odcinki {legs}',
+  'No route to draw yet.': 'Nie ma jeszcze trasy do narysowania.',
+  'Some stops could not be placed, so the route is only part of the day.':
+    'Nie udało się zlokalizować części przystanków, więc trasa pokazuje tylko część dnia.',
+  'One leg has no road to follow and is drawn straight.':
+    'Jeden odcinek nie ma drogi do pokazania i jest narysowany w linii prostej.',
+  '{count} legs have no road to follow and are drawn straight.':
+    'Odcinki bez drogi do pokazania: {count}. Są narysowane w linii prostej.',
+  'Routed roads, {miles} mi over {count} legs.':
+    'Drogi z trasy: {miles} mi na {count} odcinkach.',
+  'Not on the map': 'Poza mapą',
+  Loaded: 'Z ładunkiem',
+  Empty: 'Bez ładunku',
+  'Straight line': 'Linia prosta',
+
+  // IFTA
+  'FUEL-TAX REPORTING': 'RAPORTOWANIE PODATKU PALIWOWEGO',
+  IFTA: 'IFTA',
+  'Quarterly mileage for fuel-tax reporting, from the routes worked out in Mileage.':
+    'Kwartalny przebieg do rozliczenia podatku paliwowego, z tras obliczonych w Przebiegu.',
+  'Open Mileage': 'Otwórz Przebieg',
+  Quarter: 'Kwartał',
   gal: 'gal',
   Days: 'Dni',
-  '{done} of {all}': '{done} z {all}',
-  'Not fully calculated': 'Nie w pełni przeliczone',
   Viewing: 'Wyświetlany',
-  'View days': 'Pokaż dni',
-  'No days calculated yet. Open the quarter with View days to calculate them.':
-    'Nie przeliczono jeszcze żadnego dnia. Otwórz kwartał przyciskiem Pokaż dni, aby je przeliczyć.',
+  '{trucks} without an average MPG: {numbers}. Fuel cannot be estimated for them.':
+    'Bez średniego MPG: {trucks} ({numbers}). Nie można dla nich oszacować paliwa.',
+  'Estimated miles': 'Szacowane mile',
+  '{days} counted': 'Policzone dni: {days}',
+  'Estimated fuel used': 'Szacowane zużycie paliwa',
+  'At each truck’s average MPG': 'Przy średnim MPG każdej ciężarówki',
+  'Tickets on the days counted': 'Kwity z policzonych dni',
+  'Trucks with miles this quarter': 'Ciężarówki z milami w tym kwartale',
   'No tickets with a truck and a date in this quarter.':
     'Brak kwitów z ciężarówką i datą w tym kwartale.',
+  'Fuel-tax filing': 'Rozliczenie podatku paliwowego',
+  'Miles by jurisdiction': 'Mile według jurysdykcji',
+  'Jurisdiction mileage is not calculated yet.':
+    'Przebieg według jurysdykcji nie jest jeszcze liczony.',
+  'Route geometry is stored for every leg, so the miles can be split by state in a later release; until then the quarter is one line.':
+    'Geometria trasy jest zapisywana dla każdego odcinka, więc mile będzie można podzielić na stany w kolejnej wersji; do tego czasu kwartał jest jedną pozycją.',
+  Jurisdiction: 'Jurysdykcja',
+  'All jurisdictions': 'Wszystkie jurysdykcje',
+  'Before filing': 'Przed złożeniem',
+  'Reporting readiness': 'Gotowość do raportowania',
+  'Every truck-day the tickets say this quarter has.':
+    'Każdy dzień ciężarówki, jaki wynika z kwitów w tym kwartale.',
+  'Days complete': 'Dni gotowe',
+  'Days needing review': 'Dni do sprawdzenia',
+  'Not calculated yet': 'Jeszcze nieobliczone',
+  'Trucks missing a yard': 'Ciężarówki bez bazy',
+  'Trucks missing MPG': 'Ciężarówki bez MPG',
+  'The order of the loads is uncertain.': 'Kolejność ładunków jest niepewna.',
+  'Not calculated yet. Open Mileage to calculate.':
+    'Jeszcze nieobliczone. Otwórz Przebieg, aby obliczyć.',
+  'Could not calculate this day.': 'Nie udało się obliczyć tego dnia.',
+  'Review in Mileage': 'Sprawdź w Przebiegu',
+  'and {n} more': 'i jeszcze {n}',
+  'Every day in this quarter is calculated.':
+    'Każdy dzień w tym kwartale jest obliczony.',
+  'By truck': 'Według ciężarówki',
+  'No calculated days in this quarter.': 'Brak obliczonych dni w tym kwartale.',
+  'To review': 'Do sprawdzenia',
+  'Routes follow roads open to each truck’s configured profile as far as TomTom data allows. They are estimates, not legal guidance. Jurisdiction split and filing exports are not available yet.':
+    'Trasy prowadzą drogami dostępnymi dla skonfigurowanego profilu ciężarówki, na ile pozwalają dane TomTom. To szacunki, nie porada prawna. Podział na jurysdykcje i eksport do rozliczeń nie są jeszcze dostępne.',
 
   // Truck Fleet: Mileage & routing
   'Mileage & routing': 'Przebieg i trasy',

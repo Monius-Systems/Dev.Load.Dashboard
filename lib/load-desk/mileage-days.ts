@@ -5,17 +5,21 @@ import {
   needsRecalculation,
   retryable,
   type MileageDay,
+  type RouteGeometry,
   type TruckDay,
 } from './mileage.ts';
 
-// Stored truck-days for the IFTA page, in the shape of storage.ts: one
-// snapshot, subscribers, and the calls that change it. Signed-in members read
-// /api/ifta and ask /api/ifta/recalculate for the days whose tickets have
-// changed; the unprotected local preview has no server to ask and says so.
+// Stored truck-days for the Mileage and IFTA pages, in the shape of
+// storage.ts: one snapshot, subscribers, and the calls that change it.
+// Signed-in members read /api/mileage and ask /api/mileage/recalculate for
+// the days whose tickets have changed; the unprotected local preview has no
+// server to ask and says so.
 
 export type DaysSnapshot = {
   /** Stored days by `${truck_id}|${date}`. */
   days: Record<string, MileageDay>;
+  /** Route lines by route id, for the days loaded one at a time. */
+  geometry: Record<string, RouteGeometry>;
   /** The range loaded from the server, or null before the first load. */
   range: { from: string; to: string } | null;
   /** Whether the deployment has a routing key. */
@@ -29,6 +33,7 @@ export type DaysSnapshot = {
 
 const SERVER_SNAPSHOT: DaysSnapshot = {
   days: {},
+  geometry: {},
   range: null,
   configured: true,
   error: null,
@@ -83,7 +88,7 @@ export async function loadDays(range: { from: string; to: string }): Promise<voi
     return;
   }
   const result = await apiJson<{ days: MileageDay[]; configured: boolean }>(
-    `/api/ifta?from=${range.from}&to=${range.to}`,
+    `/api/mileage?from=${range.from}&to=${range.to}`,
   );
   if (!result.ok) {
     publish({ ...snapshot, range, error: result.error, ready: true, mode });
@@ -143,7 +148,7 @@ export async function recalculate(
   try {
     for (let at = 0; at < days.length; at += MAX_DAYS_PER_REQUEST) {
       const chunk = days.slice(at, at + MAX_DAYS_PER_REQUEST);
-      const result = await apiJson<RecalculateAnswer>('/api/ifta/recalculate', {
+      const result = await apiJson<RecalculateAnswer>('/api/mileage/recalculate', {
         method: 'POST',
         body: JSON.stringify({ days: chunk, force }),
       });
@@ -238,12 +243,58 @@ export function resetAttempts(keys: string[]) {
 }
 
 /**
+ * One day in full: the stored row and the lines of its routes, for the map.
+ * Nothing to ask in the local preview, which has no server.
+ */
+export async function loadDayDetail(truckId: number, date: string): Promise<string | null> {
+  const mode = snapshot.mode ?? (await dataMode());
+  if (mode !== 'remote') return null;
+  const result = await apiJson<{ day: MileageDay | null; geometry: Record<string, RouteGeometry> }>(
+    `/api/mileage/day?truck_id=${truckId}&date=${date}`,
+  );
+  if (!result.ok) return result.error;
+  const days = { ...snapshot.days };
+  if (result.data.day) days[keyOf(result.data.day)] = result.data.day;
+  else delete days[dayKey(truckId, date)];
+  publish({ ...snapshot, days, geometry: { ...snapshot.geometry, ...result.data.geometry } });
+  return null;
+}
+
+/**
+ * Confirms the order the day's loads were hauled in and has the day worked
+ * out again with it. Returns null on success, or the error message.
+ */
+export async function confirmStopOrder(
+  truckId: number,
+  date: string,
+  ticketIds: number[],
+): Promise<string | null> {
+  if (snapshot.mode !== 'remote') return 'Your session has ended. Sign in again to save.';
+  const key = dayKey(truckId, date);
+  resetAttempts([key]);
+  publish({ ...snapshot, pending: new Set([...snapshot.pending, key]) });
+  try {
+    const result = await apiJson<{ day: MileageDay }>('/api/mileage/order', {
+      method: 'POST',
+      body: JSON.stringify({ truck_id: truckId, date, ticket_ids: ticketIds }),
+    });
+    if (!result.ok) return result.error;
+    publish({ ...snapshot, days: merge([result.data.day]) });
+    return null;
+  } finally {
+    const pending = new Set(snapshot.pending);
+    pending.delete(key);
+    publish({ ...snapshot, pending });
+  }
+}
+
+/**
  * Sets where an address on tickets is. Returns null on success, or the error
  * message when the typed address did not place precisely either.
  */
 export async function fixPlace(placeKey: string, address: string): Promise<string | null> {
   if (snapshot.mode !== 'remote') return 'Your session has ended. Sign in again to save.';
-  const result = await apiJson<{ place: unknown }>('/api/ifta/places', {
+  const result = await apiJson<{ place: unknown }>('/api/mileage/places', {
     method: 'POST',
     body: JSON.stringify({ place_key: placeKey, address }),
   });

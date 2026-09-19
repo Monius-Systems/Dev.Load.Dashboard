@@ -1422,6 +1422,17 @@ svg.lucide {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* Six tabs on a phone: a shade smaller so "Customers" still reads whole. */
+  .tabbar:has(> :nth-child(6)) .tabbar-item {
+    padding-inline: 0;
+    font-size: 10px;
+  }
+  @media (max-width: 340px) {
+    .tabbar:has(> :nth-child(6)) .tabbar-item {
+      font-size: 9.5px;
+      letter-spacing: -0.02em;
+    }
+  }
   /* The bar floats over the page, so the page ends above it. */
   .page-content {
     padding-bottom: var(--phone-bottombar);

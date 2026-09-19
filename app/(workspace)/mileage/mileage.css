@@ -1,0 +1,325 @@
+/* =================================================================== Mileage */
+/* Built from the shared pieces: Home's stat tiles, the profiles table and
+   cards, Load Desk's chips and notices. Only what is new to this page lives
+   here. The day a person picks opens below the list, with its map, its legs
+   and whatever it needs them for. */
+
+/* Four tiles in Home's shape. Not Home's .hm-stats, whose phone rules hide
+   the row and restyle the heading around it. */
+.mileage-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ui-space-4);
+  margin-bottom: var(--ui-space-3);
+}
+.mileage-tile .hm-stat-value small {
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-text-3);
+}
+.mileage-tile-review {
+  color: var(--ui-warning);
+}
+.mileage-footnote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: var(--ui-space-5);
+}
+.mileage-footnote svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+.mileage-footer {
+  margin-top: var(--ui-space-2);
+  line-height: var(--type-leading-normal);
+}
+.mileage-ifta-link {
+  display: inline-block;
+  margin-top: var(--ui-space-2);
+  font-size: var(--type-sm);
+  color: var(--ui-accent);
+}
+.mileage-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
+}
+.mileage-controls .ld-select {
+  width: auto;
+  min-width: 160px;
+}
+
+/* Status chips. The shared chip has warning (default) and good; this page
+   also has a failure and a quiet neutral for "updating" and "settings changed". */
+.mileage-page .ld-chip[data-tone='error'] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.mileage-page .ld-chip[data-tone='neutral'] {
+  background: var(--ui-fill);
+  color: var(--ui-text-2);
+}
+.mileage-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* The days list. A row is a day to open, so the whole row answers a click and
+   the truck cell carries the button that keyboards and readers reach. */
+.mileage-table {
+  min-width: 1000px;
+  cursor: pointer;
+}
+.mileage-table tbody tr[data-selected] {
+  background: color-mix(in srgb, var(--ui-accent-soft) 55%, transparent);
+}
+.mileage-table tbody tr[data-selected] > *:first-child {
+  box-shadow: inset 2px 0 0 var(--ui-accent);
+}
+/* The one cell that wraps: .pf-table keeps every cell on one line, which a
+   route long enough to name six places would run straight over the miles. */
+.mileage-route {
+  max-width: 320px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--ui-text-2);
+}
+.mileage-pick,
+.mileage-card-pick,
+.mileage-leg-pick {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mileage-pick:focus-visible,
+.mileage-card-pick:focus-visible,
+.mileage-leg-pick:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: var(--ui-radius-sm);
+}
+.mileage-card-pick {
+  display: grid;
+  gap: var(--ui-space-3);
+  width: 100%;
+}
+.mileage-card[data-selected] {
+  margin: 0 calc(-1 * var(--ui-space-3));
+  padding-inline: var(--ui-space-3);
+  border-radius: var(--ui-radius-sm);
+  background: color-mix(in srgb, var(--ui-accent-soft) 55%, transparent);
+}
+.mileage-card .mileage-chips {
+  margin-left: 2px;
+}
+
+/* The open day. */
+.mileage-day {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+.mileage-facts {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.mileage-facts dd small {
+  font-size: var(--type-xs);
+  font-weight: var(--type-regular);
+  color: var(--ui-text-3);
+}
+.mileage-route-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--type-xs);
+  color: var(--ui-text-2);
+  overflow-wrap: anywhere;
+}
+.mileage-route-line svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  color: var(--ui-text-3);
+}
+
+/* The legs of the open day, and the one being pointed at on the map. */
+.mileage-legs {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--type-sm);
+}
+.mileage-legs th,
+.mileage-legs td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ui-separator);
+  text-align: left;
+  vertical-align: top;
+}
+.mileage-legs thead th {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.mileage-legs tbody tr:last-child > * {
+  border-bottom: 0;
+}
+.mileage-legs tbody tr[data-selected] {
+  background: color-mix(in srgb, var(--ui-accent-soft) 55%, transparent);
+}
+.mileage-legs td small {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.mileage-leg-pick {
+  font-variant-numeric: tabular-nums;
+}
+.mileage-cached {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--ui-success);
+  vertical-align: middle;
+}
+
+/* What the day needs a person for. */
+.mileage-review {
+  display: grid;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border-radius: var(--ui-radius-md);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+  font-size: var(--type-sm);
+}
+.mileage-review h3 {
+  font-size: var(--type-md);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.mileage-reasons,
+.mileage-warnings {
+  display: grid;
+  gap: 6px;
+}
+.mileage-reasons li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  padding: 8px 12px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.mileage-reasons li > span {
+  flex: 1 1 240px;
+  overflow-wrap: anywhere;
+}
+.mileage-warnings li {
+  color: var(--ui-text-3);
+  font-size: var(--type-xs);
+}
+
+/* The order of the loads, as the estimate used it: one row per ticket, its
+   pickup and delivery moving together. */
+.mileage-order {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+.mileage-order-list {
+  display: grid;
+  gap: 2px;
+}
+.mileage-order-stop,
+.mileage-order-load {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-3);
+  padding: 6px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  overflow-wrap: anywhere;
+}
+.mileage-order-stop {
+  color: var(--ui-text-2);
+}
+.mileage-order-load {
+  justify-content: space-between;
+}
+.mileage-order-stops {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.mileage-order-stops p {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ui-space-3);
+}
+.mileage-order-stops small {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.mileage-order-num {
+  flex-shrink: 0;
+  min-width: 18px;
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-3);
+}
+.mileage-order-move {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+.mileage-order-actions,
+.mileage-day-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+
+@media (max-width: 1000px) {
+  .mileage-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mileage-facts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  /* Time is the column a phone can do without; the miles cannot go. */
+  .mileage-legs th:nth-child(4),
+  .mileage-legs td:nth-child(4) {
+    display: none;
+  }
+  .mileage-reasons li > span {
+    flex-basis: 100%;
+  }
+  .mileage-review {
+    padding: var(--ui-space-2);
+  }
+}
+@media (max-width: 460px) {
+  .mileage-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mileage-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mileage-order-load {
+    align-items: flex-start;
+  }
+}

@@ -14,6 +14,7 @@ import {
   parseDateRange,
   parsePlaceFixBody,
   parseRecalculateBody,
+  parseStopOrderBody,
   periodRange,
   pickupQuery,
   placeKey,
@@ -27,12 +28,15 @@ import {
   routeLabels,
   routingProfileHash,
   settingsChanged,
+  stopOrderApplies,
+  stopOrderBasis,
   summarizeByTruck,
   summarizeDays,
   toRoutingProfile,
   truckDays,
   truckIfta,
   type MileageDay,
+  type StopOrder,
 } from '../lib/load-desk/mileage.ts';
 import { parseTruck } from '../lib/load-desk/record-input.ts';
 import type { TruckProfile } from '../lib/load-desk/profiles.ts';
@@ -417,6 +421,99 @@ void test('request parsers reject out-of-range and oversized input', () => {
     const parsed = parseTruck({ ...truck(), id: undefined, ifta: { ...DEFAULT_TRUCK_IFTA, ...bad } });
     assert.ok('error' in parsed, `accepted ${JSON.stringify(bad)}`);
   }
+});
+
+void test('a confirmed order is tied to the day\u2019s tickets and their addresses', () => {
+  const base = demoDay();
+  const before = stopOrderBasis(base);
+  const retimed = base.map((r, i) => (i === 0 ? { ...r, ticket: { ...r.ticket, time_out: '18:00' } } : r));
+  assert.equal(stopOrderBasis(retimed), before, 'a time does not move a stop');
+  const rated = base.map((r, i) => (i === 1 ? { ...r, ticket: { ...r.ticket, rate: 150, net_tons: 22 } } : r));
+  assert.equal(stopOrderBasis(rated), before, 'nor does what the load was worth');
+  const moved = base.map((r, i) => (i === 0 ? { ...r, ticket: { ...r.ticket, project_address: 'Elsewhere Rd, Joliet, IL' } } : r));
+  assert.notEqual(stopOrderBasis(moved), before);
+  const punctuated = base.map((r, i) => (i === 0 ? { ...r, ticket: { ...r.ticket, project_address: `${SITE}.` } } : r));
+  assert.equal(stopOrderBasis(punctuated), before, 'punctuation is not a move');
+  assert.notEqual(stopOrderBasis([...base, record({ ticket_number: '1003' })]), before, 'another ticket is another day');
+  assert.notEqual(stopOrderBasis([base[0]]), before);
+});
+
+void test('a confirmed order is used while it fits the day, and ignored once it does not', () => {
+  const ambiguous = [
+    record({ ticket_number: 'A-2', project_address: 'Elsewhere Rd, Joliet, IL' }),
+    record({ ticket_number: 'A-1' }),
+  ];
+  const flagged = buildPlan(ambiguous, truckIfta(truck()));
+  assert.equal(flagged.order_basis, 'saved_order');
+  const reason = flagged.reasons.find((r) => r.code === 'order_ambiguous');
+  assert.deepEqual(reason?.ticket_ids, flagged.ticket_ids, 'the page is told which order was used');
+
+  const confirmed: StopOrder = {
+    ticket_ids: [ambiguous[1].id, ambiguous[0].id],
+    basis: stopOrderBasis(ambiguous),
+    confirmed_at: '2026-09-19T12:00:00.000Z',
+  };
+  assert.equal(stopOrderApplies(confirmed, ambiguous), true);
+  const plan = buildPlan(ambiguous, truckIfta(truck()), confirmed);
+  assert.equal(plan.order_basis, 'confirmed');
+  assert.equal(plan.ambiguous, false);
+  assert.deepEqual(plan.ticket_ids, confirmed.ticket_ids);
+  assert.ok(!plan.reasons.some((r) => r.code === 'order_ambiguous'));
+
+  const moved = ambiguous.map((r, i) => (i === 0 ? { ...r, ticket: { ...r.ticket, project_address: 'Another Rd, Joliet, IL' } } : r));
+  assert.equal(stopOrderApplies(confirmed, moved), false);
+  const stale = buildPlan(moved, truckIfta(truck()), confirmed);
+  assert.equal(stale.order_basis, 'saved_order');
+  assert.ok(stale.reasons.some((r) => r.code === 'order_ambiguous'));
+  assert.equal(stopOrderApplies({ ...confirmed, ticket_ids: [ambiguous[0].id] }, ambiguous), false, 'every stop or none');
+  assert.equal(
+    stopOrderApplies({ ...confirmed, ticket_ids: [ambiguous[0].id, ambiguous[0].id] }, ambiguous),
+    false,
+    'a ticket cannot be hauled twice',
+  );
+  assert.equal(stopOrderApplies(null, ambiguous), false);
+
+  // A ticket saved twice is one stop, so the order names it once.
+  const twice = [
+    record({ ticket_number: '1001', time_out: '07:00' }),
+    record({ ticket_number: '1001', time_out: '07:00' }),
+  ];
+  const single = buildPlan(twice, truckIfta(truck()));
+  assert.equal(
+    stopOrderApplies({ ticket_ids: single.ticket_ids, basis: stopOrderBasis(twice), confirmed_at: '' }, twice),
+    true,
+  );
+});
+
+void test('the stop order parser takes a day and its stops, each once', () => {
+  const ok = parseStopOrderBody({ truck_id: 7, date: '2026-09-18', ticket_ids: [3, 1, 2] });
+  assert.ok('value' in ok);
+  assert.deepEqual(ok.value.ticket_ids, [3, 1, 2], 'the order given is the order kept');
+  assert.ok('error' in parseStopOrderBody({ truck_id: 0, date: '2026-09-18', ticket_ids: [1] }));
+  assert.ok('error' in parseStopOrderBody({ truck_id: '7', date: '2026-09-18', ticket_ids: [1] }));
+  assert.ok('error' in parseStopOrderBody({ truck_id: 7, date: '18/09/2026', ticket_ids: [1] }));
+  assert.ok('error' in parseStopOrderBody({ truck_id: 7, date: '2026-09-18', ticket_ids: [] }));
+  assert.ok('error' in parseStopOrderBody({ truck_id: 7, date: '2026-09-18', ticket_ids: [1, 1] }));
+  assert.ok('error' in parseStopOrderBody({ truck_id: 7, date: '2026-09-18', ticket_ids: [1, -2] }));
+  assert.ok('error' in parseStopOrderBody({ truck_id: 7, date: '2026-09-18', ticket_ids: ['1'] }));
+  assert.ok('error' in parseStopOrderBody({ truck_id: 7, date: '2026-09-18', ticket_ids: Array.from({ length: 61 }, (_, i) => i + 1) }));
+  assert.ok('error' in parseStopOrderBody([{ truck_id: 7 }]));
+});
+
+void test('a stored day reads back the order a person confirmed, or nothing', () => {
+  const stored = readMileageDay({
+    id: 1,
+    status: 'current',
+    order_basis: 'confirmed',
+    stop_order: { ticket_ids: [2, 1], basis: 'abc', confirmed_at: '2026-09-19T12:00:00.000Z' },
+  });
+  assert.equal(stored.order_basis, 'confirmed');
+  assert.deepEqual(stored.stop_order, { ticket_ids: [2, 1], basis: 'abc', confirmed_at: '2026-09-19T12:00:00.000Z' });
+  assert.equal(readMileageDay({ id: 1 }).stop_order, null);
+  assert.equal(readMileageDay({ stop_order: 'confirmed' }).stop_order, null);
+  assert.equal(readMileageDay({ stop_order: { ticket_ids: ['1'], basis: 'abc', confirmed_at: 'x' } }).stop_order, null);
+  assert.equal(readMileageDay({ stop_order: { ticket_ids: [1], basis: 'abc' } }).stop_order, null);
+  assert.equal(readMileageDay({ order_basis: 'guessed' }).order_basis, null);
 });
 
 // ---------------------------------------------------------- source guards

@@ -381,6 +381,28 @@
   font-weight: var(--type-regular);
   color: var(--ui-text-3);
 }
+/* A checkbox that sits beside a field rather than spanning the row. */
+.pf-check.pf-check-inline {
+  grid-column: auto;
+  align-self: end;
+  padding-bottom: 6px;
+}
+/* Six dimension fields, three to a row. */
+.pf-dimensions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+}
+@media (max-width: 460px) {
+  .pf-check.pf-check-inline {
+    align-self: start;
+    padding-bottom: 0;
+  }
+  .pf-dimensions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 
 /* Phone-width cards replace the wide table. */
 .pf-cards {

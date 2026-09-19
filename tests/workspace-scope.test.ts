@@ -86,9 +86,33 @@ void test('one client’s yard and the routing key stay out of the app', () => {
   assert.ok(!read('vite.config.ts').includes('TOMTOM'), 'the key is a host secret, not a build var');
   for (const path of [
     'components/ifta/ifta-page.tsx',
+    'components/mileage/mileage-page.tsx',
+    'components/mileage/route-map.tsx',
     'components/profiles/fleet-page.tsx',
     'lib/load-desk/mileage.ts',
   ]) {
     assert.ok(!/mokena|191st/i.test(read(path)), `${path} names the demo yard`);
+  }
+});
+
+void test('IFTA reports the routes; it never changes them', () => {
+  // Mileage is where a day is recalculated, a place is fixed and a stop order
+  // is confirmed. IFTA reads the same rows a quarter at a time and sends people
+  // to Mileage for anything that has to be put right, so a correction is made
+  // in one place and a filing quarter cannot be edited out from under itself.
+  const source = read('components/ifta/ifta-page.tsx');
+  for (const call of [
+    'recalculate(',
+    'settleDays(',
+    'fixPlace(',
+    'confirmStopOrder(',
+    '/api/mileage/recalculate',
+    '/api/mileage/order',
+    '/api/mileage/places',
+  ]) {
+    assert.ok(
+      !source.includes(call),
+      `the IFTA page writes routes with ${call}; corrections belong in Mileage`,
+    );
   }
 });

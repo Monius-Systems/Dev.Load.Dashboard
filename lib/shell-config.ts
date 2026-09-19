@@ -1,5 +1,6 @@
 import {
   Database,
+  FileText,
   LayoutGrid,
   Route,
   ScanLine,
@@ -15,6 +16,12 @@ export type ShellNavItem = {
   icon: LucideIcon;
   /** What the bottom bar on a phone calls it, where a tab is a thumb wide. */
   shortLabel?: string;
+  /**
+   * `false` keeps the page out of the bar along the bottom and out of the row a
+   * swipe moves through, for a page a phone reaches from another page rather
+   * than from a tab of its own. The sidebar still lists it.
+   */
+  phone?: false;
 };
 
 // Branding comes from client.config.json; each client deployment has its own.
@@ -37,6 +44,7 @@ export const shellConfig: {
     { href: '/records', label: 'Invoices & Tickets', icon: Database, shortLabel: 'Invoices' },
     { href: '/customers', label: 'Customers & Clients', icon: Users, shortLabel: 'Customers' },
     { href: '/fleet', label: 'Truck Fleet', icon: Truck, shortLabel: 'Fleet' },
-    { href: '/ifta', label: 'IFTA & Mileage', icon: Route, shortLabel: 'IFTA' },
+    { href: '/mileage', label: 'Mileage', icon: Route, shortLabel: 'Mileage' },
+    { href: '/ifta', label: 'IFTA', icon: FileText, phone: false },
   ],
 };

@@ -126,6 +126,13 @@ function Diagnostics() {
 }
 
 /**
+ * The sections a phone has a tab for: the bar's own order, without the pages
+ * marked `phone: false` — those are reached from the page they belong to, and
+ * a tab each would crowd the bar past what a thumb can hit.
+ */
+const PHONE_NAV = shellConfig.navigation.filter(({ phone }) => phone !== false);
+
+/**
  * The way around on a phone. The sidebar is a drawer there, which puts every
  * page two taps away behind an icon most people never press; a bar along the
  * bottom keeps the same five places one thumb-tap away and shows which one you
@@ -137,7 +144,7 @@ function TabBar() {
   const { t } = useT();
   return (
     <nav className="tabbar" aria-label={t('Sections')}>
-      {shellConfig.navigation.map(({ href, label, icon: Icon, shortLabel }) => {
+      {PHONE_NAV.map(({ href, label, icon: Icon, shortLabel }) => {
         const current = pathname === href;
         return (
           <button
@@ -158,7 +165,7 @@ function TabBar() {
 }
 
 /** The sections a swipe moves between: the bar along the bottom, in its order. */
-const SWIPE_PAGES = shellConfig.navigation.map(({ href }) => href);
+const SWIPE_PAGES = PHONE_NAV.map(({ href }) => href);
 
 /** The dashboard frame: floating sidebar, top bar and page area. */
 export default function AppShell({

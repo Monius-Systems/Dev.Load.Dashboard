@@ -1,7 +1,50 @@
-/* ============================================================ IFTA & Mileage */
-/* Built from the shared pieces: Home's stat tiles, the profiles table and
-   cards, Load Desk's chips and notices. Only what is new to this page lives
-   here. */
+/* ===================================================================== IFTA */
+/* The reporting layer over the days Mileage works out: a quarter, its totals,
+   what is not ready to file, and the split by truck. Built from the shared
+   pieces — Home's stat tiles, the profiles table and cards, Load Desk's
+   panels, chips and notices. Only what is new to this page lives here. */
+
+/* The link out to Mileage, under the page description. On a phone the heading
+   is the accent band, so it is drawn in the band's own text colour. */
+.ifta-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-accent);
+}
+.ifta-open svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* The quarter being reported on, above the totals it produced. */
+.ifta-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3) var(--ui-space-4);
+  margin-bottom: var(--ui-space-4);
+}
+.ifta-quarter-field {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.ifta-quarter-field > span {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.ifta-quarter-field .ld-select {
+  width: auto;
+  min-width: 160px;
+}
 
 /* Four tiles in Home's shape. Not Home's .hm-stats, whose phone rules hide
    the row and restyle the heading around it. */
@@ -15,9 +58,6 @@
   font-size: var(--type-sm);
   font-weight: var(--type-medium);
   color: var(--ui-text-3);
-}
-.ifta-tile-review {
-  color: var(--ui-warning);
 }
 .ifta-footnote {
   display: flex;
@@ -34,316 +74,98 @@
   margin-top: var(--ui-space-2);
   line-height: var(--type-leading-normal);
 }
-.ifta-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--ui-space-3);
-}
-.ifta-controls .ld-select {
-  width: auto;
-  min-width: 160px;
-}
 
-/* Status chips. The shared chip has warning (default) and good; this page
-   also has a failure and a quiet neutral for "updating" and "settings changed". */
+/* The shared chip has warning (default) and good; this page also has a
+   failure tone for the days that could not be calculated. */
 .ifta-page .ld-chip[data-tone='error'] {
   background: var(--ui-danger-soft);
   color: var(--ui-danger);
 }
-.ifta-page .ld-chip[data-tone='neutral'] {
-  background: var(--ui-fill);
-  color: var(--ui-text-2);
-}
-.ifta-chips {
-  display: inline-flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
 
-/* The days table. */
+/* A small table that does not force the wide table's scroll: the jurisdiction
+   shell, one line today and a line per state when the split lands. */
 .ifta-table {
-  min-width: 980px;
-}
-.ifta-route {
-  max-width: 320px;
-  overflow-wrap: anywhere;
-  color: var(--ui-text-2);
-}
-.ifta-toggle {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: var(--ui-radius-sm);
-  background: none;
-  color: var(--ui-text-3);
-  cursor: pointer;
-  transition:
-    background var(--ui-duration) var(--ui-ease),
-    color var(--ui-duration) var(--ui-ease);
-}
-.ifta-toggle:hover {
-  background: var(--ui-fill);
-  color: var(--ui-text);
-}
-.ifta-toggle:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-.ifta-toggle svg {
-  width: 16px;
-  height: 16px;
-  transition: transform var(--ui-duration) var(--ui-ease);
-}
-.ifta-toggle[aria-expanded='true'] svg {
-  transform: rotate(180deg);
-}
-.ifta-table tbody[data-open] > tr:first-child > * {
-  border-bottom: 0;
-}
-.pf-table tbody tr.ifta-detail-row:hover {
-  background: none;
-}
-.ifta-detail-row > td {
-  padding-top: 0;
-  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
-}
-
-/* Under an open day: the notes, then the legs, then what can be done. */
-.ifta-detail {
-  display: grid;
-  gap: var(--ui-space-3);
-  padding: var(--ui-space-2) 0 var(--ui-space-2);
-  font-size: var(--type-sm);
-}
-.ifta-reasons,
-.ifta-warnings {
-  display: grid;
-  gap: 6px;
-}
-.ifta-reasons li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ui-space-2) var(--ui-space-3);
-  padding: 8px 12px;
-  border-radius: var(--ui-radius-sm);
-  background: var(--ui-warning-soft);
-  color: var(--ui-warning);
-}
-.ifta-reasons li > span {
-  flex: 1 1 240px;
-  overflow-wrap: anywhere;
-}
-.ifta-warnings li {
-  color: var(--ui-text-3);
-  font-size: var(--type-xs);
-}
-.ifta-legs {
   width: 100%;
   border-collapse: collapse;
   font-size: var(--type-sm);
 }
-.ifta-legs th,
-.ifta-legs td {
-  padding: 6px 8px;
+.ifta-table th,
+.ifta-table td {
+  padding: 8px 10px;
   border-bottom: 1px solid var(--ui-separator);
   text-align: left;
-  vertical-align: top;
 }
-.ifta-legs thead th {
+.ifta-table thead th {
   font-size: var(--type-2xs);
   font-weight: var(--type-medium);
   letter-spacing: var(--type-tracking-caps);
   text-transform: uppercase;
   color: var(--ui-text-3);
 }
-.ifta-legs tbody tr:last-child > * {
-  border-bottom: 0;
-}
-.ifta-legs td small {
-  font-size: var(--type-xs);
-  color: var(--ui-text-3);
-}
-.ifta-cached {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  margin-left: 6px;
-  border-radius: 50%;
-  background: var(--ui-success);
-  vertical-align: middle;
-}
-.ifta-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--ui-space-2);
-}
-
-/* Quarterly reports: one line per IFTA quarter, opening onto its trucks. */
-.ifta-quarters {
-  display: grid;
-}
-.ifta-quarter {
-  border-bottom: 1px solid var(--ui-separator);
-}
-.ifta-quarter:last-child {
-  border-bottom: 0;
-}
-.ifta-quarter[data-current] {
-  background: color-mix(in srgb, var(--ui-accent-soft) 55%, transparent);
-  margin: 0 calc(-1 * var(--ui-space-3));
-  padding: 0 var(--ui-space-3);
-  border-radius: var(--ui-radius-sm);
-}
-.ifta-quarter-row {
-  display: grid;
-  /* Fixed outer columns, so the figures line up from one quarter to the next. */
-  grid-template-columns: 200px minmax(0, 1fr) 240px;
-  align-items: center;
-  gap: var(--ui-space-4);
-  padding: 12px 0;
-}
-.ifta-quarter-toggle {
-  display: flex;
-  align-items: center;
-  gap: var(--ui-space-3);
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  color: inherit;
-  cursor: pointer;
-}
-.ifta-quarter-toggle:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 4px;
-  border-radius: var(--ui-radius-sm);
-}
-.ifta-quarter-toggle > svg {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  color: var(--ui-text-3);
-  transition: transform var(--ui-duration) var(--ui-ease);
-}
-.ifta-quarter-toggle[aria-expanded='true'] > svg {
-  transform: rotate(180deg);
-}
-.ifta-quarter-name strong {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: var(--type-md);
+.ifta-table tbody th {
   font-weight: var(--type-medium);
   color: var(--ui-text);
 }
-.ifta-quarter-name strong svg {
-  width: 15px;
-  height: 15px;
-  color: var(--ui-text-3);
+.ifta-table tbody tr:last-child > * {
+  border-bottom: 0;
 }
-.ifta-quarter-name small {
-  display: block;
-  font-size: var(--type-xs);
-  color: var(--ui-text-3);
-}
-.ifta-quarter-facts {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: var(--ui-space-3);
-  min-width: 0;
-}
-.ifta-quarter-facts dt {
-  font-size: var(--type-2xs);
-  font-weight: var(--type-medium);
-  letter-spacing: var(--type-tracking-caps);
-  text-transform: uppercase;
-  color: var(--ui-text-3);
-}
-.ifta-quarter-facts dd {
-  margin-top: 2px;
-  font-size: var(--type-base);
-  font-weight: var(--type-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--ui-text);
-  overflow-wrap: anywhere;
-}
-.ifta-quarter-facts dd small {
+.ifta-table .pf-num small {
   font-size: var(--type-xs);
   font-weight: var(--type-regular);
   color: var(--ui-text-3);
 }
-.ifta-quarter-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--ui-space-2);
-}
-.ifta-quarter-detail {
-  padding: 0 0 var(--ui-space-4) 28px;
-}
-@media (max-width: 1100px) {
-  .ifta-quarter-row {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .ifta-quarter-facts {
-    grid-column: 1 / -1;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-  }
-}
-@media (max-width: 720px) {
-  .ifta-quarter-facts {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .ifta-quarter-detail {
-    padding-left: 0;
-  }
-}
-@media (max-width: 460px) {
-  .ifta-quarter-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
 
-/* Six tabs on a phone: a shade smaller so "Customers" still reads whole. */
-@media (max-width: 767px) {
-  .tabbar:has(> :nth-child(6)) .tabbar-item {
-    padding-inline: 0;
-    font-size: 10px;
-  }
+/* Reporting readiness: the counts, then the days behind them. */
+.ifta-ready {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--ui-space-3);
+  margin-bottom: var(--ui-space-4);
 }
-@media (max-width: 340px) {
-  .tabbar:has(> :nth-child(6)) .tabbar-item {
-    font-size: 9.5px;
-    letter-spacing: -0.02em;
-  }
+.ifta-ready > div {
+  padding: 10px 12px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-fill);
 }
-
-/* Phone cards. */
-.ifta-route-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  font-size: var(--type-xs);
-  color: var(--ui-text-2);
-  overflow-wrap: anywhere;
+.ifta-ready > div[data-tone='warning'] {
+  background: var(--ui-warning-soft);
 }
-.ifta-route-line svg {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  margin-top: 1px;
+.ifta-ready > div[data-tone='error'] {
+  background: var(--ui-danger-soft);
+}
+.ifta-ready dt {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
   color: var(--ui-text-3);
 }
-.pf-card .ifta-chips {
-  margin-left: 2px;
+.ifta-ready dd {
+  margin-top: 2px;
+  font-size: var(--type-lg);
+  font-weight: var(--type-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text);
+}
+.ifta-ready > div[data-tone='warning'] dd {
+  color: var(--ui-warning);
+}
+.ifta-ready > div[data-tone='error'] dd {
+  color: var(--ui-danger);
+}
+.ifta-ready dd small {
+  display: block;
+  font-size: var(--type-xs);
+  font-weight: var(--type-regular);
+  color: var(--ui-text-3);
+  overflow-wrap: anywhere;
+}
+.ifta-attention small {
+  overflow-wrap: anywhere;
+}
+.ifta-more {
+  margin-top: var(--ui-space-2);
+  padding-left: var(--ui-space-3);
 }
 
 @media (max-width: 1000px) {
@@ -351,41 +173,24 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 720px) {
-  .ifta-legs th:nth-child(4),
-  .ifta-legs td:nth-child(4) {
-    display: none;
+@media (max-width: 767px) {
+  .ifta-page .page-heading .ifta-open {
+    color: #fff;
   }
-  .ifta-reasons li > span {
-    flex-basis: 100%;
+}
+@media (max-width: 720px) {
+  .ifta-ready {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (max-width: 460px) {
   .ifta-tiles {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-/* ------------------------------------------ Fleet dialog: Mileage & routing */
-/* A checkbox that sits beside a field rather than spanning the row. */
-.pf-check.pf-check-inline {
-  grid-column: auto;
-  align-self: end;
-  padding-bottom: 6px;
-}
-/* Six dimension fields, three to a row. */
-.pf-dimensions {
-  grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--ui-space-3);
-}
-@media (max-width: 460px) {
-  .pf-check.pf-check-inline {
-    align-self: start;
-    padding-bottom: 0;
+  .ifta-quarter-field {
+    flex: 1 1 100%;
   }
-  .pf-dimensions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .ifta-quarter-field .ld-select {
+    flex: 1;
   }
 }

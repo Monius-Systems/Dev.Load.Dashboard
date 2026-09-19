@@ -7,6 +7,7 @@ import {
   profileHash,
   routeKey,
   routingProfileHash,
+  stopOrderApplies,
   toRoutingProfile,
   truckIfta,
   type LatLon,
@@ -26,6 +27,7 @@ import {
   getRoutes,
   putRoute,
   recordsForDay,
+  setStopOrder,
   upsertPlace,
   writeDayResult,
   writeDayState,
@@ -131,6 +133,15 @@ export async function recalculateDay(
   }
   const hash = inputHash(records, truck.id);
   const ifta = truckIfta(truck);
+  // The order a person confirmed, unless the day has changed since they did:
+  // a confirmation that no longer describes the day is forgotten rather than
+  // left to order stops it was never given for.
+  const stored = await getDay(client, workspace, truck.id, date);
+  let stopOrder = stored?.stop_order ?? null;
+  if (stopOrder && !stopOrderApplies(stopOrder, records)) {
+    await setStopOrder(client, workspace, truck.id, date, null);
+    stopOrder = null;
+  }
   const state = (
     status: 'needs_review' | 'failed',
     reasons: ReviewReason[],
@@ -149,7 +160,7 @@ export async function recalculateDay(
   // Which step a failure happened in, so the day can say so.
   let stage: 'planning' | 'placing addresses' | 'routing' | 'saving' = 'planning';
   try {
-    const plan = buildPlan(records, ifta);
+    const plan = buildPlan(records, ifta, stopOrder);
     if (plan.blocking.length) {
       return await state('needs_review', [...plan.blocking, ...plan.reasons], plan.warnings, null);
     }

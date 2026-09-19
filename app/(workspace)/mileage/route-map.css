@@ -1,0 +1,289 @@
+/* ================================================================ Route map */
+/* The day's route drawn from the router's own geometry. Everything is a token
+   so the map sits in either theme: the canvas is the page's second surface,
+   the roads are the accent for loaded miles and the quiet text colour for
+   running empty, and a leg with no geometry is a dashed reminder. */
+
+.rm {
+  margin: 0;
+}
+.rm-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+}
+.rm-head .ld-step {
+  margin-bottom: var(--ui-space-2);
+}
+.rm-open {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+  text-decoration: none;
+  transition: color var(--ui-duration) var(--ui-ease);
+}
+.rm-open:hover {
+  color: var(--ui-accent-ink);
+}
+.rm-open:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: var(--ui-radius-sm);
+}
+
+/* The canvas. No tiles: a dot grid so the drawing has somewhere to sit. */
+.rm-canvas {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface-2);
+}
+.rm-svg {
+  display: block;
+}
+.rm-field {
+  color: var(--ui-text-3);
+}
+.rm-dot {
+  fill: currentColor;
+  opacity: 0.22;
+}
+.rm-empty {
+  padding: var(--ui-space-6);
+  font-size: var(--type-sm);
+  color: var(--ui-text-3);
+}
+
+/* Legs. Loaded miles carry the accent; empty miles stay quiet. */
+.rm-leg .rm-line {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition:
+    opacity var(--ui-duration) var(--ui-ease),
+    stroke-width var(--ui-duration) var(--ui-ease);
+}
+.rm-leg[data-tone='loaded'] .rm-line {
+  stroke: var(--ui-accent);
+}
+.rm-leg[data-tone='empty'] .rm-line {
+  stroke: var(--ui-text-3);
+  stroke-width: 1.8;
+  opacity: 0.75;
+}
+.rm-leg[data-missing] .rm-line {
+  stroke: var(--ui-warning);
+  stroke-width: 1.6;
+  stroke-dasharray: 3 5;
+  opacity: 0.8;
+}
+.rm-arrow {
+  fill: var(--ui-accent);
+  opacity: 0.85;
+}
+.rm-leg[data-tone='empty'] .rm-arrow {
+  fill: var(--ui-text-3);
+}
+.rm-leg[data-missing] .rm-arrow {
+  fill: var(--ui-warning);
+}
+/* A wide invisible stroke so a thin road is still easy to hit. */
+.rm-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  stroke-linecap: round;
+  cursor: pointer;
+}
+/* One leg chosen: it thickens, the rest step back. */
+.rm-svg[data-focused] .rm-leg:not([data-selected]) {
+  opacity: 0.28;
+}
+.rm-leg[data-selected] .rm-line {
+  stroke-width: 3.4;
+}
+.rm-leg[data-selected][data-tone='empty'] .rm-line {
+  stroke-width: 2.6;
+  opacity: 1;
+}
+
+/* Stops: a soft disc with the marker text, the stacked visits beside it. */
+.rm-disc {
+  fill: var(--ui-surface);
+  stroke: var(--ui-border-strong);
+  stroke-width: 1.2;
+}
+.rm-stop[data-kind='yard'] .rm-disc {
+  fill: var(--ui-accent-soft);
+  stroke: var(--ui-accent-border);
+}
+.rm-stop[data-kind='pickup'] .rm-disc {
+  stroke: var(--ui-accent);
+}
+.rm-disc-text {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-semibold);
+  letter-spacing: -0.02em;
+  fill: var(--ui-text);
+}
+.rm-stack {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  fill: var(--ui-text-3);
+}
+
+/* The caption, tinted where the day is only part-drawn. */
+.rm-caption {
+  margin-top: var(--ui-space-2);
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-3);
+}
+.rm-caption[data-tone='warning'] {
+  padding: 6px var(--ui-space-3);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+
+/* Stops with no coordinates are named here rather than guessed at on the map. */
+.rm-unresolved {
+  margin-top: var(--ui-space-3);
+}
+.rm-unresolved ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--type-xs);
+  color: var(--ui-text-2);
+  overflow-wrap: anywhere;
+}
+
+/* What the strokes mean. */
+.rm-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-3);
+  margin: var(--ui-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.rm-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.rm-key::before {
+  content: '';
+  width: 14px;
+  height: 0;
+  border-top: 2px solid var(--ui-accent);
+  border-radius: 2px;
+}
+.rm-key[data-tone='empty']::before {
+  border-top-color: var(--ui-text-3);
+}
+.rm-key[data-tone='missing']::before {
+  border-top-style: dashed;
+  border-top-color: var(--ui-warning);
+}
+
+/* The legs themselves, one row each, selected in step with the drawing. */
+.rm-legs {
+  display: grid;
+  gap: 1px;
+  margin: var(--ui-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.rm-leg-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ui-space-2);
+  width: 100%;
+  padding: 7px var(--ui-space-2);
+  border: 0;
+  border-radius: var(--ui-radius-sm);
+  background: none;
+  font-size: var(--type-xs);
+  color: var(--ui-text-2);
+  text-align: left;
+  transition: background var(--ui-duration) var(--ui-ease);
+}
+button.rm-leg-row {
+  cursor: pointer;
+}
+button.rm-leg-row:hover {
+  background: var(--ui-fill);
+}
+button.rm-leg-row:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.rm-legs li[data-selected] .rm-leg-row {
+  background: var(--ui-accent-faint);
+  color: var(--ui-text);
+}
+.rm-leg-mark {
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ui-accent);
+}
+.rm-leg-mark[data-tone='empty'] {
+  background: var(--ui-text-3);
+}
+.rm-leg-where {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rm-leg-where b {
+  font-weight: var(--type-semibold);
+  color: var(--ui-text);
+}
+.rm-leg-miles {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--type-tracking-metric);
+  color: var(--ui-text);
+}
+.rm-leg-miles small {
+  font-size: var(--type-2xs);
+  color: var(--ui-text-3);
+}
+
+/* Phone: the canvas keeps its shape, the rows give up the place names last. */
+@media (max-width: 460px) {
+  .rm-head {
+    flex-wrap: wrap;
+  }
+  .rm-leg-row {
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    padding: 6px 4px;
+  }
+  .rm-leg-where {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Motion is the only thing that goes away when it is not wanted. */
+@media (prefers-reduced-motion: reduce) {
+  .rm-leg .rm-line,
+  .rm-leg-row,
+  .rm-open {
+    transition: none;
+  }
+}
