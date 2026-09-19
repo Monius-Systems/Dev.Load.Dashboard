@@ -264,6 +264,18 @@
 .ld-record-actions .ld-danger {
   color: var(--ui-danger);
 }
+/* Back and Next under the review on a desk: a matched pair, the same size and
+   the same weight, stepping through the invoice's tickets. (On a phone they are
+   the way through the steps and are styled with them, further down.) */
+.ld-step-nav {
+  display: flex;
+  gap: var(--ui-space-2);
+  margin-top: var(--ui-space-4);
+}
+.ld-step-nav > [data-slot='button'] {
+  min-width: 112px;
+  justify-content: center;
+}
 .ld-chip {
   align-self: start;
   padding: 2px 8px;

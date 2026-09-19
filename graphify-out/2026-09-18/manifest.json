@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789781160.7741344,
-    "seen": 1789781203.475911,
-    "ast_hash": "a8c555b723b30613739048c3da462d8a",
+    "mtime": 1789782628.8712654,
+    "seen": 1789782770.4773,
+    "ast_hash": "9c2863c66c7871a9f9faa88f65fabca1",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -618,9 +618,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/record-input.ts": {
-    "mtime": 1789769106.6056345,
-    "seen": 1789769630.1001642,
-    "ast_hash": "4ba039327f9c17238947ca2b71c3c961",
+    "mtime": 1789782628.8705802,
+    "seen": 1789782770.477373,
+    "ast_hash": "6e4d5362f6e6ba802a867edfcb3a057f",
     "semantic_hash": ""
   },
   "lib/load-desk/records.ts": {
@@ -948,9 +948,9 @@
     "semantic_hash": "f3e135c7b2cbdb1a2eef7428ce07db54"
   },
   "tests/record-edits.test.ts": {
-    "mtime": 1789768179.966063,
-    "seen": 1789768655.417506,
-    "ast_hash": "73e71c5984cc1673099b3533247660f8",
+    "mtime": 1789782646.8690093,
+    "seen": 1789782770.477442,
+    "ast_hash": "b6e5e617a6b1c993eaa142fd9afe9393",
     "semantic_hash": ""
   },
   "tests/record-input.test.ts": {

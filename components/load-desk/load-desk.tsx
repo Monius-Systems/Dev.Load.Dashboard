@@ -3786,6 +3786,7 @@ export default function LoadDesk() {
                     </Button>
                     <Button
                       type="button"
+                      variant="secondary"
                       aria-label={t('Next ticket')}
                       disabled={nextStop === null}
                       onClick={() => {

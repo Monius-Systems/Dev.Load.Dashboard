@@ -124,6 +124,33 @@ function invoiceStanding(t: Translator['t'], group: Pick<InvoiceGroup, 'records'
     : group.invoice.invoice_number;
 }
 
+/**
+ * The client an invoice is billed to, as a pill in that client's own colour.
+ *
+ * The colour is worked out from the name, so the same client is the same
+ * colour on every invoice and on every visit, and two clients are two colours
+ * — eight to go round, so a workspace with more than eight will see a repeat.
+ * Nothing is stored for it.
+ */
+const CLIENT_TONES = 8;
+function clientTone(name: string): number {
+  let hash = 0;
+  for (const char of name.trim().toUpperCase()) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+  return hash % CLIENT_TONES;
+}
+
+function ClientPill({ name }: { name: string }) {
+  const clean = name.trim();
+  if (!clean) return <span className="pf-muted">—</span>;
+  return (
+    <span className="rec-client ui-literal" data-tone={clientTone(clean)}>
+      {clean}
+    </span>
+  );
+}
+
 /** "Invoice 12" as a line to open, or why there is no number yet. */
 function invoiceHeading(tr: Translator, group: Pick<InvoiceGroup, 'records' | 'invoice'>) {
   const number = shownInvoiceNumber(group.invoice.invoice_number);
@@ -639,7 +666,7 @@ export default function RecordsPage() {
                           {date(group.invoice.invoice_date)}
                         </td>
                         <td className="rec-wrap rec-wide-only">
-                          {group.invoice.bill_to.name}
+                          <ClientPill name={group.invoice.bill_to.name} />
                         </td>
                         <td className="rec-wrap">
                           {[...new Set(group.records.map(customerName))].join(', ')}
@@ -668,7 +695,7 @@ export default function RecordsPage() {
                         </strong>
                         <small>
                           {date(group.invoice.invoice_date)} ·{' '}
-                          {group.invoice.bill_to.name}
+                          <ClientPill name={group.invoice.bill_to.name} />
                         </small>
                       </div>
                       {invoiceActions(group)}

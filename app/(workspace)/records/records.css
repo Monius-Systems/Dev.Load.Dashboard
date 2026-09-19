@@ -310,3 +310,32 @@
   border-left: 2px solid var(--ui-separator);
   margin-bottom: var(--ui-space-3);
 }
+
+/* ======================================== clients */
+/* The client an invoice is billed to, as a pill in the client's own colour:
+   the same client the same colour everywhere, different clients different
+   colours, so a column of invoices sorts itself by eye. The tints are mixed
+   from the page's surface and text, so they hold up on the dark theme too. */
+.rec-client {
+  display: inline-block;
+  max-width: 100%;
+  padding: 2px 9px;
+  border-radius: var(--ui-radius-pill);
+  background: color-mix(in srgb, var(--rec-client-hue) 16%, var(--ui-surface));
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  line-height: 1.6;
+  color: color-mix(in srgb, var(--rec-client-hue) 72%, var(--ui-text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+.rec-client[data-tone='0'] { --rec-client-hue: #375dfb; }
+.rec-client[data-tone='1'] { --rec-client-hue: #0e9f6e; }
+.rec-client[data-tone='2'] { --rec-client-hue: #d97706; }
+.rec-client[data-tone='3'] { --rec-client-hue: #db2777; }
+.rec-client[data-tone='4'] { --rec-client-hue: #7c3aed; }
+.rec-client[data-tone='5'] { --rec-client-hue: #0891b2; }
+.rec-client[data-tone='6'] { --rec-client-hue: #b91c1c; }
+.rec-client[data-tone='7'] { --rec-client-hue: #4d7c0f; }
