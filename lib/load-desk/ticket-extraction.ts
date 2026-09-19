@@ -4,6 +4,7 @@
 // Nothing here talks to the network or the DOM, so the schema, the prompt and
 // the mapping onto the app's own ticket fields are all covered by tests.
 
+import { ticketDay } from './ticket-date.ts';
 import { emptyTicket, type Ticket } from './types.ts';
 
 /** The model that reads the tickets. One place, so it is one edit to change. */
@@ -157,19 +158,18 @@ export function readExtracted(value: unknown): ExtractedTicket {
 const tonsOf = (pounds: number | null) =>
   pounds === null ? null : Math.round((pounds / 2000) * 100) / 100;
 
-/** M/D/YYYY, M/D/YY or an ISO date, as the ISO date the app stores. */
-export function extractedDate(printed: string | null): string | null {
-  if (!printed) return null;
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(printed);
-  if (iso) return printed;
-  const slashed = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/.exec(printed);
-  if (!slashed) return null;
-  const [, month, day, year] = slashed;
-  const full = year.length === 2 ? `20${year}` : year.padStart(4, '0');
-  const date = `${full}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  // A date the calendar does not have is a misread, not a date.
-  return Number.isNaN(Date.parse(date)) ? null : date;
-}
+/**
+ * M/D/YYYY, M/D/YY or an ISO date, as the ISO date the app stores, and null
+ * for anything that is not a day.
+ *
+ * The calendar check applies whichever shape the model answered in. It used to
+ * be run only on the slashed dates, so a model that answered "2026-02-31" in
+ * ISO had it taken at face value and the ticket went off to open a batch for
+ * a day that does not exist. The ticket goes to the batch waiting for dates
+ * instead, where a person reads the date off the original.
+ */
+export const extractedDate = (printed: string | null): string | null =>
+  ticketDay(printed);
 
 /**
  * The model's answer as one of the app's tickets. Only the fields asked for are

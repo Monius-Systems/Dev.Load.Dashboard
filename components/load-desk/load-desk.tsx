@@ -106,11 +106,13 @@ import {
   recordBatch,
   isPendingInvoiceNumber,
   isUndatedBatch,
+  isUnreadableDate,
   pendingInvoiceNumber,
   shownInvoiceNumber,
   UNDATED_BATCH,
   stepReviewStop,
   ticketDateValue,
+  ticketDay,
   type InvoiceMove,
   type ReviewStop,
 } from '@/lib/load-desk/records';
@@ -296,12 +298,14 @@ type NewCustomerDraft = {
  * is now filed into its batch the moment it is read — before anyone has looked
  * at it — and what was filed then carried the day it was photographed.
  *
- * The only invoice that is not dated this way is one whose ticket has no date
- * on it at all: there is nothing to go by, so the draft's own date stands until
- * the ticket's date is filled in, and filling it in moves the invoice.
+ * The only invoice that is not dated this way is one whose ticket has no day
+ * anyone can read — nothing printed where the date should be, or a date the
+ * scan made a nonsense of. There is nothing to go by, so the draft's own date
+ * stands until the ticket's date is entered, and entering it moves the
+ * invoice.
  */
 function invoiceDated(item: QueueItem): QueueItem {
-  const date = item.ticket.ticket_date?.trim();
+  const date = ticketDay(item.ticket.ticket_date);
   if (!date || date === item.invoice.invoice_date) return item;
   return { ...item, invoice: { ...item.invoice, invoice_date: date } };
 }
@@ -1251,10 +1255,14 @@ export default function LoadDesk() {
       grouped = [...onTarget, ...filed, ...grouped];
       // Said plainly, and first: a ticket nobody can date is a ticket nobody
       // can invoice, and it is waiting rather than billed on a guessed day.
+      // Blank and unreadable are one pile here because they need the same
+      // thing done to them — the date read off the paper — but the wording
+      // covers both, so somebody looking at a ticket with a date on it is not
+      // told no date was found on it.
       const undated = grouped.filter((item) => isUndatedBatch(item.batch_id)).length;
       if (undated) {
         const notice = t(
-          'No date was detected on {tickets}, now waiting in “Date not found”. Enter the date to put each on an invoice.',
+          'No usable date was read from {tickets}, now waiting in “Date not found”, on no invoice. Enter the date to put each on one.',
           { tickets: plural(undated, 'ticket') },
         );
         failures.unshift(notice);
@@ -3209,13 +3217,23 @@ export default function LoadDesk() {
                   <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
                     {sectionSummary('Ticket', ticketDetail)}
                     <div className="ld-fields">
-                      {/* No date came off the scan, so this ticket is on no
-                          invoice. The date is what puts it on one. */}
-                      {isUndatedBatch(active.batch_id) && !active.ticket.ticket_date?.trim() ? (
+                      {/* No day came off the scan, so this ticket is on no
+                          invoice. The date is what puts it on one. Two ways
+                          to get here and they read differently to whoever is
+                          looking: an empty date box, and a box holding what
+                          the reader made of a line it could not manage. The
+                          second is worth quoting back, because the thing to
+                          do is compare it with the picture. */}
+                      {isUndatedBatch(active.batch_id) && !ticketDay(active.ticket.ticket_date) ? (
                         <p className="ld-weight" data-tone="bad" role="alert">
-                          {t(
-                            'No date was detected on this ticket. Read it off the original and enter it below; the ticket then goes on that day’s invoice.',
-                          )}
+                          {isUnreadableDate(active.ticket.ticket_date)
+                            ? t(
+                                'The date read off this ticket, “{date}”, is not a day on the calendar. Check it against the original and correct it below; the ticket then goes on that day’s invoice.',
+                                { date: active.ticket.ticket_date!.trim() },
+                              )
+                            : t(
+                                'No date was detected on this ticket. Read it off the original and enter it below; the ticket then goes on that day’s invoice.',
+                              )}
                         </p>
                       ) : null}
                       {renderFields(TICKET_FIELDS)}
@@ -3307,8 +3325,8 @@ export default function LoadDesk() {
                           phone draws for type="date". */}
                       {invoiceField(
                         t('Invoice date'),
-                        active.ticket.ticket_date
-                          ? date(active.ticket.ticket_date)
+                        ticketDay(active.ticket.ticket_date)
+                          ? date(active.ticket.ticket_date!)
                           : date(active.invoice.invoice_date),
                         () => {},
                         {

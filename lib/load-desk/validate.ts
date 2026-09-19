@@ -1,3 +1,4 @@
+import { isUnreadableDate } from './ticket-date.ts';
 import { rateTypeOf, type Ticket } from './types.ts';
 
 // Port of load_ticket_mvp/validate.py.
@@ -29,6 +30,15 @@ export function validateTicket(ticket: Ticket): string[] {
     if (value === null || value === '') {
       issues.push(`Missing required field: ${label}`);
     }
+  }
+  // A date that came off the scan as something the calendar has not got. The
+  // ticket is waiting in the undated batch either way, but a reviewer looking
+  // at a filled-in date field needs telling why it is not being taken: what
+  // is in the box is what the reader made of the paper, not a day.
+  if (isUnreadableDate(ticket.ticket_date)) {
+    issues.push(
+      `The ticket date could not be read as a day: "${ticket.ticket_date!.trim()}". Enter it from the original.`,
+    );
   }
 
   const { gross_lb, tare_lb, net_lb, net_tons } = ticket;

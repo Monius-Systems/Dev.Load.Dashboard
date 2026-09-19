@@ -94,6 +94,15 @@ void test('dates are read as printed and stored as dates', () => {
   assert.equal(extractedDate('13/45/2026'), null, 'not a date on any calendar');
   assert.equal(extractedDate('sometime Tuesday'), null);
   assert.equal(extractedDate(null), null);
+  // The calendar check used to run only on the slashed dates, so a model that
+  // answered in ISO had a day that does not exist taken at face value, and
+  // the ticket opened a batch for it. Whichever shape the answer comes in,
+  // a day the calendar has not got is a misread and the ticket goes to the
+  // batch waiting for dates.
+  assert.equal(extractedDate('2026-02-31'), null, 'February has no 31st in ISO either');
+  assert.equal(extractedDate('2026-13-05'), null);
+  assert.equal(extractedDate('2025-02-29'), null, '2025 is not a leap year');
+  assert.equal(extractedDate('2024-02-29'), '2024-02-29', 'but 2024 is');
 });
 
 void test('an answer is taken as it comes and tidied, never trusted blindly', () => {

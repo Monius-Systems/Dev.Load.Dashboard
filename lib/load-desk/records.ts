@@ -1,6 +1,9 @@
 import { csvCell, lineTotal } from './format.ts';
+import { ticketDateValue, ticketDay } from './ticket-date.ts';
 import { validateTicket } from './validate.ts';
 import type { InvoiceDraft, SavedRecord } from './types.ts';
+
+export { isUnreadableDate, ticketDateValue, ticketDay } from './ticket-date.ts';
 
 // Invoices are not stored separately: saved tickets that carry the same
 // invoice number are the lines of one invoice.
@@ -14,45 +17,6 @@ export const byTicketDate = (a: SavedRecord, b: SavedRecord) =>
   a.id - b.id;
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
-
-const ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
-const SLASHED_DATE = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/;
-
-/**
- * The day a ticket date names, as a number to order days by.
- *
- * Dates are put in order as days, never as the text they are written in.
- * "1/6/2026" sorts before "12/19/2025" as a string, which is how January's
- * tickets came to be invoiced ahead of December's. Both the ISO dates the app
- * stores and the M/D/YYYY a ticket is written in are read here, so a date that
- * reached a record in another shape still falls in the right place.
- *
- * Null for a blank date, and for a day the calendar does not have — a misread
- * has no position in a run of days, so it is treated as an undated ticket.
- */
-export function ticketDateValue(value: string | null | undefined): number | null {
-  const text = value?.trim();
-  if (!text) return null;
-  const iso = ISO_DATE.exec(text);
-  const slashed = iso ? null : SLASHED_DATE.exec(text);
-  if (!iso && !slashed) return null;
-  const [year, month, day] = iso
-    ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
-    : [
-        Number(slashed![3].length === 2 ? `20${slashed![3]}` : slashed![3]),
-        Number(slashed![1]),
-        Number(slashed![2]),
-      ];
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return null;
-  }
-  return date.getTime();
-}
 
 /** Oldest day first. A ticket with no day to place goes after every dated one. */
 const byDay = (a: number | null, b: number | null) => {
@@ -73,6 +37,15 @@ export const recordTons = (record: SavedRecord) =>
  * then billed on that day's invoice, at that day's number, without anyone
  * being told the date had been guessed. A ticket with no date is a ticket that
  * is not ready to invoice; it waits for the date to be read off the paper.
+ *
+ * A date the scan made a mess of — a day the calendar has not got, a month
+ * past twelve — joins them there rather than opening a group of its own. It
+ * is no more a day to bill than a blank is, and a group it cannot be ordered
+ * by is a group nothing can number: one of those sat on a draft mark
+ * indefinitely, looking like an invoice that was merely late.
+ *
+ * Grouping is by the day a date names, not the text it is written in, so the
+ * same day written two ways is one group and one invoice.
  */
 export function groupByTicketDate<T>(
   items: T[],
@@ -80,7 +53,7 @@ export function groupByTicketDate<T>(
 ): { date: string | null; items: T[] }[] {
   const groups = new Map<string | null, T[]>();
   for (const item of items) {
-    const date = dateOf(item)?.trim() || null;
+    const date = ticketDay(dateOf(item));
     groups.set(date, [...(groups.get(date) ?? []), item]);
   }
   return [...groups]
@@ -530,14 +503,19 @@ export function stepReviewStop(
   return invoiceStopsOf(stops, before).at(-1) ?? null;
 }
 
-/** The date a ticket is filed under; undated scans have a batch of their own. */
+/**
+ * The date a ticket is filed under; scans with no day read off them — blank or
+ * unreadable alike — have a batch of their own.
+ */
 export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
-  record.ticket.ticket_date?.trim() || 'undated';
+  ticketDay(record.ticket.ticket_date) ?? 'undated';
 
 /**
- * The batch every ticket with no date read off it waits in. It is not an
- * invoice and never takes a number: a ticket cannot be billed for a day nobody
- * knows. Entering the date in review moves the ticket to that day's invoice.
+ * The batch every ticket with no date read off it waits in — nothing printed
+ * where the date should be, and equally a date the scan could not make a day
+ * of. It is not an invoice and never takes a number: a ticket cannot be billed
+ * for a day nobody knows, and a day read wrong is a day nobody knows.
+ * Entering the date in review moves the ticket to that day's invoice.
  */
 export const UNDATED_BATCH = 'batch-undated';
 export const isUndatedBatch = (batchId: string) => batchId === UNDATED_BATCH;
@@ -557,10 +535,10 @@ export function batchInvoiceFor(
   records: SavedRecord[],
   ticketDate: string | null,
 ): { invoice_number: string; batch_id: string; opened: boolean } {
-  const date = ticketDate?.trim() || 'undated';
-  // No date read: into the holding batch, on no invoice. Always the mark,
-  // never a number an earlier undated ticket may have been given under the
-  // old rule, so nothing undated is ever billed.
+  const date = ticketDay(ticketDate) ?? 'undated';
+  // No day read off it: into the holding batch, on no invoice. Always the
+  // mark, never a number an earlier undated ticket may have been given under
+  // the old rule, so nothing undated is ever billed.
   if (date === 'undated') {
     return {
       invoice_number: pendingInvoiceNumber(UNDATED_BATCH),
@@ -635,7 +613,7 @@ export function invoiceMoveFor(
   // The holding batch for undated tickets is not an invoice: a ticket given
   // its date leaves it whether or not anything is left behind, onto an
   // invoice of its own.
-  if (!leftBehind && !(isUndatedBatch(ticket.batchId) && ticket.date?.trim())) {
+  if (!leftBehind && !(isUndatedBatch(ticket.batchId) && ticketDay(ticket.date))) {
     return { kind: 'stay' };
   }
   const numbers = [...others]

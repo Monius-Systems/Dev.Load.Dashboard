@@ -1,4 +1,5 @@
 import { FIELD_OCR_MARKER } from './field-ocr.ts';
+import { ticketDay } from './ticket-date.ts';
 import { emptyTicket, type Ticket } from './types.ts';
 import { WEIGHT_TOLERANCE_LB } from './validate.ts';
 
@@ -35,15 +36,18 @@ function weight(label: string, text: string): number | null {
 
 const pad2 = (value: string | number) => String(value).padStart(2, '0');
 
-function isoDate(value: string | null): string | null {
-  const match = value?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
-  if (!match) return value && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
-  const month = Number(match[1]);
-  const day = Number(match[2]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-  const year = match[3].length === 2 ? 2000 + Number(match[3]) : match[3];
-  return `${year}-${pad2(month)}-${pad2(day)}`;
-}
+/**
+ * A date off the scan as the ISO date the app stores, and null for anything
+ * that is not a day.
+ *
+ * Read by `ticketDay`, which is what the rest of the app files and orders by,
+ * so the parser cannot hand on a date the filing then disagrees with. The day
+ * is checked against the calendar and not merely against 1–31: a smudged 21
+ * read as "2/31" is a misread, and a misread is no date at all — the ticket
+ * waits in the undated batch rather than opening an invoice for a day that
+ * never happened.
+ */
+const isoDate = (value: string | null): string | null => ticketDay(value);
 
 function normalizeTime(value: string | null): string | null {
   const match = value?.match(/^(\d{1,2}):(\d{2})/);

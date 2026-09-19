@@ -404,3 +404,54 @@ void test('a move never takes a number that is in use', () => {
   assert.equal(move.kind, 'open');
   if (move.kind === 'open') assert.equal(move.invoiceNumber, '10');
 });
+
+void test('a date the calendar has not got waits with the undated', () => {
+  // The dangerous answer off a scan is not a blank, which is obvious, but a
+  // line that comes back looking like a date and is not one: a smudged 21
+  // read as the 31st of February, a month past twelve. Filed on the text it
+  // was written in, it opened a batch of its own that nothing could ever
+  // number — `numbersForWaitingBatches` places batches by the day they name,
+  // and this one names none — so it sat on a draft mark indefinitely, looking
+  // like an invoice that was merely running late. It waits where the blanks
+  // wait instead, and asks the same thing of whoever is reviewing.
+  const jan6 = saved('2026-01-06', '1042');
+  for (const misread of ['2026-02-31', '2026-13-05', '13/02/2026', 'sometime']) {
+    const batch = batchInvoiceFor([jan6], misread);
+    assert.equal(isUndatedBatch(batch.batch_id), true, misread);
+    assert.equal(isPendingInvoiceNumber(batch.invoice_number), true, misread);
+    assert.equal(batchDate(saved(misread, '1043')), 'undated', misread);
+  }
+  // And a second one joins the first rather than piling up batches beside it.
+  const first = saved('2026-02-31', 'DRAFT-batch-undated', {
+    invoice_batch_id: UNDATED_BATCH,
+  });
+  const second = batchInvoiceFor([first], '2026-04-31');
+  assert.equal(second.batch_id, UNDATED_BATCH);
+  assert.equal(second.opened, false);
+});
+
+void test('correcting a misread date takes the ticket out of the holding batch', () => {
+  // The correction is a real day, so the ticket leaves for the invoice of
+  // that day — exactly as it does when the date box was empty. A correction
+  // that is still not a day does not move it: there is nowhere to move it to.
+  const jan6 = saved('2026-01-06', '6');
+  assert.equal(
+    invoiceMoveFor({ batchId: UNDATED_BATCH, date: '2026-01-06' }, [jan6]).kind,
+    'join',
+  );
+  assert.equal(
+    invoiceMoveFor({ batchId: UNDATED_BATCH, date: '2026-02-31' }, [jan6]).kind,
+    'stay',
+  );
+});
+
+void test('one day written two ways is one batch, not two', () => {
+  // Batches are keyed by the day a date names, so a record that reached the
+  // app as M/D/YYYY joins the tickets already filed for that day instead of
+  // opening a second invoice for the same date beside them.
+  const jan6 = saved('2026-01-06', '1042');
+  const joined = batchInvoiceFor([jan6], '1/6/2026');
+  assert.equal(joined.invoice_number, '1042');
+  assert.equal(joined.opened, false);
+  assert.equal(batchDate(saved('1/6/2026', '1043')), '2026-01-06');
+});

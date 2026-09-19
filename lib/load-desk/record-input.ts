@@ -16,6 +16,7 @@ import type {
 } from './profiles.ts';
 import { customerLocationRates, type LocationRate } from './customer-rates.ts';
 import { datedFromTicket } from './invoice-dates.ts';
+import { ticketDay } from './ticket-date.ts';
 
 // Validation for data the browser sends to the server. Everything is checked
 // field by field and bounded, so stored rows always have the shape the app
@@ -494,12 +495,15 @@ export function parseClient(value: unknown): Parsed<NewClient> {
 export const invoiceKeyOf = (invoiceNumber: string) =>
   invoiceNumber.trim().toLowerCase();
 
-/** A usable ticket date for the database column, or null. */
-export const ticketDateColumn = (ticket: Ticket) =>
-  ticket.ticket_date && ISO_DATE.test(ticket.ticket_date) &&
-  !Number.isNaN(Date.parse(`${ticket.ticket_date}T00:00:00Z`))
-    ? ticket.ticket_date
-    : null;
+/**
+ * A usable ticket date for the database column, or null.
+ *
+ * The same reading the app files by, so the column and the batch can never
+ * disagree about whether a ticket has a date: what the reader made of an
+ * unreadable line stays on the ticket for a reviewer to compare against the
+ * picture, and the column that reports by day holds nothing.
+ */
+export const ticketDateColumn = (ticket: Ticket) => ticketDay(ticket.ticket_date);
 
 /** Positive integer id from a route segment, or null. */
 export function routeId(value: string): number | null {
