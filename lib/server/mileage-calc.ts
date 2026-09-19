@@ -32,6 +32,7 @@ import {
   type PlaceRow,
   type RouteRow,
 } from '@/lib/server/mileage-store';
+import { StoreError } from '@/lib/server/load-desk-store';
 import { ProviderError, type RouteResult, type RoutingProvider } from '@/lib/server/routing-provider';
 
 // Working out one truck-day: the plan from the tickets, the places from the
@@ -142,12 +143,15 @@ export async function recalculateDay(
       input_hash: hash,
     });
 
+  // Which step a failure happened in, so the day can say so.
+  let stage: 'planning' | 'placing addresses' | 'routing' | 'saving' = 'planning';
   try {
     const plan = buildPlan(records, ifta);
     if (plan.blocking.length) {
       return await state('needs_review', [...plan.blocking, ...plan.reasons], plan.warnings, null);
     }
 
+    stage = 'placing addresses';
     const places = await resolvePlaces(client, workspace, provider, plan.stops);
     const unresolved: ReviewReason[] = [];
     const seen = new Set<string>();
@@ -169,6 +173,7 @@ export async function recalculateDay(
       return await state('needs_review', [...unresolved, ...plan.reasons], plan.warnings, null);
     }
 
+    stage = 'routing';
     const profile = toRoutingProfile(ifta);
     const profileKey = routingProfileHash(profile);
     const at = (stop: PlanStop): MileagePlace => {
@@ -250,6 +255,7 @@ export async function recalculateDay(
       });
     }
 
+    stage = 'saving';
     const totalMiles = round2(legs.reduce((sum, leg) => sum + leg.miles, 0));
     const totalSeconds = legs.reduce((sum, leg) => sum + leg.seconds, 0);
     return await writeDayResult(client, workspace, truck.id, date, {
@@ -270,8 +276,15 @@ export async function recalculateDay(
       calc_version: CALC_VERSION,
     });
   } catch (error) {
-    // Never the key and never a payload: only that the day did not calculate.
-    console.error(`IFTA: day ${date} for truck ${truck.id} failed`, error instanceof Error ? error.message : 'unknown error');
-    return state('failed', [], [], 'Calculation failed. Try again.');
+    // Never the key and never a payload: only that the day did not calculate,
+    // at which step, and what the provider or database said about it. The
+    // provider's messages already have any URL (which carries the key)
+    // stripped; a store error is the app's own wording.
+    const detail =
+      error instanceof ProviderError || error instanceof StoreError
+        ? error.message
+        : 'Try again.';
+    console.error(`IFTA: day ${date} for truck ${truck.id} failed while ${stage}`, error instanceof Error ? error.message : 'unknown error');
+    return state('failed', [], [], `Calculation failed while ${stage}: ${detail}`);
   }
 }
