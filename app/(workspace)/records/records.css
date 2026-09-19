@@ -216,6 +216,13 @@
 .rec-invoice-row th {
   padding: 0;
 }
+/* Every invoice is its own row group, so a closed invoice's line is the last
+   row of its group, and the table's rule that the last row has no rule under
+   it took the line between one invoice and the next away. Kept, except under
+   the very last invoice. */
+.rec-invoice-body:not(:last-child) > tr:last-child > * {
+  border-bottom: 1px solid var(--ui-separator);
+}
 .rec-invoice-toggle {
   display: flex;
   align-items: center;

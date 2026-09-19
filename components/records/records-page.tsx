@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { setDeskField } from '@/lib/load-desk/desk-session';
 import {
@@ -223,13 +223,22 @@ export default function RecordsPage() {
   }
 
   const invoiceOpen = (key: string) => flippedInvoices.has(key) !== filtersActive;
-  const toggleInvoice = (key: string) =>
+  /**
+   * Opens or closes an invoice. A press with the pointer lets go of the button
+   * afterwards: the browser may otherwise leave its focus ring drawn round the
+   * whole line — a blue box that stays until the pointer moves — which is for
+   * finding the focus from the keyboard, and the keyboard keeps it (an Enter or
+   * a Space arrives with no click count).
+   */
+  const toggleInvoice = (key: string, event?: MouseEvent<HTMLButtonElement>) => {
+    if (event?.detail) event.currentTarget.blur();
     setFlippedInvoices((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
+  };
 
   function clearFilters() {
     setQuery('');
@@ -706,7 +715,7 @@ export default function RecordsPage() {
                           className="rec-invoice-toggle"
                           aria-expanded={open}
                           aria-controls={headId}
-                          onClick={() => toggleInvoice(group.key)}
+                          onClick={(event) => toggleInvoice(group.key, event)}
                         >
                           <ChevronDown aria-hidden="true" />
                           <span className="rec-invoice-name">
@@ -815,7 +824,7 @@ export default function RecordsPage() {
                     type="button"
                     className="rec-invoice-toggle"
                     aria-expanded={open}
-                    onClick={() => toggleInvoice(group.key)}
+                    onClick={(event) => toggleInvoice(group.key, event)}
                   >
                     <ChevronDown aria-hidden="true" />
                     <span className="rec-invoice-name">

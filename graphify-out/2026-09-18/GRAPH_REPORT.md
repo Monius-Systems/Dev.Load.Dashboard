@@ -1,7 +1,7 @@
 # Graph Report - dashboard-shell  (2026-09-18)
 
 ## Corpus Check
-- 232 files · ~220,013 words
+- 232 files · ~220,049 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 32 file(s) not represented in the graph (top: (none) 11, .css 8, .wasm 6)
 
