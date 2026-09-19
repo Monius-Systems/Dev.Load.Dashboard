@@ -725,6 +725,31 @@ export default function CustomersPage() {
                   <span id={`${fieldId}-addresses-label`}>
                     {t('Delivery addresses, each with what is charged there')}
                   </span>
+                  {/* Typed first, then the list it goes into: the new address is
+                      what the hand is on. */}
+                  <div className="pf-alias-add">
+                    <label className="sr-only" htmlFor={`${fieldId}-addresses`}>
+                      {t('Add a delivery address')}
+                    </label>
+                    <Input
+                      id={`${fieldId}-addresses`}
+                      aria-describedby={`${fieldId}-addresses-hint`}
+                      placeholder={t('Street, city, state')}
+                      value={addressDraft}
+                      onChange={(event) => setAddressDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        // Enter adds the address instead of saving the customer.
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          addAddress();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="secondary" size="sm" onClick={addAddress}>
+                      <Plus data-icon="inline-start" />
+                      {t('Add')}
+                    </Button>
+                  </div>
                   {draft.addresses.length ? (
                     <ul className="pf-sites">
                       {draft.addresses.map((address) => {
@@ -817,29 +842,6 @@ export default function CustomersPage() {
                   ) : (
                     <p className="pf-alias-empty">{t('No addresses yet.')}</p>
                   )}
-                  <div className="pf-alias-add">
-                    <label className="sr-only" htmlFor={`${fieldId}-addresses`}>
-                      {t('Add a delivery address')}
-                    </label>
-                    <Input
-                      id={`${fieldId}-addresses`}
-                      aria-describedby={`${fieldId}-addresses-hint`}
-                      placeholder={t('Street, city, state')}
-                      value={addressDraft}
-                      onChange={(event) => setAddressDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        // Enter adds the address instead of saving the customer.
-                        if (event.key === 'Enter') {
-                          event.preventDefault();
-                          addAddress();
-                        }
-                      }}
-                    />
-                    <Button type="button" variant="secondary" size="sm" onClick={addAddress}>
-                      <Plus data-icon="inline-start" />
-                      {t('Add')}
-                    </Button>
-                  </div>
                   {/* Addresses this customer's saved tickets were delivered to.
                       Adding one from here is quicker, and more faithful to the
                       paperwork, than typing it out again. */}

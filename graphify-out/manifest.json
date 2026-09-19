@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789776029.5364754,
-    "seen": 1789776077.51211,
-    "ast_hash": "5329d06395e3b5e25e586e2a77170968",
+    "mtime": 1789776672.7825153,
+    "seen": 1789776753.8070872,
+    "ast_hash": "109d703ce8f517a4d15056c06ab05e90",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "components/profiles/customers-page.tsx": {
-    "mtime": 1789775832.1557896,
-    "seen": 1789776077.5121138,
-    "ast_hash": "4c1ffc0558473b33ac039d908d70be52",
+    "mtime": 1789776599.5390117,
+    "seen": 1789776753.807091,
+    "ast_hash": "963c8398c93a5921977b84e25acf04a1",
     "semantic_hash": ""
   },
   "components/profiles/fleet-page.tsx": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1789775942.659145,
-    "seen": 1789776077.512162,
-    "ast_hash": "79296f711c3a76453270e487da963ea6",
+    "mtime": 1789776709.471783,
+    "seen": 1789776753.807143,
+    "ast_hash": "a4d4a465f620da7e47c827cb63da5d99",
     "semantic_hash": ""
   },
   "lib/i18n/pl.ts": {

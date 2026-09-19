@@ -254,7 +254,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-bottom: 2px;
+  /* Under the row a new address is typed into, with a little air between. */
+  margin: 8px 0 2px;
 }
 .pf-site-head {
   display: flex;

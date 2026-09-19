@@ -128,6 +128,20 @@ export const PL_PAGES: Record<string, string> = {
   'Tickets to {sites} get that site’s rate on the invoice.':
     'Kwity do {sites} dostają na fakturze stawkę tego miejsca.',
   'Filled in for this address: {rate}.': 'Uzupełniono dla tego adresu: {rate}.',
+  // The invoice step offers the customer's saved addresses as a list.
+  'Saved address': 'Zapisany adres',
+  'Choose a customer first': 'Najpierw wybierz klienta',
+  'No saved addresses for this customer': 'Ten klient nie ma zapisanych adresów',
+  'Not one of the saved addresses': 'Spoza zapisanych adresów',
+  'Choose an address': 'Wybierz adres',
+  'Saved addresses come from the customer profile.': 'Zapisane adresy pochodzą z profilu klienta.',
+  'Add delivery addresses to this customer to pick them here.':
+    'Dodaj adresy dostaw do tego klienta, aby wybierać je tutaj.',
+  'Rated at this address: {rate}.': 'Stawka pod tym adresem: {rate}.',
+  'No rate is saved for this address; enter it below.':
+    'Brak zapisanej stawki dla tego adresu; wpisz ją poniżej.',
+  'Choosing one fills in the destination and that address’s rate.':
+    'Wybór uzupełnia miejsce dostawy i stawkę tego adresu.',
   'No rate is saved for this address; enter the rate for this ticket.':
     'Brak zapisanej stawki dla tego adresu; wpisz stawkę dla tego kwitu.',
   'This customer has no site rates yet; enter the rate for this ticket.':

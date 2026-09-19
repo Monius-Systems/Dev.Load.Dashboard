@@ -1547,11 +1547,6 @@ export default function LoadDesk() {
     });
   }
 
-  function chooseTruck(value: string) {
-    const truck = trucks.find((item) => String(item.id) === value) ?? null;
-    updateBatch((item) => applyTruck(item, truck));
-  }
-
   /** A saved invoice with every saved ticket that carries its number. */
   function savedInvoice(record: SavedRecord): InvoiceView {
     return {
@@ -2166,9 +2161,6 @@ export default function LoadDesk() {
   const activeCustomer = active
     ? (customers.find((item) => item.id === active.customer_profile_id) ?? null)
     : null;
-  const activeTruck = active
-    ? (trucks.find((item) => item.id === active.truck_id) ?? null)
-    : null;
   const printedName = active?.ticket.customer_name?.replace(/\s+/g, ' ').trim() ?? '';
   const scannedMatch =
     active && printedName ? matchCustomerDetailed(customers, active.ticket) : null;
@@ -2402,19 +2394,22 @@ export default function LoadDesk() {
     : ticket?.customer_name
       ? t('No customer profile matches this ticket.')
       : t('Choose the customer to use its rates.');
-  const truckHint = activeTruck
-    ? [
-        t('Truck #{number} on the invoice', { number: activeTruck.truck_number }),
-        activeTruck.driver && t('Driver {name}', { name: activeTruck.driver }),
-        activeTruck.license_plate && t('Plate {plate}', { plate: activeTruck.license_plate }),
-      ]
-        .filter(Boolean)
-        .join(' · ')
-    : active?.invoice.truck_number
-      ? t('Truck #{number} on the invoice. Choose a truck profile to change it.', {
-          number: active.invoice.truck_number,
-        })
-      : t('Choose a truck; its number goes on the invoice.');
+  /** What choosing a saved address does to the rate, or why nothing is offered. */
+  const siteHint = !activeCustomer
+    ? t('Saved addresses come from the customer profile.')
+    : !savedAddresses.length
+      ? t('Add delivery addresses to this customer to pick them here.')
+      : addressOnFile
+        ? siteRate && siteRate.flat_rate !== null
+          ? t('Rated at this address: {rate}.', {
+              rate: `${money(siteRate.flat_rate)} ${t(RATE_UNITS[siteRate.rate_type])}${
+                siteRate.fuel_charge
+                  ? ` ${t('+ {amount} fuel', { amount: formatFuel(siteRate.fuel_charge, siteRate.fuel_type) })}`
+                  : ''
+              }`,
+            })
+          : t('No rate is saved for this address; enter it below.')
+        : t('Choosing one fills in the destination and that address’s rate.');
 
   // One batch per ticket date, the one added to most recently first, with how
   // many of its tickets nobody has checked yet. This is the pile the invoicing
@@ -3556,31 +3551,43 @@ export default function LoadDesk() {
                           </div>
                         </fieldset>
                       ) : null}
+                      {/* Where this load went, from the customer's saved job
+                          sites. It is the ticket's destination (step 1) offered
+                          as a list, and choosing one brings that site's rate
+                          with it. The truck used to be picked here; it is set
+                          for the upload in the panel above instead. */}
                       <div className="ld-field" data-span={2}>
-                        <label htmlFor={`${fieldId}-truck`}>{t('Truck profile')}</label>
+                        <label htmlFor={`${fieldId}-site`}>{t('Saved address')}</label>
                         <SelectField
-                          id={`${fieldId}-truck`}
-                          aria-describedby={`${fieldId}-truck-hint`}
-                          value={activeTruck ? String(activeTruck.id) : ''}
-                          onValueChange={chooseTruck}
+                          id={`${fieldId}-site`}
+                          aria-describedby={`${fieldId}-site-hint`}
+                          value={savedAddresses.find(sameAddress) ?? ''}
+                          onValueChange={(value) => {
+                            if (value) setField('project_address', value);
+                          }}
+                          disabled={!activeCustomer || !savedAddresses.length}
                           options={[
-                            { value: '', label: t('No truck profile') },
-                            ...trucks
-                              .filter(
-                                (truck) =>
-                                  truck.active || truck.id === active.truck_id,
-                              )
-                              .map((truck) => ({
-                                value: String(truck.id),
-                                label: truckLabel(truck),
-                              })),
+                            {
+                              value: '',
+                              label: !activeCustomer
+                                ? t('Choose a customer first')
+                                : !savedAddresses.length
+                                  ? t('No saved addresses for this customer')
+                                  : typedAddress
+                                    ? t('Not one of the saved addresses')
+                                    : t('Choose an address'),
+                            },
+                            ...savedAddresses.map((address) => ({
+                              value: address,
+                              label: address,
+                            })),
                           ]}
                         />
                         <small
-                          id={`${fieldId}-truck-hint`}
+                          id={`${fieldId}-site-hint`}
                           className="ld-field-hint"
                         >
-                          {truckHint}
+                          {siteHint}
                         </small>
                       </div>
                       {/* Rate type, rate, fuel type and fuel charge share a row,
