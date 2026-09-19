@@ -16,7 +16,6 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -620,11 +619,6 @@ export default function CustomersPage() {
             <form className="pf-form" onSubmit={(event) => void save(event)}>
               <DialogHeader>
                 <DialogTitle>{draft.id ? t('Edit customer') : t('Add customer')}</DialogTitle>
-                <DialogDescription>
-                  {t(
-                    'When a ticket’s customer number or name matches, Load Desk selects this customer and fills in its rate on the invoice.',
-                  )}
-                </DialogDescription>
               </DialogHeader>
               <div className="ld-fields pf-fields">
                 <p className="pf-group-title">
@@ -657,16 +651,10 @@ export default function CustomersPage() {
                   </label>
                   <Input
                     id={`${fieldId}-ids`}
-                    aria-describedby={`${fieldId}-ids-hint`}
                     placeholder={t('Customer number')}
                     value={draft.ids}
                     onChange={(event) => setDraftField({ ids: event.target.value })}
                   />
-                  <small id={`${fieldId}-ids-hint`} className="ld-field-hint">
-                    {t(
-                      'The number printed after “Customer:”. Separate several with commas.',
-                    )}
-                  </small>
                 </div>
                 <div className="ld-field" data-span={2}>
                   <span id={`${fieldId}-names-label`}>{t('Names printed on tickets')}</span>
@@ -694,7 +682,6 @@ export default function CustomersPage() {
                     </label>
                     <Input
                       id={`${fieldId}-names`}
-                      aria-describedby={`${fieldId}-names-hint`}
                       placeholder={t('Name as printed on the ticket')}
                       value={aliasDraft}
                       onChange={(event) => setAliasDraft(event.target.value)}
@@ -711,11 +698,6 @@ export default function CustomersPage() {
                       {t('Add')}
                     </Button>
                   </div>
-                  <small id={`${fieldId}-names-hint`} className="ld-field-hint">
-                    {t(
-                      'A ticket matches when its customer name contains one of these or the profile name. A name a letter or two off still matches, so a printer dropping or adding a character is fine.',
-                    )}
-                  </small>
                 </div>
                 <p className="pf-group-title">
                   <MapPin aria-hidden="true" />
@@ -733,7 +715,6 @@ export default function CustomersPage() {
                     </label>
                     <Input
                       id={`${fieldId}-addresses`}
-                      aria-describedby={`${fieldId}-addresses-hint`}
                       placeholder={t('Street, city, state')}
                       value={addressDraft}
                       onChange={(event) => setAddressDraft(event.target.value)}
@@ -872,11 +853,6 @@ export default function CustomersPage() {
                       </ul>
                     </div>
                   ) : null}
-                  <small id={`${fieldId}-addresses-hint`} className="ld-field-hint">
-                    {t(
-                      'Pick one of these in review instead of reading the destination off a scan that is cut off or smudged.',
-                    )}
-                  </small>
                 </div>
                 <p className="pf-group-title">
                   <StickyNote aria-hidden="true" />

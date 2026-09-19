@@ -216,9 +216,9 @@
     "semantic_hash": "562937cf7bd27d917a0c2e8418653ad7"
   },
   "components/load-desk/load-desk.tsx": {
-    "mtime": 1789777021.6334383,
-    "seen": 1789777109.6314151,
-    "ast_hash": "d0c26fd2cfa01ea15681bbd2b7458d0a",
+    "mtime": 1789778417.9804773,
+    "seen": 1789778483.27984,
+    "ast_hash": "1cf70e012a93c89c19312c763d4c993b",
     "semantic_hash": ""
   },
   "components/profiles/clients-section.tsx": {
@@ -234,9 +234,9 @@
     "semantic_hash": ""
   },
   "components/profiles/customers-page.tsx": {
-    "mtime": 1789776599.5390117,
-    "seen": 1789776753.807091,
-    "ast_hash": "963c8398c93a5921977b84e25acf04a1",
+    "mtime": 1789778312.691945,
+    "seen": 1789778483.279844,
+    "ast_hash": "75f4f3cc8013a4b63f50c9297b74754a",
     "semantic_hash": ""
   },
   "components/profiles/fleet-page.tsx": {

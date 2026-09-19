@@ -2222,16 +2222,6 @@ export default function LoadDesk() {
             : t('Save this address to {name}', { name: activeCustomer.name })}
         </Button>
       ) : null}
-      <small className="ld-field-hint">
-        {!activeCustomer
-          ? t('Choose a customer profile below to pick one of its saved addresses.')
-          : savedAddresses.length
-            ? t('Straight from the profile, for a scan whose address is cut off.')
-            : t(
-                '{name} has no saved addresses yet. Save this one to pick it on the next ticket.',
-                { name: activeCustomer.name },
-              )}
-      </small>
     </div>
   );
 
@@ -2263,11 +2253,7 @@ export default function LoadDesk() {
       ]
         .filter(Boolean)
         .join(' · ') || t('No address or phone on this client profile.')
-    : billToName
-      ? t('This invoice’s bill-to has no client profile. Choose a client, or create one from it.')
-      : clients.length
-        ? t('Choose who this invoice is billed to.')
-        : t('No clients yet. Create one to bill this invoice.');
+    : null;
 
   const newClientField = (
     key: 'name' | 'phone' | 'street' | 'city',
@@ -2322,28 +2308,23 @@ export default function LoadDesk() {
               : ''
           }`,
         })
-      : customerLocationRates(activeCustomer).length
-        ? t('No rate is saved for this address; enter the rate for this ticket.')
-        : t('This customer has no site rates yet; enter the rate for this ticket.')
+      : t('No rate is saved for this address.')
     : ticket?.customer_name
       ? t('No customer profile matches this ticket.')
-      : t('Choose the customer to use its rates.');
+      : null;
   /** What choosing a saved address does to the rate, or why nothing is offered. */
-  const siteHint = !activeCustomer
-    ? t('Saved addresses come from the customer profile.')
-    : !savedAddresses.length
-      ? t('Add delivery addresses to this customer to pick them here.')
-      : addressOnFile
-        ? siteRate && siteRate.flat_rate !== null
-          ? t('Rated at this address: {rate}.', {
-              rate: `${money(siteRate.flat_rate)} ${t(RATE_UNITS[siteRate.rate_type])}${
-                siteRate.fuel_charge
-                  ? ` ${t('+ {amount} fuel', { amount: formatFuel(siteRate.fuel_charge, siteRate.fuel_type) })}`
-                  : ''
-              }`,
-            })
-          : t('No rate is saved for this address; enter it below.')
-        : t('Choosing one fills in the destination and that address’s rate.');
+  const siteHint =
+    activeCustomer && savedAddresses.length && addressOnFile
+      ? siteRate && siteRate.flat_rate !== null
+        ? t('Rated at this address: {rate}.', {
+            rate: `${money(siteRate.flat_rate)} ${t(RATE_UNITS[siteRate.rate_type])}${
+              siteRate.fuel_charge
+                ? ` ${t('+ {amount} fuel', { amount: formatFuel(siteRate.fuel_charge, siteRate.fuel_type) })}`
+                : ''
+            }`,
+          })
+        : t('No rate is saved for this address.')
+      : null;
 
   // One batch per ticket date, the one added to most recently first, with how
   // many of its tickets nobody has checked yet. This is the pile the invoicing
@@ -2952,11 +2933,6 @@ export default function LoadDesk() {
                     </li>
                   ))}
                 </ul>
-                <p className="ld-hint">
-                  {t(
-                    'Tickets from the same date go on one invoice, dated that day. Tickets from different dates get separate invoices.',
-                  )}
-                </p>
               </div>
             ) : null}
             <div className="ld-field ld-truck-pick">
@@ -2981,9 +2957,7 @@ export default function LoadDesk() {
                 id={`${fieldId}-upload-truck-hint`}
                 className="ld-field-hint"
               >
-                {activeTrucks.length ? (
-                  t('Its truck number goes on every invoice from this upload.')
-                ) : (
+                {activeTrucks.length ? null : (
                   <>
                     {t('Add trucks in')} <Link href="/fleet">{t('Truck Fleet')}</Link>{' '}
                     {t('to choose one here.')}
@@ -3286,13 +3260,6 @@ export default function LoadDesk() {
                         <FileUp data-icon="inline-start" />
                         {t('Add tickets to this invoice')}
                       </Button>
-                      <small className="ld-field-hint">
-                        {shownInvoiceNumber(active.invoice.invoice_number)
-                          ? t('They join invoice {number}, whatever their ticket dates.', {
-                              number: shownInvoiceNumber(active.invoice.invoice_number),
-                            })
-                          : t('They join the invoice being reviewed, whatever their ticket dates.')}
-                      </small>
                       {addingTo === active.batch_id ? extractionProgress : null}
                     </div>
                     <div className="ld-fields">
@@ -3315,7 +3282,7 @@ export default function LoadDesk() {
                               ? t('Given once the ticket has a date: enter it in step 1.')
                               : isPendingInvoiceNumber(active.invoice.invoice_number)
                                 ? t('Waiting for the rest of this upload to be read.')
-                                : t('Enter your first invoice number. The ones after it follow in order.'),
+                                : undefined,
                         },
                       )}
                       {/* Read-only on purpose: an invoice is dated by its
@@ -3332,9 +3299,7 @@ export default function LoadDesk() {
                         () => {},
                         {
                           readOnly: true,
-                          hint: active.ticket.ticket_date
-                            ? t('The ticket’s date. Change it on the ticket to move the invoice.')
-                            : t('No date was read off the ticket. Fill the date in on the ticket and the invoice follows.'),
+                          hint: undefined,
                         },
                       )}
                       <div className="ld-field" data-span={2} data-new-row>
@@ -3363,18 +3328,14 @@ export default function LoadDesk() {
                             { value: NEW_CUSTOMER, label: t('+ Create new customer') },
                           ]}
                         />
-                        <small
-                          id={`${fieldId}-customer-hint`}
-                          className="ld-field-hint"
-                        >
-                          {customerFormOpen
-                            ? t('Check the name below, then save the customer.')
-                            : activeCustomer || !ticket?.customer_name
-                              ? customerHint
-                              : t(
-                                  'No customer profile matches this ticket. Choose + Create new customer to add it from the scan.',
-                                )}
-                        </small>
+                        {customerFormOpen || !customerHint ? null : (
+                          <small
+                            id={`${fieldId}-customer-hint`}
+                            className="ld-field-hint"
+                          >
+                            {customerHint}
+                          </small>
+                        )}
                         {misprint ? (
                           <p className="ld-near-match">
                             <span>
@@ -3508,12 +3469,14 @@ export default function LoadDesk() {
                             })),
                           ]}
                         />
-                        <small
-                          id={`${fieldId}-site-hint`}
-                          className="ld-field-hint"
-                        >
-                          {siteHint}
-                        </small>
+                        {siteHint ? (
+                          <small
+                            id={`${fieldId}-site-hint`}
+                            className="ld-field-hint"
+                          >
+                            {siteHint}
+                          </small>
+                        ) : null}
                       </div>
                       {/* Rate type, rate, fuel type and fuel charge share a row,
                           and an hourly rate puts its hours at the end of it: the
