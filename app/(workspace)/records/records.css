@@ -247,8 +247,12 @@
   font-weight: var(--type-medium);
   color: var(--ui-accent-ink);
 }
-.rec-invoice-toggle:hover .rec-invoice-name strong {
-  text-decoration: underline;
+/* No underline on hover: the number is set in the link colour to match the
+   Invoices tab, but this line opens rather than goes anywhere, and the pointer
+   stays over it after the press — so the underline stayed too, a blue line
+   under the number until the pointer moved. The row's own tint says hover. */
+.rec-invoice-toggle:focus:not(:focus-visible) {
+  outline: none;
 }
 .rec-invoice-name small {
   /* Inside a table header cell, which is bold by default; the facts are not. */
