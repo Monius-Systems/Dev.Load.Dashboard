@@ -28,6 +28,7 @@ const SECTION_LOADERS = {
   '/records': () => import('@/components/records/records-page'),
   '/customers': () => import('@/components/profiles/customers-page'),
   '/fleet': () => import('@/components/profiles/fleet-page'),
+  '/ifta': () => import('@/components/ifta/ifta-page'),
 } as const;
 
 const HomePage = dynamic(SECTION_LOADERS['/']);
@@ -35,6 +36,7 @@ const LoadDesk = dynamic(SECTION_LOADERS['/load-desk']);
 const RecordsPage = dynamic(SECTION_LOADERS['/records']);
 const CustomersPage = dynamic(SECTION_LOADERS['/customers']);
 const FleetPage = dynamic(SECTION_LOADERS['/fleet']);
+const IftaPage = dynamic(SECTION_LOADERS['/ifta']);
 
 /**
  * Fetches the code of every section that is not on the screen, once the one
@@ -89,6 +91,7 @@ const SECTIONS: Record<string, () => ReactNode> = {
   '/records': () => <RecordsPage />,
   '/customers': () => <CustomersPage />,
   '/fleet': () => <FleetPage />,
+  '/ifta': () => <IftaPage />,
 };
 
 /** In the bar's order, which is the order a swipe moves through them. */

@@ -1,0 +1,234 @@
+import { apiJson, dataMode, type DataMode } from './data-mode.ts';
+import {
+  dayKey,
+  MAX_DAYS_PER_REQUEST,
+  needsRecalculation,
+  type MileageDay,
+  type TruckDay,
+} from './mileage.ts';
+
+// Stored truck-days for the IFTA page, in the shape of storage.ts: one
+// snapshot, subscribers, and the calls that change it. Signed-in members read
+// /api/ifta and ask /api/ifta/recalculate for the days whose tickets have
+// changed; the unprotected local preview has no server to ask and says so.
+
+export type DaysSnapshot = {
+  /** Stored days by `${truck_id}|${date}`. */
+  days: Record<string, MileageDay>;
+  /** The range loaded from the server, or null before the first load. */
+  range: { from: string; to: string } | null;
+  /** Whether the deployment has a routing key. */
+  configured: boolean;
+  error: string | null;
+  ready: boolean;
+  mode: DataMode | null;
+  /** Days being worked out right now. */
+  pending: ReadonlySet<string>;
+};
+
+const SERVER_SNAPSHOT: DaysSnapshot = {
+  days: {},
+  range: null,
+  configured: true,
+  error: null,
+  ready: false,
+  mode: null,
+  pending: new Set(),
+};
+
+let snapshot: DaysSnapshot = SERVER_SNAPSHOT;
+const listeners = new Set<() => void>();
+
+function publish(next: DaysSnapshot) {
+  snapshot = next;
+  for (const listener of listeners) listener();
+}
+
+export function subscribeDays(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+export const getDaysSnapshot = () => snapshot;
+export const getServerDaysSnapshot = () => SERVER_SNAPSHOT;
+
+const keyOf = (day: MileageDay) => dayKey(day.truck_id, day.service_date);
+
+/** Stored rows merged in; `removed` taken out. */
+function merge(rows: MileageDay[], removed: { truck_id: number; date: string }[] = []) {
+  const days = { ...snapshot.days };
+  for (const row of rows) days[keyOf(row)] = row;
+  for (const gone of removed) delete days[dayKey(gone.truck_id, gone.date)];
+  return days;
+}
+
+/** Loads the stored days in a range, replacing what was loaded for it before. */
+export async function loadDays(range: { from: string; to: string }): Promise<void> {
+  const mode = snapshot.mode ?? (await dataMode());
+  if (mode === 'local') {
+    publish({ ...snapshot, days: {}, range, configured: false, error: null, ready: true, mode });
+    return;
+  }
+  if (mode === 'unavailable') {
+    publish({
+      ...snapshot,
+      range,
+      error: 'Your session has ended. Sign in again to see mileage.',
+      ready: true,
+      mode,
+    });
+    return;
+  }
+  const result = await apiJson<{ days: MileageDay[]; configured: boolean }>(
+    `/api/ifta?from=${range.from}&to=${range.to}`,
+  );
+  if (!result.ok) {
+    publish({ ...snapshot, range, error: result.error, ready: true, mode });
+    return;
+  }
+  const days: Record<string, MileageDay> = {};
+  for (const [key, day] of Object.entries(snapshot.days)) {
+    if (day.service_date < range.from || day.service_date > range.to) days[key] = day;
+  }
+  for (const row of result.data.days) days[keyOf(row)] = row;
+  publish({
+    ...snapshot,
+    days,
+    range,
+    configured: result.data.configured,
+    error: null,
+    ready: true,
+    mode,
+  });
+}
+
+type RecalculateAnswer = {
+  days: MileageDay[];
+  removed?: { truck_id: number; date: string }[];
+  configured: boolean;
+  error?: string;
+};
+
+/**
+ * Asks the server for the given days, at most 25 at a time, one request
+ * after another, publishing each answer as it comes. Returns an error
+ * message when a request fails; the rest are not sent.
+ */
+export async function recalculate(
+  days: { truck_id: number; date: string }[],
+  { force = false } = {},
+): Promise<string | null> {
+  if (snapshot.mode !== 'remote' || !days.length) return null;
+  const keys = days.map((day) => dayKey(day.truck_id, day.date));
+  publish({ ...snapshot, pending: new Set([...snapshot.pending, ...keys]) });
+  let error: string | null = null;
+  try {
+    for (let at = 0; at < days.length; at += MAX_DAYS_PER_REQUEST) {
+      const chunk = days.slice(at, at + MAX_DAYS_PER_REQUEST);
+      const result = await apiJson<RecalculateAnswer>('/api/ifta/recalculate', {
+        method: 'POST',
+        body: JSON.stringify({ days: chunk, force }),
+      });
+      if (!result.ok) {
+        error = result.error;
+        if (result.status === 503) publish({ ...snapshot, configured: false });
+        break;
+      }
+      publish({
+        ...snapshot,
+        days: merge(result.data.days, result.data.removed),
+        configured: result.data.configured,
+      });
+    }
+  } finally {
+    const pending = new Set(snapshot.pending);
+    for (const key of keys) pending.delete(key);
+    publish({ ...snapshot, pending });
+  }
+  return error;
+}
+
+/**
+ * How many times a day has been asked for this page session without its
+ * tickets changing. Three is where the page stops and says so, rather than
+ * asking again every ten seconds for something the server cannot settle.
+ */
+const attempts = new Map<string, { hash: string; count: number }>();
+const retriedFailed = new Set<string>();
+export const MAX_ATTEMPTS = 3;
+
+export const givenUp = (day: TruckDay) => {
+  const tried = attempts.get(day.key);
+  return !!tried && tried.hash === day.input_hash && tried.count >= MAX_ATTEMPTS;
+};
+
+let settling: Promise<void> | null = null;
+let again = false;
+/** The days the page last asked for; a pass always works from the latest. */
+let latest: TruckDay[] = [];
+
+/**
+ * Brings the stored days in line with the tickets: every expected day that is
+ * missing, out of date, or failed and not yet retried this visit is posted,
+ * newest first. One pass at a time; a call during a pass queues one more.
+ */
+export function settleDays(expected: TruckDay[]): Promise<void> {
+  latest = expected;
+  if (settling) {
+    again = true;
+    return settling;
+  }
+  settling = (async () => {
+    try {
+      do {
+        again = false;
+        if (snapshot.mode !== 'remote' || !snapshot.configured) return;
+        const needed = latest.filter((day) => {
+          if (snapshot.pending.has(day.key) || givenUp(day)) return false;
+          const retry = !retriedFailed.has(day.key);
+          return needsRecalculation(snapshot.days[day.key], day, retry);
+        });
+        if (!needed.length) return;
+        for (const day of needed) {
+          const tried = attempts.get(day.key);
+          attempts.set(day.key, {
+            hash: day.input_hash,
+            count: tried && tried.hash === day.input_hash ? tried.count + 1 : 1,
+          });
+          if (snapshot.days[day.key]?.status === 'failed') retriedFailed.add(day.key);
+        }
+        const error = await recalculate(needed.map((day) => ({ truck_id: day.truck_id, date: day.date })));
+        if (error) {
+          publish({ ...snapshot, error });
+          return;
+        }
+      } while (again);
+    } finally {
+      settling = null;
+    }
+  })();
+  return settling;
+}
+
+/** Forgets the attempt count for a day, so a manual Recalculate is always sent. */
+export function resetAttempts(keys: string[]) {
+  for (const key of keys) {
+    attempts.delete(key);
+    retriedFailed.delete(key);
+  }
+}
+
+/**
+ * Sets where an address on tickets is. Returns null on success, or the error
+ * message when the typed address did not place precisely either.
+ */
+export async function fixPlace(placeKey: string, address: string): Promise<string | null> {
+  if (snapshot.mode !== 'remote') return 'Your session has ended. Sign in again to save.';
+  const result = await apiJson<{ place: unknown }>('/api/ifta/places', {
+    method: 'POST',
+    body: JSON.stringify({ place_key: placeKey, address }),
+  });
+  return result.ok ? null : result.error;
+}

@@ -157,6 +157,7 @@ project and never overwrites the website.
    | `SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_r-Y7LuRlb_yE5yTWwP3LxA_Zd0ZLqVH` |
    | `WEBSITE_URL` | `https://moniussystems.com` |
    | `OPENAI_API_KEY` | the Monius OpenAI key — set as a **secret**, value not recorded here |
+   | `TOMTOM_API_KEY` | the Monius TomTom key for IFTA & Mileage — set as a **secret**, value not recorded here |
 
    `WEBSITE_URL` is what lets the website's Client Login sign people in; see
    step 4 for why its exact spelling matters.
@@ -167,6 +168,13 @@ project and never overwrites the website.
    It is read only on the server, in `app/api/extract/route.ts`, and never
    reaches the browser. Without it, uploading a ticket says the reader is not
    configured and everything else still works.
+
+   `TOMTOM_API_KEY` is what places ticket addresses and routes trucks for
+   **IFTA & Mileage**. The same rules: one Monius key for every workspace,
+   read only on the server (`lib/server/tomtom-key.ts`), never in the browser.
+   Without it the IFTA page says routing is not configured and everything
+   else still works. The database tables it needs are in
+   `supabase/migrations/202609190001_ifta_mileage.sql` (`supabase db push`).
 
 3. Point `dashboard.moniussystems.com` at the project, as the host's custom-domain
    setup asks. The website keeps `moniussystems.com`. They have to be separate
@@ -299,3 +307,9 @@ membership. If more client dashboards follow, the website can link to a small
 - Somebody who belongs to two workspaces gets the one they joined first; there
   is no way to switch between them yet.
 - Supported ticket layouts: Heidelberg Materials and Ontario Trap Rock.
+- IFTA & Mileage is an estimate: Yard → pickup → delivery per ticket → Yard,
+  on roads open to the truck's configured size and weight as far as TomTom's
+  data allows (its truck routing is marked beta). Fuel is route miles ÷ the
+  truck's average MPG, not purchased fuel. Miles are not yet split by state.
+  Each truck needs its yard address entered in Truck Fleet; an address the
+  map cannot place precisely is shown for a person to set once.

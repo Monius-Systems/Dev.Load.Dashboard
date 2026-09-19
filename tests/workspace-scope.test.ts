@@ -11,25 +11,29 @@ import { readFileSync } from 'node:fs';
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-void test('the store scopes every query to the workspace it was given', () => {
-  const source = read('lib/server/load-desk-store.ts');
-  const scopes = [...source.matchAll(/\.eq\('workspace_id',\s*([^)]+)\)/g)].map((m) =>
-    m[1].trim(),
-  );
-  assert.ok(scopes.length > 0, 'expected workspace-scoped queries');
-  for (const scope of scopes) {
-    assert.equal(scope, 'workspace', `a query is scoped to ${scope}, not the caller's workspace`);
-  }
-  // Rows written must carry the same scope as rows read.
-  const writes = [...source.matchAll(/workspace_id:\s*([^,\n]+)/g)].map((m) => m[1].trim());
-  for (const write of writes) {
-    assert.equal(write, 'workspace', `a row is written into ${write}`);
+void test('the stores scope every query to the workspace they were given', () => {
+  for (const path of ['lib/server/load-desk-store.ts', 'lib/server/mileage-store.ts']) {
+    const source = read(path);
+    const scopes = [...source.matchAll(/\.eq\('workspace_id',\s*([^)]+)\)/g)].map((m) =>
+      m[1].trim(),
+    );
+    assert.ok(scopes.length > 0, `${path}: expected workspace-scoped queries`);
+    for (const scope of scopes) {
+      assert.equal(scope, 'workspace', `${path}: a query is scoped to ${scope}, not the caller's workspace`);
+    }
+    // Rows written must carry the same scope as rows read.
+    const writes = [...source.matchAll(/workspace_id:\s*([^,\n]+)/g)].map((m) => m[1].trim());
+    for (const write of writes) {
+      assert.equal(write, 'workspace', `${path}: a row is written into ${write}`);
+    }
   }
 });
 
 void test('no workspace is baked into the server at build time', () => {
   for (const path of [
     'lib/server/load-desk-store.ts',
+    'lib/server/mileage-store.ts',
+    'lib/server/mileage-calc.ts',
     'lib/server/auth.ts',
     'lib/server/avatar-store.ts',
   ]) {
@@ -68,5 +72,23 @@ void test('empty fields describe themselves instead of showing real details', ()
     // both are wrong here. Hints go through t().
     const literals = [...source.matchAll(/placeholder="([^"]*)"/g)].map((m) => m[1]);
     assert.deepEqual(literals, [], `${path} has literal placeholders: ${literals.join(', ')}`);
+  }
+});
+
+void test('one client’s yard and the routing key stay out of the app', () => {
+  // The demo yard is entered on the truck in Truck Fleet; the source guards in
+  // tests/mileage.test.ts walk lib/, components/ and app/ for it and for any
+  // TomTom reference outside lib/server. Here the two files that may hold the
+  // key name are pinned down.
+  for (const path of ['lib/server/tomtom-key.ts', '.dev.vars.example']) {
+    assert.ok(read(path).includes('TOMTOM_API_KEY'), `${path} names the routing key`);
+  }
+  assert.ok(!read('vite.config.ts').includes('TOMTOM'), 'the key is a host secret, not a build var');
+  for (const path of [
+    'components/ifta/ifta-page.tsx',
+    'components/profiles/fleet-page.tsx',
+    'lib/load-desk/mileage.ts',
+  ]) {
+    assert.ok(!/mokena|191st/i.test(read(path)), `${path} names the demo yard`);
   }
 });

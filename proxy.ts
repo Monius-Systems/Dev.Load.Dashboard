@@ -37,6 +37,7 @@ export const config = {
     '/records/:path*',
     '/customers/:path*',
     '/fleet/:path*',
+    '/ifta/:path*',
     '/account/:path*',
     '/api/:path*',
   ],

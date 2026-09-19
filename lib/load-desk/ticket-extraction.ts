@@ -14,6 +14,8 @@ export type ExtractedTicket = {
   company: string | null;
   bol: string | null;
   date: string | null;
+  time_in: string | null;
+  time_out: string | null;
   location: string | null;
   customer_number: string | null;
   customer: string | null;
@@ -32,6 +34,8 @@ export const EXTRACTION_FIELDS = [
   'company',
   'bol',
   'date',
+  'time_in',
+  'time_out',
   'location',
   'customer_number',
   'customer',
@@ -62,7 +66,19 @@ export const EXTRACTION_SCHEMA = {
     company: { ...text, description: 'The company issuing the load ticket.' },
     bol: { ...text, description: 'BOL or ticket number, digits only, never invented.' },
     date: { ...text, description: 'The ticket date as printed, e.g. 12/15/2025.' },
-    location: { ...text, description: 'The issuing plant or terminal, e.g. THORNTON.' },
+    time_in: {
+      ...text,
+      description: 'Time in (arrival at the plant) as printed, 24-hour HH:MM, or null.',
+    },
+    time_out: {
+      ...text,
+      description: 'Time out (departure from the plant) as printed, 24-hour HH:MM, or null.',
+    },
+    location: {
+      ...text,
+      description:
+        "The issuing plant's printed street address, city, state and ZIP, e.g. 322 S Williams St, Thornton, IL 60476. Only the plant name or town when no address is printed.",
+    },
     customer_number: { ...text, description: 'Customer number, never invented.' },
     customer: { ...text, description: 'The material customer.' },
     project: { ...text, description: 'The project or job site name.' },
@@ -109,6 +125,8 @@ Also use:
 Net Weight / 2000 ≈ Net Tons
 as a validation check.
 Company means the company issuing the load ticket.
+Location means the issuing plant's street address, city, state and ZIP as printed on the ticket; give only the plant name or town when no address is printed.
+Time In and Time Out are the times printed on the ticket, returned as 24-hour HH:MM, or null when not printed.
 Customer means the material customer.
 Carrier means the trucking/transport company.
 Project and Project Location are separate fields.
@@ -138,6 +156,8 @@ export function readExtracted(value: unknown): ExtractedTicket {
     company: trimmed(source.company),
     bol: trimmed(source.bol),
     date: trimmed(source.date),
+    time_in: trimmed(source.time_in),
+    time_out: trimmed(source.time_out),
     location: trimmed(source.location),
     customer_number: trimmed(source.customer_number),
     customer: trimmed(source.customer),
@@ -172,6 +192,26 @@ export function extractedDate(printed: string | null): string | null {
 }
 
 /**
+ * "7:05", "07:05", "7:05 AM" or "3:20 pm" as the HH:MM the app stores; null
+ * for anything that is not a time of day.
+ */
+export function extractedTime(printed: string | null): string | null {
+  const match = /^(\d{1,2})[:.](\d{2})(?:\s*([AaPp])\.?[Mm]\.?)?$/.exec(printed?.trim() ?? '');
+  if (!match) return null;
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const half = match[3]?.toLowerCase();
+  if (minute > 59) return null;
+  if (half) {
+    if (hour < 1 || hour > 12) return null;
+    hour = (hour % 12) + (half === 'p' ? 12 : 0);
+  } else if (hour > 23) {
+    return null;
+  }
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+}
+
+/**
  * The model's answer as one of the app's tickets. Only the fields asked for are
  * filled; everything else on a Ticket stays null and is entered in review,
  * exactly as it is for a field the reader could not make out.
@@ -192,6 +232,8 @@ export function ticketFromExtraction(extracted: ExtractedTicket): Ticket {
   ticket.plant_address = extracted.location;
   ticket.ticket_number = extracted.bol;
   ticket.ticket_date = extractedDate(extracted.date);
+  ticket.time_in = extractedTime(extracted.time_in);
+  ticket.time_out = extractedTime(extracted.time_out);
   ticket.customer_id = extracted.customer_number;
   ticket.customer_name = extracted.customer;
   ticket.project_name = extracted.project;

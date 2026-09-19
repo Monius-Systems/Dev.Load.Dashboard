@@ -1,6 +1,7 @@
 import {
   Database,
   LayoutGrid,
+  Route,
   ScanLine,
   Truck,
   Users,
@@ -36,5 +37,6 @@ export const shellConfig: {
     { href: '/records', label: 'Invoices & Tickets', icon: Database, shortLabel: 'Invoices' },
     { href: '/customers', label: 'Customers & Clients', icon: Users, shortLabel: 'Customers' },
     { href: '/fleet', label: 'Truck Fleet', icon: Truck, shortLabel: 'Fleet' },
+    { href: '/ifta', label: 'IFTA & Mileage', icon: Route, shortLabel: 'IFTA' },
   ],
 };

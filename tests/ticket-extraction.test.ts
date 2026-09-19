@@ -4,6 +4,7 @@ import {
   EXTRACTION_FIELDS,
   EXTRACTION_SCHEMA,
   extractedDate,
+  extractedTime,
   readExtracted,
   ticketFromExtraction,
   weightDisagreement,
@@ -16,7 +17,9 @@ const answer = (patch: Partial<ExtractedTicket> = {}): ExtractedTicket => ({
   company: 'Heidelberg Materials',
   bol: '1725335778',
   date: '1/6/2026',
-  location: 'THORNTON',
+  time_in: '7:05',
+  time_out: '07:41',
+  location: '322 S Williams St, Thornton, IL 60476',
   customer_number: '60350616',
   customer: 'ANGELO IAFRATE CONSTRUCTION',
   project: 'AWS 210 New Carlisle',
@@ -45,7 +48,9 @@ void test('the schema demands every field, so unreadable and absent differ', () 
 void test('a reading becomes a ticket the rest of the app already understands', () => {
   const ticket = ticketFromExtraction(answer());
   assert.equal(ticket.plant_name, 'Heidelberg Materials');
-  assert.equal(ticket.plant_address, 'THORNTON');
+  assert.equal(ticket.plant_address, '322 S Williams St, Thornton, IL 60476');
+  assert.equal(ticket.time_in, '07:05');
+  assert.equal(ticket.time_out, '07:41');
   assert.equal(ticket.ticket_number, '1725335778');
   assert.equal(ticket.ticket_date, '2026-01-06');
   assert.equal(ticket.customer_id, '60350616');
@@ -94,6 +99,21 @@ void test('dates are read as printed and stored as dates', () => {
   assert.equal(extractedDate('13/45/2026'), null, 'not a date on any calendar');
   assert.equal(extractedDate('sometime Tuesday'), null);
   assert.equal(extractedDate(null), null);
+});
+
+void test('times are read as printed and stored as HH:MM', () => {
+  assert.equal(extractedTime('7:05'), '07:05');
+  assert.equal(extractedTime('07:41'), '07:41');
+  assert.equal(extractedTime('3:20 PM'), '15:20');
+  assert.equal(extractedTime('12:10 am'), '00:10');
+  assert.equal(extractedTime('12:10 pm'), '12:10');
+  assert.equal(extractedTime('25:00'), null, 'not a time of day');
+  assert.equal(extractedTime('7:75'), null);
+  assert.equal(extractedTime('morning'), null);
+  assert.equal(extractedTime(null), null);
+  const untimed = ticketFromExtraction(answer({ time_in: null, time_out: 'noon' }));
+  assert.equal(untimed.time_in, null);
+  assert.equal(untimed.time_out, null, 'a word is not a time, and is not guessed at');
 });
 
 void test('an answer is taken as it comes and tidied, never trusted blindly', () => {

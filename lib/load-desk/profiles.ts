@@ -70,6 +70,27 @@ export type CustomerProfile = {
   created_at: string;
 };
 
+/**
+ * What IFTA & Mileage needs to know about a truck: where its day starts and
+ * ends, how far it goes on a gallon, and the size and weight the routing
+ * provider keeps it off roads it may not use. US units, as they are typed;
+ * lib/load-desk/mileage.ts converts them for the provider.
+ */
+export type TruckIfta = {
+  /** The yard the day starts from and returns to; empty until entered. */
+  yard_address: string;
+  /** Average miles per gallon, for Estimated Fuel Used; null when unknown. */
+  mpg: number | null;
+  height_ft: number;
+  width_ft: number;
+  length_ft: number;
+  gross_weight_lb: number;
+  axle_weight_lb: number;
+  axles: number;
+  /** Routed as a commercial vehicle, which some roads do not allow. */
+  commercial: boolean;
+};
+
 export type TruckProfile = {
   id: number;
   /** Printed as TRUCK # on invoices. */
@@ -80,6 +101,8 @@ export type TruckProfile = {
   notes: string;
   active: boolean;
   created_at: string;
+  /** Yard, MPG and routing dimensions; absent on trucks saved before IFTA. */
+  ifta?: TruckIfta;
 };
 
 /** The workspace's own details for invoices. One per workspace. */

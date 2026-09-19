@@ -223,14 +223,15 @@ void test('however many dates are uploaded, the run follows them', () => {
     [onFile, ...uploaded],
     uploaded.map((record) => record.invoice_batch_id!),
   );
+  const byBatch = (a: string[], b: string[]) => a[0].localeCompare(b[0]);
   assert.deepEqual(
-    [...wanted].map(([batch, number]) => [batch, number]).sort(),
+    [...wanted].map(([batch, number]) => [batch, number]).sort(byBatch),
     [
       ['batch-2025-12-19', '2'],
       ['batch-2025-12-31', '3'],
       ['batch-2026-01-06', '4'],
       ['batch-2026-02-10', '5'],
-    ].sort(),
+    ].sort(byBatch),
   );
 });
 

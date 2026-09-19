@@ -19,3 +19,10 @@ SUPABASE_PUBLISHABLE_KEY=sb_publishable_r-Y7LuRlb_yE5yTWwP3LxA_Zd0ZLqVH
 # ticket belongs to is decided by the signed-in member's workspace, not by the
 # key, so there is no per-client variable to add when a client is onboarded.
 OPENAI_API_KEY=sk-...
+
+# IFTA & Mileage. Geocodes ticket addresses and routes trucks, on the server
+# only (lib/server/tomtom-key.ts); never sent to the browser. Set it as a
+# secret on the host — never in vite.config.ts vars, which are committed.
+# One Monius key for every client workspace, like the OpenAI key. Without it
+# the IFTA page says routing is not configured and everything else still works.
+TOMTOM_API_KEY=...

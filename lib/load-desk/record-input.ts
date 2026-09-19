@@ -12,6 +12,7 @@ import type {
   ClientProfile,
   CompanyProfile,
   CustomerProfile,
+  TruckIfta,
   TruckProfile,
 } from './profiles.ts';
 import { customerLocationRates, type LocationRate } from './customer-rates.ts';
@@ -355,6 +356,46 @@ export function parseCustomer(value: unknown): Parsed<NewCustomer> {
   };
 }
 
+const inRange = (value: unknown, min: number, max: number) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+
+/**
+ * A truck's yard, MPG and routing dimensions, bounded to what a road-going
+ * truck can be so a slipped decimal cannot ask the provider for a
+ * hundred-foot vehicle. Absent means the truck was saved before IFTA;
+ * anything else must be the whole block.
+ */
+export function parseTruckIfta(value: unknown): Parsed<TruckIfta | undefined> {
+  if (value === undefined || value === null) return { value: undefined };
+  if (
+    !isObject(value) ||
+    !text(value.yard_address, 200) ||
+    !(value.mpg === null || inRange(value.mpg, 1, 30)) ||
+    !inRange(value.height_ft, 6, 15) ||
+    !inRange(value.width_ft, 5, 10) ||
+    !inRange(value.length_ft, 10, 100) ||
+    !inRange(value.gross_weight_lb, 5_000, 200_000) ||
+    !inRange(value.axle_weight_lb, 2_000, 60_000) ||
+    !(Number.isInteger(value.axles) && inRange(value.axles, 2, 12)) ||
+    typeof value.commercial !== 'boolean'
+  ) {
+    return { error: 'The mileage and routing settings are not valid.' };
+  }
+  return {
+    value: {
+      yard_address: (value.yard_address as string).replace(/\s+/g, ' ').trim(),
+      mpg: value.mpg as number | null,
+      height_ft: value.height_ft as number,
+      width_ft: value.width_ft as number,
+      length_ft: value.length_ft as number,
+      gross_weight_lb: value.gross_weight_lb as number,
+      axle_weight_lb: value.axle_weight_lb as number,
+      axles: value.axles as number,
+      commercial: value.commercial,
+    },
+  };
+}
+
 export function parseTruck(value: unknown): Parsed<NewTruck> {
   if (
     !isObject(value) ||
@@ -369,6 +410,8 @@ export function parseTruck(value: unknown): Parsed<NewTruck> {
   ) {
     return { error: 'The truck details are not valid.' };
   }
+  const ifta = parseTruckIfta(value.ifta);
+  if ('error' in ifta) return ifta;
   return {
     value: {
       truck_number: (value.truck_number as string).trim(),
@@ -378,6 +421,7 @@ export function parseTruck(value: unknown): Parsed<NewTruck> {
       notes: value.notes as string,
       active: value.active,
       created_at: value.created_at as string,
+      ...(ifta.value ? { ifta: ifta.value } : {}),
     },
   };
 }

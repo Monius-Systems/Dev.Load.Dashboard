@@ -6,6 +6,7 @@ import './profiles.css';
 import './home.css';
 import './records/records.css';
 import './account/account.css';
+import './ifta/ifta.css';
 
 // One shell for every workspace page, so the sidebar, logo and account stay
 // mounted while pages change. The signed-in name and photo are read from the

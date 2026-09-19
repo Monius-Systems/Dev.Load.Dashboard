@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type SyntheticEvent } from 'react';
-import { Pencil, Plus, Trash2, Truck } from 'lucide-react';
+import { Pencil, Plus, Route, Trash2, Truck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,12 +33,14 @@ import {
 } from '@/components/profiles/profile-ui';
 import { useT } from '@/lib/i18n/use-t';
 import { sellerDisplayName } from '@/lib/load-desk/business';
+import { DEFAULT_TRUCK_IFTA, truckIfta } from '@/lib/load-desk/mileage';
 import {
   deleteProfile,
   normalizeKey,
   saveProfile,
   summarize,
   truckIdFor,
+  type TruckIfta,
   type TruckProfile,
 } from '@/lib/load-desk/profiles';
 import type { SavedRecord } from '@/lib/load-desk/types';
@@ -51,9 +53,35 @@ type Draft = {
   licensePlate: string;
   notes: string;
   active: boolean;
+  /** Mileage & routing, as typed; checked and converted on save. */
+  yardAddress: string;
+  mpg: string;
+  heightFt: string;
+  widthFt: string;
+  lengthFt: string;
+  grossLb: string;
+  axleLb: string;
+  axles: string;
+  commercial: boolean;
 };
 
-const blankDraft = (truckNumber = ''): Draft => ({
+const iftaFields = (ifta: TruckIfta) => ({
+  yardAddress: ifta.yard_address,
+  mpg: ifta.mpg === null ? '' : String(ifta.mpg),
+  heightFt: String(ifta.height_ft),
+  widthFt: String(ifta.width_ft),
+  lengthFt: String(ifta.length_ft),
+  grossLb: String(ifta.gross_weight_lb),
+  axleLb: String(ifta.axle_weight_lb),
+  axles: String(ifta.axles),
+  commercial: ifta.commercial,
+});
+
+/**
+ * A new truck starts with the defaults and, since a fleet usually shares one
+ * yard, the yard of the last truck that has one.
+ */
+const blankDraft = (truckNumber = '', trucks: TruckProfile[] = []): Draft => ({
   id: null,
   truckNumber,
   nickname: '',
@@ -61,6 +89,10 @@ const blankDraft = (truckNumber = ''): Draft => ({
   licensePlate: '',
   notes: '',
   active: true,
+  ...iftaFields({
+    ...DEFAULT_TRUCK_IFTA,
+    yard_address: [...trucks].reverse().find((truck) => truck.ifta?.yard_address)?.ifta?.yard_address ?? '',
+  }),
 });
 
 const draftFrom = (truck: TruckProfile): Draft => ({
@@ -71,7 +103,48 @@ const draftFrom = (truck: TruckProfile): Draft => ({
   licensePlate: truck.license_plate,
   notes: truck.notes,
   active: truck.active,
+  ...iftaFields(truckIfta(truck)),
 });
+
+/** The bounds parseTruckIfta enforces, so the form can say which field is off. */
+const IFTA_BOUNDS: [keyof Draft, string, number, number][] = [
+  ['heightFt', 'Height', 6, 15],
+  ['widthFt', 'Width', 5, 10],
+  ['lengthFt', 'Length', 10, 100],
+  ['grossLb', 'Gross weight', 5_000, 200_000],
+  ['axleLb', 'Axle weight', 2_000, 60_000],
+  ['axles', 'Axles', 2, 12],
+];
+
+/** The draft's mileage settings as a profile block, or the field that is wrong. */
+function iftaFromDraft(draft: Draft): { value: TruckIfta } | { error: string } {
+  const number = (value: string) => Number(value.trim());
+  const mpg = draft.mpg.trim() === '' ? null : number(draft.mpg);
+  if (mpg !== null && !(Number.isFinite(mpg) && mpg >= 1 && mpg <= 30)) {
+    return { error: 'Average MPG must be between 1 and 30, or left empty.' };
+  }
+  for (const [field, label, min, max] of IFTA_BOUNDS) {
+    const value = number(draft[field] as string);
+    if (!(Number.isFinite(value) && value >= min && value <= max)) {
+      return { error: `${label} must be between ${min.toLocaleString('en-US')} and ${max.toLocaleString('en-US')}.` };
+    }
+  }
+  const axles = number(draft.axles);
+  if (!Number.isInteger(axles)) return { error: 'Axles must be a whole number.' };
+  return {
+    value: {
+      yard_address: draft.yardAddress.replace(/\s+/g, ' ').trim(),
+      mpg,
+      height_ft: number(draft.heightFt),
+      width_ft: number(draft.widthFt),
+      length_ft: number(draft.lengthFt),
+      gross_weight_lb: number(draft.grossLb),
+      axle_weight_lb: number(draft.axleLb),
+      axles,
+      commercial: draft.commercial,
+    },
+  };
+}
 
 
 export default function FleetPage() {
@@ -147,6 +220,11 @@ export default function FleetPage() {
       return;
     }
     const existing = trucks.find((truck) => truck.id === draft.id);
+    const ifta = iftaFromDraft(draft);
+    if ('error' in ifta) {
+      setFormError(t(ifta.error));
+      return;
+    }
     const truck = {
       truck_number: truckNumber,
       nickname: draft.nickname.trim(),
@@ -155,6 +233,7 @@ export default function FleetPage() {
       notes: draft.notes.trim(),
       active: draft.active,
       created_at: existing?.created_at ?? new Date().toISOString(),
+      ifta: ifta.value,
     };
     setSaving(true);
     const error = await saveProfile('truck', truck, existing?.id ?? null);
@@ -259,7 +338,7 @@ export default function FleetPage() {
               <p className="ld-step">{t('Fleet')}</p>
               <h2 id="pf-trucks-title">{t('Trucks')}</h2>
             </div>
-            <Button onClick={() => edit(blankDraft())}>
+            <Button onClick={() => edit(blankDraft('', trucks))}>
               <Plus />
               {t('Add truck')}
             </Button>
@@ -296,6 +375,11 @@ export default function FleetPage() {
                           {truck.active ? null : (
                             <span className="ld-chip pf-chip">{t('Inactive')}</span>
                           )}
+                          {truck.ifta?.yard_address ? null : (
+                            <span className="ld-chip pf-chip" title={t('Enter the yard for IFTA mileage.')}>
+                              {t('No yard')}
+                            </span>
+                          )}
                         </strong>
                         <small>
                           {[truck.nickname, plate(truck)].filter(Boolean).join(' · ') ||
@@ -322,6 +406,9 @@ export default function FleetPage() {
                         #{truck.truck_number}
                         {truck.active ? null : (
                           <span className="ld-chip pf-chip">{t('Inactive')}</span>
+                        )}
+                        {truck.ifta?.yard_address ? null : (
+                          <span className="ld-chip pf-chip">{t('No yard')}</span>
                         )}
                       </strong>
                       <small>
@@ -366,7 +453,7 @@ export default function FleetPage() {
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => edit(blankDraft(suggestion.number))}
+                    onClick={() => edit(blankDraft(suggestion.number, trucks))}
                   >
                     <Plus />
                     {t('Add truck')}
@@ -448,6 +535,69 @@ export default function FleetPage() {
                     onChange={(event) => setDraftField({ notes: event.target.value })}
                   />
                 </label>
+                <p className="pf-group-title">
+                  <Route aria-hidden="true" />
+                  {t('Mileage & routing')}
+                </p>
+                <label className="ld-field" data-span={2} htmlFor={`${fieldId}-yard`}>
+                  <span>{t('Yard address')}</span>
+                  <Input
+                    id={`${fieldId}-yard`}
+                    placeholder={t('Street, city, state and ZIP the day starts and ends at')}
+                    value={draft.yardAddress}
+                    maxLength={200}
+                    onChange={(event) => setDraftField({ yardAddress: event.target.value })}
+                  />
+                </label>
+                <label className="ld-field" htmlFor={`${fieldId}-mpg`}>
+                  <span>{t('Average MPG')}</span>
+                  <Input
+                    id={`${fieldId}-mpg`}
+                    type="number"
+                    inputMode="decimal"
+                    step={0.1}
+                    min={1}
+                    max={30}
+                    value={draft.mpg}
+                    onChange={(event) => setDraftField({ mpg: event.target.value })}
+                  />
+                </label>
+                <label className="pf-check pf-check-inline" htmlFor={`${fieldId}-commercial`}>
+                  <input
+                    id={`${fieldId}-commercial`}
+                    type="checkbox"
+                    checked={draft.commercial}
+                    onChange={(event) => setDraftField({ commercial: event.target.checked })}
+                  />
+                  <span>
+                    {t('Commercial vehicle')}
+                    <small>{t('Used for truck routing restrictions')}</small>
+                  </span>
+                </label>
+                <div className="pf-dimensions" data-span={2}>
+                  {(
+                    [
+                      ['heightFt', 'Height ft', 0.1],
+                      ['widthFt', 'Width ft', 0.1],
+                      ['lengthFt', 'Length ft', 0.5],
+                      ['grossLb', 'Gross lb', 100],
+                      ['axleLb', 'Axle lb', 100],
+                      ['axles', 'Axles', 1],
+                    ] as const
+                  ).map(([field, label, step]) => (
+                    <label className="ld-field" key={field} htmlFor={`${fieldId}-${field}`}>
+                      <span>{t(label)}</span>
+                      <Input
+                        id={`${fieldId}-${field}`}
+                        type="number"
+                        inputMode="decimal"
+                        step={step}
+                        value={draft[field]}
+                        onChange={(event) => setDraftField({ [field]: event.target.value })}
+                      />
+                    </label>
+                  ))}
+                </div>
                 <label className="pf-check" data-span={2}>
                   <input
                     type="checkbox"
