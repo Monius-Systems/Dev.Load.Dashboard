@@ -1012,6 +1012,8 @@ export default function LoadDesk() {
         // A record saved before these were kept has neither; an edit needs both.
         customer_profile_id: record.customer_profile_id ?? null,
         truck_id: record.truck_id ?? null,
+        // The app numbering its own upload: nobody has checked anything.
+        bookkeeping: true,
       });
     }
     if (!edits.length) {
@@ -3713,53 +3715,90 @@ export default function LoadDesk() {
                 >
                   {saveStatus?.message}
                 </p>
-                <div className="ld-step-nav">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={atStep === 0}
-                    onClick={() => setStep((current) => Math.max(0, current - 1))}
-                  >
-                    <ChevronLeft data-icon="inline-start" />
-                    {t('Back')}
-                  </Button>
-                  {/* Two buttons, keyed apart, and not one button that changes
-                      what it is. They sit in the same place, so without the
-                      keys React keeps the one element and swaps its type from
-                      button to submit — which it does in the middle of the tap
-                      that moved you on. The browser reads the type after the
-                      tap has been handled, finds a submit button, and does
-                      what a submit button does: the last step saved the ticket
-                      the moment you arrived on it, and the fields went dead
-                      (the fieldset is disabled while a save is in flight)
-                      before you could read the step, let alone edit it. Keyed
-                      apart, the Next button leaves the page instead, taking
-                      its form owner with it, and nothing is submitted. */}
-                  {atStep < lastStep ? (
+                {/* On a phone: back and on through the four steps. On a desk
+                    every step is on the screen at once, so stepping did
+                    nothing anyone could see; the buttons move between the
+                    tickets of the invoice instead, as the arrows in the head
+                    do, and are left out when the invoice is one ticket. */}
+                {isPhone ? (
+                  <div className="ld-step-nav">
                     <Button
-                      key="next"
                       type="button"
-                      onClick={() => setStep((current) => Math.min(lastStep, current + 1))}
+                      variant="secondary"
+                      disabled={atStep === 0}
+                      onClick={() => setStep((current) => Math.max(0, current - 1))}
+                    >
+                      <ChevronLeft data-icon="inline-start" />
+                      {t('Back')}
+                    </Button>
+                    {/* Two buttons, keyed apart, and not one button that changes
+                        what it is. They sit in the same place, so without the
+                        keys React keeps the one element and swaps its type from
+                        button to submit — which it does in the middle of the tap
+                        that moved you on. The browser reads the type after the
+                        tap has been handled, finds a submit button, and does
+                        what a submit button does: the last step saved the ticket
+                        the moment you arrived on it, and the fields went dead
+                        (the fieldset is disabled while a save is in flight)
+                        before you could read the step, let alone edit it. Keyed
+                        apart, the Next button leaves the page instead, taking
+                        its form owner with it, and nothing is submitted. */}
+                    {atStep < lastStep ? (
+                      <Button
+                        key="next"
+                        type="button"
+                        onClick={() => setStep((current) => Math.min(lastStep, current + 1))}
+                      >
+                        {t('Next')}
+                        <ChevronRight data-icon="inline-end" />
+                      </Button>
+                    ) : (
+                      <Button
+                        key="save"
+                        type="submit"
+                        disabled={
+                          busy ||
+                          (activeSaved && !batchChanged.length && !activeUnchecked)
+                        }
+                      >
+                        {activeSaved && !batchChanged.length && !activeUnchecked ? (
+                          <Check />
+                        ) : null}
+                        {busy && activeSaved ? t('Saving…') : saveLabel}
+                      </Button>
+                    )}
+                  </div>
+                ) : canStep ? (
+                  <div className="ld-step-nav">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      aria-label={t('Previous ticket')}
+                      disabled={previousStop === null}
+                      onClick={() => {
+                        if (previousStop === null) return;
+                        setActiveIndex(previousStop);
+                        scrollToReview();
+                      }}
+                    >
+                      <ChevronLeft data-icon="inline-start" />
+                      {t('Back')}
+                    </Button>
+                    <Button
+                      type="button"
+                      aria-label={t('Next ticket')}
+                      disabled={nextStop === null}
+                      onClick={() => {
+                        if (nextStop === null) return;
+                        setActiveIndex(nextStop);
+                        scrollToReview();
+                      }}
                     >
                       {t('Next')}
                       <ChevronRight data-icon="inline-end" />
                     </Button>
-                  ) : (
-                    <Button
-                      key="save"
-                      type="submit"
-                      disabled={
-                        busy ||
-                        (activeSaved && !batchChanged.length && !activeUnchecked)
-                      }
-                    >
-                      {activeSaved && !batchChanged.length && !activeUnchecked ? (
-                        <Check />
-                      ) : null}
-                      {busy && activeSaved ? t('Saving…') : saveLabel}
-                    </Button>
-                  )}
-                </div>
+                  </div>
+                ) : null}
               </form>
 
               {isPhone ? null : (

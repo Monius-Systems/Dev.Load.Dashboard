@@ -184,6 +184,14 @@ export type RecordEdit = {
    * edit that keeps the ticket where it is, which is nearly all of them.
    */
   invoice_batch_id?: string;
+  /**
+   * A change the app makes on its own — numbering an upload once every page
+   * is read — rather than a person's edit. It is neither a review of the ticket
+   * nor an edit in its history: `reviewed_at` and `edited_at` are left as they
+   * were. Without this, numbering an upload marked every ticket in it checked,
+   * and the batch read "all checked" before anyone had opened it.
+   */
+  bookkeeping?: true;
 };
 
 export const MAX_EDITS = 200;
@@ -217,6 +225,9 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
     if (batch !== undefined && !(text(batch, 64) && batch)) {
       return { error: 'The ticket changes are not valid.' };
     }
+    if (item.bookkeeping !== undefined && item.bookkeeping !== true) {
+      return { error: 'The ticket changes are not valid.' };
+    }
     // An invoice is dated by its ticket here too: a change that came in over
     // the API cannot leave one carrying a day of its own.
     edits.push(
@@ -228,6 +239,7 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
         customer_profile_id: (item.customer_profile_id as number | null | undefined) ?? null,
         truck_id: (item.truck_id as number | null | undefined) ?? null,
         ...(batch !== undefined ? { invoice_batch_id: batch as string } : {}),
+        ...(item.bookkeeping === true ? { bookkeeping: true as const } : {}),
       }),
     );
   }
@@ -252,9 +264,11 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
     ocr_text: edit.ocr_text,
     customer_profile_id: edit.customer_profile_id,
     truck_id: edit.truck_id,
-    edited_at: editedAt,
-    // Saving the fields after looking at them is the review.
-    reviewed_at: editedAt,
+    // Saving the fields after looking at them is the review — when a person
+    // did the saving. The app's own bookkeeping leaves both marks alone.
+    ...(edit.bookkeeping
+      ? {}
+      : { edited_at: editedAt, reviewed_at: editedAt }),
   };
 }
 

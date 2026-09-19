@@ -137,3 +137,33 @@ void test('a move over the API names a real batch', () => {
     'too long',
   );
 });
+
+void test('the app’s own bookkeeping is neither a review nor an edit', () => {
+  // Numbering an upload once every page is read goes through the edit path.
+  // It used to count as somebody reviewing every ticket in it, so a batch read
+  // "all checked" before anyone had opened it.
+  const record = { ...saved(9, 'DRAFT-batch-2026-01-06', 'batch-2026-01-06'), reviewed_at: null };
+  const numbered = applyRecordEdit(
+    record,
+    { ...edit(9, '12'), bookkeeping: true },
+    '2026-09-18T10:00:00.000Z',
+  );
+  assert.equal(numbered.invoice.invoice_number, '12', 'the number is written');
+  assert.equal(numbered.reviewed_at, null, 'still waiting to be checked');
+  assert.equal(numbered.edited_at, undefined, 'not an edit in its history');
+  // A person's save is both.
+  const checked = applyRecordEdit(record, edit(9, '12'), '2026-09-18T10:00:00.000Z');
+  assert.equal(checked.reviewed_at, '2026-09-18T10:00:00.000Z');
+  assert.equal(checked.edited_at, '2026-09-18T10:00:00.000Z');
+});
+
+void test('bookkeeping over the API is exactly true or absent', () => {
+  const parsed = parseRecordEdits([{ ...edit(1, '6'), bookkeeping: true }]);
+  assert.ok('value' in parsed);
+  assert.equal(parsed.value[0].bookkeeping, true);
+  const plain = parseRecordEdits([edit(1, '6')]);
+  assert.ok('value' in plain);
+  assert.equal('bookkeeping' in plain.value[0], false);
+  assert.ok('error' in parseRecordEdits([{ ...edit(1, '6'), bookkeeping: 'yes' }]));
+  assert.ok('error' in parseRecordEdits([{ ...edit(1, '6'), bookkeeping: false }]));
+});
