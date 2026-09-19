@@ -58,7 +58,6 @@ import InvoiceDialog, {
 import TicketViewer from '@/components/load-desk/ticket-viewer';
 import {
   formatFuel,
-  formatRate,
   fileSize,
   FUEL_TYPE_LABELS,
   invoiceTons,
@@ -840,7 +839,20 @@ export default function LoadDesk() {
         if (customer) {
           const was = rateFor(customer, item.ticket.project_address);
           const now = rateFor(customer, next.ticket.project_address);
-          if (JSON.stringify(was) !== JSON.stringify(now)) next = applyCustomer(next, customer);
+          // The new site's figures as they are, blanks included: a site with
+          // no rate saved must not go out at the last site's price.
+          if (JSON.stringify(was) !== JSON.stringify(now)) {
+            next = {
+              ...next,
+              ticket: {
+                ...next.ticket,
+                rate: now.flat_rate,
+                rate_type: now.rate_type,
+                fuel_charge: now.fuel_charge,
+                fuel_type: now.fuel_type,
+              },
+            };
+          }
         }
         return next;
       });
@@ -1414,10 +1426,24 @@ export default function LoadDesk() {
       // address list, ready to pick on the next ticket whose address is cut
       // off in the scan.
       addresses: addCustomerAddress({}, ticket.project_address ?? ''),
-      flat_rate: ticket.rate,
-      rate_type: rateTypeOf(ticket),
-      fuel_charge: ticket.fuel_charge,
-      fuel_type: fuelTypeOf(ticket),
+      // The rate on this ticket is what this site is charged, and is kept for
+      // it; a customer of its own has no rate, its sites do.
+      location_rates:
+        ticket.project_address?.trim() && (ticket.rate !== null || ticket.fuel_charge !== null)
+          ? [
+              {
+                address: addCustomerAddress({}, ticket.project_address)[0]!,
+                flat_rate: ticket.rate,
+                rate_type: rateTypeOf(ticket),
+                fuel_charge: ticket.fuel_charge,
+                fuel_type: fuelTypeOf(ticket),
+              },
+            ]
+          : [],
+      flat_rate: null,
+      rate_type: 'flat' as const,
+      fuel_charge: null,
+      fuel_type: 'flat' as const,
       notes: '',
       created_at: new Date().toISOString(),
     };
@@ -2359,19 +2385,23 @@ export default function LoadDesk() {
     ) : null;
   // The new customer form belongs to the ticket it was opened on.
   const customerFormOpen = newCustomer !== null && newCustomer.itemId === active?.id;
+  // The rate is the site's: what this customer is charged where this load went.
+  const siteRate = activeCustomer ? rateFor(activeCustomer, ticket?.project_address) : null;
   const customerHint = activeCustomer
-    ? activeCustomer.flat_rate !== null
-      ? t('Filled in: {rate}.', {
-          rate: `${t(RATE_TYPE_LABELS[activeCustomer.rate_type ?? 'flat'])} ${money(activeCustomer.flat_rate)} ${t(RATE_UNITS[activeCustomer.rate_type ?? 'flat'])}${
-            activeCustomer.fuel_charge
-              ? ` ${t('+ {amount} fuel', { amount: formatFuel(activeCustomer.fuel_charge, activeCustomer.fuel_type ?? 'flat') })}`
+    ? siteRate && siteRate.flat_rate !== null
+      ? t('Filled in for this address: {rate}.', {
+          rate: `${t(RATE_TYPE_LABELS[siteRate.rate_type])} ${money(siteRate.flat_rate)} ${t(RATE_UNITS[siteRate.rate_type])}${
+            siteRate.fuel_charge
+              ? ` ${t('+ {amount} fuel', { amount: formatFuel(siteRate.fuel_charge, siteRate.fuel_type) })}`
               : ''
           }`,
         })
-      : t('This customer has no default rate; enter the rate for this ticket.')
+      : customerLocationRates(activeCustomer).length
+        ? t('No rate is saved for this address; enter the rate for this ticket.')
+        : t('This customer has no site rates yet; enter the rate for this ticket.')
     : ticket?.customer_name
       ? t('No customer profile matches this ticket.')
-      : t('Choose the customer to use its rate.');
+      : t('Choose the customer to use its rates.');
   const truckHint = activeTruck
     ? [
         t('Truck #{number} on the invoice', { number: activeTruck.truck_number }),
@@ -3408,11 +3438,7 @@ export default function LoadDesk() {
                             { value: '', label: t('No customer profile') },
                             ...customers.map((customer) => ({
                               value: String(customer.id),
-                              label: `${customer.name}${
-                                customer.flat_rate !== null
-                                  ? ` · ${formatRate(customer.flat_rate, customer.rate_type ?? 'flat')}${(customer.rate_type ?? 'flat') === 'flat' ? ` ${t('flat')}` : ''}`
-                                  : ''
-                              }`,
+                              label: customer.name,
                             })),
                             { value: NEW_CUSTOMER, label: t('+ Create new customer') },
                           ]}

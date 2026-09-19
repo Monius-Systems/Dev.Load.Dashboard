@@ -8,9 +8,10 @@ import {
 import { parseCustomer } from '../lib/load-desk/record-input.ts';
 import type { CustomerProfile } from '../lib/load-desk/profiles.ts';
 
-// Some customers have their loads go to several places at different prices.
-// A site can carry its own rate; a site without one is charged at the
-// customer's usual rate.
+// Some customers have their loads go to several places at different prices,
+// so the rate is the site's. A ticket to a site without one, or to no site on
+// file, is rated as it is reviewed. The customer-level figures still on older
+// saved profiles are not read.
 
 const customer = (patch: Partial<CustomerProfile> = {}): CustomerProfile => ({
   id: 1,
@@ -27,32 +28,33 @@ const customer = (patch: Partial<CustomerProfile> = {}): CustomerProfile => ({
   ...patch,
 });
 
-void test('a site with its own rate is charged that rate', () => {
+void test('a ticket to a site is charged that site’s rate', () => {
   const profile = customer({
     location_rates: [
-      { address: '250 Harbor Ave, Gary, IN', flat_rate: 65, rate_type: 'per_ton', fuel_charge: null },
+      { address: '250 Harbor Ave, Gary, IN', flat_rate: 65, rate_type: 'per_ton', fuel_charge: 12, fuel_type: 'percent' },
     ],
   });
   assert.deepEqual(rateFor(profile, '250 Harbor Ave, Gary, IN'), {
     flat_rate: 65,
     rate_type: 'per_ton',
-    // No fuel figure of its own: the customer's.
-    fuel_charge: 10,
-    fuel_type: 'flat',
+    fuel_charge: 12,
+    fuel_type: 'percent',
   });
 });
 
-void test('a site without its own rate is charged the customer’s', () => {
+void test('a ticket to a site without a rate is rated on the ticket', () => {
+  // Nothing filled in: the reviewer enters the rate. The customer-level
+  // figures an older profile may still carry are not read.
   const profile = customer({
-    location_rates: [
-      { address: '250 Harbor Ave, Gary, IN', flat_rate: 65, fuel_charge: null },
-    ],
+    flat_rate: 50,
+    fuel_charge: 10,
+    location_rates: [{ address: '250 Harbor Ave, Gary, IN', flat_rate: 65, fuel_charge: null }],
   });
-  const usual = { flat_rate: 50, rate_type: 'flat', fuel_charge: 10, fuel_type: 'flat' };
-  assert.deepEqual(rateFor(profile, '1 Quarry Rd, Thornton, IL'), usual, 'the other site');
-  assert.deepEqual(rateFor(profile, null), usual, 'no address read off the ticket');
-  assert.deepEqual(rateFor(profile, '9 Nowhere Ln'), usual, 'an address not on file');
-  assert.deepEqual(rateFor(customer(), '250 Harbor Ave, Gary, IN'), usual, 'no site rates at all');
+  const none = { flat_rate: null, rate_type: 'flat', fuel_charge: null, fuel_type: 'flat' };
+  assert.deepEqual(rateFor(profile, '1 Quarry Rd, Thornton, IL'), none, 'the other site');
+  assert.deepEqual(rateFor(profile, null), none, 'no address read off the ticket');
+  assert.deepEqual(rateFor(profile, '9 Nowhere Ln'), none, 'an address not on file');
+  assert.deepEqual(rateFor(customer({ flat_rate: 50 }), '250 Harbor Ave, Gary, IN'), none, 'no site rates at all');
 });
 
 void test('the address is matched the way addresses are, not letter for letter', () => {
@@ -64,14 +66,14 @@ void test('the address is matched the way addresses are, not letter for letter',
   assert.equal(locationRateFor(profile, '250 harbor ave, gary, in')?.address, '250 Harbor Ave, Gary, IN');
 });
 
-void test('a site can have its own fuel charge without its own rate', () => {
+void test('a site can have a fuel charge without a rate', () => {
   const profile = customer({
     location_rates: [
       { address: '250 Harbor Ave, Gary, IN', flat_rate: null, fuel_charge: 15, fuel_type: 'percent' },
     ],
   });
   assert.deepEqual(rateFor(profile, '250 Harbor Ave, Gary, IN'), {
-    flat_rate: 50,
+    flat_rate: null,
     rate_type: 'flat',
     fuel_charge: 15,
     fuel_type: 'percent',

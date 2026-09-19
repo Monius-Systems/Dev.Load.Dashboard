@@ -118,12 +118,21 @@ export const PL_PAGES: Record<string, string> = {
   'Rate type': 'Rodzaj stawki',
   // Rates at particular job sites, for a customer hauled to several at
   // different prices.
-  'Different rate here': 'Inna stawka w tym miejscu',
-  'Use the customer’s rate': 'Użyj stawki klienta',
+  'Job sites & rates': 'Miejsca dostaw i stawki',
+  'Delivery addresses, each with what is charged there':
+    'Adresy dostaw, każdy ze stawką, jaka tam obowiązuje',
   'Rate at {address}': 'Stawka w {address}',
-  'Customer’s rate': 'Stawka klienta',
-  'Customer’s fuel': 'Paliwo klienta',
-  '{count} with its own rate': '{count} z własną stawką',
+  'Charge': 'Opłata',
+  'Fuel only': 'Tylko paliwo',
+  'each with its own rate': 'każde z własną stawką',
+  'Tickets to {sites} get that site’s rate on the invoice.':
+    'Kwity do {sites} dostają na fakturze stawkę tego miejsca.',
+  'Filled in for this address: {rate}.': 'Uzupełniono dla tego adresu: {rate}.',
+  'No rate is saved for this address; enter the rate for this ticket.':
+    'Brak zapisanej stawki dla tego adresu; wpisz stawkę dla tego kwitu.',
+  'This customer has no site rates yet; enter the rate for this ticket.':
+    'Ten klient nie ma jeszcze stawek dla miejsc; wpisz stawkę dla tego kwitu.',
+  'Choose the customer to use its rates.': 'Wybierz klienta, aby użyć jego stawek.',
   'The rate at {address} must be blank, zero or a positive amount.':
     'Stawka w {address} musi być pusta, zerowa lub dodatnia.',
   'Rate {unit}': 'Stawka {unit}',

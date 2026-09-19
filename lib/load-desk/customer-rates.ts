@@ -38,9 +38,9 @@ export function customerAddresses(
 }
 
 /**
- * What a customer is charged at one of its job sites, where that differs from
- * its usual rate. Each figure left null falls back to the customer's own: a
- * site can have its own haul rate and share the customer's fuel charge.
+ * What a customer is charged at one of its job sites. Rates are the sites':
+ * a customer is hauled to several places at several prices, so the price is a
+ * property of the place. A figure left null is entered on the ticket.
  */
 export type LocationRate = {
   /** One of the customer's `addresses`, as stored there. */
@@ -104,28 +104,25 @@ export function locationRateFor(
 }
 
 /**
- * What a ticket delivered to `address` is charged: the site's rate where the
- * site has one, and the customer's otherwise — figure by figure, so a site
- * with its own haul rate still takes the customer's fuel charge.
+ * What a ticket delivered to `address` is charged: the rate of that site, as
+ * far as the site has one. A ticket to a site with no rate, or to no site on
+ * file, has nothing filled in and is rated as it is reviewed.
  *
  * Some customers have their loads go to several places at different prices;
- * before this, one rate covered every site and the others were corrected by
- * hand on each ticket.
+ * one rate for the customer covered every site and the others were corrected
+ * by hand on each ticket, so the customer's own rate is gone and the sites
+ * carry them. The customer-level figures still on older saved profiles are
+ * not read.
  */
 export function rateFor(
-  customer: Pick<
-    CustomerProfile,
-    'addresses' | 'location_rates' | 'flat_rate' | 'rate_type' | 'fuel_charge' | 'fuel_type'
-  >,
+  customer: Pick<CustomerProfile, 'addresses' | 'location_rates'>,
   address: string | null | undefined,
 ): RateSet {
   const site = locationRateFor(customer, address);
-  const rated = site && site.flat_rate !== null;
-  const fuelled = site && site.fuel_charge !== null;
   return {
-    flat_rate: rated ? site.flat_rate : customer.flat_rate,
-    rate_type: rated ? (site.rate_type ?? 'flat') : (customer.rate_type ?? 'flat'),
-    fuel_charge: fuelled ? site.fuel_charge : customer.fuel_charge,
-    fuel_type: fuelled ? (site.fuel_type ?? 'flat') : (customer.fuel_type ?? 'flat'),
+    flat_rate: site?.flat_rate ?? null,
+    rate_type: site?.rate_type ?? 'flat',
+    fuel_charge: site?.fuel_charge ?? null,
+    fuel_type: site?.fuel_type ?? 'flat',
   };
 }
