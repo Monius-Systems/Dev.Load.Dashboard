@@ -23,6 +23,8 @@ export function SelectField({
   onValueChange,
   disabled,
   className,
+  placeholder,
+  wide = false,
   'aria-describedby': describedBy,
 }: {
   id?: string;
@@ -31,6 +33,18 @@ export function SelectField({
   onValueChange: (value: string) => void;
   disabled?: boolean;
   className?: string;
+  /**
+   * Shown on the trigger while nothing is chosen, in place of listing an empty
+   * option among the real ones. For a list of things to pick, where "none of
+   * these" is a state and not a choice.
+   */
+  placeholder?: string;
+  /**
+   * The open list may be wider than the trigger, and long labels wrap. For
+   * options such as addresses, which do not fit a form column and were cut
+   * off at its edge.
+   */
+  wide?: boolean;
   'aria-describedby'?: string;
 }) {
   // A value that is not in the list (for example text read off a ticket) is
@@ -64,9 +78,16 @@ export function SelectField({
         aria-describedby={describedBy}
         className={cn('ld-select', className)}
       >
-        <SelectValue />
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent align="start" alignItemWithTrigger={false}>
+      <SelectContent
+        align="start"
+        alignItemWithTrigger={false}
+        className={cn(
+          wide &&
+            'w-auto min-w-(--anchor-width) max-w-[min(36rem,calc(100vw-2rem))] [&_[data-slot=select-item]_span:first-child]:whitespace-normal',
+        )}
+      >
         {items.map((option) => (
           <SelectItem key={option.value} value={option.value}>
             {option.label}

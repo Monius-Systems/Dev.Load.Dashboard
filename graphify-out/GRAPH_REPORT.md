@@ -1,9 +1,9 @@
 # Graph Report - dashboard-shell  (2026-09-18)
 
 ## Corpus Check
-- 231 files · ~219,693 words
+- 232 files · ~219,913 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 25 file(s) not represented in the graph (top: .css 8, .wasm 6, (none) 4)
+- Unclassified: 32 file(s) not represented in the graph (top: (none) 11, .css 8, .wasm 6)
 
 ## Summary
 - 7131 nodes · 17553 edges · 208 communities (156 shown, 52 thin omitted)
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d7fa99c0`
+- Built from commit: `66d1f48f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -884,11 +884,11 @@ Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphif
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `worker.min.js` to `pdf.worker.min.mjs`, `A`, `A`, `A`, `A`, `A`, `tesseract-core-simd.wasm.js`, `tesseract-core-relaxedsimd.wasm.js`, `tesseract-core-relaxedsimd-lstm.wasm.js`, `tesseract-core-lstm.wasm.js`, `tesseract-core-simd-lstm.wasm.js`, `tesseract-core.wasm.js`?**
-  _High betweenness centrality (0.377) - this node is a cross-community bridge._
+  _High betweenness centrality (0.379) - this node is a cross-community bridge._
 - **Why does `XhtmlNamespace` connect `XhtmlObject` to `pdf.worker.min.mjs`, `TextMeasure`, `.get`, `PsJsCompiler`, `.getOperatorList`, `.getTextContent`?**
-  _High betweenness centrality (0.134) - this node is a cross-community bridge._
+  _High betweenness centrality (0.138) - this node is a cross-community bridge._
 - **Why does `B` connect `XhtmlObject` to `pdf.worker.min.mjs`, `TextMeasure`?**
-  _High betweenness centrality (0.132) - this node is a cross-community bridge._
+  _High betweenness centrality (0.135) - this node is a cross-community bridge._
 - **What connects `$schema`, `singleQuote`, `printWidth` to the rest of the system?**
   _511 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pdf.worker.min.mjs` be split into smaller, more focused modules?**

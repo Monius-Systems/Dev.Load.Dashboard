@@ -2639,7 +2639,7 @@ export default function LoadDesk() {
                 {activeSaved
                   ? activeChanged
                     ? t('Unsaved changes')
-                    : t('Saved as record {id}', { id: active.saved_record_id ?? '' })
+                    : t('Saved')
                   : issues.length
                     ? t('To review: {items}', { items: plural(issues.length, 'item') })
                     : t('Ready to save')}
@@ -3452,22 +3452,24 @@ export default function LoadDesk() {
                             if (value) setField('project_address', value);
                           }}
                           disabled={!activeCustomer || !savedAddresses.length}
-                          options={[
-                            {
-                              value: '',
-                              label: !activeCustomer
-                                ? t('Choose a customer first')
-                                : !savedAddresses.length
-                                  ? t('No saved addresses for this customer')
-                                  : typedAddress
-                                    ? t('Not one of the saved addresses')
-                                    : t('Choose an address'),
-                            },
-                            ...savedAddresses.map((address) => ({
-                              value: address,
-                              label: address,
-                            })),
-                          ]}
+                          // Addresses run long: the list is wider than the
+                          // column and wraps, and while the ticket's address is
+                          // none of them the trigger says so rather than the
+                          // list offering "none" as something to pick.
+                          wide
+                          placeholder={
+                            !activeCustomer
+                              ? t('Choose a customer first')
+                              : !savedAddresses.length
+                                ? t('No saved addresses for this customer')
+                                : typedAddress
+                                  ? t('Not one of the saved addresses')
+                                  : t('Choose an address')
+                          }
+                          options={savedAddresses.map((address) => ({
+                            value: address,
+                            label: address,
+                          }))}
                         />
                         {siteHint ? (
                           <small

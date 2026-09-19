@@ -188,6 +188,18 @@ export async function updateRecords(
   });
   if (result.error) {
     if (/invoice_taken/.test(result.error.message)) {
+      // A ticket moving to another invoice takes that invoice's number, which
+      // is claimed by the other upload — allowed since the move migration
+      // (202609180001), refused by the function before it. The refusal reads
+      // the same either way, so say what is really wrong: the database is
+      // behind the app, not the number.
+      const moving = edits.find((edit) => edit.invoice_batch_id);
+      if (moving) {
+        throw new StoreError(
+          'Moving a ticket onto another invoice needs the database update in supabase/migrations/202609180001_move_ticket_invoice.sql. Apply it with `supabase db push`, then save again.',
+          409,
+        );
+      }
       throw new StoreError(
         `Invoice number ${edits[0].invoice.invoice_number} is already used by another upload. Choose another.`,
         409,
