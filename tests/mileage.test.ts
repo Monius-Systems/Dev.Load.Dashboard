@@ -18,11 +18,16 @@ import {
   pickupQuery,
   placeKey,
   profileHash,
+  quarterKeyOf,
+  quarterKeys,
+  quarterLabel,
+  quarterRangeOf,
   readMileageDay,
   routeKey,
   routeLabels,
   routingProfileHash,
   settingsChanged,
+  summarizeByTruck,
   summarizeDays,
   toRoutingProfile,
   truckDays,
@@ -276,6 +281,45 @@ void test('periods and summaries: Monday weeks, calendar quarters, distinct truc
   assert.equal(month.review, 2, 'a failed day with nothing to show is still to review');
   assert.equal(month.days, 2);
   assert.equal(summarizeDays(days, '2026-04-01', '2026-06-30').trucks, 1);
+});
+
+void test('quarterly reports: every quarter from the first ticket to now, with totals per truck', () => {
+  assert.equal(quarterKeyOf('2026-09-19'), '2026-Q3');
+  assert.equal(quarterKeyOf('2026-01-01'), '2026-Q1');
+  assert.equal(quarterKeyOf('2025-12-31'), '2025-Q4');
+  assert.equal(quarterLabel('2026-Q3'), 'Q3 2026');
+  assert.deepEqual(quarterRangeOf('2025-Q4'), { from: '2025-10-01', to: '2025-12-31' });
+  assert.deepEqual(quarterRangeOf('2026-Q1'), { from: '2026-01-01', to: '2026-03-31' });
+  assert.equal(quarterRangeOf('2026-Q5'), null);
+  assert.equal(quarterRangeOf('week'), null);
+  assert.deepEqual(quarterKeys('2025-11-02', '2026-09-19'), ['2026-Q3', '2026-Q2', '2026-Q1', '2025-Q4']);
+  assert.deepEqual(quarterKeys('2026-09-01', '2026-09-19'), ['2026-Q3']);
+  assert.deepEqual(quarterKeys('2026-09-19', '2026-01-01'), [], 'backwards is nothing');
+  const day = (patch: Record<string, unknown>) =>
+    readMileageDay({
+      status: 'current',
+      truck_number: 'ZF0321',
+      truck_id: 7,
+      legs: [{ seq: 1 }],
+      total_miles: '10',
+      est_gallons: '2',
+      ticket_count: 1,
+      ...patch,
+    });
+  const trucks = summarizeByTruck(
+    [
+      day({ id: 1, service_date: '2026-08-01' }),
+      day({ id: 2, service_date: '2026-08-02', total_miles: '30', est_gallons: '6' }),
+      day({ id: 3, service_date: '2026-08-02', truck_id: 8, truck_number: '44', status: 'needs_review' }),
+      day({ id: 4, service_date: '2026-05-02', truck_id: 8, truck_number: '44' }),
+    ],
+    '2026-07-01',
+    '2026-09-30',
+  );
+  assert.deepEqual(
+    trucks.map((t) => [t.truck_number, t.miles, t.gallons, t.loads, t.days, t.review]),
+    [['ZF0321', 40, 8, 2, 2, 0], ['44', 10, 2, 1, 1, 1]],
+  );
 });
 
 void test('a stored row reads as numbers whatever the wire sent', () => {

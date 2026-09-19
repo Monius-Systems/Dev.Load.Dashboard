@@ -807,6 +807,21 @@ export const PL_PAGES: Record<string, string> = {
   'The routing service did not answer. Try again.':
     'Usługa wyznaczania tras nie odpowiedziała. Spróbuj ponownie.',
 
+  'IFTA periods': 'Okresy IFTA',
+  'Quarterly reports': 'Raporty kwartalne',
+  'Every quarter since the first saved ticket. Open a quarter to calculate and see its days.':
+    'Każdy kwartał od pierwszego zapisanego kwitu. Otwórz kwartał, aby przeliczyć i zobaczyć jego dni.',
+  gal: 'gal',
+  Days: 'Dni',
+  '{done} of {all}': '{done} z {all}',
+  'Not fully calculated': 'Nie w pełni przeliczone',
+  Viewing: 'Wyświetlany',
+  'View days': 'Pokaż dni',
+  'No days calculated yet. Open the quarter with View days to calculate them.':
+    'Nie przeliczono jeszcze żadnego dnia. Otwórz kwartał przyciskiem Pokaż dni, aby je przeliczyć.',
+  'No tickets with a truck and a date in this quarter.':
+    'Brak kwitów z ciężarówką i datą w tym kwartale.',
+
   // Truck Fleet: Mileage & routing
   'Mileage & routing': 'Przebieg i trasy',
   'Yard address': 'Adres bazy',

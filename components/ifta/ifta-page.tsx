@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useMemo, useState, useSyncExternalStore, type SyntheticEvent } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Fuel, MapPin, Pencil, RefreshCw, Route } from 'lucide-react';
+import { CalendarRange, ChevronDown, Fuel, MapPin, Pencil, RefreshCw, Route } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,9 +24,14 @@ import {
   dayView,
   formatNumber,
   IFTA_PERIODS,
+  isQuarterKey,
   periodRange,
+  quarterKeys,
+  quarterLabel,
+  quarterRangeOf,
   routeLabels,
   settingsChanged,
+  summarizeByTruck,
   summarizeDays,
   truckDays,
   truckIfta,
@@ -43,11 +48,13 @@ import {
   getServerDaysSnapshot,
   givenUp,
   loadDays,
+  loadRanges,
   recalculate,
   resetAttempts,
   settleDays,
   subscribeDays,
 } from '@/lib/load-desk/mileage-days';
+import { ticketDateColumn } from '@/lib/load-desk/record-input';
 import type { TruckProfile } from '@/lib/load-desk/profiles';
 import type { SavedRecord } from '@/lib/load-desk/types';
 
@@ -123,15 +130,20 @@ export default function IftaPage() {
   const { t, date } = tr;
   const { trucks } = profiles;
   const [now] = useState(() => new Date());
-  const [period, setPeriod] = useState<IftaPeriod>('week');
+  /** A preset period, or a past quarter as "YYYY-Qn" from the reports. */
+  const [period, setPeriod] = useState<string>('week');
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
+  const [openQuarters, setOpenQuarters] = useState<ReadonlySet<string>>(() => new Set());
   const [fix, setFix] = useState<{ reason: ReviewReason; address: string } | null>(null);
   const [fixError, setFixError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const fieldId = useId();
 
   const range = useMemo(() => loadedRange(now), [now]);
-  const shownRange = periodRange(period, now);
+  const shownRange = useMemo(
+    () => quarterRangeOf(period) ?? periodRange(isQuarterKey(period) ? 'quarter' : (period as IftaPeriod), now),
+    [period, now],
+  );
 
   // The stored days, and again whenever the page comes back into view.
   useEffect(() => {
@@ -141,13 +153,43 @@ export default function IftaPage() {
 
   // Every poll of the tickets is a new snapshot, so this follows edits made
   // anywhere within ten seconds; the store only posts what actually changed.
-  const expected = useMemo(() => truckDays(records, trucks, range), [records, trucks, range]);
+  const expected = useMemo(() => truckDays(records, trucks), [records, trucks]);
 
-  // Whatever the tickets say now, the stored days follow.
+  // Every quarter from the first dated ticket to now, for the reports. The
+  // past ones are loaded once; their days are only calculated when opened.
+  const quarters = useMemo(() => {
+    let earliest = range.from;
+    for (const record of records) {
+      const date = ticketDateColumn(record.ticket);
+      if (date && date < earliest) earliest = date;
+    }
+    return quarterKeys(earliest, range.to);
+  }, [records, range]);
+  const quartersKey = quarters.join(',');
+  useEffect(() => {
+    if (!recordsReady || !days.ready || days.mode !== 'remote') return;
+    const past = quarters
+      .map((key) => quarterRangeOf(key))
+      .filter((quarter): quarter is { from: string; to: string } => !!quarter && quarter.to < range.from);
+    void loadRanges(past);
+  }, [quartersKey, quarters, recordsReady, days.ready, days.mode, range]);
+
+  // Whatever the tickets say now, the stored days follow — for the current
+  // and last quarter always, and for a past quarter while it is being looked
+  // at, so a long history is not sent to the provider all at once.
+  const toSettle = useMemo(
+    () =>
+      expected.days.filter(
+        (day) =>
+          (day.date >= range.from && day.date <= range.to) ||
+          (day.date >= shownRange.from && day.date <= shownRange.to),
+      ),
+    [expected, range, shownRange],
+  );
   useEffect(() => {
     if (!recordsReady || !profiles.ready || !days.ready) return;
-    void settleDays(expected.days);
-  }, [expected, recordsReady, profiles.ready, days.ready, days.mode, days.configured]);
+    void settleDays(toSettle);
+  }, [toSettle, recordsReady, profiles.ready, days.ready, days.mode, days.configured]);
 
   const byTruck = new Map(trucks.map((truck) => [truck.id, truck]));
   const shown: Shown[] = expected.days
@@ -178,10 +220,23 @@ export default function IftaPage() {
   };
   const trucksWithYard = trucks.filter((truck) => truck.ifta?.yard_address).length;
   const trucksWithoutYard = trucks.filter((truck) => truck.active && !truck.ifta?.yard_address);
-  const toReview = expected.days.filter((day) => {
+  const toReview = toSettle.filter((day) => {
     const row = days.days[day.key];
     return (row && (row.status === 'needs_review' || row.status === 'failed')) || givenUp(day);
   }).length;
+  const quarterReports = quarters.map((key) => {
+    const quarter = quarterRangeOf(key) as { from: string; to: string };
+    const summary = summarizeDays(stored, quarter.from, quarter.to);
+    const expectedDays = expected.days.filter((day) => day.date >= quarter.from && day.date <= quarter.to);
+    return { key, quarter, summary, expectedDays, trucks: summarizeByTruck(stored, quarter.from, quarter.to) };
+  });
+  const toggleQuarter = (key: string) =>
+    setOpenQuarters((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   const recordById = new Map(records.map((record) => [record.id, record]));
 
   const toggle = (key: string) =>
@@ -430,7 +485,13 @@ export default function IftaPage() {
     row?.est_gallons == null ? '—' : formatNumber(row.est_gallons);
 
   const loading = !recordsReady || !profiles.ready || !days.ready;
-  const periodOptions = IFTA_PERIODS.map(([value, label]) => ({ value, label: t(label) }));
+  const periodOptions = [
+    ...IFTA_PERIODS.map(([value, label]) => ({ value: value as string, label: t(label) })),
+    // Older quarters, from the reports; the two most recent are presets above.
+    ...quarters
+      .filter((key) => quarterRangeOf(key)!.to < range.from)
+      .map((key) => ({ value: key, label: quarterLabel(key) })),
+  ];
 
   return (
     <div className="ifta-page">
@@ -502,7 +563,7 @@ export default function IftaPage() {
                 id={`${fieldId}-period`}
                 value={period}
                 options={periodOptions}
-                onValueChange={(value) => setPeriod(value as IftaPeriod)}
+                onValueChange={(value) => setPeriod(value)}
               />
               <Button
                 variant="ghost"
@@ -635,6 +696,136 @@ export default function IftaPage() {
                 })}
               </ul>
             </>
+          )}
+        </section>
+
+        <section className="ld-panel pf-section" aria-labelledby="ifta-quarters-title">
+          <div className="ld-panel-head">
+            <div>
+              <p className="ld-step">{t('IFTA periods')}</p>
+              <h2 id="ifta-quarters-title">{t('Quarterly reports')}</h2>
+            </div>
+            <span className="ld-hint">
+              {t('Every quarter since the first saved ticket. Open a quarter to calculate and see its days.')}
+            </span>
+          </div>
+          {loading ? (
+            <p className="ld-empty">{t('Loading mileage…')}</p>
+          ) : (
+            <ul className="ifta-quarters">
+              {quarterReports.map(({ key, quarter, summary, expectedDays, trucks: perTruck }) => {
+                const isOpen = openQuarters.has(key);
+                const detailId = `${fieldId}-quarter-${key}`;
+                const viewing = period === key || (shownRange.from === quarter.from && shownRange.to === quarter.to);
+                const calculated = summary.days;
+                return (
+                  <li key={key} className="ifta-quarter" data-open={isOpen || undefined} data-current={viewing || undefined}>
+                    <div className="ifta-quarter-row">
+                      <button
+                        type="button"
+                        className="ifta-quarter-toggle"
+                        aria-expanded={isOpen}
+                        aria-controls={detailId}
+                        onClick={() => toggleQuarter(key)}
+                      >
+                        <ChevronDown aria-hidden="true" />
+                        <span className="ifta-quarter-name">
+                          <strong>
+                            <CalendarRange aria-hidden="true" />
+                            {quarterLabel(key)}
+                          </strong>
+                          <small>
+                            {date(quarter.from)} – {date(quarter.to)}
+                          </small>
+                        </span>
+                      </button>
+                      <dl className="ifta-quarter-facts">
+                        <div>
+                          <dt>{t('Est. miles')}</dt>
+                          <dd>{formatNumber(summary.miles)}</dd>
+                        </div>
+                        <div>
+                          <dt>{t('Est. fuel used')}</dt>
+                          <dd>{formatNumber(summary.gallons)} <small>{t('gal')}</small></dd>
+                        </div>
+                        <div>
+                          <dt>{t('Loads')}</dt>
+                          <dd>{summary.loads}</dd>
+                        </div>
+                        <div>
+                          <dt>{t('Trucks')}</dt>
+                          <dd>{summary.trucks}</dd>
+                        </div>
+                        <div>
+                          <dt>{t('Days')}</dt>
+                          <dd>
+                            {t('{done} of {all}', { done: calculated, all: expectedDays.length })}
+                            {summary.review ? (
+                              <small className="ifta-tile-review"> · {t('{n} to review', { n: summary.review })}</small>
+                            ) : null}
+                          </dd>
+                        </div>
+                      </dl>
+                      <div className="ifta-quarter-actions">
+                        {expectedDays.length && calculated < expectedDays.length && !viewing ? (
+                          <span className="ld-chip" data-tone="neutral">{t('Not fully calculated')}</span>
+                        ) : null}
+                        <Button
+                          variant={viewing ? 'default' : 'secondary'}
+                          size="sm"
+                          disabled={!expectedDays.length}
+                          onClick={() => {
+                            setPeriod(key);
+                            document.getElementById('ifta-days-title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }}
+                        >
+                          {viewing ? t('Viewing') : t('View days')}
+                        </Button>
+                      </div>
+                    </div>
+                    {isOpen ? (
+                      <div id={detailId} className="ifta-quarter-detail">
+                        {perTruck.length ? (
+                          <table className="ifta-legs">
+                            <thead>
+                              <tr>
+                                <th scope="col">{t('Truck')}</th>
+                                <th scope="col" className="pf-num">{t('Days')}</th>
+                                <th scope="col" className="pf-num">{t('Loads')}</th>
+                                <th scope="col" className="pf-num">{t('Est. miles')}</th>
+                                <th scope="col" className="pf-num">{t('Est. fuel used')}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {perTruck.map((truck) => (
+                                <tr key={truck.truck_id}>
+                                  <td>
+                                    #{truck.truck_number}
+                                    {truck.review ? (
+                                      <small> · {t('{n} to review', { n: truck.review })}</small>
+                                    ) : null}
+                                  </td>
+                                  <td className="pf-num">{truck.days}</td>
+                                  <td className="pf-num">{truck.loads}</td>
+                                  <td className="pf-num">{formatNumber(truck.miles)}</td>
+                                  <td className="pf-num">{formatNumber(truck.gallons)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="ld-hint">
+                            {expectedDays.length
+                              ? t('No days calculated yet. Open the quarter with View days to calculate them.')
+                              : t('No tickets with a truck and a date in this quarter.')}
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </section>
 

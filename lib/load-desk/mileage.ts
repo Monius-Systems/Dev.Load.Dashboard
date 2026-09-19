@@ -480,6 +480,7 @@ export const IFTA_PERIODS = [
 export type IftaPeriod = (typeof IFTA_PERIODS)[number][0];
 
 const pad2 = (value: number) => String(value).padStart(2, '0');
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const iso = (date: Date) =>
   `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 
@@ -531,6 +532,45 @@ export const defaultRange = (now: Date) => ({
   from: iso(quarterStart(now, -1)),
   to: iso(now),
 });
+
+// ------------------------------------------------------------------ quarters
+
+/** "2026-Q3": the IFTA quarter a date falls in. */
+export const quarterKeyOf = (date: string) =>
+  `${date.slice(0, 4)}-Q${Math.floor((Number(date.slice(5, 7)) - 1) / 3) + 1}`;
+
+export const isQuarterKey = (value: string) => /^\d{4}-Q[1-4]$/.test(value);
+
+/** "Q3 2026". */
+export const quarterLabel = (key: string) => `${key.slice(5)} ${key.slice(0, 4)}`;
+
+/** Inclusive ISO dates of a quarter, or null for anything that is not one. */
+export function quarterRangeOf(key: string): { from: string; to: string } | null {
+  if (!isQuarterKey(key)) return null;
+  const year = Number(key.slice(0, 4));
+  const month = (Number(key.slice(6)) - 1) * 3;
+  return { from: iso(new Date(year, month, 1)), to: iso(new Date(year, month + 3, 0)) };
+}
+
+/** Every quarter from the one `from` falls in to the one `to` falls in, newest first. */
+export function quarterKeys(from: string, to: string): string[] {
+  if (!ISO_DATE.test(from) || !ISO_DATE.test(to) || from > to) return [];
+  const keys: string[] = [];
+  let year = Number(from.slice(0, 4));
+  let quarter = Math.floor((Number(from.slice(5, 7)) - 1) / 3) + 1;
+  const last = quarterKeyOf(to);
+  for (let guard = 0; guard < 400; guard += 1) {
+    const key = `${year}-Q${quarter}`;
+    keys.push(key);
+    if (key === last) break;
+    quarter += 1;
+    if (quarter > 4) {
+      quarter = 1;
+      year += 1;
+    }
+  }
+  return keys.reverse();
+}
 
 // ------------------------------------------------------------------ stored days
 
@@ -726,11 +766,28 @@ export function summarizeDays(days: MileageDay[], from: string, to: string): Mil
   return summary;
 }
 
+export type TruckSummary = MileageSummary & { truck_id: number; truck_number: string };
+
+/** The same totals, one line per truck, most miles first. */
+export function summarizeByTruck(days: MileageDay[], from: string, to: string): TruckSummary[] {
+  const byTruck = new Map<number, MileageDay[]>();
+  for (const day of days) {
+    if (day.service_date < from || day.service_date > to) continue;
+    byTruck.set(day.truck_id, [...(byTruck.get(day.truck_id) ?? []), day]);
+  }
+  return [...byTruck.entries()]
+    .map(([truckId, rows]) => ({
+      truck_id: truckId,
+      truck_number: rows.find((row) => row.truck_number)?.truck_number ?? String(truckId),
+      ...summarizeDays(rows, from, to),
+    }))
+    .sort((a, b) => b.miles - a.miles || a.truck_number.localeCompare(b.truck_number, undefined, { numeric: true }));
+}
+
 // ------------------------------------------------------------------- parsers
 
 type Parsed<T> = { value: T } | { error: string };
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const isIsoDate = (value: unknown): value is string =>
   typeof value === 'string' && ISO_DATE.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 const isObject = (value: unknown): value is Record<string, unknown> =>

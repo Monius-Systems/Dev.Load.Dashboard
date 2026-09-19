@@ -104,6 +104,21 @@ export async function loadDays(range: { from: string; to: string }): Promise<voi
   });
 }
 
+/**
+ * Loads several ranges one after another — the past quarters for the
+ * quarterly reports. A range already loaded this page session is skipped.
+ */
+const loadedRanges = new Set<string>();
+export async function loadRanges(ranges: { from: string; to: string }[]): Promise<void> {
+  for (const range of ranges) {
+    const key = `${range.from}|${range.to}`;
+    if (loadedRanges.has(key)) continue;
+    await loadDays(range);
+    if (snapshot.mode === 'remote' && !snapshot.error) loadedRanges.add(key);
+    if (snapshot.mode !== 'remote') return;
+  }
+}
+
 type RecalculateAnswer = {
   days: MileageDay[];
   removed?: { truck_id: number; date: string }[];
