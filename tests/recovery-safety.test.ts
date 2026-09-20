@@ -6,6 +6,7 @@ import {
   fieldClass,
   resolveField,
   resolveTicket,
+  UNKNOWN_FRAME,
   type Evidence,
   type EvidenceSource,
   type ObservedField,
@@ -13,6 +14,7 @@ import {
   type PaperFrame,
   type RecoveryContext,
 } from '../lib/load-desk/recovery/index.ts';
+import { parseRecovery } from '../lib/load-desk/record-input.ts';
 import { emptyTicket } from '../lib/load-desk/types.ts';
 
 // The guarantees the whole layer exists for, checked across every source and
@@ -209,4 +211,32 @@ void test('no field waiting for a person ever leaves a fragment where a number g
       assert.equal(after[field], null, `${field} must not carry a fragment`);
     }
   }
+});
+
+void test('a field the workspace has a great deal to say about still fits on the record', () => {
+  // Thirty job sites fit a fragment; the validator allows twenty notes of
+  // three hundred characters and refuses anything longer, so an unbounded
+  // list made the ticket unsaveable. The notes are trimmed, the verdict is not.
+  const evidence = Array.from({ length: 30 }, (_, i) => ({
+    field: 'project_address' as const,
+    candidate: `MARKHAM SITE ${i} ${'X'.repeat(280)}`,
+    source: 'verified_history' as const,
+    strength: 'weak' as const,
+    note: `Known verified location: MARKHAM SITE ${i} ${'X'.repeat(280)}`,
+  }));
+  const resolution = resolveField(
+    'project_address',
+    { visible: 'ARKHAM', proposed: null, clipped_edge: 'left', partial: true },
+    UNKNOWN_FRAME,
+    evidence,
+    { vendor: null },
+  );
+  assert.equal(resolution.status, 'needs_review');
+  assert.ok((resolution.candidates?.length ?? 0) <= 10);
+  assert.ok(resolution.candidates?.every((value) => value.length <= 200));
+  assert.ok(resolution.evidence.length <= 20);
+  assert.ok(resolution.evidence.every((line) => line.length <= 300));
+  assert.match(resolution.evidence.at(-1) ?? '', /more\.$/);
+  const parsed = parseRecovery({ version: 1, vendor: null, paper: UNKNOWN_FRAME, fields: { project_address: resolution } });
+  assert.ok(parsed, 'the server accepts it');
 });

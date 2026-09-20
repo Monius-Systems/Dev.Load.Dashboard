@@ -304,9 +304,9 @@ export function resolveField(
       edge !== null && (paper[edge] === 'inside' || paper[edge] === 'unknown'),
     clipped_edge: edge,
     confidence: draft.confidence,
-    evidence: notes,
+    evidence: boundedNotes(notes),
     ...(draft.reason ? { reason: draft.reason } : {}),
-    ...(draft.candidates?.length ? { candidates: draft.candidates } : {}),
+    ...(draft.candidates?.length ? { candidates: boundedCandidates(draft.candidates) } : {}),
   });
 
   // (a) The sheet runs off the picture on the side the print stops. Nothing
@@ -901,6 +901,40 @@ const REVIEWER_NOTE = 'A reviewer';
  * it and take the save down with it.
  */
 const MAX_EVIDENCE_NOTES = 20;
+/** One note may be this long on the record; the validator refuses longer. */
+const MAX_NOTE_CHARS = 300;
+
+/**
+ * The notes as the record may carry them: at most `MAX_EVIDENCE_NOTES`, each
+ * at most `MAX_NOTE_CHARS`.
+ *
+ * The bounds are the validator's (record-input.ts), and it refuses rather
+ * than trims — so a field the workspace had a great deal to say about, a
+ * short fragment that fits thirty job sites, produced a record the server
+ * would not store, and the ticket could not be saved at all. What is kept is
+ * the first of them, in the order they were weighed, and one line saying how
+ * many more there were; the resolution itself is unchanged by the trimming.
+ */
+/** The validator's bounds on the candidate list: ten of them, two hundred characters each. */
+const MAX_CANDIDATES = 10;
+const MAX_CANDIDATE_CHARS = 200;
+
+/** The candidates as the record may carry them; the first ten, each cut to fit. */
+const boundedCandidates = (candidates: string[]): string[] =>
+  candidates
+    .slice(0, MAX_CANDIDATES)
+    .map((value) =>
+      value.length > MAX_CANDIDATE_CHARS ? `${value.slice(0, MAX_CANDIDATE_CHARS - 1)}…` : value,
+    );
+
+function boundedNotes(notes: string[]): string[] {
+  const clipped = notes.map((note) =>
+    note.length > MAX_NOTE_CHARS ? `${note.slice(0, MAX_NOTE_CHARS - 1)}…` : note,
+  );
+  if (clipped.length <= MAX_EVIDENCE_NOTES) return clipped;
+  const kept = clipped.slice(0, MAX_EVIDENCE_NOTES - 1);
+  return [...kept, `…and ${clipped.length - kept.length} more.`];
+}
 
 /**
  * One field as a person settled it in review, which ends the question.

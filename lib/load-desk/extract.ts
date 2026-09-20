@@ -130,7 +130,10 @@ export async function extractPages(
     // observation with the damage still in it, not the flat view with the
     // damaged fields taken out. A ticket that came back mostly blank is only
     // explicable from what the reader actually saw of it.
-    text: JSON.stringify(read.observed ?? read.extracted, null, 2),
+    // Compact, not indented: this string is stored on every record and sent
+    // back with every list of records, so its bytes are paid for on every
+    // page load, and the two-space indent was a third of them.
+    text: JSON.stringify(read.observed ?? read.extracted),
   });
 
   if (type !== 'application/pdf') {

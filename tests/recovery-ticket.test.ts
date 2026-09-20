@@ -446,14 +446,19 @@ void test('a field weighed against more evidence than a record may carry still c
     ),
     here,
   );
-  assert.ok(crowded.fields.project_name!.evidence.length > 20, 'more notes than a save allows');
+  // The resolver already keeps the record within what a save allows, and
+  // says how many notes it left out; confirming must not push it back over.
+  assert.equal(crowded.fields.project_name!.evidence.length, 20, 'bounded by the resolver');
+  assert.match(crowded.fields.project_name!.evidence.at(-1) ?? '', /more\.$/);
 
   const confirmed = confirmField(crowded, 'project_name', 'Route 30 Section 4', 'accepted');
   const notes = confirmed.fields.project_name!.evidence;
   assert.equal(notes.length, 20);
   assert.ok(notes.at(-1)?.startsWith('A reviewer'), 'the decision is the last thing said');
   assert.equal(notes.filter((line) => line.startsWith('A reviewer')).length, 1);
-  assert.ok(notes[0].includes('Ticket 6'), 'the oldest notes are the ones dropped');
+  // Twenty came in; one had to go to make room for the decision, and it is
+  // the earliest weighed note that goes.
+  assert.ok(notes[0].includes('Ticket 1 '), 'the earliest note is the one dropped');
 });
 
 void test('a frame the resolver was handed is never written to', () => {
