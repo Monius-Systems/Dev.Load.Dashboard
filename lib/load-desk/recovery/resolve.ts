@@ -1,5 +1,6 @@
 import { normalizeKey, normalizeName } from '../profiles.ts';
 import { ticketDay } from '../ticket-date.ts';
+import { printedNumber } from '../printed-number.ts';
 import { isNumberField, type Ticket } from '../types.ts';
 import {
   ADVISORY_SOURCES,
@@ -73,12 +74,7 @@ const stripPlaceholders = (text: string) =>
  * left over means the field was not read, and a field that was not read gets
  * no number at all rather than whatever `Number` makes of it.
  */
-function numberFrom(text: string): number | null {
-  const cleaned = text.replace(/[,\s$]/g, '');
-  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(cleaned)) return null;
-  const value = Number(cleaned);
-  return Number.isFinite(value) ? value : null;
-}
+const numberFrom = (text: string): number | null => printedNumber(text);
 
 /**
  * The print as the ticket would store it, or null when it is not a value this

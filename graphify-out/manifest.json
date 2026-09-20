@@ -768,50 +768,50 @@
     "semantic_hash": "4526cad9fbe090942fa36521105970dd"
   },
   "public/ocr/pdf.worker.min.mjs": {
-    "mtime": 1789918780.3646624,
-    "seen": 1789918810.503034,
+    "mtime": 1789919376.2940285,
+    "seen": 1789919407.131527,
     "ast_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e",
     "semantic_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e"
   },
   "public/ocr/tesseract-core-lstm.wasm.js": {
-    "mtime": 1789918780.3748693,
-    "seen": 1789918810.5030348,
+    "mtime": 1789919376.303472,
+    "seen": 1789919407.131528,
     "ast_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3",
     "semantic_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3"
   },
   "public/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": {
-    "mtime": 1789918780.3875253,
-    "seen": 1789918810.503036,
+    "mtime": 1789919376.3114629,
+    "seen": 1789919407.1315289,
     "ast_hash": "f267f4efd6219843707c73b3a9a70604",
     "semantic_hash": "f267f4efd6219843707c73b3a9a70604"
   },
   "public/ocr/tesseract-core-relaxedsimd.wasm.js": {
-    "mtime": 1789918780.4002829,
-    "seen": 1789918810.503037,
+    "mtime": 1789919376.320478,
+    "seen": 1789919407.13153,
     "ast_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb",
     "semantic_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb"
   },
   "public/ocr/tesseract-core-simd-lstm.wasm.js": {
-    "mtime": 1789918780.4195545,
-    "seen": 1789918810.503037,
+    "mtime": 1789919376.3294473,
+    "seen": 1789919407.13153,
     "ast_hash": "2bd630487581a49b7d7cce1bfe42314c",
     "semantic_hash": "2bd630487581a49b7d7cce1bfe42314c"
   },
   "public/ocr/tesseract-core-simd.wasm.js": {
-    "mtime": 1789918780.4366412,
-    "seen": 1789918810.503038,
+    "mtime": 1789919376.3382342,
+    "seen": 1789919407.131531,
     "ast_hash": "3fb1f6589c0569134cc593e0155acec4",
     "semantic_hash": "3fb1f6589c0569134cc593e0155acec4"
   },
   "public/ocr/tesseract-core.wasm.js": {
-    "mtime": 1789918780.456056,
-    "seen": 1789918810.503039,
+    "mtime": 1789919376.347164,
+    "seen": 1789919407.131532,
     "ast_hash": "7ec67b8a67ab4d41b74dd8df49db9224",
     "semantic_hash": "7ec67b8a67ab4d41b74dd8df49db9224"
   },
   "public/ocr/worker.min.js": {
-    "mtime": 1789918780.3656743,
-    "seen": 1789918810.50304,
+    "mtime": 1789919376.2953408,
+    "seen": 1789919407.1315331,
     "ast_hash": "b1ab464237e687b323da236fff45ba05",
     "semantic_hash": "b1ab464237e687b323da236fff45ba05"
   },
@@ -1098,9 +1098,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/ticket-extraction.ts": {
-    "mtime": 1789918715.8262339,
-    "seen": 1789918810.503008,
-    "ast_hash": "91433e485a6c52bfee6dd17ab2c089e6",
+    "mtime": 1789919283.0273929,
+    "seen": 1789919407.131503,
+    "ast_hash": "4538fd7568fa357fb1a9f2021dc715a9",
     "semantic_hash": ""
   },
   "lib/scanner/enhance.ts": {
@@ -1482,15 +1482,15 @@
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/queue.ts": {
-    "mtime": 1789868016.8147461,
-    "seen": 1789868156.92688,
-    "ast_hash": "96f81161c63664a66f2213d480d97575",
+    "mtime": 1789919283.0285892,
+    "seen": 1789919407.1314938,
+    "ast_hash": "4711a378bfe0824da5119cf20a0d7553",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/resolve.ts": {
-    "mtime": 1789917097.3911622,
-    "seen": 1789917168.542114,
-    "ast_hash": "0f44391e48149691d4f8422a78b97d4e",
+    "mtime": 1789919283.0278625,
+    "seen": 1789919407.131495,
+    "ast_hash": "90211576a1d004108bb625a2cfca8e43",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/vendors.ts": {
@@ -1500,9 +1500,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/vendors/generic.ts": {
-    "mtime": 1789861462.7112796,
-    "seen": 1789863956.886422,
-    "ast_hash": "b181093d441ffe805ce5ea10761a6a42",
+    "mtime": 1789919307.3567126,
+    "seen": 1789919407.131497,
+    "ast_hash": "a83a159eff39af8339d527b7d231ee9b",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/vendors/heidelberg.ts": {
@@ -1569,6 +1569,18 @@
     "mtime": 1789861462.7115347,
     "seen": 1789863956.886497,
     "ast_hash": "1b6c9b402570295226be74318bceedd6",
+    "semantic_hash": ""
+  },
+  "lib/load-desk/printed-number.ts": {
+    "mtime": 1789919370.228416,
+    "seen": 1789919407.131487,
+    "ast_hash": "258c03094d18555d32dd0d691bc7bca6",
+    "semantic_hash": ""
+  },
+  "tests/printed-number.test.ts": {
+    "mtime": 1789919307.3609908,
+    "seen": 1789919407.1315699,
+    "ast_hash": "4b090dacf3beece52cdf926c6ca7c823",
     "semantic_hash": ""
   }
 }

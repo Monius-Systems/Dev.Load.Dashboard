@@ -1,3 +1,4 @@
+import { printedNumber as readPrintedNumber } from '../../printed-number.ts';
 import { ticketDay } from '../../ticket-date.ts';
 import type { Ticket } from '../../types.ts';
 import type { Evidence, ObservedField, ObservedTicket } from '../contract.ts';
@@ -66,8 +67,6 @@ export function isPartial(
   return Boolean(field && (field.partial || field.clipped_edge));
 }
 
-const NUMBER_PRINT = /^-?\d+(\.\d+)?$/;
-
 /**
  * A printed number as a number, and null for anything that is not one.
  *
@@ -77,13 +76,8 @@ const NUMBER_PRINT = /^-?\d+(\.\d+)?$/;
  * in, an empty string, a lone minus — is not a number that was weighed, and a
  * rule with nothing to work from is better than one working from NaN.
  */
-export function printedNumber(text: string | null | undefined): number | null {
-  if (!text) return null;
-  const cleaned = text.replace(/[,\s]/g, '');
-  if (!NUMBER_PRINT.test(cleaned)) return null;
-  const value = Number(cleaned);
-  return Number.isFinite(value) ? value : null;
-}
+export const printedNumber = (text: string | null | undefined): number | null =>
+  readPrintedNumber(text);
 
 /** The day a printed timestamp names, or null: "09/14/2026 12:02" -> 2026-09-14. */
 export function timestampDay(stamp: string | null | undefined): string | null {

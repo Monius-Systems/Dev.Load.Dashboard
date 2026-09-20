@@ -1,4 +1,5 @@
 import type { ClientProfile, CustomerProfile, TruckProfile } from '../profiles.ts';
+import { printedNumber } from '../printed-number.ts';
 import { isNumberField, type SavedRecord, type Ticket } from '../types.ts';
 import {
   applyRecovery,
@@ -257,6 +258,6 @@ export function acceptableValue(field: keyof Ticket, candidate: string): string 
   const text = candidate.trim();
   if (!text) return null;
   if (!isNumberField(field)) return text;
-  const cleaned = text.replace(/[,\s$]/g, '');
-  return /^-?(\d+\.?\d*|\.\d+)$/.test(cleaned) ? cleaned : null;
+  const value = printedNumber(text);
+  return value === null ? null : String(value);
 }

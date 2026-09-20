@@ -18,6 +18,7 @@
 // Nothing here talks to the network or the DOM, so the schema, the prompt and
 // the mapping onto the app's own ticket fields are all covered by tests.
 
+import { printedNumber } from './printed-number.ts';
 import { ticketDay } from './ticket-date.ts';
 import type {
   ClippedEdge,
@@ -305,11 +306,9 @@ const trimmed = (value: unknown): string | null => clean(value, MAX_FIELD_CHARS)
 
 const finite = (value: unknown): number | null => {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-  // A model that answers "45,440" despite being asked not to is still usable.
-  if (typeof value === 'string') {
-    const parsed = Number(value.replace(/[$,\s]/g, ''));
-    return Number.isFinite(parsed) && value.trim() ? parsed : null;
-  }
+  // The ink as printed — "45,440", "27140 * 13.57 *" — read as the number it
+  // carries (see printed-number.ts), and null for print that carries none.
+  if (typeof value === 'string') return printedNumber(value);
   return null;
 };
 
