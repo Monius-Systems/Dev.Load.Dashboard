@@ -103,6 +103,7 @@ import {
   confirmValue,
   noteSameOrderFill,
   recoverTicket,
+  rerecoverSaved,
   unresolvedMessage,
 } from '@/lib/load-desk/recovery/queue';
 import {
@@ -682,6 +683,22 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
   const savedOn = new Date(record.edited_at ?? record.saved_at).toLocaleDateString(
     'en-US',
   );
+  // The fields still waiting on a person, looked at again under today's
+  // rules and today's memory (see `rerecoverSaved`): a ticket filed with a
+  // verdict the reader has since been corrected on opens with the corrected
+  // one, as an unsaved change, rather than with an issue nobody can act on.
+  const profiles = getProfilesSnapshot();
+  const reconsidered = record.recovery
+    ? rerecoverSaved({
+        ticket: record.ticket,
+        recovery: record.recovery,
+        records: getRecordsSnapshot().records,
+        profiles,
+        customer:
+          profiles.customers.find((known) => known.id === record.customer_profile_id) ??
+          matchCustomer(profiles.customers, record.ticket),
+      })
+    : { ticket: record.ticket, recovery: undefined };
   const item: QueueItem = {
     id: makeId(),
     source: record.source,
@@ -690,12 +707,12 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
     preview_status: 'loading',
     ocr_text: record.ocr_text,
     note: `${record.edited_at ? 'Last edited' : 'Saved'} ${savedOn}. Change any field, then save the changes.`,
-    ticket: record.ticket,
+    ticket: reconsidered.ticket,
     // Its stored record of how it was read, and nothing else: the
     // observation belonged to the read and was never saved, so a reopened
     // ticket shows what was decided about each field without pretending the
     // paper is in front of it again.
-    ...(record.recovery ? { recovery: record.recovery } : {}),
+    ...(reconsidered.recovery ? { recovery: reconsidered.recovery } : {}),
     invoice: record.invoice,
     saved_record_id: record.id,
     customer_profile_id: record.customer_profile_id ?? null,
@@ -704,10 +721,16 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
     baseline: null,
     from_saved: true,
   };
-  // The baseline is what is stored, and the date is corrected after it: a
-  // record filed before the rule was enforced opens with the ticket's date and
-  // says so as an unsaved change, rather than keeping the wrong one quietly.
-  return invoiceDated({ ...item, baseline: editKey(item) });
+  // The baseline is what is stored, and the date and the reconsidered fields
+  // are corrected after it: a record filed before a rule was enforced opens
+  // with the corrected value and says so as an unsaved change, rather than
+  // keeping the wrong one quietly.
+  const stored: QueueItem = {
+    ...item,
+    ticket: record.ticket,
+    ...(record.recovery ? { recovery: record.recovery } : {}),
+  };
+  return invoiceDated({ ...item, baseline: editKey(stored) });
 }
 
 function weightCheck(ticket: Ticket, t: Translator['t']) {

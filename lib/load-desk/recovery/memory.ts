@@ -473,8 +473,19 @@ export function memoryEvidence(
     if (EVIDENCE_VALUE_FIELDS.has(field)) {
       for (const known of memory.values.get(field) ?? []) {
         if (!fits(known.value, fragment, seen.clipped_edge)) continue;
+        // Reviewed history used to top out at moderate, so a name the
+        // workspace had checked on twenty tickets could never complete the
+        // twenty-first on its own, and "Z FORCE TRANSPO" waited for a person
+        // every time. Three reviewed sightings is a fact somebody has checked
+        // three times; it stands as a profile does. The resolver still asks
+        // that nothing else on file fit the print, so this is never a choice
+        // between two names.
         const strength =
-          known.source === 'verified_profile' ? 'strong' : known.count >= 2 ? 'moderate' : 'weak';
+          known.source === 'verified_profile' || known.count >= 3
+            ? 'strong'
+            : known.count >= 2
+              ? 'moderate'
+              : 'weak';
         const where =
           known.source === 'verified_profile'
             ? 'saved on a profile'

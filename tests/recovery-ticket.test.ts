@@ -74,8 +74,10 @@ void test('the detector and the reader have to agree before print counts as prin
   // to cut — recovery goes ahead with its confidence capped, rather than the
   // whole side being thrown out as a retake on the reader's say-so.
   assert.equal(mergeFrames(frame(), frame({ left: 'cut' })).left, 'unknown');
-  // With no sheet found, the reader's word is all there is, and cut is believed.
-  assert.equal(mergeFrames(frame({ left: 'unknown' }), frame({ left: 'cut' })).left, 'cut');
+  // With no sheet found, the reader's word is doubt, not a crop: a vision
+  // model asked about the paper's edge answers for the print's edge. Only the
+  // detector may call a side cut.
+  assert.equal(mergeFrames(frame({ left: 'unknown' }), frame({ left: 'cut' })).left, 'unknown');
   assert.equal(mergeFrames(frame({ left: 'cut' }), frame()).left, 'cut');
   assert.equal(mergeFrames(frame(), frame({ left: 'unknown' })).left, 'unknown');
 });
@@ -102,7 +104,12 @@ void test('the reader calling an edge cut is doubt, not a retake, once the detec
   assert.ok((recovery.fields.customer_name?.confidence ?? 1) <= 0.85, 'capped for the unverified frame');
 });
 
-void test('with no sheet found, the reader calling an edge cut is enough to send the ticket back', () => {
+void test('with no sheet found, the reader calling an edge cut is still only doubt', () => {
+  // The camera refuses a genuine crop before the ticket is ever read, and
+  // the detector is the one that finds the paper. A ticket whole in the
+  // picture, with the carrier printed up to where the printer stopped, was
+  // sent back for a photograph on the reader's word; now it is recovered
+  // with the doubt on the record.
   const recovery = resolveTicket(
     observedTicket(
       { customer_name: seen({ visible: 'ARKHAM PAVING', clipped_edge: 'left', partial: true }) },
@@ -112,8 +119,17 @@ void test('with no sheet found, the reader calling an edge cut is enough to send
     [ev({ candidate: 'Markham Paving', source: 'verified_profile', strength: 'strong' })],
     here,
   );
-  assert.equal(recovery.paper.left, 'cut');
-  assert.equal(recovery.fields.customer_name?.reason, 'camera_crop');
+  assert.equal(recovery.paper.left, 'unknown');
+  assert.equal(recovery.fields.customer_name?.status, 'recovered');
+  assert.ok((recovery.fields.customer_name?.confidence ?? 1) <= 0.85);
+  // The detector calling it cut is a different matter, and still a retake.
+  const cropped = resolveTicket(
+    observedTicket({ customer_name: seen({ visible: 'ARKHAM PAVING', clipped_edge: 'left', partial: true }) }),
+    frame({ left: 'cut' }),
+    [ev({ candidate: 'Markham Paving', source: 'verified_profile', strength: 'strong' })],
+    here,
+  );
+  assert.equal(cropped.fields.customer_name?.reason, 'camera_crop');
 });
 
 void test('a ticket resolves every field that was seen or that anything is known about', () => {

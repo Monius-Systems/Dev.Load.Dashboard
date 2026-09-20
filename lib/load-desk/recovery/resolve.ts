@@ -799,9 +799,16 @@ export function mergeFrames(detected: PaperFrame, read: PaperFrame | null): Pape
     if (detected[edge] === 'inside') {
       return read[edge] === 'inside' ? ('inside' as const) : ('unknown' as const);
     }
-    // No sheet found: the reader's word is all there is, and a reader that
-    // says the sheet ran off is believed, because that is the cautious side.
-    return read[edge] === 'cut' ? ('cut' as const) : ('unknown' as const);
+    // No sheet found. The reader's word was believed here at first — a
+    // reader saying the sheet ran off sent the ticket back for a photograph
+    // — and it sent back tickets that were whole in the picture, with the
+    // carrier's name plainly printed up to where the printer stopped. A
+    // vision model asked about the paper's edge answers for the print's
+    // edge, so its "cut" is not a crop; it is doubt, and doubt is unknown:
+    // recovery goes ahead with its confidence capped and the doubt on the
+    // record. Only the detector, which finds the paper itself, may call a
+    // side cut, and the camera refuses a genuine crop before it is ever read.
+    return 'unknown' as const;
   };
   return {
     detected: detected.detected || read.detected,

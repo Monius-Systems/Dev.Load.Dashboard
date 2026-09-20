@@ -646,7 +646,10 @@ void test('Heidelberg clipped location is completed from the plant line', () => 
   const settled = reviewState(recovery, 'plant_name');
   assert.equal(settled?.status, 'recovered');
   assert.equal(settled?.value, 'Heidelberg Materials');
-  assert.equal(settled?.source, 'vendor_rule');
+  // The vendor's rule and three reviewed tickets agree; whichever leads, the
+  // layout's own word is on the record.
+  assert.ok(['vendor_rule', 'verified_history'].includes(settled?.source ?? ''));
+  assert.ok(settled?.evidence.some((line) => /Branding reads Heidelberg/.test(line)));
   assert.equal(ticket.plant_name, 'Heidelberg Materials');
 });
 

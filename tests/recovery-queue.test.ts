@@ -14,6 +14,7 @@ import {
   confirmValue,
   noteSameOrderFill,
   recoverTicket,
+  rerecoverSaved,
   reviewState,
   unresolvedMessage,
 } from '../lib/load-desk/recovery/queue.ts';
@@ -389,4 +390,77 @@ void test('a candidate is handed to the box as a value, or not at all', () => {
   assert.equal(acceptableValue('net_tons', '22.31'), '22.31');
   assert.equal(acceptableValue('project_address', 'MARKHAM, IL'), 'MARKHAM, IL');
   assert.equal(acceptableValue('ticket_date', '2026-09-14'), '2026-09-14');
+});
+
+// --- a saved ticket, looked at again -------------------------------------
+
+const staleResolution = (over: Partial<import('../lib/load-desk/recovery/index.ts').FieldResolution>) => ({
+  status: 'needs_review' as const,
+  value: null,
+  visible_text: null,
+  source: null,
+  source_clipped: false,
+  clipped_edge: null,
+  confidence: 0,
+  evidence: [],
+  ...over,
+});
+
+void test('a weight refused for the mark beside it reads as a weight once reopened', () => {
+  const recovery: TicketRecovery = {
+    version: 1,
+    vendor: 'heidelberg',
+    paper: UNKNOWN_FRAME,
+    fields: {
+      tare_lb: staleResolution({ visible_text: '27600 *', reason: 'not_read' }),
+      gross_lb: { ...staleResolution({}), status: 'exact', value: 73100, visible_text: '73,100', source: 'visible', confidence: 1 },
+    },
+  };
+  const ticket: Ticket = { ...emptyTicket(), gross_lb: 73100, tare_lb: null };
+  const again = rerecoverSaved({ ticket, recovery, records: [], profiles: noProfiles, customer: null });
+  assert.equal(again.recovery.fields.tare_lb?.status, 'exact');
+  assert.equal(again.recovery.fields.tare_lb?.value, 27600);
+  assert.equal(again.recovery.fields.tare_lb?.visible_text, '27600 *');
+  assert.equal(again.ticket.tare_lb, 27600);
+  assert.equal(again.ticket.gross_lb, 73100, 'a settled field is left alone');
+});
+
+void test('a carrier sent back for a photograph is completed from reviewed history once reopened', () => {
+  const recovery: TicketRecovery = {
+    version: 1,
+    vendor: 'heidelberg',
+    paper: { detected: false, left: 'unknown', right: 'cut', top: 'unknown', bottom: 'unknown' },
+    fields: {
+      carrier_name: staleResolution({ visible_text: 'Z FORCE TRANSPO', clipped_edge: 'right', reason: 'camera_crop' }),
+    },
+  };
+  const ticket: Ticket = { ...emptyTicket(), carrier_name: 'Z FORCE TRANSPO' };
+  const reviewed = [1, 2, 3].map(() => saved({ carrier_name: 'Z FORCE TRANSPORT' }));
+  // The stored frame says the detector called the right side cut; that was
+  // the reader's word, written into the frame by the old merge. A detector
+  // verdict is trusted, so this stays a retake...
+  const still = rerecoverSaved({ ticket, recovery, records: reviewed, profiles: noProfiles, customer: null });
+  assert.equal(still.recovery.fields.carrier_name?.reason, 'camera_crop');
+  // ...but a record whose frame never had the detector's verdict is recovered.
+  const doubted = { ...recovery, paper: UNKNOWN_FRAME };
+  const again = rerecoverSaved({ ticket, recovery: doubted, records: reviewed, profiles: noProfiles, customer: null });
+  assert.equal(again.recovery.fields.carrier_name?.status, 'recovered');
+  assert.equal(again.recovery.fields.carrier_name?.value, 'Z FORCE TRANSPORT');
+  assert.equal(again.ticket.carrier_name, 'Z FORCE TRANSPORT');
+});
+
+void test('a field a person confirmed is never reconsidered, and nothing changes when nothing changes', () => {
+  const recovery: TicketRecovery = {
+    version: 1,
+    vendor: null,
+    paper: UNKNOWN_FRAME,
+    fields: {
+      carrier_name: { ...staleResolution({ visible_text: 'Z FORCE TRANSPO' }), status: 'confirmed', value: 'Z FORCE TRANSPO', confirmed_by_user: true, source: 'user_confirmed', confidence: 1 },
+      project_address: staleResolution({ visible_text: 'ARKHAM, IL', clipped_edge: 'left', reason: 'insufficient_evidence' }),
+    },
+  };
+  const ticket: Ticket = { ...emptyTicket(), carrier_name: 'Z FORCE TRANSPO', project_address: 'ARKHAM, IL' };
+  const again = rerecoverSaved({ ticket, recovery, records: [], profiles: noProfiles, customer: null });
+  assert.equal(again.recovery, recovery, 'the same object comes back when nothing changed');
+  assert.equal(again.ticket, ticket);
 });

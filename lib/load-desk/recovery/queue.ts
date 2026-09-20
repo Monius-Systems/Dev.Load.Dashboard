@@ -97,6 +97,104 @@ export function recoverTicket(input: RecoverInput): {
 }
 
 /**
+ * A saved ticket's unsettled fields, looked at again under the rules as they
+ * stand now.
+ *
+ * A ticket is filed with the verdict of the day it was read, and a verdict
+ * can be wrong in a way that is later put right — a weight refused for the
+ * mark the scale prints beside it, a carrier sent back for a photograph on
+ * the reader's word alone. Those tickets sat in "to check" carrying issues no
+ * reviewer could act on, because the fix had gone into the reader and the
+ * ticket had already been read. So when a saved ticket is reopened, what its
+ * record kept of the paper — the print as seen, the edge it ran off, the
+ * frame — is put back in front of the resolver for the fields still waiting,
+ * with the workspace's memory as it is today.
+ *
+ * Only the unsettled fields are asked about again. A field a person
+ * confirmed is theirs and stays; a field read whole or already recovered is
+ * kept as decided, and stands as the evidence the derivations need. Where
+ * nothing changes, the record comes back untouched, so a reopened ticket
+ * does not read as edited for having been looked at.
+ */
+export function rerecoverSaved(input: {
+  ticket: Ticket;
+  recovery: TicketRecovery;
+  records: SavedRecord[];
+  profiles: RecoverInput['profiles'];
+  customer: CustomerProfile | null;
+}): { ticket: Ticket; recovery: TicketRecovery } {
+  const { ticket, recovery, records, profiles, customer } = input;
+  const unsettled = (Object.keys(recovery.fields) as (keyof Ticket)[]).filter((field) => {
+    const resolution = recovery.fields[field];
+    return (
+      resolution !== undefined &&
+      (resolution.status === 'needs_review' || resolution.status === 'missing') &&
+      !resolution.confirmed_by_user
+    );
+  });
+  if (!unsettled.length) return { ticket, recovery };
+
+  // The paper as the record remembers it: the unsettled fields with the print
+  // that was seen and the edge it ran off; every settled field as a whole
+  // observation of the value it carries, so gross and tare are still there
+  // for the net to be worked out from.
+  const fields: ObservedTicket['fields'] = {};
+  for (const field of FIELD_ORDER) {
+    const resolution = recovery.fields[field];
+    if (unsettled.includes(field)) {
+      fields[field] = {
+        visible: resolution?.visible_text ?? null,
+        proposed: null,
+        clipped_edge: resolution?.clipped_edge ?? null,
+        // A field that was refused as unreadable was seen whole; one that
+        // ran off an edge, or was never seen, was not.
+        partial:
+          resolution?.clipped_edge !== null ||
+          (resolution?.reason !== 'not_read' && resolution?.visible_text === null),
+      };
+      continue;
+    }
+    const value = ticket[field];
+    if (value === null || value === undefined) continue;
+    fields[field] = {
+      visible: String(value),
+      proposed: null,
+      clipped_edge: null,
+      partial: false,
+    };
+  }
+  const observed: ObservedTicket = {
+    fields,
+    timestamps: [],
+    branding: recovery.vendor,
+    paper_edges: null,
+  };
+  const again = recoverTicket({
+    observed,
+    paper: recovery.paper,
+    extracted: ticket,
+    records,
+    profiles,
+    customer,
+  });
+
+  // Take only what was asked about, and only where the answer changed.
+  let changed = false;
+  const merged: TicketRecovery['fields'] = { ...recovery.fields };
+  const next: Ticket = { ...ticket };
+  for (const field of unsettled) {
+    const before = recovery.fields[field]!;
+    const after = again.recovery.fields[field];
+    if (!after || after.status === before.status) continue;
+    if (after.status === 'needs_review' || after.status === 'missing') continue;
+    merged[field] = after;
+    (next as Record<string, string | number | null>)[field] = again.ticket[field];
+    changed = true;
+  }
+  return changed ? { ticket: next, recovery: { ...recovery, fields: merged } } : { ticket, recovery };
+}
+
+/**
  * How sure the app is of a field another ticket of the same order filled in.
  *
  * The same figure the resolver gives anything that reaches its threshold, and
