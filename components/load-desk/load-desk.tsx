@@ -341,6 +341,15 @@ function defaultInvoice(): InvoiceDraft {
 type ProfileContext = {
   customers: CustomerProfile[];
   truck: TruckProfile | null;
+  /**
+   * Who a new invoice is billed to: the default client under Account, or the
+   * client the last invoice went to. It has to be here, on the item as it is
+   * built, because a ticket is filed the moment it is read — before the
+   * upload's grouping, which used to be the only place the client was put on.
+   * A record filed with an empty bill-to is a record somebody has to stop
+   * and pick a client for, on every ticket, whatever default they had set.
+   */
+  billTo: BillTo | null;
 };
 
 /** Links a queue item to a customer profile and fills its rate and rate type. */
@@ -499,7 +508,10 @@ async function buildQueueItem(
     // shows exactly what it always showed.
     ...(extracted?.observed ? { observed: extracted.observed } : {}),
     ...(recovery ? { recovery } : {}),
-    invoice: defaultInvoice(),
+    invoice: {
+      ...defaultInvoice(),
+      ...(profiles.billTo ? { bill_to: { ...profiles.billTo } } : {}),
+    },
     preview_status: 'ready',
     saved_record_id: null,
     customer_profile_id: null,
@@ -2532,7 +2544,11 @@ export default function LoadDesk() {
   const activeTrucks = trucks.filter((truck) => truck.active);
   const uploadTruck =
     activeTrucks.find((truck) => String(truck.id) === truckChoice) ?? null;
-  const profileContext: ProfileContext = { customers, truck: uploadTruck };
+  const profileContext: ProfileContext = {
+    customers,
+    truck: uploadTruck,
+    billTo: recentClientBillTo(),
+  };
   const activeCustomer = active
     ? (customers.find((item) => item.id === active.customer_profile_id) ?? null)
     : null;

@@ -172,7 +172,16 @@ const FIELD_LABELS: Partial<Record<keyof Ticket, string>> = {
 
 const labelOf = (field: keyof Ticket) => FIELD_LABELS[field] ?? field.replace(/_/g, ' ');
 
-const tickets = (count: number) => `${count} reviewed ticket${count === 1 ? '' : 's'}`;
+/**
+ * A count of sightings said out loud. Unreviewed readings count half, so the
+ * figure can be a fraction; it is shown to the nearest whole ticket, and a
+ * count made up of readings alone says so.
+ */
+const tickets = (count: number) => {
+  const whole = Math.max(1, Math.round(count));
+  const noun = whole === 1 ? 'ticket' : 'tickets';
+  return Number.isInteger(count) ? `${whole} reviewed ${noun}` : `about ${whole} ${noun}, some unreviewed`;
+};
 
 /** The fragment's characters, without the spacing normalizeName leaves behind. */
 const squash = (value: string) => value.replace(/ /g, '');
@@ -215,6 +224,7 @@ function addValue(
   source: VerifiedValue['source'],
   customer: string | null,
   project: string | null,
+  weight = 1,
 ) {
   const text = value.trim();
   const key = normalizeName(text);
@@ -234,7 +244,7 @@ function addValue(
     entry.value = text;
     entry.source = 'verified_profile';
   }
-  entry.count += 1;
+  entry.count += weight;
   if (customer) entry.customers.add(normalizeName(customer));
   if (project) entry.projects.add(normalizeName(project));
 }
@@ -245,15 +255,39 @@ function addRelationship(
   field: keyof Ticket,
   from: string,
   to: string,
+  weight = 1,
 ) {
   const key = `${kind}\u0000${normalizeName(from)}\u0000${normalizeName(to)}`;
   const found = index.get(key);
   if (found) {
-    found.count += 1;
+    found.count += weight;
     return;
   }
-  index.set(key, { kind, from: from.trim(), to: to.trim(), field, count: 1 });
+  index.set(key, { kind, from: from.trim(), to: to.trim(), field, count: weight });
 }
+
+/**
+ * How much one saved ticket's word is worth.
+ *
+ * A ticket a person saved from the review screen is a fact they checked:
+ * one whole sighting. A ticket saved before `reviewed_at` existed has no
+ * mark at all, and is the same thing — the review screen was the only way to
+ * save then — so an absent mark is a person's, and only an explicit null,
+ * which is what filing a ticket unreviewed writes, means nobody has looked.
+ *
+ * An unreviewed ticket is not nothing, though. What the reader saw WHOLE on
+ * it — a carrier's name printed end to end and marked exact — is a reading,
+ * not a guess, and the brief allows an exact extraction to be learned under
+ * a safe rule. The rule is: only fields read whole, at half a sighting, so
+ * six readings say as much as three checks and one reading says next to
+ * nothing. Nothing recovered, proposed or unsettled is ever learned from a
+ * ticket nobody reviewed.
+ */
+const sightingOf = (record: SavedRecord): { checked: boolean } => ({
+  checked: record.reviewed_at !== null,
+});
+
+const UNREVIEWED_SIGHTING = 0.5;
 
 /**
  * Everything this workspace has verified, from the records and profiles it is
@@ -299,22 +333,24 @@ export function buildMemory(
   const corrections: Correction[] = [];
 
   for (const record of records) {
-    // Absent or null means nobody has checked this ticket against the picture
-    // (see SavedRecord.reviewed_at). An unchecked ticket is a reading, not a
-    // fact, and the workspace learns nothing from it.
-    if (!record.reviewed_at) continue;
     const { ticket, recovery } = record;
+    const sighting = sightingOf(record);
+    const weight = sighting.checked ? 1 : UNREVIEWED_SIGHTING;
     const verified = (field: keyof Ticket): string | null => {
       const value = ticket[field];
       if (typeof value !== 'string' || !value.trim()) return null;
-      return settled(recovery?.fields[field]) ? value.trim() : null;
+      const resolution = recovery?.fields[field];
+      // Unreviewed: only what the reader saw whole. A ticket with no record
+      // of how it was read, and nobody's mark on it, says nothing.
+      if (!sighting.checked) return resolution?.status === 'exact' ? value.trim() : null;
+      return settled(resolution) ? value.trim() : null;
     };
 
     const customer = verified('customer_name');
     const project = verified('project_name');
     for (const field of LEARNED_FIELDS) {
       const value = verified(field);
-      if (value) addValue(values, field, value, 'verified_history', customer, project);
+      if (value) addValue(values, field, value, 'verified_history', customer, project, weight);
     }
 
     const address = verified('project_address');
@@ -324,16 +360,18 @@ export function buildMemory(
     const productDescription = verified('product_description');
     const carrier = verified('carrier_name');
     const vehicle = verified('vehicle_id');
-    if (customer && project) addRelationship(index, 'customer_project', 'project_name', customer, project);
-    if (customer && address) addRelationship(index, 'customer_address', 'project_address', customer, address);
-    if (customer && customerId) addRelationship(index, 'customer_id', 'customer_id', customer, customerId);
-    if (project && address) addRelationship(index, 'project_address', 'project_address', project, address);
-    if (plant && productCode) addRelationship(index, 'plant_product', 'product_code', plant, productCode);
-    if (carrier && vehicle) addRelationship(index, 'carrier_truck', 'vehicle_id', carrier, vehicle);
+    if (customer && project) addRelationship(index, 'customer_project', 'project_name', customer, project, weight);
+    if (customer && address) addRelationship(index, 'customer_address', 'project_address', customer, address, weight);
+    if (customer && customerId) addRelationship(index, 'customer_id', 'customer_id', customer, customerId, weight);
+    if (project && address) addRelationship(index, 'project_address', 'project_address', project, address, weight);
+    if (plant && productCode) addRelationship(index, 'plant_product', 'product_code', plant, productCode, weight);
+    if (carrier && vehicle) addRelationship(index, 'carrier_truck', 'vehicle_id', carrier, vehicle, weight);
     if (productCode && productDescription) {
-      addRelationship(index, 'product_code_description', 'product_description', productCode, productDescription);
+      addRelationship(index, 'product_code_description', 'product_description', productCode, productDescription, weight);
     }
 
+    // A correction is a person's; a ticket nobody reviewed has none.
+    if (!sighting.checked) continue;
     const resolved = recovery?.fields ?? {};
     for (const name of Object.keys(resolved) as (keyof Ticket)[]) {
       const resolution = resolved[name];
@@ -352,7 +390,7 @@ export function buildMemory(
         confirmed_value: confirmed,
         customer,
         project,
-        at: record.reviewed_at,
+        at: record.reviewed_at ?? record.edited_at ?? record.saved_at,
       });
     }
   }

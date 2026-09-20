@@ -128,17 +128,21 @@ const hauled = (over: Partial<Ticket> = {}) =>
     ...over,
   });
 
-void test('only a ticket somebody reviewed teaches the workspace anything', () => {
+void test('only a ticket somebody reviewed, or the reader saw whole, teaches the workspace anything', () => {
   const memory = buildMemory(
     [
       saved({ project_address: 'MARKHAM, IL' }),
+      // Filed by the app before anyone opened it, with no record of how it
+      // was read: reviewed_at is an explicit null, which is what filing
+      // unreviewed writes (and what the server stores for a missing value).
       saved({ project_address: 'JOLIET, IL' }, { reviewed: false }),
-      // Filed by the app before anyone opened it: reviewed_at absent entirely.
+      // Saved before the reviewed mark existed, when the review screen was the
+      // only way to save: the key is absent, and that is a person's save.
       { ...saved({ project_address: 'PEORIA, IL' }), reviewed_at: undefined },
     ],
     noProfiles,
   );
-  assert.deepEqual(valuesOf(memory, 'project_address'), ['MARKHAM, IL']);
+  assert.deepEqual(valuesOf(memory, 'project_address'), ['MARKHAM, IL', 'PEORIA, IL']);
 });
 
 void test('a field still in question, or recovered by the app alone, is not learned', () => {
@@ -715,4 +719,60 @@ void test('one site seen with two customers is two pieces of evidence', () => {
     evidence.map((item) => item.context?.customer).sort((a, b) => String(a).localeCompare(String(b))),
     [IAFRATE, 'WITECH COMPANY INC'],
   );
+});
+
+// --- whose word counts, and how much -------------------------------------
+
+void test('a ticket saved before the reviewed mark existed was saved by a person', () => {
+  // The review screen was the only way to save then, so an absent mark is a
+  // person's; only an explicit null — what filing unreviewed writes — is not.
+  const before = { ...hauled({ carrier_name: 'Z FORCE TRANSPORT' }) } as SavedRecord & { reviewed_at?: string | null };
+  delete before.reviewed_at;
+  const memory = buildMemory([before, before, before], noProfiles);
+  const carriers = memory.values.get('carrier_name') ?? [];
+  assert.equal(carriers.length, 1);
+  assert.equal(carriers[0].count, 3);
+});
+
+void test('what the reader saw whole on an unreviewed ticket is learned at half a sighting', () => {
+  const exact = (value: string): TicketRecovery =>
+    recoveryOf({
+      carrier_name: resolution({ status: 'exact', value, visible_text: value, source: 'visible', confidence: 1 }),
+    });
+  const readWhole = [1, 2, 3, 4, 5, 6].map(() =>
+    saved({ carrier_name: 'Z FORCE TRANSPORT' }, { reviewed: false, recovery: exact('Z FORCE TRANSPORT') }),
+  );
+  const memory = buildMemory(readWhole, noProfiles);
+  const carriers = memory.values.get('carrier_name') ?? [];
+  assert.equal(carriers.length, 1);
+  assert.equal(carriers[0].count, 3, 'six readings say as much as three checks');
+  // And that is enough, with nothing else on file, to complete the seventh.
+  const evidence = forField(
+    memoryEvidence(memory, observedOf({ carrier_name: clipped('Z FORCE TRANSPO', 'right') }), {
+      vendor: null, customer: null, project: null,
+    }),
+    'carrier_name',
+  );
+  assert.equal(evidence.length, 1);
+  assert.equal(evidence[0].strength, 'strong');
+  assert.equal(evidence[0].candidate, 'Z FORCE TRANSPORT');
+});
+
+void test('an unreviewed ticket lends nothing it did not read whole', () => {
+  const guessed: TicketRecovery = recoveryOf({
+    carrier_name: resolution({ status: 'recovered', value: 'Z FORCE TRANSPORT', visible_text: 'Z FORCE TRANSPO', source: 'verified_history', confidence: 0.8 }),
+    project_address: resolution({ status: 'needs_review', value: null, visible_text: 'ARKHAM, IL' }),
+  });
+  const unreviewed = saved(
+    { carrier_name: 'Z FORCE TRANSPORT', project_address: 'ARKHAM, IL', customer_name: IAFRATE },
+    { reviewed: false, recovery: guessed },
+  );
+  const memory = buildMemory([unreviewed, unreviewed, unreviewed, unreviewed], noProfiles);
+  assert.equal((memory.values.get('carrier_name') ?? []).length, 0, 'a recovered value is not a reading');
+  assert.equal((memory.values.get('project_address') ?? []).length, 0);
+  // Nothing at all from a ticket that carries no record of how it was read.
+  const bare = saved({ carrier_name: 'Z FORCE TRANSPORT' }, { reviewed: false });
+  assert.equal((buildMemory([bare, bare, bare], noProfiles).values.get('carrier_name') ?? []).length, 0);
+  // And no correction is ever taken from a ticket nobody reviewed.
+  assert.equal(memory.corrections.length, 0);
 });
