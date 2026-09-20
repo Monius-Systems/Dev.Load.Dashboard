@@ -88,9 +88,24 @@ export function guidance(d: Detection | null, sourceWidth: number, sourceHeight:
  * Nothing detected means nothing is known: every side comes back `unknown`,
  * which blocks nothing and excuses nothing.
  */
+/**
+ * How close to the picture's border a corner has to be before the sheet is
+ * taken to run off it: about two pixels at the size the detector works at.
+ *
+ * Not `frameMargin`. That is the live-guidance margin — "move back" starts a
+ * little before the edge so the shot is never marginal — and it was used here
+ * at first, which classified every well-framed ticket as a camera crop: a
+ * ticket photographed to fill the frame, the way the app itself asks for one,
+ * puts its corners within a percent of the border, and the whole ticket is in
+ * the picture. A found corner is a found paper edge. The sheet has run off the
+ * picture only when the detector could find no edge and fitted the quad to
+ * the picture's own border instead, and that is a corner at zero or one.
+ */
+export const PAPER_EDGE_AT_BORDER = 0.003;
+
 export function paperFrameOf(corners: Quad | null | undefined): PaperFrame {
   if (!corners || corners.length !== 4) return UNKNOWN_FRAME;
-  const m = scannerConfig.frameMargin;
+  const m = PAPER_EDGE_AT_BORDER;
   const state = (cut: boolean): EdgeState => (cut ? 'cut' : 'inside');
   return {
     detected: true,

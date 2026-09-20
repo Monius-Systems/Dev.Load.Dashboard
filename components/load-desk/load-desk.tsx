@@ -3599,7 +3599,11 @@ export default function LoadDesk() {
                     nothing at all. */}
                 {active.note_problem ? (
                   <div className="ld-notice" data-tone="warning" aria-live="polite">
-                    <strong>{t('This ticket was not read')}</strong>
+                    <strong>
+                      {active.recovery && cameraCropFields(active.recovery).length
+                        ? t('Part of this ticket was not in the picture')
+                        : t('This ticket was not read')}
+                    </strong>
                     <p>{t(active.note)}</p>
                     <details className="ld-scan-text">
                       <summary>{t('What the scan read')}</summary>

@@ -123,7 +123,11 @@ export async function extractPages(
     extracted: read.extracted,
     observed: read.observed,
     paper,
-    text: JSON.stringify(read.extracted, null, 2),
+    // What "What the scan read" shows, and what is stored on the record: the
+    // observation with the damage still in it, not the flat view with the
+    // damaged fields taken out. A ticket that came back mostly blank is only
+    // explicable from what the reader actually saw of it.
+    text: JSON.stringify(read.observed ?? read.extracted, null, 2),
   });
 
   if (type !== 'application/pdf') {

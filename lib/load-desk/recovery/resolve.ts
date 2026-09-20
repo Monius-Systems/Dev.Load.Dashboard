@@ -792,9 +792,20 @@ function resolveText(
 export function mergeFrames(detected: PaperFrame, read: PaperFrame | null): PaperFrame {
   if (!read) return { ...detected };
   const side = (edge: ClippedEdge) => {
-    if (detected[edge] === 'cut' || read[edge] === 'cut') return 'cut' as const;
-    if (detected[edge] === 'inside' && read[edge] === 'inside') return 'inside' as const;
-    return 'unknown' as const;
+    if (detected[edge] === 'cut') return 'cut' as const;
+    // The detector found this edge of the sheet in the picture. The reader
+    // saying the sheet runs off there is a weaker witness — asked whether the
+    // paper's edge is visible on a side where the print stops dead, a vision
+    // model answers for the print as often as for the paper — so it lowers
+    // the frame to unknown, where recovery goes ahead with its confidence
+    // capped and the doubt on the record, rather than to cut, where every
+    // field on that side was thrown out as a retake.
+    if (detected[edge] === 'inside') {
+      return read[edge] === 'inside' ? ('inside' as const) : ('unknown' as const);
+    }
+    // No sheet found: the reader's word is all there is, and a reader that
+    // says the sheet ran off is believed, because that is the cautious side.
+    return read[edge] === 'cut' ? ('cut' as const) : ('unknown' as const);
   };
   return {
     detected: detected.detected || read.detected,

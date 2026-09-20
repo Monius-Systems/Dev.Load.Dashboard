@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   clippedAtBottom,
+  PAPER_EDGE_AT_BORDER,
   paperFrameOf,
   scannerConfig,
   withinFrame,
@@ -34,8 +35,24 @@ void test('a sheet well inside the picture has all four edges in view', () => {
   });
 });
 
+void test('a ticket photographed to fill the frame is in the picture, corners and all', () => {
+  // The app asks for the ticket to fill the frame, so this is what nearly
+  // every good photograph looks like: corners within a percent of the border.
+  // Every one of them was found, so every edge is in view. Reporting these as
+  // cut is what made a well-framed ticket read as a retake.
+  const filling = quad(0.008, 0.01, 0.992, 0.99);
+  assert.deepEqual(paperFrameOf(filling), {
+    detected: true, left: 'inside', right: 'inside', top: 'inside', bottom: 'inside',
+  });
+  // Inside the old live-guidance margin is still inside the picture.
+  const m = scannerConfig.frameMargin;
+  assert.deepEqual(paperFrameOf(quad(m / 2, m / 2, 1 - m / 2, 1 - m / 2)), {
+    detected: true, left: 'inside', right: 'inside', top: 'inside', bottom: 'inside',
+  });
+});
+
 void test('each side is cut on its own, and only that side', () => {
-  const near = scannerConfig.frameMargin / 2;
+  const near = PAPER_EDGE_AT_BORDER / 2;
   assert.deepEqual(paperFrameOf(quad(near, 0.06, 0.9, 0.74)), {
     detected: true, left: 'cut', right: 'inside', top: 'inside', bottom: 'inside',
   });
@@ -63,9 +80,9 @@ void test('corners the detector reports outside the picture are cut, not clamped
   assert.deepEqual(paperFrameOf(quad(-0.2, -0.1, 1.3, 1.4)), {
     detected: true, left: 'cut', right: 'cut', top: 'cut', bottom: 'cut',
   });
-  // Exactly on the margin counts as cut: the sheet is against the border and
-  // nothing can be said about what is past it.
-  const m = scannerConfig.frameMargin;
+  // Exactly on the border counts as cut: the sheet is against it and nothing
+  // can be said about what is past it.
+  const m = PAPER_EDGE_AT_BORDER;
   const onTheLine = paperFrameOf(quad(m, m, 1 - m, 1 - m));
   assert.deepEqual(onTheLine, {
     detected: true, left: 'cut', right: 'cut', top: 'cut', bottom: 'cut',
