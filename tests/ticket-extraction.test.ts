@@ -7,6 +7,8 @@ import {
   OBSERVED_FIELDS,
   OBSERVED_FIELD_NAMES,
   extractedDate,
+  isObservedTicket,
+  observedFromWire,
   observedToExtracted,
   readExtracted,
   readObserved,
@@ -445,4 +447,50 @@ void test('a ticket read whole still becomes the ticket it always did', () => {
   // past it are the recovery layer's to use — not this mapping's to fill in.
   assert.equal(ticket.order_number, null);
   assert.equal(ticket.vehicle_id, null);
+});
+
+void test('what the route answers with is taken as the observation it already is', () => {
+  // The route reads the model's answer and sends the observation on, keyed
+  // by the app's own field names. Reading that a second time looked for the
+  // model's keys on an object that has none of them, and every ticket — read
+  // perfectly on the server — arrived in the browser with every field null.
+  // This is the whole wire round trip, JSON and all.
+  const raw: Record<string, unknown> = {};
+  for (const name of Object.keys(EXTRACTION_SCHEMA.properties)) {
+    if (name === 'timestamps') raw[name] = ['26SEP14 12:02'];
+    else if (name === 'branding') raw[name] = 'Heidelberg Materials';
+    else if (name === 'paper_edges') raw[name] = { left: true, right: true, top: true, bottom: null };
+    else {
+      raw[name] = {
+        visible: name === 'bol' ? '1725335778' : name === 'net_weight' ? '44,620' : `SEEN ${name}`,
+        proposed: null,
+        clipped_edge: name === 'project_location' ? 'left' : null,
+        partial: name === 'project_location',
+      };
+    }
+  }
+  const onServer = readObserved(raw);
+  const wire = JSON.parse(
+    JSON.stringify({ extracted: observedToExtracted(onServer), observed: onServer }),
+  ) as { extracted: unknown; observed: unknown };
+  const inBrowser = observedFromWire(wire.observed ?? wire.extracted);
+  assert.deepEqual(inBrowser, onServer, 'the observation survives the wire untouched');
+  assert.equal(inBrowser.fields.ticket_number?.visible, '1725335778');
+  assert.equal(inBrowser.fields.project_address?.clipped_edge, 'left');
+  assert.equal(inBrowser.timestamps[0], '26SEP14 12:02');
+  assert.equal(observedToExtracted(inBrowser).net_weight, 44620);
+  // Reading it a second time is exactly the fault this guards against.
+  assert.equal(readObserved(wire.observed).fields.ticket_number?.visible, null);
+});
+
+void test('an older route answering with the flat fields alone still reads', () => {
+  const flat = { bol: '1725335778', date: '1/6/2026', customer: 'ANGELO IAFRATE CONSTRUCTION' };
+  const observed = observedFromWire(flat);
+  assert.equal(observed.fields.ticket_number?.visible, '1725335778');
+  assert.equal(observed.fields.ticket_number?.partial, false);
+  assert.equal(observedToExtracted(observed).customer, 'ANGELO IAFRATE CONSTRUCTION');
+  // And anything that is not an observation at all is an empty one, not a crash.
+  assert.equal(isObservedTicket(null), false);
+  assert.equal(isObservedTicket({ fields: 'no' }), false);
+  assert.equal(observedFromWire(null).fields.ticket_number?.visible, null);
 });

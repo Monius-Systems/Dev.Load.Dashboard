@@ -450,6 +450,43 @@ export function observedToExtracted(observed: ObservedTicket): ExtractedTicket {
 }
 
 /**
+ * An observation that has already been read — by the route, before it was
+ * sent — taken as it is, or null for anything that is not one.
+ *
+ * The route answers with the observation keyed by the app's own field names,
+ * not with the model's raw answer, and the two are not the same shape.
+ * Running `readObserved` over the route's answer looked for the model's keys
+ * on an object that has none of them and produced an observation with every
+ * field null: every ticket, read perfectly on the server, arrived in the
+ * browser blank. So what comes off the wire is checked for the shape of an
+ * observation and taken whole, and only something that is not one — an older
+ * route still answering the flat fields, a reply that is not JSON — goes
+ * through the reader.
+ */
+export function isObservedTicket(value: unknown): value is ObservedTicket {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const source = value as Record<string, unknown>;
+  const fields = source.fields;
+  if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return false;
+  if (!Array.isArray(source.timestamps)) return false;
+  return Object.values(fields as Record<string, unknown>).every(
+    (field) =>
+      !!field &&
+      typeof field === 'object' &&
+      'visible' in field &&
+      'partial' in field &&
+      'clipped_edge' in field,
+  );
+}
+
+/**
+ * What the route answered with, as an observation: taken whole when it is
+ * one, read as a model answer when it is not.
+ */
+export const observedFromWire = (value: unknown): ObservedTicket =>
+  isObservedTicket(value) ? value : readObserved(value);
+
+/**
  * The model's answer as the flat reading the app works in. Unchanged in what it
  * promises — every field present, tidied, never trusted blindly — and now
  * derived from the observation, so a field the reader could not see the whole

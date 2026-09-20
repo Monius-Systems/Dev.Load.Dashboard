@@ -5,8 +5,8 @@ import {
 import { rectifyPage } from '../scanner/rectify';
 import type { ObservedTicket, PaperFrame } from './recovery/contract';
 import {
+  observedFromWire,
   observedToExtracted,
-  readObserved,
   type ExtractedTicket,
 } from './ticket-extraction';
 
@@ -102,7 +102,10 @@ async function readPage(page: HTMLCanvasElement): Promise<PageReading> {
     | { extracted?: unknown; observed?: unknown; error?: string }
     | null;
   if (!response.ok) throw new Error(answer?.error || 'The ticket could not be read.');
-  const observed = readObserved(answer?.observed ?? answer?.extracted);
+  // The route has already read the model's answer; what arrives here is the
+  // observation itself, and is taken as one. Only an older route, answering
+  // with the flat fields alone, goes through the reader.
+  const observed = observedFromWire(answer?.observed ?? answer?.extracted);
   return { extracted: observedToExtracted(observed), observed };
 }
 
