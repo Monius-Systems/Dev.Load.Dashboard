@@ -666,8 +666,12 @@ function resolveText(
     };
   }
 
-  const compatible = usable.filter((item) =>
-    fits(fragmentKey, normalizeName(item.candidate), edge),
+  // A candidate that is the fragment, letter for letter, completes nothing:
+  // it is the print again, from a ticket that was saved as it stood.
+  const compatible = usable.filter(
+    (item) =>
+      normalizeName(item.candidate) !== fragmentKey &&
+      fits(fragmentKey, normalizeName(item.candidate), edge),
   );
   for (const item of applicable) {
     if (compatible.includes(item)) {

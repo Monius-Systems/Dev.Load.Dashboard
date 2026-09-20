@@ -963,3 +963,61 @@ void test('a field somebody worked over still parses after thirty confirmations'
   assert.deepEqual(round, recovery);
   assert.equal(blocksSave(recovery), false);
 });
+
+// --- a name typed once is a name known -----------------------------------
+
+void test('a carrier typed once completes every fragment that fits it from then on', () => {
+  // The person typed "Z FORCE TRANSPORTATION" over "Z FORCE TRANSPO" on one
+  // ticket and saved it. That is all the workspace needs: the next ticket
+  // reading "Z FORCE TRANSPO", or only "Z FORCE TRAN", is completed without
+  // a customer in common, because a carrier is the same fact whoever the
+  // ticket is for.
+  const typed: SavedRecord = {
+    ...hauled({ carrier_name: 'Z FORCE TRANSPORTATION' }),
+    recovery: {
+      version: 1,
+      vendor: 'heidelberg',
+      paper: UNKNOWN_FRAME,
+      fields: {
+        carrier_name: {
+          status: 'confirmed',
+          value: 'Z FORCE TRANSPORTATION',
+          visible_text: 'Z FORCE TRANSPO',
+          source: 'user_confirmed',
+          source_clipped: true,
+          clipped_edge: 'right',
+          confidence: 1,
+          evidence: ['A reviewer typed "Z FORCE TRANSPORTATION" for this field.'],
+          confirmed_by_user: true,
+        },
+      },
+    },
+  };
+  for (const printed of ['Z FORCE TRANSPO', 'Z FORCE TRAN', 'Z FORCE TRANSPORTATI']) {
+    const { ticket, recovery } = recover({
+      observed: observedOf(
+        { carrier_name: clipped(printed, 'right') },
+        { branding: 'Heidelberg Materials' },
+      ),
+      records: [typed],
+    });
+    const settled = reviewState(recovery, 'carrier_name');
+    assert.equal(settled?.status, 'recovered', printed);
+    assert.equal(settled?.value, 'Z FORCE TRANSPORTATION', printed);
+    assert.equal(ticket.carrier_name, 'Z FORCE TRANSPORTATION', printed);
+    assert.equal(blocksSave(recovery), false);
+  }
+});
+
+void test('the fragment already on file is never offered as its own completion', () => {
+  // Tickets saved with the print as it stood put "Z FORCE TRANSPO" on file.
+  // It fits itself; it completes nothing, and must not be listed as if it did.
+  const asItStood = [1, 2, 3].map(() => hauled({ carrier_name: 'Z FORCE TRANSPO' }));
+  const { recovery } = recover({
+    observed: observedOf({ carrier_name: clipped('Z FORCE TRANSPO', 'right') }),
+    records: asItStood,
+  });
+  const settled = reviewState(recovery, 'carrier_name');
+  assert.equal(settled?.status, 'needs_review');
+  assert.equal(settled?.candidates, undefined, 'nothing on file that is not the print itself');
+});

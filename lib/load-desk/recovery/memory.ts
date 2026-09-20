@@ -43,6 +43,13 @@ export type VerifiedValue = {
   /** the customers/projects it was seen with, normalised */
   customers: Set<string>;
   projects: Set<string>;
+  /**
+   * Whether a person ever typed or accepted this value in review. A value
+   * somebody settled by hand is a fact about the workspace however many
+   * times it has been seen — one is enough — where a value the reader merely
+   * read whole has to be seen a few times before it stands on its own.
+   */
+  confirmed: boolean;
 };
 
 /**
@@ -225,6 +232,7 @@ function addValue(
   customer: string | null,
   project: string | null,
   weight = 1,
+  confirmed = false,
 ) {
   const text = value.trim();
   const key = normalizeName(text);
@@ -236,13 +244,18 @@ function addValue(
   }
   let entry = list.find((known) => normalizeName(known.value) === key);
   if (!entry) {
-    entry = { value: text, source, count: 0, customers: new Set(), projects: new Set() };
+    entry = { value: text, source, count: 0, customers: new Set(), projects: new Set(), confirmed };
     list.push(entry);
   } else if (source === 'verified_profile' && entry.source !== 'verified_profile') {
     // A spelling somebody saved on a profile is the one they chose to keep, so
     // it outranks a spelling that only ever came off a scanner.
     entry.value = text;
     entry.source = 'verified_profile';
+  }
+  if (confirmed) {
+    entry.confirmed = true;
+    // And the spelling a person typed is the one kept.
+    if (entry.source !== 'verified_profile') entry.value = text;
   }
   entry.count += weight;
   if (customer) entry.customers.add(normalizeName(customer));
@@ -350,7 +363,9 @@ export function buildMemory(
     const project = verified('project_name');
     for (const field of LEARNED_FIELDS) {
       const value = verified(field);
-      if (value) addValue(values, field, value, 'verified_history', customer, project, weight);
+      if (!value) continue;
+      const confirmed = sighting.checked && recovery?.fields[field]?.confirmed_by_user === true;
+      addValue(values, field, value, 'verified_history', customer, project, weight, confirmed);
     }
 
     const address = verified('project_address');
@@ -511,15 +526,19 @@ export function memoryEvidence(
     if (EVIDENCE_VALUE_FIELDS.has(field)) {
       for (const known of memory.values.get(field) ?? []) {
         if (!fits(known.value, fragment, seen.clipped_edge)) continue;
-        // Reviewed history used to top out at moderate, so a name the
-        // workspace had checked on twenty tickets could never complete the
-        // twenty-first on its own, and "Z FORCE TRANSPO" waited for a person
-        // every time. Three reviewed sightings is a fact somebody has checked
-        // three times; it stands as a profile does. The resolver still asks
-        // that nothing else on file fit the print, so this is never a choice
-        // between two names.
+        // The fragment itself is on file wherever a ticket was saved with the
+        // print as it stood. Offered back, it read as "on file: Z FORCE
+        // TRANSPO" under a field showing exactly that — a completion that
+        // completes nothing.
+        if (normalizeName(known.value) === fragment) continue;
+        // A value a person typed or accepted once is settled: it stands as a
+        // profile does, whatever the count. A value the reader only ever
+        // read whole has to be seen a few times before it stands on its
+        // own — three reviewed sightings is a fact checked three times. The
+        // resolver still asks that nothing else on file fit the print, so
+        // this is never a choice between two names.
         const strength =
-          known.source === 'verified_profile' || known.count >= 3
+          known.source === 'verified_profile' || known.confirmed || known.count >= 3
             ? 'strong'
             : known.count >= 2
               ? 'moderate'
@@ -601,19 +620,35 @@ export function memoryEvidence(
       // The vendor's layout is part of what was corrected: the same print at
       // the same edge means something else on another supplier's ticket.
       if (correction.vendor !== null && correction.vendor !== context.vendor) continue;
-      if (correction.clipped_edge !== seen.clipped_edge) continue;
-      if (normalizeName(correction.visible_text) !== fragment) continue;
+      // The same edge, where both readings say which; a reading that names
+      // no edge is not held to one.
+      if (
+        correction.clipped_edge !== null &&
+        seen.clipped_edge !== null &&
+        correction.clipped_edge !== seen.clipped_edge
+      ) {
+        continue;
+      }
+      // Matched by what the print could be, not by the exact print: a
+      // person who typed "Z FORCE TRANSPORTATION" over "Z FORCE TRANSPO"
+      // has said what a ticket reading "Z FORCE TRAN" is too. The fragment
+      // has to fit the confirmed value the way it fits any candidate, and
+      // a correction that merely restates the fragment is no correction.
+      if (!fits(correction.confirmed_value, fragment, seen.clipped_edge)) continue;
+      if (normalizeName(correction.confirmed_value) === fragment) continue;
       const customerSame = matches(correction.customer, customer);
       const projectSame = matches(correction.project, project);
-      // A correction made for one customer is not evidence about another's
-      // ticket, however alike the two readings look.
-      if (customerSame === 'different' || projectSame === 'different') continue;
+      // A job site corrected for one customer is not evidence about
+      // another's ticket, however alike the two readings look. A carrier,
+      // a plant or a product is the same fact whoever the ticket is for.
+      const bound = CUSTOMER_BOUND_FIELDS.has(field);
+      if (bound && (customerSame === 'different' || projectSame === 'different')) continue;
       const inContext = customerSame === 'same' || projectSame === 'same';
       out.add({
         field,
         candidate: correction.confirmed_value,
         source: 'user_correction',
-        strength: inContext ? 'strong' : 'moderate',
+        strength: inContext || !bound ? 'strong' : 'moderate',
         note: `You corrected “${correction.visible_text}” to “${correction.confirmed_value}” before${
           customerSame === 'same' ? ' for this customer' : projectSame === 'same' ? ' on this job' : ''
         }`,
