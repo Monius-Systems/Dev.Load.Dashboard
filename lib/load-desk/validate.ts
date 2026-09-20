@@ -1,3 +1,4 @@
+import { reviewIssues, type TicketRecovery } from './recovery/index.ts';
 import { isUnreadableDate } from './ticket-date.ts';
 import { rateTypeOf, type Ticket } from './types.ts';
 
@@ -18,7 +19,18 @@ export const RATING_ISSUES: ReadonlySet<string> = new Set([
   HOURS_MISSING_ISSUE,
 ]);
 
-export function validateTicket(ticket: Ticket): string[] {
+/**
+ * What is still wrong with a ticket, and — where the recovery record is to
+ * hand — what is still unsettled about it.
+ *
+ * The two are asked together because they are answered together: a reviewer
+ * looking at the issues list wants one account of what is keeping this ticket
+ * off an invoice, not a field that reads complete here and blocks the save a
+ * moment later. The recovery is optional, so every caller that has never
+ * heard of it — a ticket typed by hand, a record saved before the layer
+ * existed — goes on getting exactly the issues it always got.
+ */
+export function validateTicket(ticket: Ticket, recovery?: TicketRecovery): string[] {
   const issues: string[] = [];
   const required: [string, string | number | null][] = [
     ['ticket number', ticket.ticket_number],
@@ -76,5 +88,11 @@ export function validateTicket(ticket: Ticket): string[] {
   } else if (rateTypeOf(ticket) === 'hourly' && ticket.hours == null) {
     issues.push(HOURS_MISSING_ISSUE);
   }
+  // Last, and after the rate: the order above is what the review screen and
+  // the batch list have always read, and `RATING_ISSUES` is a membership test
+  // on the strings themselves, so nothing appended here can turn a ticket
+  // that only wants a rate into one that is incomplete — or the other way
+  // about.
+  if (recovery) issues.push(...reviewIssues(recovery));
   return issues;
 }

@@ -1,3 +1,5 @@
+import { UNKNOWN_FRAME, type EdgeState, type PaperFrame } from '../load-desk/recovery/contract.ts';
+
 export type Point = { x: number; y: number };
 export type Quad = [Point, Point, Point, Point];
 // stableMs and movement went with the automatic shutter: how long a ticket had
@@ -63,4 +65,38 @@ export function guidance(d: Detection | null, sourceWidth: number, sourceHeight:
   if (d.brightness < scannerConfig.minBrightness || d.darkFraction > scannerConfig.maxDarkFraction) return 'More light needed';
   if (d.glareFraction > scannerConfig.maxGlareFraction) return 'Reduce glare';
   return 'Hold still...';
+}
+
+/**
+ * Where each edge of the sheet stands in the picture, from the corners the
+ * detector reported.
+ *
+ * This is the one thing that tells a camera crop from source clipping. A
+ * ticket number with its last digit missing means two entirely different
+ * things depending on whether the right-hand edge of the paper is in the
+ * photograph: if it is, the printer put the digit past the edge of the sheet
+ * and no retake will ever find it, so the app has to recover it from evidence;
+ * if it is not, the photographer cut it off and the answer is to take the
+ * picture again. Guessing in the second case would be inventing a digit that
+ * is sitting there on the paper, a foot away from the phone.
+ *
+ * An edge is `cut` when a corner of the sheet sits on or past the margin the
+ * rest of the scanner treats as the border of the frame — the same test, and
+ * the same margin, that `withinFrame` and `clippedAtBottom` already use, so
+ * the camera's coaching and this never disagree about the same picture.
+ *
+ * Nothing detected means nothing is known: every side comes back `unknown`,
+ * which blocks nothing and excuses nothing.
+ */
+export function paperFrameOf(corners: Quad | null | undefined): PaperFrame {
+  if (!corners || corners.length !== 4) return UNKNOWN_FRAME;
+  const m = scannerConfig.frameMargin;
+  const state = (cut: boolean): EdgeState => (cut ? 'cut' : 'inside');
+  return {
+    detected: true,
+    left: state(corners.some(p => p.x <= m)),
+    right: state(corners.some(p => p.x >= 1 - m)),
+    top: state(corners.some(p => p.y <= m)),
+    bottom: state(corners.some(p => p.y >= 1 - m)),
+  };
 }

@@ -140,7 +140,15 @@ export default function HomePage() {
   const monthly = monthlyLoads(records, now);
   const groups = invoiceGroups(records);
   const drafts = groups.filter((group) => group.needsRate);
+  // An invoice carrying a ticket nobody has checked against the original is
+  // waiting on a person exactly as a rate-less one is, and counted with them
+  // below. Only the ones that are not already drafts, so an invoice short of
+  // both a rate and a confirmation is one thing to do, not two.
+  const toConfirm = groups.filter(
+    (group) => group.needsConfirmation && !group.needsRate,
+  );
   const review = ticketsNeedingReview(records);
+  const unfinished = drafts.length + toConfirm.length;
   const missingCustomers = unmatchedCustomerCount(records, customers);
   const missingTrucks = unmatchedTruckCount(records, trucks);
 
@@ -184,6 +192,20 @@ export default function HomePage() {
         .slice(0, 3)
         .map((group) => group.invoice.invoice_number)
         .join(', ')}${drafts.length > 3 ? '…' : ''}`,
+      href: '/records',
+      action: t('Review'),
+    });
+  }
+  if (toConfirm.length) {
+    attention.push({
+      key: 'to-confirm',
+      tone: 'warning',
+      title: t('{invoices} with fields to confirm', {
+        invoices: plural(toConfirm.length, 'invoice'),
+      }),
+      detail: t(
+        'A field the printer cut off, waiting to be checked against the original.',
+      ),
       href: '/records',
       action: t('Review'),
     });
@@ -424,10 +446,10 @@ export default function HomePage() {
               </StatTile>
               <StatTile
                 label={t('Needs attention')}
-                value={(drafts.length + review.length).toLocaleString('en-US')}
+                value={(unfinished + review.length).toLocaleString('en-US')}
                 sub={t('Draft invoices and tickets to check')}
               >
-                {drafts.length + review.length === 0 ? (
+                {unfinished + review.length === 0 ? (
                   <p className="hm-delta" data-trend="up">
                     <CircleCheck aria-hidden="true" />
                     {t('All caught up')}
@@ -435,7 +457,7 @@ export default function HomePage() {
                 ) : (
                   <p className="hm-delta" data-trend="down">
                     <CircleAlert aria-hidden="true" />
-                    {plural(drafts.length, 'draft')} ·{' '}
+                    {plural(unfinished, 'draft')} ·{' '}
                     {plural(review.length, 'ticket')}
                   </p>
                 )}

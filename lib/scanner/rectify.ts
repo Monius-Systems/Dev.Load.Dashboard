@@ -13,7 +13,8 @@
 // that looks like a sheet is found, or if anything at all goes wrong, the
 // picture is left exactly as it arrived and reading carries on as before.
 
-import { scannerConfig, type Quad } from './geometry.ts';
+import { UNKNOWN_FRAME, type PaperFrame } from '../load-desk/recovery/contract.ts';
+import { paperFrameOf, scannerConfig, type Quad } from './geometry.ts';
 
 type Reply = {
   id: number;
@@ -140,37 +141,95 @@ function areaOf(corners: Quad) {
   return Math.abs(twice) / 2;
 }
 
+/** A detection worth acting on, or null: below these it is not a sheet. */
+function trustworthy(detection: { corners: Quad; confidence: number } | null | undefined) {
+  if (!detection) return null;
+  if (detection.confidence < scannerConfig.minConfidence) return null;
+  if (areaOf(detection.corners) < MIN_PAGE_AREA) return null;
+  return detection;
+}
+
+/**
+ * Looks for the sheet in one picture, at analysis size. The detector never
+ * sees the full-resolution photograph: it is looking for four corners, which
+ * a 720-pixel copy carries as well as a 2600-pixel one and a great deal
+ * faster, and the answer is in the 0-1 space either way.
+ */
+async function detectIn(page: HTMLCanvasElement) {
+  const small = analysisOf(page);
+  try {
+    const context = small.getContext('2d')!;
+    const reply = await ask('detect', context.getImageData(0, 0, small.width, small.height));
+    return trustworthy(reply.detection);
+  } finally {
+    small.width = small.height = 0;
+  }
+}
+
+/** The picture on a canvas of its own, so the worker's transfer is never the caller's. */
+function canvasOf(image: ImageData) {
+  const page = surface(image.width, image.height);
+  page.getContext('2d')!.putImageData(image, 0, 0);
+  return page;
+}
+
+/**
+ * Where the edges of the sheet stand in one picture, and nothing else: no
+ * warp, no crop, nothing written back. The camera asks this of the photograph
+ * it has just taken, to tell the person the ticket ran off the frame while
+ * they are still standing over it and a retake costs a second.
+ *
+ * Fails open, the way everything else here does. A worker that will not start,
+ * a picture with no sheet in it, or any error at all is UNKNOWN_FRAME, which
+ * says nothing and so blocks nothing.
+ */
+export async function detectPaperFrame(
+  source: HTMLCanvasElement | ImageData,
+): Promise<PaperFrame> {
+  // `instanceof ImageData` would be a ReferenceError where there is no DOM,
+  // and this module is built for the server as well as the browser.
+  const own = !('getContext' in source);
+  const page = own ? canvasOf(source as ImageData) : (source as HTMLCanvasElement);
+  try {
+    if (!page.width || !page.height) return UNKNOWN_FRAME;
+    if (!(await start())) return UNKNOWN_FRAME;
+    const detection = await detectIn(page);
+    return detection ? paperFrameOf(detection.corners) : UNKNOWN_FRAME;
+  } catch {
+    return UNKNOWN_FRAME;
+  } finally {
+    if (own) page.width = page.height = 0;
+  }
+}
+
 /**
  * Replaces `page` with just the ticket in it, straightened. Returns whether it
- * found one. The canvas is only written to once a corrected page is in hand,
+ * found one, and where the sheet's own edges stood in the picture before it was
+ * cut down — the crop throws that away, and it is the only evidence there is
+ * for whether print missing off one side was the camera's doing or the
+ * printer's. The canvas is only written to once a corrected page is in hand,
  * so a picture is never left half-processed.
  */
-export async function rectifyPage(page: HTMLCanvasElement): Promise<boolean> {
-  if (!page.width || !page.height) return false;
+export async function rectifyPage(
+  page: HTMLCanvasElement,
+): Promise<{ found: boolean; paper: PaperFrame }> {
+  // Every failure is the same failure here: read the picture as it came, and
+  // say nothing about its edges rather than something that is not known.
+  const unread = { found: false, paper: UNKNOWN_FRAME };
+  if (!page.width || !page.height) return unread;
   try {
-    if (!(await start())) return false;
-    const small = analysisOf(page);
-    const context = small.getContext('2d')!;
-    const detection = (
-      await ask('detect', context.getImageData(0, 0, small.width, small.height))
-    ).detection;
-    small.width = small.height = 0;
-    if (
-      !detection ||
-      detection.confidence < scannerConfig.minConfidence ||
-      areaOf(detection.corners) < MIN_PAGE_AREA
-    ) {
-      return false;
-    }
+    if (!(await start())) return unread;
+    const detection = await detectIn(page);
+    if (!detection) return unread;
+    const paper = paperFrameOf(detection.corners);
     const full = page.getContext('2d')!.getImageData(0, 0, page.width, page.height);
     const corrected = (await ask('crop', full, detection.corners)).image;
-    if (!corrected?.width || !corrected.height) return false;
+    if (!corrected?.width || !corrected.height) return { found: false, paper };
     page.width = corrected.width;
     page.height = corrected.height;
     page.getContext('2d')!.putImageData(corrected, 0, 0);
-    return true;
+    return { found: true, paper };
   } catch {
-    // Every failure is the same failure here: read the picture as it came.
-    return false;
+    return unread;
   }
 }

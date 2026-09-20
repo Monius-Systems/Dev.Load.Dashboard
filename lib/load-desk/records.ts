@@ -1,4 +1,5 @@
 import { csvCell, lineTotal } from './format.ts';
+import { unresolvedCritical } from './recovery/index.ts';
 import { ticketDateValue, ticketDay } from './ticket-date.ts';
 import { validateTicket } from './validate.ts';
 import type { InvoiceDraft, SavedRecord } from './types.ts';
@@ -271,6 +272,15 @@ export type InvoiceGroup = {
   /** Sum of line totals for lines that have a rate. */
   total: number;
   needsRate: boolean;
+  /**
+   * Any ticket on the invoice carrying a field nobody has checked against the
+   * original yet. Kept beside `needsRate` because the two say the same kind of
+   * thing about an invoice — it is not ready to go out — and a screen that
+   * showed one without the other would let a half-read weight print as a
+   * finished line. A ticket saved before the recovery layer existed has no
+   * record and so contributes nothing.
+   */
+  needsConfirmation: boolean;
   firstTicketDate: string | null;
   lastTicketDate: string | null;
 };
@@ -299,6 +309,11 @@ export function invoiceGroups(records: SavedRecord[]): InvoiceGroup[] {
           totals.reduce<number>((sum, value) => sum + (value ?? 0), 0),
         ),
         needsRate: totals.some((value) => value === null),
+        needsConfirmation: lines.some(
+          (record) =>
+            record.recovery !== undefined &&
+            unresolvedCritical(record.recovery).length > 0,
+        ),
         firstTicketDate: dates[0] ?? null,
         lastTicketDate: dates.at(-1) ?? null,
       };
@@ -626,7 +641,10 @@ export function invoiceMoveFor(
 }
 
 export const ticketStatus = (record: SavedRecord) =>
-  validateTicket(record.ticket).length ? 'needs_review' : 'valid';
+  // With the recovery record, so a ticket whose fields are still waiting on a
+  // person reads the same here — in the list, the filter and the count — as it
+  // does on the review screen that will not let it be saved.
+  validateTicket(record.ticket, record.recovery).length ? 'needs_review' : 'valid';
 
 /** Every search word must appear in the ticket, invoice, truck or bill-to. */
 export function recordMatches(record: SavedRecord, query: string): boolean {
@@ -670,6 +688,7 @@ const INVOICE_COLUMNS: [string, (group: InvoiceGroup) => string | number | null]
   ['net_tons', (g) => g.tons],
   ['total', (g) => g.total],
   ['status', (g) => (g.needsRate ? 'draft' : 'rated')],
+  ['needs_confirmation', (g) => (g.needsConfirmation ? 'true' : 'false')],
 ];
 
 export function invoicesCsv(groups: InvoiceGroup[]): string {

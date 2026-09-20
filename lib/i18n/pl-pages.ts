@@ -39,6 +39,7 @@ export const PL_PAGES: Record<string, string> = {
   Rated: 'Ze stawką',
   Valid: 'Poprawny',
   'Needs review': 'Do sprawdzenia',
+  'To confirm': 'Do potwierdzenia',
   Status: 'Status',
   'Net tons': 'Tony netto',
   'Line total': 'Wartość pozycji',
@@ -174,6 +175,9 @@ export const PL_PAGES: Record<string, string> = {
   '{amount} vs last month': '{amount} względem zeszłego miesiąca',
   '{invoices} waiting for a rate': 'Czeka na stawkę: {invoices}',
   '{tickets} to double-check': 'Do sprawdzenia: {tickets}',
+  '{invoices} with fields to confirm': 'Z polami do potwierdzenia: {invoices}',
+  'A field the printer cut off, waiting to be checked against the original.':
+    'Pole ucięte przez drukarkę, czeka na sprawdzenie z oryginałem.',
   'A field OCR could not read, or weights that do not balance.':
     'Pole, którego OCR nie odczytał, lub wagi, które się nie zgadzają.',
   '{customers} without a profile': 'Bez profilu: {customers}',

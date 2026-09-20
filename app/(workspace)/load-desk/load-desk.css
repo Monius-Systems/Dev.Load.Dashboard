@@ -1008,6 +1008,53 @@ details[open] > .ld-section-summary .ld-section-chevron {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+/* A field the recovery layer had something to say about. The same block as
+   the near match above, which is the same kind of thing: something the app
+   worked out, said next to the box, with the one action that settles it. */
+.ld-near-match[data-tone='warning'] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.ld-near-match[data-tone='bad'] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.ld-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px var(--ui-space-2);
+}
+/* A field waiting on a person, marked on the box itself so it is findable in
+   a form of thirty of them. Quiet for the ones that are settled: a value the
+   app completed, or one somebody confirmed, is not a warning — it is a note
+   about where the value came from, and the field reads as any other. */
+.ld-field input[data-recovery='needs-review'] {
+  border-color: var(--ui-warning);
+}
+.ld-field input[data-recovery='recovered'],
+.ld-field input[data-recovery='confirmed'] {
+  border-inline-start: 2px solid var(--ui-border-strong);
+}
+.ld-recovered {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px;
+}
+.ld-why summary {
+  cursor: pointer;
+  font-size: var(--type-2xs);
+  color: var(--ui-text-3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.ld-why ul {
+  margin-top: 2px;
+  padding-inline-start: var(--ui-space-4);
+  list-style: disc;
+  font-size: var(--type-2xs);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text-3);
+}
 /* The phone's way in: photograph the ticket instead of picking a file. It is
    the only way in there, so it is the size of one — a filing cabinet to drop
    files into is a desk idea, and a driver holding a ticket wants the camera. */
@@ -1184,6 +1231,16 @@ details[open] > .ld-section-summary .ld-section-chevron {
 }
 /* The draft note sits centered under the INVOICE heading. */
 .invoice-draft {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  color: #9c2f2f;
+}
+/* A ticket on this invoice carries a field nobody has checked against the
+   original yet. Worded and coloured like the draft note above, because it
+   says the same sort of thing: this sheet is not finished. */
+.invoice-unconfirmed {
   margin-top: 10px;
   font-size: 11px;
   font-weight: 700;

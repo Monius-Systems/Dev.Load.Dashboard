@@ -3,7 +3,12 @@ import {
   type FileProgress,
 } from './extract-progress';
 import { rectifyPage } from '../scanner/rectify';
-import { readExtracted, type ExtractedTicket } from './ticket-extraction';
+import type { ObservedTicket, PaperFrame } from './recovery/contract';
+import {
+  observedToExtracted,
+  readObserved,
+  type ExtractedTicket,
+} from './ticket-extraction';
 
 /**
  * Reading a ticket. Each page is cut down to the ticket itself, sized, and sent
@@ -26,8 +31,24 @@ export type ExtractedPage = {
   page: number;
   /** What the read produced, kept on the record as the read of this ticket. */
   text: string;
-  /** The fields the model returned. Absent for a plain-text ticket file. */
+  /**
+   * The fields the model returned, and only the ones it saw whole. Absent for
+   * a plain-text ticket file.
+   */
   extracted?: ExtractedTicket;
+  /**
+   * The same read, field by field, with the damage still in it: the ink as
+   * printed beside what the reader made of it. The recovery layer works from
+   * this; `extracted` is what is safe to act on without it.
+   */
+  observed?: ObservedTicket;
+  /**
+   * Where the edges of the sheet stood in the photograph, from the document
+   * detector. Absent for a PDF page, which is not a photograph of anything and
+   * has no edges to lose. Without it, print missing off one side of a field
+   * cannot be told from print the camera cut off.
+   */
+  paper?: PaperFrame;
 };
 
 const canvasOf = (width: number, height: number) =>
@@ -57,8 +78,18 @@ function sizedForModel(page: HTMLCanvasElement) {
   return out;
 }
 
-/** Posts one page to the reader and returns the fields it answered with. */
-async function readPage(page: HTMLCanvasElement): Promise<ExtractedTicket> {
+/** What one page's read gives back: the observation, and the safe view of it. */
+type PageReading = { extracted: ExtractedTicket; observed: ObservedTicket };
+
+/**
+ * Posts one page to the reader and returns what it answered.
+ *
+ * The observation is read here rather than the flat answer being taken as
+ * given, so the exact-only rule is applied on this side of the wire too: a
+ * browser that reached an older route, or a route that answered without the
+ * observation, still gets a reading nothing was completed in.
+ */
+async function readPage(page: HTMLCanvasElement): Promise<PageReading> {
   const sized = sizedForModel(page);
   const image = await blobOf(sized);
   if (sized !== page) sized.width = sized.height = 0;
@@ -68,10 +99,11 @@ async function readPage(page: HTMLCanvasElement): Promise<ExtractedTicket> {
     body: image,
   });
   const answer = (await response.json().catch(() => null)) as
-    | { extracted?: unknown; error?: string }
+    | { extracted?: unknown; observed?: unknown; error?: string }
     | null;
   if (!response.ok) throw new Error(answer?.error || 'The ticket could not be read.');
-  return readExtracted(answer?.extracted);
+  const observed = readObserved(answer?.observed ?? answer?.extracted);
+  return { extracted: observedToExtracted(observed), observed };
 }
 
 /** One ticket per page. `progress` hears how much of this file is done. */
@@ -86,10 +118,12 @@ export async function extractPages(
     tracker.done();
     return [{ text, page: 1 }];
   }
-  const finish = (page: number, extracted: ExtractedTicket): ExtractedPage => ({
+  const finish = (page: number, read: PageReading, paper?: PaperFrame): ExtractedPage => ({
     page,
-    extracted,
-    text: JSON.stringify(extracted, null, 2),
+    extracted: read.extracted,
+    observed: read.observed,
+    paper,
+    text: JSON.stringify(read.extracted, null, 2),
   });
 
   if (type !== 'application/pdf') {
@@ -107,13 +141,17 @@ export async function extractPages(
       // A photograph is a scene with a ticket somewhere in it. Cut it down to
       // the ticket and straighten it, exactly as the camera in Load Desk does.
       // Fails safe: a picture no sheet can be found in is sent whole.
-      await rectifyPage(canvas);
+      //
+      // Where the sheet's edges stood is kept before the crop throws them
+      // away: it is the difference between a field the printer ran off the
+      // paper and one this photograph simply missed.
+      const { paper } = await rectifyPage(canvas);
       tracker.step(1, 'render', 1);
       tracker.step(1, 'read', 0.1);
-      const extracted = await readPage(canvas);
+      const read = await readPage(canvas);
       tracker.step(1, 'read', 1);
       tracker.done();
-      return [finish(1, extracted)];
+      return [finish(1, read, paper)];
     } finally {
       canvas.width = canvas.height = 0;
     }

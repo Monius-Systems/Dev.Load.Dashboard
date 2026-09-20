@@ -36,7 +36,10 @@ DNS.
 - **Data:** saved tickets, invoice numbers, and customer and truck profiles
   live in Postgres tables `load_desk_records`, `load_desk_invoices` and
   `load_desk_profiles`. Ticket scans live in the private storage bucket
-  `load-desk-originals` under `ad-trucking-chicago/<sha256>`.
+  `load-desk-originals` under `ad-trucking-chicago/<sha256>`. How each field
+  was read and settled is stored inside the ticket's own `record` JSON — there
+  is no new table — and only values somebody reviewed are used to complete a
+  later ticket.
 - **Isolation:** row level security lets signed-in users read and write only
   rows and files for workspaces they are a member of. Every API route also
   checks membership on the server. Sign-in cookies are httpOnly and never
@@ -273,15 +276,24 @@ membership. If more client dashboards follow, the website can link to a small
 - [ ] A printed invoice (or Save as PDF) comes out as one US Letter landscape
       page for a normal invoice.
 - [ ] On a real phone, on the live address: **Load Desk → Scan ticket** outlines
-      a ticket, captures by itself when held steady, and the straightened photo
-      extracts correctly.
+      a ticket, the person takes the photo, the app refuses a photo where the
+      sheet runs off the top, left or right and asks for a retake, and the
+      straightened photo extracts correctly.
 - [ ] **Account → Language → Polski** translates the app for that person only,
       and a printed invoice is still English.
 
 ## Known limits to tell the client
 
-- OCR is assistive. Compare ticket numbers and weights with the scan before
-  saving; fields it cannot read reliably are left blank and flagged.
+- Fields the reader cannot see whole are never completed by guessing.
+- A field the printer cut off is completed only when the ticket itself, the
+  vendor's layout, a saved customer profile, or a correction somebody made
+  before in the same context supports one value, and the review screen shows
+  the original print beside it. Reviewed ticket history corroborates but never
+  decides on its own.
+- Anything else is highlighted for confirmation, and ticket numbers, customer
+  numbers, weights and dates are never completed from history.
+- A photo where the sheet runs off the top, left or right is refused at
+  capture.
 - Tickets uploaded together are grouped by their ticket date: one invoice per
   date. More tickets can be added to an invoice while reviewing it.
 - Load Desk keeps an upload in progress while you look at other pages, and a

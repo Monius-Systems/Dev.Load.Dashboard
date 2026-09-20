@@ -1,3 +1,5 @@
+import type { ObservedTicket, TicketRecovery } from './recovery/contract.ts';
+
 // Ticket fields mirror load_ticket_mvp/models.py so records stay compatible
 // with the Python Load Desk ledger.
 export const TEXT_FIELDS = [
@@ -130,6 +132,19 @@ export type QueueItem = {
    */
   note_problem?: boolean;
   ticket: Ticket;
+  /**
+   * The ticket as the reader saw it, field by field, before anything was made
+   * of it. Kept beside `ticket` so the review screen can show the print that
+   * was there against the value that stands. Absent for a ticket read by a
+   * path that does not observe, and for scans reopened from saved records.
+   */
+  observed?: ObservedTicket;
+  /**
+   * What the resolver decided about each field and why. Carried through review
+   * and saved with the ticket, so a figure on an invoice can be traced back to
+   * the paper. Absent until the ticket has been through the reader.
+   */
+  recovery?: TicketRecovery;
   invoice: InvoiceDraft;
   saved_record_id: number | null;
   /** Customer profile matched from the ticket or chosen in review. */
@@ -149,6 +164,13 @@ export type SavedRecord = {
   id: number;
   saved_at: string;
   ticket: Ticket;
+  /**
+   * How each field of the ticket came to be what it is: the print that was
+   * seen, what was made of it and on what evidence. Absent on tickets saved
+   * before recovery existed, and present only for tickets read through the
+   * reader since; a ticket without it is not a ticket nothing was known about.
+   */
+  recovery?: TicketRecovery;
   invoice: InvoiceDraft;
   source: TicketSource;
   original_stored: boolean;

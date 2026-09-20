@@ -107,7 +107,7 @@ void test('invoice CSV has one row per invoice', () => {
   assert.equal(lines.length, 2);
   assert.match(lines[0], /^invoice_number,invoice_date,/);
   assert.match(lines[1], /^2271,2026-09-14,,3211,ILLINOIS BULK CARRIER,2,1725172271; 5113819,/);
-  assert.match(lines[1], /,45\.3,345,rated$/);
+  assert.match(lines[1], /,45\.3,345,rated,false$/);
 });
 
 /**

@@ -90,6 +90,22 @@ import {
 } from '@/lib/load-desk/profiles';
 import type { RecordEdit } from '@/lib/load-desk/record-input';
 import {
+  blocksSave,
+  unresolvedCritical,
+  type FieldResolution,
+  type ReviewReason,
+  type TicketRecovery,
+} from '@/lib/load-desk/recovery';
+import {
+  acceptableValue,
+  cameraCropFields,
+  canLeaveEmpty,
+  confirmValue,
+  noteSameOrderFill,
+  recoverTicket,
+  unresolvedMessage,
+} from '@/lib/load-desk/recovery/queue';
+import {
   batchInvoiceFor,
   findInvoiceClash,
   needsReview,
@@ -384,19 +400,57 @@ async function buildQueueItem(
   }
   let ticket = emptyTicket();
   let noteProblem = false;
+  let recovery: TicketRecovery | undefined;
   if (extracted?.extracted) {
     // Read by the model behind /api/extract: its thirteen fields become this
     // ticket directly. Everything it was not asked for stays blank and is
     // filled in during review, as an unreadable field always has been.
     ticket = ticketFromExtraction(extracted.extracted);
+    if (extracted.observed) {
+      // The same read, with the damage still in it. What the reader saw whole
+      // is already on the ticket above; this is where a field it saw only
+      // part of gets its hearing — against the vendor's own layout, the
+      // workspace's records and the rest of this upload — instead of arriving
+      // as a blank nobody can account for.
+      //
+      // The customer is matched on the exact-only ticket, because the
+      // evidence the workspace offers is scoped to whose ticket this is and
+      // a name the app completed itself would scope it to a guess. The
+      // profile is matched again below, off the recovered ticket, so a name
+      // that was recovered still finds its customer.
+      const resolved = recoverTicket({
+        observed: extracted.observed,
+        paper: extracted.paper,
+        extracted: ticket,
+        records: getRecordsSnapshot().records,
+        profiles: getProfilesSnapshot(),
+        customer: matchCustomer(profiles.customers, ticket),
+      });
+      ticket = resolved.ticket;
+      recovery = resolved.recovery;
+    }
     note = 'Read from the ticket image. Check the fields against the original before saving.';
     const disagreement = weightDisagreement(extracted.extracted);
+    const waiting = recovery ? unresolvedCritical(recovery) : [];
+    const cropped = recovery ? cameraCropFields(recovery) : [];
     if (disagreement) {
       note = disagreement;
       noteProblem = true;
-    } else if (!ticket.ticket_number) {
+    } else if (!ticket.ticket_number && !waiting.length) {
       note = 'No ticket number could be read from this page. Check the original, or enter the fields by hand.';
       noteProblem = true;
+    }
+    // The photograph is the one cause the person holding the phone can fix,
+    // so it is said last and said as a problem. A field waiting on the
+    // original is not a failure — the ticket was read, and somebody has to
+    // look at one box of it — so it says what to do without the warning.
+    if (cropped.length) {
+      note =
+        'The sheet ran off the photograph, so part of this ticket was never in the picture. Take the picture again with the whole ticket inside the frame.';
+      noteProblem = true;
+    } else if (waiting.length && !disagreement) {
+      note = `${waiting.length} ${waiting.length === 1 ? 'field needs' : 'fields need'} confirmation against the original before this ticket can be invoiced.`;
+      noteProblem = false;
     }
   } else if (ocrText) {
     const parsed = parseTicket(ocrText);
@@ -439,6 +493,11 @@ async function buildQueueItem(
     note,
     note_problem: noteProblem,
     ticket,
+    // Absent for anything the reader did not observe — a text file, the
+    // sample, a scan reopened from the records — and the review screen then
+    // shows exactly what it always showed.
+    ...(extracted?.observed ? { observed: extracted.observed } : {}),
+    ...(recovery ? { recovery } : {}),
     invoice: defaultInvoice(),
     preview_status: 'ready',
     saved_record_id: null,
@@ -486,6 +545,11 @@ async function fileInBatch(
     {
       saved_at: new Date().toISOString(),
       ticket: item.ticket,
+      // Filed with the record of how it was read. A ticket nobody has checked
+      // yet is exactly the one whose recovered fields have to survive the
+      // reload, or whoever picks the batch up later sees the values with
+      // nothing to say where they came from.
+      ...(item.recovery ? { recovery: item.recovery } : {}),
       invoice: { ...item.invoice, invoice_number: batch.invoice_number },
       source: item.source,
       ocr_text: item.ocr_text,
@@ -550,17 +614,58 @@ const editKey = (edit: Omit<RecordEdit, 'id'>) =>
     edit.ocr_text,
     edit.customer_profile_id,
     edit.truck_id,
+    // Accepting a candidate for a field that already carried it changes no
+    // value on the ticket and is still the whole point of the review: it is
+    // the difference between a figure the app worked out and a figure
+    // somebody stands behind. Unsaved until it is saved, like anything else.
+    edit.recovery ?? null,
   ]);
 
 /** A saved ticket whose fields differ from what is saved. */
 const hasChanges = (item: QueueItem) =>
   item.baseline !== null && editKey(item) !== item.baseline;
 
+/**
+ * Which fields the same-order fill put a value into.
+ *
+ * Read off the two tickets rather than off the labels `fillFromSameOrder`
+ * reports, because the labels are English for a sentence in the note and the
+ * recovery record is keyed by field. Taking the difference also keeps this
+ * honest if the fill ever learns a new field: nothing here has to be told.
+ */
+const sameOrderFilled = (before: Ticket, after: Ticket): (keyof Ticket)[] =>
+  (Object.keys(after) as (keyof Ticket)[]).filter(
+    (field) => before[field] === null && after[field] !== null,
+  );
+
+/**
+ * The ticket of this upload the fill took those values from.
+ *
+ * The fill works field by field and takes each from the first ticket of the
+ * same order that has it, so in principle two pages could have contributed;
+ * the one named here is the first that carries what was filled in, which is
+ * that ticket in every real upload and a fair thing to point a reviewer at
+ * in the rest. When none can be identified the note says "another ticket"
+ * rather than naming the wrong one.
+ */
+function sameOrderSource(added: QueueItem[], item: QueueItem, filled: Ticket): Ticket {
+  const order = item.ticket.order_number?.trim();
+  const fields = sameOrderFilled(item.ticket, filled);
+  const source = added.find(
+    (other) =>
+      other !== item &&
+      other.ticket.order_number?.trim() === order &&
+      fields.some((field) => other.ticket[field] === filled[field]),
+  );
+  return source?.ticket ?? { ...filled, ticket_number: null };
+}
+
 function editOf(source: QueueItem, movedTo?: string): RecordEdit {
   const item = invoiceDated(source);
   return {
     id: item.saved_record_id!,
     ticket: item.ticket,
+    ...(item.recovery ? { recovery: item.recovery } : {}),
     invoice: {
       ...item.invoice,
       invoice_number: item.invoice.invoice_number.trim(),
@@ -586,6 +691,11 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
     ocr_text: record.ocr_text,
     note: `${record.edited_at ? 'Last edited' : 'Saved'} ${savedOn}. Change any field, then save the changes.`,
     ticket: record.ticket,
+    // Its stored record of how it was read, and nothing else: the
+    // observation belonged to the read and was never saved, so a reopened
+    // ticket shows what was decided about each field without pretending the
+    // paper is in front of it again.
+    ...(record.recovery ? { recovery: record.recovery } : {}),
     invoice: record.invoice,
     saved_record_id: record.id,
     customer_profile_id: record.customer_profile_id ?? null,
@@ -765,7 +875,7 @@ export default function LoadDesk() {
 
   const active = queue[activeIndex] ?? null;
   const ticket = active?.ticket ?? null;
-  const issues = ticket ? validateTicket(ticket) : [];
+  const issues = ticket ? validateTicket(ticket, active?.recovery) : [];
   const activeSaved = active?.saved_record_id != null;
   /**
    * A ticket filed by "Review later" is saved before anyone has looked at it,
@@ -781,7 +891,7 @@ export default function LoadDesk() {
     (item) => item.saved_record_id !== null,
   ).length;
   const reviewCount = records.filter(
-    (record) => validateTicket(record.ticket).length > 0,
+    (record) => validateTicket(record.ticket, record.recovery).length > 0,
   ).length;
   const netTons = records.reduce(
     (sum, record) => sum + (record.ticket.net_lb ?? 0) / 2000,
@@ -795,7 +905,17 @@ export default function LoadDesk() {
       ),
     );
 
-  const setField = (name: TextField | NumberField, raw: string) =>
+  /**
+   * A field as a person leaves it. `how` is what they did to get there:
+   * typing is editing, and a candidate accepted with one click — or a field
+   * they chose to leave empty — is a decision taken rather than a value
+   * typed. Both settle the field; only the record tells them apart.
+   */
+  const setField = (
+    name: TextField | NumberField,
+    raw: string,
+    how: 'accepted' | 'edited' = 'edited',
+  ) =>
     setQueue((current) => {
       const target = current[activeIndex];
       if (!target) return current;
@@ -822,6 +942,13 @@ export default function LoadDesk() {
       return current.map((item, index) => {
         if (index !== activeIndex) return item;
         let next = { ...item, ticket: { ...item.ticket, [name]: value } };
+        // Typing in a box the recovery layer had something to say about is a
+        // person settling that field, whatever they type and however many
+        // times they change their mind: the record keeps the decision, not
+        // the keystrokes, and the last one is the one that stands.
+        if (item.recovery?.fields[name]) {
+          next = { ...next, recovery: confirmValue(item.recovery, name, value, how) };
+        }
         if (moveInvoiceDate) {
           next = { ...next, invoice: { ...next.invoice, invoice_date: value as string } };
         }
@@ -1162,6 +1289,33 @@ export default function LoadDesk() {
       }
       return;
     }
+    // The upload read whole. Each page was resolved on its own as it came out
+    // of the reader, because it is filed the moment it is read and what is
+    // filed must be what was decided; now that the rest of the upload exists,
+    // a page that lost its left edge can be heard against the sister page
+    // that did not. Batch context is only ever evidence — it is weighed with
+    // everything else and cannot outvote print — so a second upload of two
+    // unrelated jobs comes back exactly as it went in.
+    if (added.some((item) => item.observed)) {
+      const others = added.map((item) => ({ ticket: item.ticket, observed: item.observed }));
+      const snapshot = getRecordsSnapshot().records;
+      const known = getProfilesSnapshot();
+      for (const [index, item] of added.entries()) {
+        if (!item.observed) continue;
+        const resolved = recoverTicket({
+          observed: item.observed,
+          paper: undefined,
+          extracted: item.ticket,
+          records: snapshot,
+          profiles: known,
+          customer:
+            known.customers.find((customer) => customer.id === item.customer_profile_id) ??
+            null,
+          others,
+        });
+        added[index] = { ...item, ticket: resolved.ticket, recovery: resolved.recovery };
+      }
+    }
     // One job's scans often miss a field another page read: fill blanks from
     // tickets in this upload with the same order number.
     for (const [index, result] of fillFromSameOrder(
@@ -1173,6 +1327,19 @@ export default function LoadDesk() {
         ...item,
         ticket: result.ticket,
         note: `${item.note} Filled the ${result.filled.join(', ')} from another ticket with order ${result.ticket.order_number}.`,
+        // What the fill did, on the fields themselves. It has always happened
+        // quietly behind one sentence of the note; a value that was not on
+        // this paper says where it came from like every other one.
+        ...(item.recovery
+          ? {
+              recovery: noteSameOrderFill(
+                item.recovery,
+                sameOrderFilled(item.ticket, result.ticket),
+                sameOrderSource(added, item, result.ticket),
+                result.ticket,
+              ),
+            }
+          : {}),
       };
       added[index] =
         item.customer_profile_id === null
@@ -1288,8 +1455,35 @@ export default function LoadDesk() {
               invoices: plural(invoices, 'invoice'),
             })
           : t('{tickets} ready for review.', { tickets: plural(added.length, 'ticket') });
+      // Counted here rather than left to be discovered one ticket at a time:
+      // the pages are filed the moment they are read, and somebody who
+      // photographed a stack of them beside a truck has put the phone away by
+      // now. A sheet that ran off the picture is worth going back for while
+      // the paper is still in the cab.
+      const toConfirm = grouped.filter(
+        (item) => item.recovery && blocksSave(item.recovery),
+      ).length;
+      const retake = grouped.filter(
+        (item) => item.recovery && cameraCropFields(item.recovery).length > 0,
+      ).length;
       setUploadStatus({
-        message: [summary, ...failures].join(' · '),
+        message: [
+          summary,
+          toConfirm
+            ? t('{tickets} have fields to confirm against the original.', {
+                tickets: plural(toConfirm, 'ticket'),
+              })
+            : '',
+          retake
+            ? t(
+                '{tickets} were photographed with the sheet running off the picture — retake them.',
+                { tickets: plural(retake, 'ticket') },
+              )
+            : '',
+          ...failures,
+        ]
+          .filter(Boolean)
+          .join(' · '),
         tone: failures.length ? 'error' : 'info',
       });
     }
@@ -1550,9 +1744,47 @@ export default function LoadDesk() {
     };
   }
 
+  /**
+   * Which part of the review a field is in — the phone's step, and the
+   * section a desk has to open to see it.
+   */
+  const sectionOfField = (field: TextField | NumberField): number =>
+    TICKET_FIELDS.some((def) => def.name === field)
+      ? 0
+      : JOB_FIELDS.some((def) => def.name === field)
+        ? 1
+        : 2;
+
+  /**
+   * A reviewed save with a field still nobody has settled: refused, said in
+   * one sentence, and the section holding the first of them opened so the
+   * refusal points at something rather than being an argument with a button.
+   *
+   * Only the reviewed saves. Filing a photograph the moment it is taken is
+   * untouched — a ticket nobody has looked at yet is allowed to have fields
+   * nobody has looked at yet, which is the whole idea of it.
+   */
+  function blockedByReview(item: QueueItem): boolean {
+    if (!item.recovery || !blocksSave(item.recovery)) return false;
+    const message = unresolvedMessage(item.recovery);
+    if (message) setSaveStatus({ message: t(message), tone: 'error' });
+    const first = unresolvedCritical(item.recovery)[0];
+    if (first !== undefined) {
+      const section = sectionOfField(first as TextField | NumberField);
+      setStep(section);
+      reviewPanel.current
+        ?.querySelectorAll<HTMLDetailsElement>(`.ld-section[data-step="${section}"]`)
+        .forEach((details) => {
+          details.open = true;
+        });
+    }
+    return true;
+  }
+
   async function saveActive(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!active || busy) return;
+    if (blockedByReview(active)) return;
     if (activeSaved) {
       await saveChanges();
       return;
@@ -1623,6 +1855,10 @@ export default function LoadDesk() {
       {
         saved_at: new Date().toISOString(),
         ticket: placed.ticket,
+        // Saved with the ticket, and by now it says who settled what: a
+        // figure on the invoice can be traced back to the paper, and where
+        // the paper did not have it, to the person who did.
+        ...(placed.recovery ? { recovery: placed.recovery } : {}),
         invoice: { ...placed.invoice, invoice_number: invoiceNumber },
         source: placed.source,
         ocr_text: placed.ocr_text,
@@ -1794,6 +2030,7 @@ export default function LoadDesk() {
   /** Saves the changes on this invoice's saved tickets together. */
   async function saveChanges() {
     if (!active) return;
+    if (blockedByReview(active)) return;
     const changed = queue.filter(
       (item) => item.batch_id === active.batch_id && hasChanges(item),
     );
@@ -2026,6 +2263,153 @@ export default function LoadDesk() {
       ];
     });
 
+  /**
+   * A field nobody has settled: what the resolver decided, or what a person
+   * decided afterwards, put in words for somebody holding the paper.
+   *
+   * The wording says what to do, not what the layer calls it. "Ambiguous
+   * candidates" is a state of the evidence; "more than one on file fits" is
+   * the thing a reviewer can act on with the ticket in front of them.
+   */
+  function reviewReason(resolution: FieldResolution): string {
+    const reason: ReviewReason | undefined = resolution.reason;
+    if (reason === 'camera_crop') {
+      return t('The sheet ran off the photograph on this side. Retake the picture.');
+    }
+    if (reason === 'partial_numeric') {
+      return t('Part of this was cut off the print, and a number is never completed by guessing.');
+    }
+    if (reason === 'ambiguous_candidates') {
+      return t('More than one value on file fits what printed.');
+    }
+    if (reason === 'conflicting_evidence') {
+      return t('Two sources disagree about this field.');
+    }
+    if (reason === 'unsupported_proposal') {
+      return t('The reader suggested a completion nothing on file supports.');
+    }
+    if (reason === 'not_read') {
+      return t('What printed here could not be read as a value.');
+    }
+    if (reason === 'insufficient_evidence') {
+      return t('Part of the print is missing and nothing on file completes it.');
+    }
+    return t('Nothing of this field is on the paper — the print ran off the sheet.');
+  }
+
+  /** Whether a field is still waiting for somebody to settle it. */
+  const unsettledField = (resolution: FieldResolution) =>
+    resolution.status === 'needs_review' ||
+    resolution.reason === 'camera_crop' ||
+    (resolution.status === 'missing' && resolution.source_clipped);
+
+  /**
+   * What the recovery layer has to say about one field, under its box.
+   *
+   * Nothing at all for a field read whole off the paper, which is nearly
+   * every field of nearly every ticket: a ticket that came through clean
+   * looks exactly as it did before any of this existed. A field that was
+   * completed says so quietly and keeps its working folded away; only a
+   * field waiting on a person is allowed to be loud, and even then the box
+   * itself stays an ordinary box somebody can type in.
+   */
+  const recoveryUnder = (def: FieldDef): ReactNode => {
+    const resolution = active?.recovery?.fields[def.name];
+    if (!resolution || resolution.status === 'exact') return null;
+    if (resolution.status === 'confirmed') {
+      return (
+        <small className="ld-field-hint ld-recovered">
+          {resolution.value === null
+            ? t('Left empty by reviewer')
+            : t('Confirmed by reviewer')}
+        </small>
+      );
+    }
+    if (resolution.status === 'recovered') {
+      return (
+        <div className="ld-recovered">
+          <small className="ld-field-hint">
+            {resolution.source === 'batch_context'
+              ? t('Filled from another ticket with the same order number')
+              : resolution.visible_text
+                ? t('Recovered from partial print — the ticket shows “{print}”', {
+                    print: resolution.visible_text,
+                  })
+                : t('Not printed whole here — worked out from the rest of the ticket')}
+          </small>
+          {resolution.evidence.length ? (
+            <details className="ld-why">
+              <summary>{t('Why')}</summary>
+              <ul>
+                {resolution.evidence.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </div>
+      );
+    }
+    if (!unsettledField(resolution)) return null;
+    // A camera crop is not a question about the value, it is a question
+    // about the photograph: offering candidates for print that was never in
+    // the picture is exactly the guessing this layer exists to refuse.
+    const crop = resolution.reason === 'camera_crop';
+    const candidates = crop ? [] : (resolution.candidates ?? []);
+    return (
+      <div className="ld-near-match" data-tone={crop ? 'bad' : 'warning'}>
+        <span>{reviewReason(resolution)}</span>
+        {resolution.visible_text ? (
+          <span>
+            {t('The original shows “{print}”', { print: resolution.visible_text })}
+          </span>
+        ) : null}
+        {candidates.length || (!crop && canLeaveEmpty(def.name)) ? (
+          <span className="ld-confirm-actions">
+            {candidates.map((candidate) => (
+              <Button
+                key={candidate}
+                type="button"
+                variant="secondary"
+                size="xs"
+                onClick={() => {
+                  // The candidate is the print; the box wants the value.
+                  const value = acceptableValue(def.name, candidate);
+                  if (value === null) {
+                    setSaveStatus({ message: t('That value is not a number.'), tone: 'error' });
+                    return;
+                  }
+                  setField(def.name, value, 'accepted');
+                }}
+              >
+                {t('Accept “{value}”', { value: candidate })}
+              </Button>
+            ))}
+            {!crop && canLeaveEmpty(def.name) ? (
+              <Button
+                type="button"
+                variant="link"
+                size="xs"
+                onClick={() => setField(def.name, '', 'accepted')}
+              >
+                {t('Leave empty')}
+              </Button>
+            ) : null}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
+
+  /** The state the box itself shows, or nothing for a field read whole. */
+  const recoveryMark = (def: FieldDef): string | undefined => {
+    const resolution = active?.recovery?.fields[def.name];
+    if (!resolution || resolution.status === 'exact') return undefined;
+    if (resolution.status === 'confirmed') return 'confirmed';
+    if (resolution.status === 'recovered') return 'recovered';
+    return unsettledField(resolution) ? 'needs-review' : undefined;
+  };
+
   const renderField = (def: FieldDef, under?: ReactNode) => {
     if (!ticket) return null;
     const value = ticket[def.name];
@@ -2041,25 +2425,37 @@ export default function LoadDesk() {
         ) : null}
       </>
     );
+    // What the recovery layer has to say goes above whatever the field
+    // already carried — the address picker under the destination — because
+    // it is about the value in the box rather than another way to fill it.
+    const recovery = recoveryUnder(def);
+    const below =
+      recovery && under ? (
+        <>
+          {recovery}
+          {under}
+        </>
+      ) : (recovery ?? under);
     const box = (
       <Input
-        id={under ? `${fieldId}-${def.name}` : undefined}
+        id={below ? `${fieldId}-${def.name}` : undefined}
         name={def.name}
         type={def.type ?? (numeric ? 'number' : 'text')}
         min={numeric ? 0 : undefined}
         step={def.step}
         required={def.required}
+        data-recovery={recoveryMark(def)}
         value={value === null ? '' : String(value)}
         onChange={(event) => setField(def.name, event.target.value)}
       />
     );
     // A label may only wrap the one control it names, so a field with buttons
     // under it names its box with htmlFor instead.
-    return under ? (
+    return below ? (
       <div key={def.name} className="ld-field" data-span={def.span}>
         <label htmlFor={`${fieldId}-${def.name}`}>{caption}</label>
         {box}
-        {under}
+        {below}
       </div>
     ) : (
       <label key={def.name} className="ld-field" data-span={def.span}>
@@ -2397,6 +2793,24 @@ export default function LoadDesk() {
     ? [ticket.customer_name, ticket.project_name].filter(Boolean).join(' · ')
     : '';
   const tons = ticket ? invoiceTons(ticket) : '';
+  /**
+   * How many fields of a section are still waiting for a person. Shown on
+   * the closed section's own line, because on a phone — and on a desk with
+   * the sections folded — the only thing on the screen is that line, and a
+   * ticket that cannot be saved must say where the reason for it is.
+   */
+  const toConfirmIn = (...groups: FieldDef[][]) =>
+    groups.flat().filter((def) => {
+      const resolution = active?.recovery?.fields[def.name];
+      return resolution ? unsettledField(resolution) : false;
+    }).length;
+  const withConfirm = (detail: string, count: number) =>
+    count
+      ? [detail, t('{count} to confirm', { count })].filter(Boolean).join(' · ')
+      : detail;
+  const ticketConfirm = toConfirmIn(TICKET_FIELDS);
+  const jobConfirm = toConfirmIn(JOB_FIELDS);
+  const weightConfirm = toConfirmIn(WEIGHT_FIELDS, HAULING_FIELDS);
   const weightDetail = ticket
     ? [
         ticket.net_lb === null ? null : pounds(ticket.net_lb),
@@ -2541,7 +2955,7 @@ export default function LoadDesk() {
    * places.
    */
   const missingInformation = (item: QueueItem) =>
-    validateTicket(item.ticket).length > 0;
+    validateTicket(item.ticket, item.recovery).length > 0;
 
   const queueRow =
     active && ticket ? (
@@ -3091,7 +3505,7 @@ export default function LoadDesk() {
                     const first = group.records[0]!;
                     const waiting = group.records.filter(needsReview).length;
                     const incomplete = group.records.some(
-                      (record) => validateTicket(record.ticket).length > 0,
+                      (record) => validateTicket(record.ticket, record.recovery).length > 0,
                     );
                     const number = shownInvoiceNumber(group.invoice.invoice_number);
                     const customers = [
@@ -3215,7 +3629,11 @@ export default function LoadDesk() {
                   data-phone-step={isPhone ? atStep : undefined}
                 >
                   <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
-                    {sectionSummary('Ticket', ticketDetail)}
+                    {sectionSummary(
+                      'Ticket',
+                      withConfirm(ticketDetail, ticketConfirm),
+                      ticketConfirm ? 'bad' : undefined,
+                    )}
                     <div className="ld-fields">
                       {/* No day came off the scan, so this ticket is on no
                           invoice. The date is what puts it on one. Two ways
@@ -3241,7 +3659,11 @@ export default function LoadDesk() {
                   </details>
 
                   <details className="ld-section ld-collapsible" data-step="1" open={isPhone || undefined}>
-                    {sectionSummary('Customer and Job', jobDetail)}
+                    {sectionSummary(
+                      'Customer and Job',
+                      withConfirm(jobDetail, jobConfirm),
+                      jobConfirm ? 'bad' : undefined,
+                    )}
                     <div className="ld-fields">
                       {renderFields(JOB_FIELDS, (def) =>
                         def.name === 'project_address' ? addressPicker : undefined,
@@ -3252,8 +3674,8 @@ export default function LoadDesk() {
                   <details className="ld-section ld-collapsible" data-step="2" open={isPhone || undefined}>
                     {sectionSummary(
                       'Weight and Hauling',
-                      weightDetail,
-                      check.tone === 'bad' ? 'bad' : undefined,
+                      withConfirm(weightDetail, weightConfirm),
+                      check.tone === 'bad' || weightConfirm ? 'bad' : undefined,
                     )}
                     <div className="ld-fields">
                       {renderFields(WEIGHT_FIELDS)}

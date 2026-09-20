@@ -6,7 +6,8 @@ import {
   EXTRACTION_INSTRUCTIONS,
   EXTRACTION_MODEL,
   EXTRACTION_SCHEMA,
-  readExtracted,
+  observedToExtracted,
+  readObserved,
 } from '@/lib/load-desk/ticket-extraction';
 
 // Reading one ticket. The image is posted here by the browser and sent on to
@@ -90,9 +91,10 @@ async function extract(client: OpenAI, imageUrl: string) {
 }
 
 /**
- * Reads one ticket image. The answer is the thirteen extracted fields; turning
- * them into one of the app's tickets happens in the browser, where the rest of
- * the review already lives.
+ * Reads one ticket image. The answer is what the reader saw, field by field,
+ * and the flat view of it that carries only the fields it saw whole; turning
+ * either into one of the app's tickets happens in the browser, where the rest
+ * of the review already lives.
  */
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return failure('Forbidden', 403);
@@ -142,8 +144,13 @@ async function read(request: Request, userId: string | null, workspaceId: string
     });
     const answer = response.output_text;
     if (!answer) return failure('The reader returned nothing for this ticket.', 502);
+    // Both shapes go back: `observed` is the reading with its damage intact,
+    // for the recovery layer, and `extracted` is the same reading with only
+    // the fields that were seen whole, which is what every caller written
+    // before any of this already expects.
+    const observed = readObserved(JSON.parse(answer) as unknown);
     return Response.json(
-      { extracted: readExtracted(JSON.parse(answer) as unknown) },
+      { extracted: observedToExtracted(observed), observed },
       { headers: noStore },
     );
   } catch (error) {

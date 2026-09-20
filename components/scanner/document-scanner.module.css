@@ -210,7 +210,8 @@
   flex-shrink: 0;
   opacity: 0.9;
 }
-.hint[data-tone='error'] {
+.hint[data-tone='error'],
+.status[data-tone='error'] {
   background: rgb(255 159 10 / 20%);
   box-shadow: inset 0 0 0 0.5px rgb(255 159 10 / 45%);
   color: #ffd9a3;
@@ -342,6 +343,16 @@
 }
 .primary {
   background: var(--accent);
+}
+/* Held back while the framing is being checked, and while the ticket is
+   hanging off the edge of the picture. Retake beside it stays live: the way
+   out of a bad photograph is another photograph. */
+.primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.primary:disabled:active {
+  transform: none;
 }
 .secondary {
   background: rgb(120 120 128 / 36%);

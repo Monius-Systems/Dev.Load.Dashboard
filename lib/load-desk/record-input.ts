@@ -14,6 +14,15 @@ import type {
   CustomerProfile,
   TruckProfile,
 } from './profiles.ts';
+import type {
+  ClippedEdge,
+  EdgeState,
+  EvidenceSource,
+  FieldResolution,
+  FieldStatus,
+  ReviewReason,
+  TicketRecovery,
+} from './recovery/contract.ts';
 import { customerLocationRates, type LocationRate } from './customer-rates.ts';
 import { datedFromTicket } from './invoice-dates.ts';
 import { ticketDay } from './ticket-date.ts';
@@ -127,6 +136,134 @@ export function parseSource(value: unknown): TicketSource | null {
   };
 }
 
+/**
+ * The recovery layer speaks in types only — nothing in recovery/contract.ts
+ * runs — so the names it allows are spelled out again here. This is the edge
+ * where anything at all may arrive, and a list to check a string against is
+ * the whole point of the exercise.
+ */
+const FIELD_STATUSES = ['exact', 'recovered', 'needs_review', 'missing', 'confirmed'];
+const EVIDENCE_SOURCES = [
+  'visible',
+  'model_proposed',
+  'same_ticket',
+  'vendor_rule',
+  'verified_profile',
+  'verified_history',
+  'historical_relationship',
+  'batch_context',
+  'user_correction',
+  'user_confirmed',
+];
+const REVIEW_REASONS = [
+  'partial_numeric',
+  'insufficient_evidence',
+  'ambiguous_candidates',
+  'conflicting_evidence',
+  'camera_crop',
+  'unsupported_proposal',
+  'not_read',
+];
+const CLIPPED_EDGES = ['left', 'right', 'top', 'bottom'];
+const EDGE_STATES = ['inside', 'cut', 'unknown'];
+const PAPER_SIDES = ['left', 'right', 'top', 'bottom'] as const;
+const TICKET_FIELDS = new Set<string>([...TEXT_FIELDS, ...NUMBER_FIELDS]);
+
+/** A ticket has fewer fields than this; a `fields` map larger than it is junk. */
+export const MAX_RECOVERY_FIELDS = 60;
+
+const oneOf = (value: unknown, allowed: readonly string[]) =>
+  typeof value === 'string' && allowed.includes(value);
+
+/**
+ * How a ticket's fields were read and settled, as sent, or null when any part
+ * of it is not what it claims to be.
+ *
+ * This is the audit trail: the print that was seen, what stands, and the
+ * evidence it stands on. It is stored word for word inside the record's jsonb,
+ * so every string is bounded and every name is checked against a list — a
+ * field the app does not have, a status it does not know or a confidence
+ * outside 0 to 1 means the whole thing is refused rather than half-kept.
+ */
+export function parseRecovery(value: unknown): TicketRecovery | null {
+  if (!isObject(value) || value.version !== 1 || !nullableText(value.vendor, 60)) return null;
+  const { paper, fields } = value;
+  if (!isObject(paper) || typeof paper.detected !== 'boolean') return null;
+  if (!PAPER_SIDES.every((side) => oneOf(paper[side], EDGE_STATES))) return null;
+  if (!isObject(fields)) return null;
+  const names = Object.keys(fields);
+  if (names.length > MAX_RECOVERY_FIELDS) return null;
+  const resolved: Partial<Record<keyof Ticket, FieldResolution>> = {};
+  for (const name of names) {
+    if (!TICKET_FIELDS.has(name)) return null;
+    const field = fields[name];
+    if (!isObject(field)) return null;
+    const { confidence, evidence, reason, candidates } = field;
+    const settled = field.value;
+    const confirmed = field.confirmed_by_user;
+    if (
+      !oneOf(field.status, FIELD_STATUSES) ||
+      // As printed, or as a figure: a weight resolves to a number, a name to
+      // text, and a partial reading stays the string it was on the paper.
+      !(
+        settled === null ||
+        text(settled, 500) ||
+        (typeof settled === 'number' && Number.isFinite(settled))
+      ) ||
+      !nullableText(field.visible_text, 500) ||
+      !(field.source === null || oneOf(field.source, EVIDENCE_SOURCES)) ||
+      typeof field.source_clipped !== 'boolean' ||
+      !(field.clipped_edge === null || oneOf(field.clipped_edge, CLIPPED_EDGES)) ||
+      typeof confidence !== 'number' ||
+      !Number.isFinite(confidence) ||
+      confidence < 0 ||
+      confidence > 1 ||
+      !stringList(evidence, 20, 300) ||
+      !(reason === undefined || oneOf(reason, REVIEW_REASONS)) ||
+      !(candidates === undefined || stringList(candidates, 10, 200)) ||
+      !(confirmed === undefined || typeof confirmed === 'boolean')
+    ) {
+      return null;
+    }
+    resolved[name as keyof Ticket] = {
+      status: field.status as FieldStatus,
+      value: settled as string | number | null,
+      visible_text: field.visible_text as string | null,
+      source: field.source as EvidenceSource | null,
+      source_clipped: field.source_clipped,
+      clipped_edge: field.clipped_edge as ClippedEdge | null,
+      confidence,
+      evidence: [...(evidence as string[])],
+      ...(reason === undefined ? {} : { reason: reason as ReviewReason }),
+      ...(candidates === undefined ? {} : { candidates: [...(candidates as string[])] }),
+      ...(confirmed === undefined ? {} : { confirmed_by_user: confirmed }),
+    };
+  }
+  return {
+    version: 1,
+    vendor: value.vendor as string | null,
+    paper: {
+      detected: paper.detected,
+      left: paper.left as EdgeState,
+      right: paper.right as EdgeState,
+      top: paper.top as EdgeState,
+      bottom: paper.bottom as EdgeState,
+    },
+    fields: resolved,
+  };
+}
+
+/**
+ * The recovery record on a ticket being saved or changed, or an error. Absent
+ * (or null, as a round trip through JSON can leave it) is not a failure: most
+ * tickets were saved before any of this existed.
+ */
+function recoveryOf(value: unknown): Parsed<TicketRecovery | undefined> {
+  if (value === undefined || value === null) return { value: undefined };
+  const recovery = parseRecovery(value);
+  return recovery ? { value: recovery } : { error: 'The ticket recovery details are not valid.' };
+}
+
 /** A ticket to save: its fields, invoice, source file and profile links. */
 export function parseNewRecord(value: unknown): Parsed<NewRecord> {
   if (!isObject(value)) return { error: 'Expected a ticket.' };
@@ -151,11 +288,16 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
   ) {
     return { error: 'The ticket record is not valid.' };
   }
+  const recovery = recoveryOf(value.recovery);
+  if ('error' in recovery) return recovery;
   return {
     // An invoice is dated by its ticket, wherever the record came from.
     value: datedFromTicket({
       saved_at: value.saved_at as string,
       ticket,
+      // Everything this function does not name is thrown away, so the audit
+      // trail is carried here or it is not stored at all.
+      ...(recovery.value ? { recovery: recovery.value } : {}),
       invoice,
       source,
       original_stored: value.original_stored,
@@ -185,6 +327,13 @@ export type RecordEdit = {
    * edit that keeps the ticket where it is, which is nearly all of them.
    */
   invoice_batch_id?: string;
+  /**
+   * How the ticket's fields were read and settled, when the change carries it
+   * — a person accepting a recovered value in review is a change to this as
+   * much as to the ticket. Absent means the edit says nothing about it, and
+   * what the record already holds stands.
+   */
+  recovery?: TicketRecovery;
   /**
    * A change the app makes on its own — numbering an upload once every page
    * is read — rather than a person's edit. It is neither a review of the ticket
@@ -229,6 +378,8 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
     if (item.bookkeeping !== undefined && item.bookkeeping !== true) {
       return { error: 'The ticket changes are not valid.' };
     }
+    const recovery = recoveryOf(item.recovery);
+    if ('error' in recovery) return recovery;
     // An invoice is dated by its ticket here too: a change that came in over
     // the API cannot leave one carrying a day of its own.
     edits.push(
@@ -239,6 +390,7 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
         ocr_text: item.ocr_text as string,
         customer_profile_id: (item.customer_profile_id as number | null | undefined) ?? null,
         truck_id: (item.truck_id as number | null | undefined) ?? null,
+        ...(recovery.value ? { recovery: recovery.value } : {}),
         ...(batch !== undefined ? { invoice_batch_id: batch as string } : {}),
         ...(item.bookkeeping === true ? { bookkeeping: true as const } : {}),
       }),
@@ -261,6 +413,10 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
     ...record,
     ...(edit.invoice_batch_id ? { invoice_batch_id: edit.invoice_batch_id } : {}),
     ticket: edit.ticket,
+    // An edit that says nothing about recovery leaves the record's own. A
+    // rate typed on the invoice screen is not a statement about how the
+    // customer's name was read, and it must not erase the trail.
+    ...(edit.recovery !== undefined ? { recovery: edit.recovery } : {}),
     invoice: edit.invoice,
     ocr_text: edit.ocr_text,
     customer_profile_id: edit.customer_profile_id,

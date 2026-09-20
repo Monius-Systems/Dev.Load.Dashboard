@@ -20,10 +20,40 @@ import {
   lineTotal,
   money,
 } from '@/lib/load-desk/format';
-import type { InvoiceDraft, SavedRecord } from '@/lib/load-desk/types';
+import { unresolvedCritical } from '@/lib/load-desk/recovery';
+import type { InvoiceDraft, SavedRecord, Ticket } from '@/lib/load-desk/types';
 
-/** A ticket on the invoice, with the customer profile chosen for it. */
-export type InvoiceLine = Pick<SavedRecord, 'ticket' | 'customer_profile_id'>;
+/**
+ * A ticket on the invoice, with the customer profile chosen for it and the
+ * record of how its fields were read. The recovery record comes along because
+ * a line is printed from the ticket, and a field still waiting on a person is
+ * not a value a printed invoice may pass off as one.
+ */
+export type InvoiceLine = Pick<
+  SavedRecord,
+  'ticket' | 'customer_profile_id' | 'recovery'
+>;
+
+/**
+ * What a cell says when the print behind it was never confirmed.
+ *
+ * Prose keeps whatever fragment printed, so a destination the printer cut off
+ * arrives here reading "ARKHAM, IL" and looks exactly like a place. Blanking
+ * it would hide that anything was read at all — worse on paper, where nobody
+ * can click the field to find out — so the fragment is printed and told on.
+ * A number or a date never reaches here at all: those come through as null.
+ */
+const UNCONFIRMED = ' (unconfirmed)';
+
+const marked = (
+  line: InvoiceLine,
+  text: string,
+  ...fields: (keyof Ticket)[]
+): string =>
+  text &&
+  fields.some((field) => line.recovery?.fields[field]?.status === 'needs_review')
+    ? `${text}${UNCONFIRMED}`
+    : text;
 
 const COLUMNS = [
   'Date',
@@ -113,13 +143,14 @@ export default function InvoiceSheet({
     const date = displayDate(ticket.ticket_date);
     const previous =
       index > 0 ? displayDate(lines[index - 1].ticket_date) : null;
+    const line = invoiceLines[index];
     return [
       date === previous ? '' : date,
       ticket.ticket_number ?? '',
       // The customer profile's name, not the name as scanned.
-      customerNameFor(invoiceLines[index], customers),
-      invoiceOrigin(ticket),
-      invoiceDestination(ticket.project_address),
+      marked(line, customerNameFor(line, customers), 'customer_name'),
+      marked(line, invoiceOrigin(ticket), 'plant_name', 'plant_address'),
+      marked(line, invoiceDestination(ticket.project_address), 'project_address'),
       invoiceTons(ticket),
       invoiceRate(ticket),
       invoiceFuel(ticket),
@@ -137,6 +168,9 @@ export default function InvoiceSheet({
     ? Math.round(totals.reduce((sum, value) => sum + value, 0) * 100) / 100
     : null;
   const needsRate = lines.some((ticket) => lineTotal(ticket) === null);
+  const needsConfirmation = invoiceLines.some(
+    (line) => line.recovery && unresolvedCritical(line.recovery).length > 0,
+  );
   // The truck number comes from the chosen truck profile, not the scan.
   const truckNumber = invoice.truck_number;
   const layout = lineLayout(rows);
@@ -242,6 +276,15 @@ export default function InvoiceSheet({
           ))}
         </tbody>
       </table>
+      {/* Under the table rather than beside the word INVOICE: the header's
+          middle column is sized to the word itself, and a sentence there
+          would widen it and push the word off centre. */}
+      {needsConfirmation ? (
+        <p className="invoice-unconfirmed">
+          One or more tickets on this invoice have fields not yet confirmed
+          against the original.
+        </p>
+      ) : null}
       {invoiceTotal !== null ? (
         <div className="invoice-bottom">
           <dl className="invoice-grand-total">

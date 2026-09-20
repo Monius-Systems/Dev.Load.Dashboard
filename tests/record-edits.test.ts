@@ -8,6 +8,7 @@ import {
 } from '../lib/load-desk/record-input.ts';
 import { findInvoiceClash, recordBatch } from '../lib/load-desk/records.ts';
 import { emptyTicket, type InvoiceDraft, type SavedRecord } from '../lib/load-desk/types.ts';
+import { UNKNOWN_FRAME, type TicketRecovery } from '../lib/load-desk/recovery/contract.ts';
 
 const invoice = (invoiceNumber: string): InvoiceDraft => ({
   invoice_number: invoiceNumber,
@@ -166,4 +167,44 @@ void test('bookkeeping over the API is exactly true or absent', () => {
   assert.equal('bookkeeping' in plain.value[0], false);
   assert.ok('error' in parseRecordEdits([{ ...edit(1, '6'), bookkeeping: 'yes' }]));
   assert.ok('error' in parseRecordEdits([{ ...edit(1, '6'), bookkeeping: false }]));
+});
+
+const recovery = (value: string): TicketRecovery => ({
+  version: 1,
+  vendor: 'heidelberg',
+  paper: { ...UNKNOWN_FRAME, detected: true, left: 'inside' },
+  fields: {
+    project_address: {
+      status: 'confirmed',
+      value,
+      visible_text: 'ARKHAM, IL',
+      source: 'user_confirmed',
+      source_clipped: true,
+      clipped_edge: 'left',
+      confidence: 1,
+      evidence: ['You corrected “ARKHAM, IL” to “MARKHAM, IL” before for this customer'],
+      confirmed_by_user: true,
+    },
+  },
+});
+
+void test('an edit that says nothing about recovery leaves the trail where it is', () => {
+  const record = { ...saved(11, 'INV-1', 'batch-1'), recovery: recovery('MARKHAM, IL') };
+  // Editing a rate on the invoice screen says nothing about how the customer's
+  // name was read, and it must not wipe out how the ticket came to be read.
+  const kept = applyRecordEdit(record, edit(11, 'INV-1'), '2026-09-15T12:00:00.000Z');
+  assert.deepEqual(kept.recovery, record.recovery);
+
+  // Accepting a value in review is a change to the trail as much as to the
+  // ticket, and the edit carries the new one.
+  const replaced = applyRecordEdit(
+    record,
+    { ...edit(11, 'INV-1'), recovery: recovery('OLD MARKHAM, IL') },
+    '2026-09-15T12:00:00.000Z',
+  );
+  assert.equal(replaced.recovery?.fields.project_address?.value, 'OLD MARKHAM, IL');
+
+  // A ticket saved before any of this existed stays that way.
+  const older = applyRecordEdit(saved(12, 'INV-2'), edit(12, 'INV-2'), '2026-09-15T12:00:00.000Z');
+  assert.equal('recovery' in older, false);
 });
