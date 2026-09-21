@@ -124,7 +124,7 @@ function fits(fragment: string, candidate: string, edge: ClippedEdge | null): bo
  * — the month, the day and the four-digit year — so "12/13/2025" and
  * "2025-12-15" line up digit for digit.
  */
-export function misreadDigitApart(printed: string, iso: string): boolean {
+export function misreadDigitApart(printed: string, iso: string, faded = false): boolean {
   // The padded form, so a one-digit month lines up with a two-digit one.
   const read = printedDays(iso)[1];
   const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/.exec(printed.trim());
@@ -133,7 +133,7 @@ export function misreadDigitApart(printed: string, iso: string): boolean {
   const a = `${m[1].padStart(2, '0')}${m[2].padStart(2, '0')}${year}`;
   const b = read.replace(/\D/g, '');
   if (a.length !== b.length) return false;
-  return oneDigitConfused(a, b);
+  return oneDigitConfused(a, b, faded);
 }
 
 /** Separators are printing too: "2026-09-14" and "2026/09/14" are one day. */
@@ -434,7 +434,7 @@ export function resolveField(
     // figure, and still a question about this ticket alone.
     if (cls === 'weight' && disputes.length && typeof value === 'number') {
       const figures = [...new Set(disputes.map((item) => numberFrom(item.candidate)).filter((n): n is number => n !== null))];
-      if (figures.length === 1 && oneMisreadApart(value, figures[0])) {
+      if (figures.length === 1 && oneMisreadApart(value, figures[0], observed?.faded === true)) {
         for (const item of applicable) notes.push(item.note);
         notes.push(
           `The printed ${fragment} is one faded digit from ${figures[0]}, which the rest of the ticket's weights make it; read as ${figures[0]}.`,
@@ -449,7 +449,7 @@ export function resolveField(
     }
     if (cls === 'date' && disputes.length && typeof value === 'string') {
       const days = [...new Set(disputes.map((item) => ticketDay(item.candidate)).filter((d): d is string => d !== null))];
-      if (days.length === 1 && misreadDigitApart(fragment, days[0])) {
+      if (days.length === 1 && misreadDigitApart(fragment, days[0], observed?.faded === true)) {
         for (const item of applicable) notes.push(item.note);
         notes.push(
           `The printed "${fragment}" is one faded digit from ${days[0]}, which the rest of the evidence names; read as ${days[0]}.`,
@@ -467,6 +467,29 @@ export function resolveField(
       // date, not a contradiction; the ink wins and nobody is stopped.
       const agrees = disputes.includes(item) || sameValue(field, cls, item.candidate, value);
       notes.push(agrees ? item.note : `Not applied: ${item.note} — the printed value stands.`);
+    }
+    // A date the reader read off print it calls faded, with nothing on the
+    // ticket or on file to confirm the day — no stamp, no run — is asked
+    // for. The reader has read the same faded digit three ways on three
+    // scans, sure each time; the print's own word on itself is the one
+    // thing that did not change.
+    if (cls === 'date' && observed?.faded && !disputes.length) {
+      const confirmed = applicable.some(
+        (item) =>
+          item.strength === 'strong' &&
+          (DERIVATION_SOURCES.has(item.source) || item.source === 'verified_history') &&
+          sameValue(field, cls, item.candidate, value),
+      );
+      if (!confirmed) {
+        notes.push(`The date is printed faintly and nothing on the ticket or on file confirms ${fragment}.`);
+        return finish({
+          status: 'needs_review',
+          value: null,
+          source: null,
+          confidence: 0,
+          reason: 'not_read',
+        });
+      }
     }
     if (disputes.length) {
       return finish({
@@ -973,13 +996,15 @@ export function resolveTicket(
  */
 function weightsJudged(observed: ObservedTicket, evidence: readonly Evidence[]): Evidence[] {
   const whole: Weights = { gross_lb: null, tare_lb: null, net_lb: null, net_tons: null };
+  const faded: Partial<Record<WeightField, boolean>> = {};
   for (const field of WEIGHT_FIELDS) {
     const seen = observed.fields[field];
     if (!seen || seen.partial || seen.clipped_edge !== null) continue;
     const read = seen.visible ?? seen.proposed;
     whole[field] = read === null ? null : numberFrom(read);
+    if (seen.faded) faded[field] = true;
   }
-  const fix = weightFix(whole);
+  const fix = weightFix(whole, faded);
   if (!fix && !balanced(whole)) return [...evidence];
   return evidence.filter((item) => {
     if (!(WEIGHT_FIELDS as readonly string[]).includes(item.field)) return true;

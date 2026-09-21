@@ -175,7 +175,7 @@ type SchemaNode = { type: string | string[]; [key: string]: unknown };
 const observationOf = (note: string): SchemaNode => ({
   type: 'object',
   additionalProperties: false,
-  required: ['visible', 'proposed', 'clipped_edge', 'partial'],
+  required: ['visible', 'proposed', 'clipped_edge', 'partial', 'print'],
   properties: {
     visible: {
       type: ['string', 'null'],
@@ -195,6 +195,12 @@ const observationOf = (note: string): SchemaNode => ({
       type: 'boolean',
       description:
         'True when characters are missing: cut off, torn away, smudged out or otherwise not on the paper.',
+    },
+    print: {
+      type: 'string',
+      enum: ['clear', 'faded'],
+      description:
+        'clear when every character is crisp and unambiguous. faded when any character is faint, smudged, broken, over-printed, doubled, or had to be inferred from its shape or context rather than simply read.',
     },
   },
 });
@@ -265,6 +271,8 @@ proposed MUST be null when any character is missing from: the BOL or ticket numb
 clipped_edge — 'left', 'right', 'top' or 'bottom' when the field's print runs off an edge, otherwise null. Say which edge: the application distinguishes print the printer put past the edge of the paper from print the camera cut off, and it can only do that if you say where it went.
 
 partial — true when characters of the field are missing for any reason: clipped, torn, smudged out, or faded past reading.
+
+print — clear when every character of the field is crisp and unambiguous; faded when any character is faint, smudged, broken, over-printed, doubled, or had to be inferred from its shape or from context rather than simply read. Be strict about this on the date, the BOL, the customer number and the weights: a reading off faded print is checked before it is billed, a reading off clear print is not.
 
 A digit you are not certain of is a digit you cannot read. Never pick the likeliest digit: put a ? in visible where it stands — "12/1?/2025", "17253313?4", "277?0" — and set partial to true. This matters most for the date, the BOL or ticket number, the customer number and the weights: a wrong digit there bills the wrong day or the wrong load, and a ? is asked about while a wrong digit is not. Faded, smudged, broken or overprinted digits are ? digits.
 
@@ -357,7 +365,8 @@ function observeField(name: ObservedFieldName, value: unknown): ObservedField {
   if (partial && proposed !== visible && GUARDED_FIELDS.has(OBSERVED_FIELDS[name])) {
     proposed = null;
   }
-  return { visible, proposed, clipped_edge, partial };
+  const faded = source ? source.print === 'faded' : false;
+  return { visible, proposed, clipped_edge, partial, ...(faded ? { faded: true } : {}) };
 }
 
 const edgeStateOf = (value: unknown): EdgeState =>

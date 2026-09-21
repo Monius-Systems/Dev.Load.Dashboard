@@ -972,3 +972,29 @@ void test('a digit the reader could not make out is a gap, asked about unless th
   assert.equal(tare.status, 'recovered');
   assert.equal(tare.value, 27720);
 });
+
+void test('a date off faded print is asked for unless the ticket or the run confirms it', () => {
+  const faded = { visible: '12/18/2025', proposed: null, clipped_edge: null, partial: false, faded: true } as const;
+  // Nothing to confirm it: asked, and the wrong day is not kept.
+  const asked = resolveField('ticket_date', faded, UNKNOWN_FRAME, [], { vendor: 'heidelberg' });
+  assert.equal(asked.status, 'needs_review');
+  assert.equal(asked.value, null);
+  assert.equal(asked.visible_text, '12/18/2025');
+  // The run says the 15th: an 8 for a 5 on faded print is the misread, read as the 15th.
+  const run = { field: 'ticket_date' as const, candidate: '2025-12-15', source: 'verified_history' as const, strength: 'strong' as const, note: 'run' };
+  const fixed = resolveField('ticket_date', faded, UNKNOWN_FRAME, [run], { vendor: 'heidelberg' });
+  assert.equal(fixed.status, 'recovered');
+  assert.equal(fixed.value, '2025-12-15');
+  // Read as the 11th — a 1 for a 5, no shape in common — faded print still allows it; clear print does not.
+  const eleven = { ...faded, visible: '12/11/2025' };
+  assert.equal(resolveField('ticket_date', eleven, UNKNOWN_FRAME, [run], { vendor: 'heidelberg' }).value, '2025-12-15');
+  const clearEleven = { ...eleven, faded: false };
+  assert.equal(resolveField('ticket_date', clearEleven, UNKNOWN_FRAME, [run], { vendor: 'heidelberg' }).status, 'needs_review');
+  // The run confirming the read day: exact, nothing asked.
+  const same = { ...faded, visible: '12/15/2025' };
+  const confirmed = resolveField('ticket_date', same, UNKNOWN_FRAME, [run], { vendor: 'heidelberg' });
+  assert.equal(confirmed.status, 'exact');
+  // Clear print with nothing on file stands as read, as it always has.
+  const clear = { ...same, faded: false };
+  assert.equal(resolveField('ticket_date', clear, UNKNOWN_FRAME, [], { vendor: 'heidelberg' }).status, 'exact');
+});

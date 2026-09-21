@@ -65,6 +65,14 @@ export type ObservedField = {
   proposed: string | null;
   clipped_edge: ClippedEdge | null;
   partial: boolean;
+  /**
+   * The reader's word on the print itself: faint, smudged, broken or
+   * over-printed, so that a character had to be inferred rather than read.
+   * Asked for separately from `partial` because a reader that will not
+   * leave a digit out will still say the print was poor — and a date read
+   * off poor print, with nothing to confirm it, is asked for.
+   */
+  faded?: boolean;
 };
 
 /** Pass 1: the whole ticket as observed, keyed by the app's own field names. */

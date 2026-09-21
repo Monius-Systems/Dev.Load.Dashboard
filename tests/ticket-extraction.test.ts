@@ -64,8 +64,9 @@ void test('the schema asks for an observation of every field, and nothing option
     assert.equal(field.additionalProperties, false);
     assert.deepEqual(
       [...(field.required ?? [])].sort(),
-      ['clipped_edge', 'partial', 'proposed', 'visible'],
+      ['clipped_edge', 'partial', 'print', 'proposed', 'visible'],
     );
+    assert.deepEqual(field.properties!.print.enum, ['clear', 'faded'], `${name}.print rates the ink`);
     const parts = field.properties!;
     for (const part of ['visible', 'proposed', 'clipped_edge']) {
       assert.ok(types(parts[part]).includes('null'), `${name}.${part} may be null`);
@@ -509,4 +510,15 @@ void test('a ? in the print is a digit the reader could not make out, and the fi
   assert.equal(flat.date, null, 'never a date');
   assert.equal(flat.bol, null, 'never a number');
   assert.match(EXTRACTION_INSTRUCTIONS, /put a \? in visible/);
+});
+
+void test('print the reader calls faded is carried on the field; clear print is not remarked on', () => {
+  const observed = readObserved({
+    date: { visible: '12/18/2025', proposed: null, clipped_edge: null, partial: false, print: 'faded' },
+    bol: { visible: '1725331394', proposed: null, clipped_edge: null, partial: false, print: 'clear' },
+  });
+  assert.equal(observed.fields.ticket_date?.faded, true);
+  assert.equal(observed.fields.ticket_date?.partial, false, 'faded is not missing');
+  assert.equal('faded' in (observed.fields.ticket_number ?? {}), false);
+  assert.match(EXTRACTION_INSTRUCTIONS, /print — clear when every character/);
 });

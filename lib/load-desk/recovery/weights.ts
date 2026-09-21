@@ -65,13 +65,13 @@ export type { WeightField, Weights };
  * to be one misread from it. Exactly one figure fixing everything is the
  * misread; none, or more than one, is not settled here.
  */
-export function weightFix(w: Weights): WeightFix | null {
+export function weightFix(w: Weights, faded: Partial<Record<WeightField, boolean>> = {}): WeightFix | null {
   if (balanced(w)) return null;
   const fixes: WeightFix[] = [];
   for (const field of WEIGHT_FIELDS) {
     const to = derived(field, w);
     if (to === null || to <= 0) continue;
-    if (!oneMisreadApart(w[field], to)) continue;
+    if (!oneMisreadApart(w[field], to, faded[field] === true)) continue;
     if (!balanced({ ...w, [field]: to })) continue;
     fixes.push({ field, from: w[field], to });
   }
