@@ -3,6 +3,7 @@ import { ticketDay } from '../ticket-date.ts';
 import { printedNumber } from '../printed-number.ts';
 import { fragmentFits } from './fit.ts';
 import { oneDigitConfused, oneMisreadApart } from './misread.ts';
+import { printedDays } from './printed-days.ts';
 import { balanced, WEIGHT_FIELDS, weightFix, type WeightField, type Weights } from './weights.ts';
 import { isNumberField, type Ticket } from '../types.ts';
 import {
@@ -139,21 +140,6 @@ export function misreadDigitApart(printed: string, iso: string, faded = false): 
 /** Separators are printing too: "2026-09-14" and "2026/09/14" are one day. */
 const dateKey = (text: string) => text.replace(/\s+/g, '').replace(/[-.]/g, '/');
 
-/**
- * The ways one day gets printed on a delivery ticket, so a surviving corner
- * of a date can be checked against a day without guessing which way round the
- * printer wrote it.
- */
-function printedDays(iso: string): string[] {
-  const [year, month, day] = iso.split('-');
-  return [
-    `${Number(month)}/${Number(day)}/${year}`,
-    `${month}/${day}/${year}`,
-    `${Number(month)}/${Number(day)}/${year.slice(2)}`,
-    `${month}/${day}/${year.slice(2)}`,
-    `${year}-${month}-${day}`,
-  ];
-}
 
 /**
  * The mark the reader puts where a digit is on the paper but cannot be made

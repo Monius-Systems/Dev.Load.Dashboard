@@ -108,6 +108,8 @@ import {
   type ExceptionType,
 } from '@/lib/load-desk/recovery/exceptions';
 import { knowledgeOf, ticketOutcome } from '@/lib/load-desk/recovery/outcome';
+import { dateMisread, figureMisread } from '@/lib/load-desk/recovery/learned';
+import { loadLearnedMisreads, noteMisread } from '@/lib/load-desk/learned-misreads';
 import {
   acceptableValue,
   cameraCropFields,
@@ -962,6 +964,11 @@ export default function LoadDesk() {
     .filter(Boolean)
     .join(', ');
 
+  // What the deployment has learned of the reader's misreads, once.
+  useEffect(() => {
+    void loadLearnedMisreads();
+  }, []);
+
   // Said to the session, so the top bar on every other page can say it.
   useEffect(() => {
     setDeskField('needsInput', { groups: groupsAsked.length, tickets: ticketsAsked.length });
@@ -1005,6 +1012,7 @@ export default function LoadDesk() {
       const result = await updateSavedRecords([dateEdit(record, ticketDay(typed)!, records)]);
       if ('error' in result) throw new Error(result.error);
       refreshQueueFrom(result.records);
+      void noteMisread(dateMisread(record.recovery, ticketDay(typed)!));
       setGroupAnswers((current) => {
         const next = { ...current };
         delete next[group.key];
@@ -2340,6 +2348,25 @@ export default function LoadDesk() {
     return true;
   }
 
+  /**
+   * What a reviewed ticket teaches the deployment: a date, a number or a
+   * weight a person typed over, one character from what the reader read.
+   * Only the pair of characters leaves here (see recovery/learned.ts).
+   */
+  const learnFromReviewed = (item: QueueItem) => {
+    const recovery = item.recovery;
+    if (!recovery) return;
+    if (recovery.fields.ticket_date?.confirmed_by_user && typeof item.ticket.ticket_date === 'string') {
+      void noteMisread(dateMisread(recovery, item.ticket.ticket_date));
+    }
+    for (const field of ['ticket_number', 'gross_lb', 'tare_lb', 'net_lb', 'net_tons'] as const) {
+      const value = item.ticket[field];
+      if (recovery.fields[field]?.confirmed_by_user && value !== null && value !== undefined) {
+        void noteMisread(figureMisread(recovery, field, value));
+      }
+    }
+  };
+
   async function saveActive(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!active || busy) return;
@@ -2439,6 +2466,7 @@ export default function LoadDesk() {
       return;
     }
     const { record } = result;
+    learnFromReviewed(placed);
     const originalStored = record.original_stored;
 
     const label = record.ticket.ticket_number ?? active.source.file_name;
@@ -2505,6 +2533,7 @@ export default function LoadDesk() {
     );
     const result = await updateSavedRecords(edits);
     if ('error' in result) return result.error;
+    for (const item of items) learnFromReviewed(item);
     const sent = new Map(items.map((item, index) => [item.id, [item, edits[index]] as const]));
     setQueue((current) =>
       current.map((item) => {

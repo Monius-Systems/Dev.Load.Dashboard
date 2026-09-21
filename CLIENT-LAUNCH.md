@@ -85,6 +85,16 @@ Keep **Authentication → Sign In / Providers → Allow new users to sign up**
 turned off. Switching it on would let anyone create an account, though they
 still could not open the workspace without a membership row.
 
+### Later migrations
+
+`supabase/migrations/202609210001_misreads.sql` adds one shared table,
+`load_desk_misreads`, holding what the reader gets wrong learned from what
+people type over it — a vendor name, a kind of field and two single
+characters, counted. It has no workspace on purpose: it carries nothing of
+any company's tickets, and every workspace on the deployment benefits from
+it. Apply it with `supabase db push` (or paste it into the SQL editor).
+Until it is applied the app learns nothing and says nothing about it.
+
 ## 2. Give A & D Trucking accounts
 
 `matthewmoniuszko@icloud.com` already has access, for testing. A & D's own

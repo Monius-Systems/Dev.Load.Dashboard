@@ -17,8 +17,26 @@ export const CONFUSABLE_GROUPS: readonly string[] = [
   '49',
 ];
 
+/**
+ * Pairs learned from what people typed over the reader's misreads, across
+ * the deployment (see learned.ts and the misreads table). A pair seen this
+ * many times is as good as one of the groups above. Set at start-up from
+ * what the server holds; empty until then, which is only the groups.
+ */
+const learned = new Set<string>();
+export const LEARNED_MIN_COUNT = 3;
+
+export function setLearnedConfusions(pairs: { read: string; actual: string; count: number }[]): void {
+  learned.clear();
+  for (const pair of pairs) {
+    if (pair.count >= LEARNED_MIN_COUNT) learned.add(`${pair.read}${pair.actual}`);
+  }
+}
+
 const confusable = (a: string, b: string) =>
-  CONFUSABLE_GROUPS.some((group) => group.includes(a) && group.includes(b));
+  CONFUSABLE_GROUPS.some((group) => group.includes(a) && group.includes(b)) ||
+  learned.has(`${a}${b}`) ||
+  learned.has(`${b}${a}`);
 
 /**
  * Whether two strings of digits are the same figure but for one faded digit.
