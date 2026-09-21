@@ -9,6 +9,7 @@ import {
   pendingInvoiceNumber,
   recordBatch,
 } from './records';
+import { getProfilesSnapshot } from './profiles.ts';
 import type { SavedRecord } from './types';
 
 // Saved tickets. Signed-in members read and write the workspace database
@@ -332,7 +333,7 @@ export async function updateSavedRecords(
 let reordering = false;
 export async function reorderInvoicesByDate(): Promise<SavedRecord[]> {
   if (reordering || !snapshot.ready) return [];
-  const wanted = numbersInDateOrder(snapshot.records);
+  const wanted = numbersInDateOrder(snapshot.records, getProfilesSnapshot().company?.invoice_start);
   if (!wanted.size) return [];
   reordering = true;
   try {

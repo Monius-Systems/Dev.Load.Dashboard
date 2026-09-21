@@ -11,6 +11,7 @@ import {
   needsReview,
   numbersByTicketDate,
   numbersInDateOrder,
+  seriesStartFor,
   shownInvoiceNumber,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
@@ -525,4 +526,28 @@ void test('deleting an invoice closes the gap: 3 becomes 2', () => {
   // Nothing numbered yet: the first invoice starts the books.
   const fresh = saved('2026-01-02', 'DRAFT-batch-x', { invoice_batch_id: 'batch-x' });
   assert.deepEqual([...numbersInDateOrder([fresh])], [['batch-x', '1']]);
+});
+
+void test('a number typed onto an invoice is where the series starts, and the run keeps it', () => {
+  const dec = saved('2025-12-31', '1', { invoice_batch_id: 'batch-2025-12-31' });
+  const jan = saved('2026-01-02', '2', { invoice_batch_id: 'batch-2026-01-02' });
+  const feb = saved('2026-02-01', '3', { invoice_batch_id: 'batch-2026-02-01' });
+  // 1001 typed onto the oldest invoice: the series starts at 1001.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2025-12-31', '1001'), '1001');
+  // 1003 typed onto the third-oldest: the series starts at 1001 as well.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', '1003'), '1001');
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'INV-0003'), 'INV-0001', 'prefix and padding as typed');
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', '2'), null, 'a start below 1 is not a series');
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'SPECIAL'), null);
+  // And with the start set, the date-order run keeps what was typed — it
+  // used to put 1001 back to 1, then 3 or 4, the moment the ledger was looked at.
+  const byBatchId = (a: [string, string], b: [string, string]) => a[0].localeCompare(b[0]);
+  assert.deepEqual([...numbersInDateOrder([dec, jan, feb], '1001')].sort(byBatchId), [
+    ['batch-2025-12-31', '1001'],
+    ['batch-2026-01-02', '1002'],
+    ['batch-2026-02-01', '1003'],
+  ]);
+  // No start: the lowest on file, as before.
+  assert.equal(numbersInDateOrder([dec, jan, feb], null).size, 0);
+  assert.equal(numbersInDateOrder([dec, jan, feb], '   ').size, 0);
 });

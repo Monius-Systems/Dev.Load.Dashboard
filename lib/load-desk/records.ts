@@ -266,12 +266,16 @@ export function numbersByTicketDate(
  * for the 31st of December. The ledger is asked to read in date order
  * instead, and where it does not the numbers are moved — a number is a
  * position in the books, and the books are in date order, with no gaps:
- * from the lowest number on file, one after another, so an invoice deleted
- * from the middle closes up behind it. Two batches on one day keep their
+ * from the number the series starts at (`start`, set under Account or by
+ * typing a number onto an invoice), else the lowest on file, one after
+ * another, so an invoice deleted from the middle closes up behind it. Two batches on one day keep their
  * order between them. Numbers with no digits to order by are left alone,
  * with their batches; the undated batch is not an invoice and takes none.
  */
-export function numbersInDateOrder(records: SavedRecord[]): Map<string, string> {
+export function numbersInDateOrder(
+  records: SavedRecord[],
+  start: string | null | undefined = null,
+): Map<string, string> {
   type Batch = { batchId: string; day: number; number: string | null; digits: number; arrived: number };
   const batches = new Map<string, Batch>();
   for (const record of [...records].sort((a, b) => a.id - b.id)) {
@@ -305,9 +309,12 @@ export function numbersInDateOrder(records: SavedRecord[]): Map<string, string> 
   // pool as it was: an invoice deleted from the middle used to leave its
   // number as a gap for good, and the books read 1, 3, 4. The run closes it,
   // and 3 becomes 2. A ledger with no number yet starts at the first.
+  // Where the run starts: the number the series was told to start at, or
+  // failing that the lowest on file, or failing that the first.
+  const first = start?.trim() && NUMBERED.test(start.trim()) ? start.trim() : (pool[0] ?? FIRST_INVOICE_NUMBER);
   const numbers: string[] = [];
   while (numbers.length < list.length) {
-    numbers.push(numbers.length ? openingInvoiceNumber(numbers) : (pool[0] ?? FIRST_INVOICE_NUMBER));
+    numbers.push(numbers.length ? openingInvoiceNumber(numbers) : first);
   }
   const inOrder = [...list].sort((a, b) => a.day - b.day || a.digits - b.digits || a.arrived - b.arrived);
   const changes = new Map<string, string>();
@@ -316,6 +323,42 @@ export function numbersInDateOrder(records: SavedRecord[]): Map<string, string> 
     if (wanted !== batch.number) changes.set(batch.batchId, wanted);
   });
   return changes;
+}
+
+/**
+ * The number the series has to start at for `batchId` to carry `typed`
+ * once the ledger is in date order, or null when the typed number is not
+ * one to count from.
+ *
+ * A person typing 1001 onto the third-oldest invoice means the series runs
+ * 999, 1000, 1001: the start is the typed number less the invoice's place
+ * in date order, with the prefix and padding as typed. Typed onto the
+ * oldest invoice, the start is the number itself — which is the common
+ * case, the first invoice being given its number. A start that would fall
+ * below 1 is not a series, and nothing is set.
+ */
+export function seriesStartFor(
+  records: SavedRecord[],
+  batchId: string,
+  typed: string,
+): string | null {
+  const number = typed.trim();
+  const match = NUMBERED.exec(number);
+  if (!match) return null;
+  const order = [...new Map(
+    [...records]
+      .sort((a, b) => a.id - b.id)
+      .filter((record) => !isUndatedBatch(recordBatch(record)) && ticketDateValue(record.ticket.ticket_date) !== null)
+      .map((record) => [recordBatch(record), ticketDateValue(record.ticket.ticket_date)!] as const),
+  )]
+    .map(([id, day], arrived) => ({ id, day, arrived }))
+    .sort((a, b) => a.day - b.day || a.arrived - b.arrived)
+    .map((batch) => batch.id);
+  const place = order.indexOf(batchId);
+  if (place < 0) return null;
+  const digits = Number(match[2]) - place;
+  if (digits < 1) return null;
+  return `${match[1]}${String(digits).padStart(match[2].length, '0')}`;
 }
 
 /** Every saved ticket on an invoice, in print order. */

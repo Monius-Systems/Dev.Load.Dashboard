@@ -585,6 +585,13 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
         Number.isInteger(value.default_truck_id) &&
         value.default_truck_id > 0)
     ) ||
+    // A series start is a number with digits at the end to count from.
+    !(
+      value.invoice_start === undefined ||
+      value.invoice_start === null ||
+      (text(value.invoice_start, 60) &&
+        ((value.invoice_start as string).trim() === '' || /^(.*?)(\d+)$/.test((value.invoice_start as string).trim())))
+    ) ||
     // Kept as it is found, never set from here: the logo is written by the
     // route that stores the picture. Checked all the same, because anything
     // this function passes through is stored.
@@ -610,6 +617,9 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
         : {}),
       ...(typeof value.default_truck_id === 'number'
         ? { default_truck_id: value.default_truck_id }
+        : {}),
+      ...(typeof value.invoice_start === 'string' && value.invoice_start.trim()
+        ? { invoice_start: value.invoice_start.trim() }
         : {}),
       // Without this, saving the company name would drop the logo: everything
       // this function does not name is thrown away.

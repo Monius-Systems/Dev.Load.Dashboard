@@ -100,6 +100,14 @@ export type CompanyProfile = {
    */
   default_truck_id?: number | null;
   /**
+   * The number the invoice series starts at — "1001", "INV-0100" — its
+   * prefix and padding kept for every number after it. The ledger's
+   * date-order pass numbers the oldest invoice with this and counts on.
+   * Nothing means the series starts at the lowest number on file, or at 1.
+   * Set under Account, or by typing a number onto an invoice in review.
+   */
+  invoice_start?: string | null;
+  /**
    * The company logo shown in place of its initials, as the version name the
    * picture is stored under (see lib/server/logo-store.ts). Absent or null
    * means no logo has been uploaded and the initials stand.
@@ -202,6 +210,9 @@ function isCompany(value: unknown): value is CompanyProfile {
     (company.default_truck_id === undefined ||
       company.default_truck_id === null ||
       typeof company.default_truck_id === 'number') &&
+    (company.invoice_start === undefined ||
+      company.invoice_start === null ||
+      typeof company.invoice_start === 'string') &&
     (company.logo_version === undefined ||
       company.logo_version === null ||
       typeof company.logo_version === 'string') &&
@@ -461,6 +472,7 @@ export async function saveCompanyDetails(
     ...(current?.default_truck_id != null
       ? { default_truck_id: current.default_truck_id }
       : {}),
+    ...(current?.invoice_start ? { invoice_start: current.invoice_start } : {}),
     ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: clean(name),
     address_lines: [clean(addressLines[0]), clean(addressLines[1])],
@@ -481,6 +493,7 @@ export async function saveDefaultClient(clientId: number | null): Promise<string
     ...(current?.default_truck_id != null
       ? { default_truck_id: current.default_truck_id }
       : {}),
+    ...(current?.invoice_start ? { invoice_start: current.invoice_start } : {}),
     ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: sellerName(current).trim(),
     address_lines: [street, city],
@@ -508,6 +521,31 @@ export async function saveDefaultTruck(truckId: number | null): Promise<string |
       ? { default_client_id: current.default_client_id }
       : {}),
     ...(truckId === null ? {} : { default_truck_id: truckId }),
+    ...(current?.invoice_start ? { invoice_start: current.invoice_start } : {}),
+    ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
+    name: sellerName(current).trim(),
+    address_lines: [street, city],
+    updated_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * Sets the number the invoice series starts at, or clears it with an empty
+ * string. Everything else on the company is kept as it is.
+ */
+export async function saveInvoiceStart(start: string): Promise<string | null> {
+  const current = snapshot.company;
+  const [street = '', city = ''] = sellerAddressLines(current);
+  const clean = start.trim();
+  return writeCompany({
+    ...(current?.display_name ? { display_name: current.display_name } : {}),
+    ...(current?.default_client_id != null
+      ? { default_client_id: current.default_client_id }
+      : {}),
+    ...(current?.default_truck_id != null
+      ? { default_truck_id: current.default_truck_id }
+      : {}),
+    ...(clean ? { invoice_start: clean } : {}),
     ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: sellerName(current).trim(),
     address_lines: [street, city],
@@ -537,6 +575,7 @@ export async function saveCompanyDisplayName(displayName: string): Promise<strin
     ...(current?.default_truck_id != null
       ? { default_truck_id: current.default_truck_id }
       : {}),
+    ...(current?.invoice_start ? { invoice_start: current.invoice_start } : {}),
     ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: sellerName(current).trim(),
     address_lines: [street, city],

@@ -65,6 +65,7 @@ import {
   saveCompanyLogo,
   saveDefaultClient,
   saveDefaultTruck,
+  saveInvoiceStart,
   subscribeProfiles,
   type ClientProfile,
   type TruckProfile,
@@ -804,6 +805,28 @@ function InvoiceAddressForm({
   // The truck scans are put down to unless another is chosen; same again.
   const chosenTruck = company?.default_truck_id ?? null;
   const activeTrucks = trucks.filter((truck) => truck.active);
+  // Where the invoice series starts; saved when the box is left.
+  const [invoiceStart, setInvoiceStart] = useState(company?.invoice_start ?? '');
+  async function commitInvoiceStart() {
+    const clean = invoiceStart.trim();
+    if (savingDefault || clean === (company?.invoice_start ?? '')) return;
+    if (clean && !/\d$/.test(clean)) {
+      setDefaultError('An invoice number ends in digits to count from, e.g. 1001 or INV-0100.');
+      return;
+    }
+    setSavingDefault(true);
+    setDefaultError(null);
+    const message = await saveInvoiceStart(clean);
+    setSavingDefault(false);
+    if (message) return setDefaultError(message);
+    toast.add({
+      title: clean ? t('Invoice numbers start at {number}', { number: clean }) : t('Invoice numbering start cleared'),
+      description: clean
+        ? t('The oldest invoice takes {number} and the rest count on from it.', { number: clean })
+        : t('The series starts at the lowest number on file.'),
+      type: 'success',
+    });
+  }
   const savedName = sellerName(company);
   const [savedStreet = '', savedCity = ''] = sellerAddressLines(company);
   const [name, setName] = useState(savedName);
@@ -937,6 +960,27 @@ function InvoiceAddressForm({
         />
         <small id={`${fieldId}-default-client-hint`} className="ld-field-hint">
           {t('New invoices start billed to this client. You can change it on any invoice.')}
+        </small>
+      </div>
+      <div className="ld-field ac-default-client">
+        <label htmlFor={`${fieldId}-invoice-start`}>{t('Invoice numbers start at')}</label>
+        <Input
+          id={`${fieldId}-invoice-start`}
+          aria-describedby={`${fieldId}-invoice-start-hint`}
+          value={invoiceStart}
+          disabled={!canEdit || savingDefault}
+          placeholder={t('e.g. 1001')}
+          onChange={(event) => setInvoiceStart(event.target.value)}
+          onBlur={() => void commitInvoiceStart()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              void commitInvoiceStart();
+            }
+          }}
+        />
+        <small id={`${fieldId}-invoice-start-hint`} className="ld-field-hint">
+          {t('The oldest invoice takes this number and the rest count on from it, in date order. Typing a number onto an invoice in review sets it too.')}
         </small>
       </div>
       <div className="ld-field ac-default-client">

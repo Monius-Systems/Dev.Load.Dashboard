@@ -77,3 +77,12 @@ void test('the default truck is kept on the company and ignored once the truck i
   assert.ok('value' in parsed && parsed.value.default_truck_id === 3);
   assert.ok('error' in parseCompany({ name: 'A & D', address_lines: ['1 Main St', 'Chicago, IL'], updated_at: '2026-09-21T00:00:00.000Z', default_truck_id: 'three' }));
 });
+
+void test('the invoice series start is kept on the company and has to end in digits', () => {
+  const base = { name: 'A & D', address_lines: ['1 Main St', 'Chicago, IL'], updated_at: '2026-09-21T00:00:00.000Z' };
+  const ok = parseCompany({ ...base, invoice_start: ' INV-0100 ' });
+  assert.ok('value' in ok && ok.value.invoice_start === 'INV-0100');
+  assert.ok('error' in parseCompany({ ...base, invoice_start: 'SPECIAL' }), 'nothing to count from');
+  const none = parseCompany({ ...base, invoice_start: '' });
+  assert.ok('value' in none && none.value.invoice_start === undefined, 'blank clears it');
+});

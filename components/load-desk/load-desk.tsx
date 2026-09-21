@@ -84,6 +84,7 @@ import {
   subscribeProfiles,
   normalizeAddress,
   normalizeName,
+  saveInvoiceStart,
   saveProfile,
   truckLabel,
   type ClientProfile,
@@ -137,6 +138,7 @@ import {
   numbersInDateOrder,
   recordBatch,
   sameTicketOnFile,
+  seriesStartFor,
   isPendingInvoiceNumber,
   isUndatedBatch,
   isUnreadableDate,
@@ -1241,9 +1243,9 @@ export default function LoadDesk() {
   useEffect(() => {
     if (!store.ready || extraction !== null || busy || settling) return;
     refreshQueueFrom(records);
-    if (!numbersInDateOrder(records).size) return;
+    if (!numbersInDateOrder(records, profileStore.company?.invoice_start).size) return;
     void reorderInvoicesByDate().then(refreshQueueFrom);
-  }, [records, store.ready, extraction, busy, settling]);
+  }, [records, store.ready, extraction, busy, settling, profileStore.company?.invoice_start]);
 
 
   const setActiveIndex = (value: Field<'activeIndex'>) => setDeskField('activeIndex', value);
@@ -2606,6 +2608,28 @@ export default function LoadDesk() {
       return;
     }
     setBusy(true);
+    // A number typed onto an invoice is where the series starts, worked back
+    // from this invoice's place in date order: typed onto the first invoice
+    // it is the number itself. Set before the save, so the date-order pass
+    // that follows keeps the number rather than putting it back.
+    const stored = records.find((record) => record.id === active.saved_record_id);
+    const typedNumber = placed.invoice.invoice_number.trim();
+    if (
+      stored &&
+      typedNumber &&
+      typedNumber !== stored.invoice.invoice_number.trim() &&
+      !isPendingInvoiceNumber(typedNumber)
+    ) {
+      const start = seriesStartFor(records, placed.batch_id, typedNumber);
+      if (start && start !== (profileStore.company?.invoice_start ?? null)) {
+        const problem = await saveInvoiceStart(start);
+        if (problem) {
+          setBusy(false);
+          setSaveStatus({ message: problem, tone: 'error' });
+          return;
+        }
+      }
+    }
     const error = await persistChanges(
       toSave,
       move.kind === 'stay' ? null : { id: active.id, batchId: placed.batch_id },
