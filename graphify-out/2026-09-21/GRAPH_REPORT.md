@@ -1,7 +1,7 @@
 # Graph Report - dashboard-shell  (2026-09-21)
 
 ## Corpus Check
-- 264 files · ~291,612 words
+- 264 files · ~292,391 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 33 file(s) not represented in the graph (top: (none) 11, .css 8, .wasm 6)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `5f906f37`
+- Built from commit: `79c99d27`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -328,7 +328,7 @@ Nodes (53): FittedInvoice(), InvoiceDialog(), InvoiceView, TicketViewer(), Clien
 
 ### Community 17 - "resolve.ts"
 Cohesion: 0.05
-Nodes (81): EvidenceSource, FieldResolution, FieldStatus, ReviewReason, confusable(), CONFUSABLE_DIGITS, oneDigitConfused(), oneMisreadApart() (+73 more)
+Nodes (81): EvidenceSource, FieldResolution, FieldStatus, ReviewReason, confusable(), CONFUSABLE_GROUPS, oneDigitConfused(), oneMisreadApart() (+73 more)
 
 ### Community 18 - "worker.min.js"
 Cohesion: 0.08

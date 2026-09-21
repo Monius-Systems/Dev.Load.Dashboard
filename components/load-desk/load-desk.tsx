@@ -76,6 +76,7 @@ import {
   customerLocationRates,
   rateFor,
   defaultClient,
+  defaultTruck,
   getProfilesSnapshot,
   getServerProfilesSnapshot,
   matchCustomer,
@@ -298,6 +299,8 @@ const clientBillTo = (client: ClientProfile): BillTo => ({
 
 /** Bill to client choices besides the client profiles themselves. */
 const NO_CLIENT = '';
+/** "No truck profile" chosen on purpose, as distinct from nothing chosen yet. */
+const NO_TRUCK = '__no-truck';
 const NEW_CLIENT = '__new-client';
 const NEW_CUSTOMER = '__new-customer';
 
@@ -3016,8 +3019,15 @@ export default function LoadDesk() {
   );
 
   const activeTrucks = trucks.filter((truck) => truck.active);
+  // The truck chosen for this session, or the workspace's default truck when
+  // none has been: an owner-driver's scans are all their own truck's, and
+  // picking it on every visit was the one thing left to do before scanning.
+  // Choosing "No truck profile" is a choice, and is kept for the session.
   const uploadTruck =
-    activeTrucks.find((truck) => String(truck.id) === truckChoice) ?? null;
+    truckChoice === NO_TRUCK
+      ? null
+      : (activeTrucks.find((truck) => String(truck.id) === truckChoice) ??
+        defaultTruck(activeTrucks, profileStore.company));
   const profileContext: ProfileContext = {
     customers,
     truck: uploadTruck,
@@ -3893,7 +3903,7 @@ export default function LoadDesk() {
                 aria-describedby={`${fieldId}-upload-truck-hint`}
                 value={uploadTruck ? String(uploadTruck.id) : ''}
                 disabled={busy}
-                onValueChange={setTruckChoice}
+                onValueChange={(value) => setTruckChoice(value === '' ? NO_TRUCK : value)}
                 options={[
                   { value: '', label: t('No truck profile') },
                   ...activeTrucks.map((truck) => ({

@@ -578,6 +578,13 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
         Number.isInteger(value.default_client_id) &&
         value.default_client_id > 0)
     ) ||
+    !(
+      value.default_truck_id === undefined ||
+      value.default_truck_id === null ||
+      (typeof value.default_truck_id === 'number' &&
+        Number.isInteger(value.default_truck_id) &&
+        value.default_truck_id > 0)
+    ) ||
     // Kept as it is found, never set from here: the logo is written by the
     // route that stores the picture. Checked all the same, because anything
     // this function passes through is stored.
@@ -600,6 +607,9 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
       ...(displayName ? { display_name: displayName } : {}),
       ...(typeof value.default_client_id === 'number'
         ? { default_client_id: value.default_client_id }
+        : {}),
+      ...(typeof value.default_truck_id === 'number'
+        ? { default_truck_id: value.default_truck_id }
         : {}),
       // Without this, saving the company name would drop the logo: everything
       // this function does not name is thrown away.

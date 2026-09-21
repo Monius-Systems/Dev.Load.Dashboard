@@ -64,8 +64,10 @@ import {
   saveCompanyDisplayName,
   saveCompanyLogo,
   saveDefaultClient,
+  saveDefaultTruck,
   subscribeProfiles,
   type ClientProfile,
+  type TruckProfile,
   type CompanyProfile,
 } from '@/lib/load-desk/profiles';
 import { shellConfig } from '@/lib/shell-config';
@@ -773,6 +775,7 @@ function InvoiceAddressPanel({ canEdit }: { canEdit: boolean }) {
       key={profiles.company?.updated_at ?? 'default'}
       company={profiles.company}
       clients={profiles.clients}
+      trucks={profiles.trucks}
       canEdit={canEdit}
       storeError={profiles.error}
     />
@@ -782,11 +785,13 @@ function InvoiceAddressPanel({ canEdit }: { canEdit: boolean }) {
 function InvoiceAddressForm({
   company,
   clients,
+  trucks,
   canEdit,
   storeError,
 }: {
   company: CompanyProfile | null;
   clients: ClientProfile[];
+  trucks: TruckProfile[];
   canEdit: boolean;
   storeError: string | null;
 }) {
@@ -796,6 +801,9 @@ function InvoiceAddressForm({
   const chosenDefault = company?.default_client_id ?? null;
   const [savingDefault, setSavingDefault] = useState(false);
   const [defaultError, setDefaultError] = useState<string | null>(null);
+  // The truck scans are put down to unless another is chosen; same again.
+  const chosenTruck = company?.default_truck_id ?? null;
+  const activeTrucks = trucks.filter((truck) => truck.active);
   const savedName = sellerName(company);
   const [savedStreet = '', savedCity = ''] = sellerAddressLines(company);
   const [name, setName] = useState(savedName);
@@ -931,6 +939,28 @@ function InvoiceAddressForm({
           {t('New invoices start billed to this client. You can change it on any invoice.')}
         </small>
       </div>
+      <div className="ld-field ac-default-client">
+        <label htmlFor={`${fieldId}-default-truck`}>{t('Default truck')}</label>
+        <SelectField
+          id={`${fieldId}-default-truck`}
+          aria-describedby={`${fieldId}-default-truck-hint`}
+          value={chosenTruck === null ? '' : String(chosenTruck)}
+          disabled={!canEdit || savingDefault}
+          onValueChange={(value) => void chooseTruck(value)}
+          options={[
+            { value: '', label: t('No default truck') },
+            ...activeTrucks.map((truck) => ({
+              value: String(truck.id),
+              label: `${truck.truck_number}${truck.nickname ? ` · ${truck.nickname}` : ''}${truck.driver ? ` · ${truck.driver}` : ''}`,
+            })),
+          ]}
+        />
+        <small id={`${fieldId}-default-truck-hint`} className="ld-field-hint">
+          {activeTrucks.length
+            ? t('Scanned tickets are put down to this truck unless another is chosen on Load Desk.')
+            : t('Add a truck in Truck Fleet to choose one here.')}
+        </small>
+      </div>
       {defaultError ? (
         <p className="ld-status" data-tone="error" role="alert">
           {t(defaultError)}
@@ -938,6 +968,24 @@ function InvoiceAddressForm({
       ) : null}
     </section>
   );
+
+  async function chooseTruck(value: string) {
+    const id = value ? Number(value) : null;
+    if (savingDefault || id === chosenTruck) return;
+    setSavingDefault(true);
+    setDefaultError(null);
+    const message = await saveDefaultTruck(id);
+    setSavingDefault(false);
+    if (message) return setDefaultError(message);
+    const truck = trucks.find((item) => item.id === id);
+    toast.add({
+      title: t('Default truck saved'),
+      description: truck
+        ? t('Scanned tickets are put down to truck {number} unless another is chosen.', { number: truck.truck_number })
+        : t('Scans start with no truck.'),
+      type: 'success',
+    });
+  }
 
   async function chooseDefault(value: string) {
     const id = value ? Number(value) : null;

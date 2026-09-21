@@ -3134,7 +3134,7 @@
       "file_type": "code",
       "norm_label": "evidencesource",
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L118"
+      "source_location": "L126"
     },
     {
       "id": "lib_load_desk_recovery_contract_fieldresolution",
@@ -3147,7 +3147,7 @@
       "file_type": "code",
       "norm_label": "fieldresolution",
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L165"
+      "source_location": "L173"
     },
     {
       "id": "lib_load_desk_recovery_contract_fieldstatus",
@@ -3160,7 +3160,7 @@
       "file_type": "code",
       "norm_label": "fieldstatus",
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L98"
+      "source_location": "L106"
     },
     {
       "id": "lib_load_desk_recovery_contract_reviewreason",
@@ -3173,7 +3173,7 @@
       "file_type": "code",
       "norm_label": "reviewreason",
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L101"
+      "source_location": "L109"
     },
     {
       "id": "lib_load_desk_recovery_policy_fieldclass",
@@ -6397,7 +6397,7 @@
       "file_type": "code",
       "norm_label": "ticketrecovery",
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L191"
+      "source_location": "L199"
     },
     {
       "id": "lib_load_desk_recovery_known_carriers_knowncarrier",
@@ -7242,7 +7242,7 @@
       "file_type": "code",
       "norm_label": "evidence",
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L144"
+      "source_location": "L152"
     },
     {
       "id": "lib_load_desk_recovery_contract_observedfield",
@@ -7268,7 +7268,7 @@
       "file_type": "code",
       "norm_label": "observedticket",
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L71"
+      "source_location": "L79"
     },
     {
       "id": "lib_load_desk_recovery_vendors_generic_printedweight",
@@ -28974,7 +28974,7 @@
       "file_type": "code",
       "norm_label": "confusable()",
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L19"
+      "source_location": "L20"
     },
     {
       "id": "lib_load_desk_recovery_misread_onedigitconfused",
@@ -28986,7 +28986,7 @@
       "file_type": "code",
       "norm_label": "onedigitconfused()",
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L27"
+      "source_location": "L28"
     },
     {
       "id": "lib_load_desk_recovery_misread_onemisreadapart",
@@ -28998,7 +28998,7 @@
       "file_type": "code",
       "norm_label": "onemisreadapart()",
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L44"
+      "source_location": "L48"
     },
     {
       "id": "lib_load_desk_recovery_policy_combinedweight",
@@ -29058,7 +29058,7 @@
       "file_type": "code",
       "norm_label": "applyrecovery()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1004"
+      "source_location": "L1029"
     },
     {
       "id": "lib_load_desk_recovery_resolve_bestspelling",
@@ -29082,7 +29082,7 @@
       "file_type": "code",
       "norm_label": "boundedcandidates()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1058"
+      "source_location": "L1083"
     },
     {
       "id": "lib_load_desk_recovery_resolve_boundednotes",
@@ -29094,7 +29094,7 @@
       "file_type": "code",
       "norm_label": "boundednotes()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1065"
+      "source_location": "L1090"
     },
     {
       "id": "lib_load_desk_recovery_resolve_byauthority",
@@ -29262,7 +29262,7 @@
       "file_type": "code",
       "norm_label": "mergeframes()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L887"
+      "source_location": "L910"
     },
     {
       "id": "lib_load_desk_recovery_resolve_misreaddigitapart",
@@ -29310,7 +29310,7 @@
       "file_type": "code",
       "norm_label": "resolvedate()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L538"
+      "source_location": "L561"
     },
     {
       "id": "lib_load_desk_recovery_resolve_resolvederived",
@@ -29322,7 +29322,7 @@
       "file_type": "code",
       "norm_label": "resolvederived()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L639"
+      "source_location": "L662"
     },
     {
       "id": "lib_load_desk_recovery_resolve_resolvefield",
@@ -29346,7 +29346,7 @@
       "file_type": "code",
       "norm_label": "resolvetext()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L722"
+      "source_location": "L745"
     },
     {
       "id": "lib_load_desk_recovery_resolve_resolveticket",
@@ -29358,7 +29358,7 @@
       "file_type": "code",
       "norm_label": "resolveticket()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L940"
+      "source_location": "L963"
     },
     {
       "id": "lib_load_desk_recovery_resolve_samevalue",
@@ -29394,7 +29394,7 @@
       "file_type": "code",
       "norm_label": "weightsjudged()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L974"
+      "source_location": "L997"
     },
     {
       "id": "lib_load_desk_recovery_weights_balanced",
@@ -55014,7 +55014,7 @@
       "file_type": "code",
       "norm_label": "blockssave()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1135"
+      "source_location": "L1160"
     },
     {
       "id": "lib_load_desk_recovery_resolve_confirmfield",
@@ -55026,7 +55026,7 @@
       "file_type": "code",
       "norm_label": "confirmfield()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1081"
+      "source_location": "L1106"
     },
     {
       "id": "lib_load_desk_recovery_resolve_emptyrecovery",
@@ -55038,7 +55038,7 @@
       "file_type": "code",
       "norm_label": "emptyrecovery()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L922"
+      "source_location": "L945"
     },
     {
       "id": "lib_load_desk_recovery_resolve_fieldlabel",
@@ -55050,7 +55050,7 @@
       "file_type": "code",
       "norm_label": "fieldlabel()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1155"
+      "source_location": "L1180"
     },
     {
       "id": "lib_load_desk_recovery_resolve_reviewissues",
@@ -55062,7 +55062,7 @@
       "file_type": "code",
       "norm_label": "reviewissues()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1176"
+      "source_location": "L1201"
     },
     {
       "id": "lib_load_desk_recovery_resolve_unresolvedcritical",
@@ -55074,7 +55074,7 @@
       "file_type": "code",
       "norm_label": "unresolvedcritical()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1124"
+      "source_location": "L1149"
     },
     {
       "id": "tests_known_carriers_test_observedof",
@@ -75846,7 +75846,7 @@
       "file_type": "code",
       "norm_label": "clean()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L298"
+      "source_location": "L306"
     },
     {
       "id": "lib_load_desk_ticket_extraction_edgeof",
@@ -75858,7 +75858,7 @@
       "file_type": "code",
       "norm_label": "edgeof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L315"
+      "source_location": "L323"
     },
     {
       "id": "lib_load_desk_ticket_extraction_edgestateof",
@@ -75870,7 +75870,7 @@
       "file_type": "code",
       "norm_label": "edgestateof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L363"
+      "source_location": "L372"
     },
     {
       "id": "lib_load_desk_ticket_extraction_extracteddate",
@@ -75882,7 +75882,7 @@
       "file_type": "code",
       "norm_label": "extracteddate()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L516"
+      "source_location": "L525"
     },
     {
       "id": "lib_load_desk_ticket_extraction_finite",
@@ -75894,7 +75894,7 @@
       "file_type": "code",
       "norm_label": "finite()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L307"
+      "source_location": "L315"
     },
     {
       "id": "lib_load_desk_ticket_extraction_isobservedticket",
@@ -75906,7 +75906,7 @@
       "file_type": "code",
       "norm_label": "isobservedticket()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L470"
+      "source_location": "L479"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observationof",
@@ -75930,7 +75930,7 @@
       "file_type": "code",
       "norm_label": "observedfromwire()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L490"
+      "source_location": "L499"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observedtoextracted",
@@ -75942,7 +75942,7 @@
       "file_type": "code",
       "norm_label": "observedtoextracted()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L435"
+      "source_location": "L444"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observefield",
@@ -75954,7 +75954,7 @@
       "file_type": "code",
       "norm_label": "observefield()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L337"
+      "source_location": "L345"
     },
     {
       "id": "lib_load_desk_ticket_extraction_paperedge",
@@ -75966,7 +75966,7 @@
       "file_type": "code",
       "norm_label": "paperedge()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L202"
+      "source_location": "L208"
     },
     {
       "id": "lib_load_desk_ticket_extraction_printof",
@@ -75978,7 +75978,7 @@
       "file_type": "code",
       "norm_label": "printof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L325"
+      "source_location": "L333"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readextracted",
@@ -75990,7 +75990,7 @@
       "file_type": "code",
       "norm_label": "readextracted()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L499"
+      "source_location": "L508"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readobserved",
@@ -76002,7 +76002,7 @@
       "file_type": "code",
       "norm_label": "readobserved()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L400"
+      "source_location": "L409"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readpaperedges",
@@ -76014,7 +76014,7 @@
       "file_type": "code",
       "norm_label": "readpaperedges()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L371"
+      "source_location": "L380"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readtimestamps",
@@ -76026,7 +76026,7 @@
       "file_type": "code",
       "norm_label": "readtimestamps()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L385"
+      "source_location": "L394"
     },
     {
       "id": "lib_load_desk_ticket_extraction_ticketfromextraction",
@@ -76038,7 +76038,7 @@
       "file_type": "code",
       "norm_label": "ticketfromextraction()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L534"
+      "source_location": "L543"
     },
     {
       "id": "lib_load_desk_ticket_extraction_tonsof",
@@ -76050,7 +76050,7 @@
       "file_type": "code",
       "norm_label": "tonsof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L503"
+      "source_location": "L512"
     },
     {
       "id": "lib_load_desk_ticket_extraction_trimmed",
@@ -76062,7 +76062,7 @@
       "file_type": "code",
       "norm_label": "trimmed()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L305"
+      "source_location": "L313"
     },
     {
       "id": "lib_load_desk_ticket_extraction_weightdisagreement",
@@ -76074,7 +76074,7 @@
       "file_type": "code",
       "norm_label": "weightdisagreement()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L562"
+      "source_location": "L571"
     },
     {
       "id": "lib_load_desk_ticket_extraction_whole",
@@ -76086,7 +76086,7 @@
       "file_type": "code",
       "norm_label": "whole()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L422"
+      "source_location": "L431"
     },
     {
       "id": "tests_extract_progress_test_track",
@@ -76146,7 +76146,7 @@
       "file_type": "code",
       "norm_label": "seen()",
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L231"
+      "source_location": "L232"
     },
     {
       "id": "tests_ticket_extraction_test_types",
@@ -82790,15 +82790,15 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_load_desk_recovery_misread_confusable_digits",
-      "label": "CONFUSABLE_DIGITS",
+      "id": "lib_load_desk_recovery_misread_confusable_groups",
+      "label": "CONFUSABLE_GROUPS",
       "_origin": "ast",
       "community": 17,
       "community_name": "resolve.ts",
       "file_type": "code",
-      "norm_label": "confusable_digits",
+      "norm_label": "confusable_groups",
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L10"
+      "source_location": "L11"
     },
     {
       "id": "lib_load_desk_recovery_policy",
@@ -83007,7 +83007,7 @@
       "file_type": "code",
       "norm_label": "field_labels",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1138"
+      "source_location": "L1163"
     },
     {
       "id": "lib_load_desk_recovery_resolve_reason_text",
@@ -83018,7 +83018,7 @@
       "file_type": "code",
       "norm_label": "reason_text",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1158"
+      "source_location": "L1183"
     },
     {
       "id": "lib_load_desk_recovery_weights",
@@ -88223,7 +88223,7 @@
       "file_type": "code",
       "norm_label": "extraction_instructions",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L253"
+      "source_location": "L259"
     },
     {
       "id": "lib_load_desk_ticket_extraction_extraction_schema",
@@ -88234,7 +88234,7 @@
       "file_type": "code",
       "norm_label": "extraction_schema",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L214"
+      "source_location": "L220"
     },
     {
       "id": "lib_load_desk_ticket_extraction_field_notes",
@@ -103819,7 +103819,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L33",
+      "source_location": "L37",
       "weight": 1.0
     },
     {
@@ -103831,7 +103831,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L49",
+      "source_location": "L53",
       "weight": 1.0
     },
     {
@@ -104203,7 +104203,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1009",
+      "source_location": "L1034",
       "weight": 1.0
     },
     {
@@ -104227,7 +104227,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1136",
+      "source_location": "L1161",
       "weight": 1.0
     },
     {
@@ -104419,7 +104419,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L555",
+      "source_location": "L578",
       "weight": 1.0
     },
     {
@@ -104431,7 +104431,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L556",
+      "source_location": "L579",
       "weight": 1.0
     },
     {
@@ -104443,7 +104443,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L587",
+      "source_location": "L610",
       "weight": 1.0
     },
     {
@@ -104455,7 +104455,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L618",
+      "source_location": "L641",
       "weight": 1.0
     },
     {
@@ -104467,7 +104467,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L620",
+      "source_location": "L643",
       "weight": 1.0
     },
     {
@@ -104479,7 +104479,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L620",
+      "source_location": "L643",
       "weight": 1.0
     },
     {
@@ -104491,7 +104491,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L649",
+      "source_location": "L672",
       "weight": 1.0
     },
     {
@@ -104503,7 +104503,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L652",
+      "source_location": "L675",
       "weight": 1.0
     },
     {
@@ -104515,7 +104515,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L654",
+      "source_location": "L677",
       "weight": 1.0
     },
     {
@@ -104527,7 +104527,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L654",
+      "source_location": "L677",
       "weight": 1.0
     },
     {
@@ -104539,7 +104539,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L655",
+      "source_location": "L678",
       "weight": 1.0
     },
     {
@@ -104551,7 +104551,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L673",
+      "source_location": "L696",
       "weight": 1.0
     },
     {
@@ -104563,7 +104563,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L677",
+      "source_location": "L700",
       "weight": 1.0
     },
     {
@@ -104575,7 +104575,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L678",
+      "source_location": "L701",
       "weight": 1.0
     },
     {
@@ -104587,7 +104587,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L680",
+      "source_location": "L703",
       "weight": 1.0
     },
     {
@@ -104599,7 +104599,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L688",
+      "source_location": "L711",
       "weight": 1.0
     },
     {
@@ -104611,7 +104611,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L688",
+      "source_location": "L711",
       "weight": 1.0
     },
     {
@@ -104827,7 +104827,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L515",
+      "source_location": "L538",
       "weight": 1.0
     },
     {
@@ -104839,7 +104839,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L519",
+      "source_location": "L542",
       "weight": 1.0
     },
     {
@@ -104851,7 +104851,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L523",
+      "source_location": "L546",
       "weight": 1.0
     },
     {
@@ -104863,7 +104863,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L732",
+      "source_location": "L755",
       "weight": 1.0
     },
     {
@@ -104875,7 +104875,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L760",
+      "source_location": "L783",
       "weight": 1.0
     },
     {
@@ -104887,7 +104887,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L769",
+      "source_location": "L792",
       "weight": 1.0
     },
     {
@@ -104899,7 +104899,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L816",
+      "source_location": "L839",
       "weight": 1.0
     },
     {
@@ -104911,7 +104911,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L825",
+      "source_location": "L848",
       "weight": 1.0
     },
     {
@@ -104923,7 +104923,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L838",
+      "source_location": "L861",
       "weight": 1.0
     },
     {
@@ -104935,7 +104935,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L852",
+      "source_location": "L875",
       "weight": 1.0
     },
     {
@@ -104947,7 +104947,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L859",
+      "source_location": "L882",
       "weight": 1.0
     },
     {
@@ -104959,7 +104959,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L860",
+      "source_location": "L883",
       "weight": 1.0
     },
     {
@@ -104971,7 +104971,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L946",
+      "source_location": "L969",
       "weight": 1.0
     },
     {
@@ -104983,7 +104983,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L951",
+      "source_location": "L974",
       "weight": 1.0
     },
     {
@@ -104995,7 +104995,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L955",
+      "source_location": "L978",
       "weight": 1.0
     },
     {
@@ -105007,7 +105007,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1194",
+      "source_location": "L1219",
       "weight": 1.0
     },
     {
@@ -105079,7 +105079,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L980",
+      "source_location": "L1004",
       "weight": 1.0
     },
     {
@@ -105091,7 +105091,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L982",
+      "source_location": "L1007",
       "weight": 1.0
     },
     {
@@ -105103,7 +105103,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L983",
+      "source_location": "L1008",
       "weight": 1.0
     },
     {
@@ -105895,7 +105895,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L517",
+      "source_location": "L526",
       "weight": 1.0
     },
     {
@@ -105907,7 +105907,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L311",
+      "source_location": "L319",
       "weight": 1.0
     },
     {
@@ -105919,7 +105919,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L491",
+      "source_location": "L500",
       "weight": 1.0
     },
     {
@@ -105931,7 +105931,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L491",
+      "source_location": "L500",
       "weight": 1.0
     },
     {
@@ -105943,7 +105943,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L436",
+      "source_location": "L445",
       "weight": 1.0
     },
     {
@@ -105955,7 +105955,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L448",
+      "source_location": "L457",
       "weight": 1.0
     },
     {
@@ -105967,7 +105967,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L343",
+      "source_location": "L351",
       "weight": 1.0
     },
     {
@@ -105979,7 +105979,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L344",
+      "source_location": "L352",
       "weight": 1.0
     },
     {
@@ -105991,7 +105991,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L328",
+      "source_location": "L336",
       "weight": 1.0
     },
     {
@@ -106003,7 +106003,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L500",
+      "source_location": "L509",
       "weight": 1.0
     },
     {
@@ -106015,7 +106015,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L500",
+      "source_location": "L509",
       "weight": 1.0
     },
     {
@@ -106027,7 +106027,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L406",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -106039,7 +106039,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L410",
+      "source_location": "L419",
       "weight": 1.0
     },
     {
@@ -106051,7 +106051,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L411",
+      "source_location": "L420",
       "weight": 1.0
     },
     {
@@ -106063,7 +106063,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L412",
+      "source_location": "L421",
       "weight": 1.0
     },
     {
@@ -106075,7 +106075,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L375",
+      "source_location": "L384",
       "weight": 1.0
     },
     {
@@ -106087,7 +106087,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L390",
+      "source_location": "L399",
       "weight": 1.0
     },
     {
@@ -106099,7 +106099,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L535",
+      "source_location": "L544",
       "weight": 1.0
     },
     {
@@ -106111,7 +106111,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L539",
+      "source_location": "L548",
       "weight": 1.0
     },
     {
@@ -106123,7 +106123,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L548",
+      "source_location": "L557",
       "weight": 1.0
     },
     {
@@ -106135,7 +106135,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L305",
+      "source_location": "L313",
       "weight": 1.0
     },
     {
@@ -190591,7 +190591,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L238",
+      "source_location": "L239",
       "weight": 1.0
     },
     {
@@ -237566,13 +237566,24 @@
     },
     {
       "source": "lib_load_desk_recovery_contract",
+      "target": "lib_load_desk_recovery_contract_fieldstatus",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/contract.ts",
+      "source_location": "L106",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_contract",
       "target": "lib_load_desk_recovery_contract_reviewreason",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L101",
+      "source_location": "L109",
       "weight": 1.0
     },
     {
@@ -237583,7 +237594,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L118",
+      "source_location": "L126",
       "weight": 1.0
     },
     {
@@ -237594,7 +237605,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L144",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -237616,7 +237627,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L165",
+      "source_location": "L173",
       "weight": 1.0
     },
     {
@@ -237627,7 +237638,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L191",
+      "source_location": "L199",
       "weight": 1.0
     },
     {
@@ -237682,18 +237693,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L71",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_contract",
-      "target": "lib_load_desk_recovery_contract_fieldstatus",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/contract.ts",
-      "source_location": "L98",
+      "source_location": "L79",
       "weight": 1.0
     },
     {
@@ -238303,13 +238303,13 @@
     },
     {
       "source": "lib_load_desk_recovery_misread",
-      "target": "lib_load_desk_recovery_misread_confusable_digits",
+      "target": "lib_load_desk_recovery_misread_confusable_groups",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L10",
+      "source_location": "L11",
       "weight": 1.0
     },
     {
@@ -238320,7 +238320,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L19",
+      "source_location": "L20",
       "weight": 1.0
     },
     {
@@ -238331,7 +238331,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L27",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
@@ -238342,7 +238342,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/misread.ts",
-      "source_location": "L44",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -238892,7 +238892,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1004",
+      "source_location": "L1029",
       "weight": 1.0
     },
     {
@@ -238903,7 +238903,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1058",
+      "source_location": "L1083",
       "weight": 1.0
     },
     {
@@ -238914,7 +238914,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1065",
+      "source_location": "L1090",
       "weight": 1.0
     },
     {
@@ -238925,7 +238925,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1081",
+      "source_location": "L1106",
       "weight": 1.0
     },
     {
@@ -238936,51 +238936,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1124",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_resolve",
-      "target": "lib_load_desk_recovery_resolve_blockssave",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1135",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_resolve",
-      "target": "lib_load_desk_recovery_resolve_field_labels",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1138",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_resolve",
-      "target": "lib_load_desk_recovery_resolve_fieldlabel",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1155",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_resolve",
-      "target": "lib_load_desk_recovery_resolve_reason_text",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1158",
+      "source_location": "L1149",
       "weight": 1.0
     },
     {
@@ -238996,13 +238952,57 @@
     },
     {
       "source": "lib_load_desk_recovery_resolve",
+      "target": "lib_load_desk_recovery_resolve_blockssave",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/resolve.ts",
+      "source_location": "L1160",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_resolve",
+      "target": "lib_load_desk_recovery_resolve_field_labels",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/resolve.ts",
+      "source_location": "L1163",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_resolve",
+      "target": "lib_load_desk_recovery_resolve_fieldlabel",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/resolve.ts",
+      "source_location": "L1180",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_resolve",
+      "target": "lib_load_desk_recovery_resolve_reason_text",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/resolve.ts",
+      "source_location": "L1183",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_resolve",
       "target": "lib_load_desk_recovery_resolve_reviewissues",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1176",
+      "source_location": "L1201",
       "weight": 1.0
     },
     {
@@ -239194,17 +239194,6 @@
     },
     {
       "source": "lib_load_desk_recovery_resolve",
-      "target": "lib_load_desk_recovery_resolve_resolvedate",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L538",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_resolve",
       "target": "lib_load_desk_recovery_resolve_recoverycontext",
       "relation": "contains",
       "_origin": "ast",
@@ -239216,13 +239205,24 @@
     },
     {
       "source": "lib_load_desk_recovery_resolve",
+      "target": "lib_load_desk_recovery_resolve_resolvedate",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/resolve.ts",
+      "source_location": "L561",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_resolve",
       "target": "lib_load_desk_recovery_resolve_resolvederived",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L639",
+      "source_location": "L662",
       "weight": 1.0
     },
     {
@@ -239244,7 +239244,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L722",
+      "source_location": "L745",
       "weight": 1.0
     },
     {
@@ -239266,7 +239266,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L887",
+      "source_location": "L910",
       "weight": 1.0
     },
     {
@@ -239277,7 +239277,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L922",
+      "source_location": "L945",
       "weight": 1.0
     },
     {
@@ -239288,7 +239288,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L940",
+      "source_location": "L963",
       "weight": 1.0
     },
     {
@@ -239299,7 +239299,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L974",
+      "source_location": "L997",
       "weight": 1.0
     },
     {
@@ -240212,7 +240212,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L202",
+      "source_location": "L208",
       "weight": 1.0
     },
     {
@@ -240223,7 +240223,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L214",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -240234,7 +240234,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L253",
+      "source_location": "L259",
       "weight": 1.0
     },
     {
@@ -240245,7 +240245,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L298",
+      "source_location": "L306",
       "weight": 1.0
     },
     {
@@ -240256,7 +240256,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L305",
+      "source_location": "L313",
       "weight": 1.0
     },
     {
@@ -240267,7 +240267,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L307",
+      "source_location": "L315",
       "weight": 1.0
     },
     {
@@ -240278,18 +240278,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L315",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_ticket_extraction",
-      "target": "lib_load_desk_ticket_extraction_printof",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L325",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -240305,13 +240294,24 @@
     },
     {
       "source": "lib_load_desk_ticket_extraction",
+      "target": "lib_load_desk_ticket_extraction_printof",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/ticket-extraction.ts",
+      "source_location": "L333",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_ticket_extraction",
       "target": "lib_load_desk_ticket_extraction_observefield",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L337",
+      "source_location": "L345",
       "weight": 1.0
     },
     {
@@ -240333,7 +240333,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L363",
+      "source_location": "L372",
       "weight": 1.0
     },
     {
@@ -240344,7 +240344,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L371",
+      "source_location": "L380",
       "weight": 1.0
     },
     {
@@ -240355,7 +240355,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L385",
+      "source_location": "L394",
       "weight": 1.0
     },
     {
@@ -240366,7 +240366,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L400",
+      "source_location": "L409",
       "weight": 1.0
     },
     {
@@ -240377,7 +240377,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L422",
+      "source_location": "L431",
       "weight": 1.0
     },
     {
@@ -240388,7 +240388,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L435",
+      "source_location": "L444",
       "weight": 1.0
     },
     {
@@ -240399,7 +240399,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L470",
+      "source_location": "L479",
       "weight": 1.0
     },
     {
@@ -240410,7 +240410,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L490",
+      "source_location": "L499",
       "weight": 1.0
     },
     {
@@ -240421,7 +240421,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L499",
+      "source_location": "L508",
       "weight": 1.0
     },
     {
@@ -240432,7 +240432,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L503",
+      "source_location": "L512",
       "weight": 1.0
     },
     {
@@ -240443,18 +240443,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L516",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_ticket_extraction",
-      "target": "lib_load_desk_ticket_extraction_ticketfromextraction",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L534",
+      "source_location": "L525",
       "weight": 1.0
     },
     {
@@ -240470,13 +240459,24 @@
     },
     {
       "source": "lib_load_desk_ticket_extraction",
+      "target": "lib_load_desk_ticket_extraction_ticketfromextraction",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/ticket-extraction.ts",
+      "source_location": "L543",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_ticket_extraction",
       "target": "lib_load_desk_ticket_extraction_weightdisagreement",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L562",
+      "source_location": "L571",
       "weight": 1.0
     },
     {
@@ -265468,7 +265468,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L231",
+      "source_location": "L232",
       "weight": 1.0
     },
     {
@@ -265479,7 +265479,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L237",
+      "source_location": "L238",
       "weight": 1.0
     },
     {
@@ -310167,5 +310167,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5f906f37ead84bbfae6c4458aec4c590a1e2c200"
+  "built_at_commit": "79c99d27d0d243eb0fc3490103029ac5155bb8e8"
 }

@@ -94,6 +94,12 @@ export type CompanyProfile = {
   /** The client new invoices start billed to, or nothing for no default. */
   default_client_id?: number | null;
   /**
+   * The truck a scan is put down to unless another is chosen on Load Desk:
+   * the owner-driver's own truck, on a workspace with one. Nothing for no
+   * default; a truck that has since been deleted or retired is ignored.
+   */
+  default_truck_id?: number | null;
+  /**
    * The company logo shown in place of its initials, as the version name the
    * picture is stored under (see lib/server/logo-store.ts). Absent or null
    * means no logo has been uploaded and the initials stand.
@@ -193,6 +199,9 @@ function isCompany(value: unknown): value is CompanyProfile {
     (company.default_client_id === undefined ||
       company.default_client_id === null ||
       typeof company.default_client_id === 'number') &&
+    (company.default_truck_id === undefined ||
+      company.default_truck_id === null ||
+      typeof company.default_truck_id === 'number') &&
     (company.logo_version === undefined ||
       company.logo_version === null ||
       typeof company.logo_version === 'string') &&
@@ -449,6 +458,9 @@ export async function saveCompanyDetails(
     ...(current?.default_client_id != null
       ? { default_client_id: current.default_client_id }
       : {}),
+    ...(current?.default_truck_id != null
+      ? { default_truck_id: current.default_truck_id }
+      : {}),
     ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: clean(name),
     address_lines: [clean(addressLines[0]), clean(addressLines[1])],
@@ -466,6 +478,9 @@ export async function saveDefaultClient(clientId: number | null): Promise<string
   return writeCompany({
     ...(current?.display_name ? { display_name: current.display_name } : {}),
     ...(clientId === null ? {} : { default_client_id: clientId }),
+    ...(current?.default_truck_id != null
+      ? { default_truck_id: current.default_truck_id }
+      : {}),
     ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: sellerName(current).trim(),
     address_lines: [street, city],
@@ -481,6 +496,33 @@ export const defaultClient = (
   clients.find((client) => client.id === company?.default_client_id) ?? null;
 
 /**
+ * Sets the truck a scan is put down to unless another is chosen, or clears
+ * it with null. Everything else on the company is kept as it is.
+ */
+export async function saveDefaultTruck(truckId: number | null): Promise<string | null> {
+  const current = snapshot.company;
+  const [street = '', city = ''] = sellerAddressLines(current);
+  return writeCompany({
+    ...(current?.display_name ? { display_name: current.display_name } : {}),
+    ...(current?.default_client_id != null
+      ? { default_client_id: current.default_client_id }
+      : {}),
+    ...(truckId === null ? {} : { default_truck_id: truckId }),
+    ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
+    name: sellerName(current).trim(),
+    address_lines: [street, city],
+    updated_at: new Date().toISOString(),
+  });
+}
+
+/** The truck a scan is put down to by default, when one is set, still exists and is in service. */
+export const defaultTruck = (
+  trucks: TruckProfile[],
+  company: CompanyProfile | null,
+): TruckProfile | null =>
+  trucks.find((truck) => truck.id === company?.default_truck_id && truck.active) ?? null;
+
+/**
  * Saves the company name shown around the dashboard. The invoice name and
  * address are kept; until those are saved, their defaults are stored with it.
  */
@@ -491,6 +533,9 @@ export async function saveCompanyDisplayName(displayName: string): Promise<strin
     display_name: displayName.replace(/\s+/g, ' ').trim(),
     ...(current?.default_client_id != null
       ? { default_client_id: current.default_client_id }
+      : {}),
+    ...(current?.default_truck_id != null
+      ? { default_truck_id: current.default_truck_id }
       : {}),
     ...(current?.logo_version ? { logo_version: current.logo_version } : {}),
     name: sellerName(current).trim(),
