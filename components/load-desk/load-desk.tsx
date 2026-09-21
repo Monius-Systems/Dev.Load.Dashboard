@@ -920,6 +920,21 @@ export default function LoadDesk() {
   const exceptions = useMemo(() => groupExceptions(openMembers), [openMembers]);
   const groupsAsked = exceptions.filter((group) => group.type !== 'INDIVIDUAL_CRITICAL_FIELD');
   const ticketsAsked = exceptions.filter((group) => group.type === 'INDIVIDUAL_CRITICAL_FIELD');
+  /**
+   * What is left to do, in three words each, for the line under the scan on
+   * a phone. Worked out from the open questions as they stand, so it goes
+   * quiet the moment the last one is answered.
+   */
+  const liveReview = [
+    exceptions.some((group) => group.needsDate) ? t('date unclear') : '',
+    openMembers.some((member) => member.recovery && cameraCropFields(member.recovery).length)
+      ? t('retake the photo')
+      : '',
+    groupsAsked.some((group) => group.type === 'NEW_CUSTOMER') ? t('new customer') : '',
+    ticketsAsked.some((group) => !group.needsDate) ? t('needs a look') : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
 
   // Said to the session, so the top bar on every other page can say it.
   useEffect(() => {
@@ -1195,6 +1210,8 @@ export default function LoadDesk() {
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
   /** The photographed ticket, over the screen, while a field is being checked. */
   const [viewingTicket, setViewingTicket] = useState(false);
+  /** A saved ticket whose picture is to open as soon as it has loaded. */
+  const viewPending = useRef<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   /**
    * The camera is the session's, not this page's: "Scan ticket" on the home
@@ -1855,9 +1872,13 @@ export default function LoadDesk() {
         toConfirm && !undated && !retake ? t('fields cut off') : '',
         askedGroups ? t('new job') : '',
       ].filter(Boolean);
+      // On a phone what is stored is the count; what is left to do is said
+      // live beside it (see `liveReview`), so that once the date is typed the
+      // line stops asking for it.
+      void reasons;
       const short = [
         t('✓ {tickets} processed', { tickets: plural(added.length, 'ticket') }),
-        reasons.length ? `${t('Please review')}: ${reasons.join(', ')}` : '',
+        invoices ? t('✓ {invoices} created', { invoices: plural(invoices, 'invoice') }) : '',
         ...failures,
       ]
         .filter(Boolean)
@@ -2581,12 +2602,29 @@ export default function LoadDesk() {
     return -1;
   };
 
+  /**
+   * The ticket's picture, over the page, for a saved ticket: on a phone,
+   * what somebody asked for a missing date wants is the photograph to read
+   * it off, not thirty boxes. The ticket is put on the review as usual but
+   * not scrolled to, and the picture opens as soon as it has loaded.
+   */
+  function openTicketPicture(record: SavedRecord) {
+    const open = queue.find((item) => item.saved_record_id === record.id);
+    if (open?.preview_status === 'ready') {
+      editSaved(record, false);
+      setViewingTicket(true);
+      return;
+    }
+    viewPending.current = record.id;
+    editSaved(record, false);
+  }
+
   /** Reopens a saved ticket, with the other saved tickets on its invoice, to edit. */
-  function editSaved(record: SavedRecord) {
+  function editSaved(record: SavedRecord, scroll = true) {
     const open = queue.findIndex((item) => item.saved_record_id === record.id);
     if (open >= 0) {
       setActiveIndex(open);
-      scrollToReview();
+      if (scroll) scrollToReview();
       return;
     }
     const batchId = recordBatch(record);
@@ -2599,10 +2637,15 @@ export default function LoadDesk() {
       queue.length + Math.max(0, lines.findIndex((line) => line.id === record.id)),
     );
     setSaveStatus(null);
-    scrollToReview();
+    if (scroll) scrollToReview();
     for (const [index, line] of lines.entries()) {
       const itemId = added[index].id;
-      void loadStoredOriginal(line).then((blob) =>
+      void loadStoredOriginal(line).then((blob) => {
+        // The picture somebody asked to see, opened the moment it is here.
+        if (viewPending.current === line.id) {
+          viewPending.current = null;
+          if (blob) setViewingTicket(true);
+        }
         setQueue((current) =>
           current.map((item) => {
             if (item.id !== itemId) return item;
@@ -2616,8 +2659,8 @@ export default function LoadDesk() {
               preview_status: 'ready',
             };
           }),
-        ),
-      );
+        );
+      });
     }
   }
 
@@ -3866,6 +3909,9 @@ export default function LoadDesk() {
               aria-live="polite"
             >
               {uploadStatus?.message}
+              {isPhone && liveReview && uploadStatus?.message.startsWith('✓')
+                ? ` · ${t('Please review')}: ${liveReview}`
+                : ''}
             </p>
           </section>
 
@@ -3940,9 +3986,9 @@ export default function LoadDesk() {
                               type="button"
                               size="sm"
                               variant={group.needsDate ? 'secondary' : 'default'}
-                              onClick={() => record && editSaved(record)}
+                              onClick={() => record && (isPhone ? openTicketPicture(record) : editSaved(record))}
                             >
-                              {t('Open in review')}
+                              {isPhone ? t('Open ticket') : t('Open in review')}
                             </Button>
                           </div>
                         </>
