@@ -294,6 +294,10 @@ membership. If more client dashboards follow, the website can link to a small
   numbers, weights and dates are never completed from history.
 - A photo where the sheet runs off the top, left or right is refused at
   capture.
+- Carriers named under `knownCarriers` in `client.config.json` are set
+  outright: a carrier line containing "Z FORCE" becomes Z Force
+  Transportation with nothing to confirm. Add a carrier there to have it
+  filled in the same way.
 - Tickets uploaded together are grouped by their ticket date: one invoice per
   date. More tickets can be added to an invoice while reviewing it.
 - Load Desk keeps an upload in progress while you look at other pages, and a

@@ -287,7 +287,7 @@
       "file_type": "code",
       "norm_label": "workspacememory",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L84"
+      "source_location": "L91"
     },
     {
       "id": "lib_load_desk_types_invoicedraft",
@@ -3277,7 +3277,7 @@
       "file_type": "code",
       "norm_label": "correction",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L73"
+      "source_location": "L80"
     },
     {
       "id": "lib_load_desk_recovery_memory_relationship",
@@ -3290,7 +3290,7 @@
       "file_type": "code",
       "norm_label": "relationship",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L52"
+      "source_location": "L59"
     },
     {
       "id": "lib_load_desk_recovery_memory_verifiedvalue",
@@ -28661,7 +28661,7 @@
       "file_type": "code",
       "norm_label": "applyrecovery()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L869"
+      "source_location": "L873"
     },
     {
       "id": "lib_load_desk_recovery_resolve_bestspelling",
@@ -28685,7 +28685,7 @@
       "file_type": "code",
       "norm_label": "boundedcandidates()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L923"
+      "source_location": "L927"
     },
     {
       "id": "lib_load_desk_recovery_resolve_boundednotes",
@@ -28697,7 +28697,7 @@
       "file_type": "code",
       "norm_label": "boundednotes()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L930"
+      "source_location": "L934"
     },
     {
       "id": "lib_load_desk_recovery_resolve_byauthority",
@@ -28841,7 +28841,7 @@
       "file_type": "code",
       "norm_label": "mergeframes()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L788"
+      "source_location": "L792"
     },
     {
       "id": "lib_load_desk_recovery_resolve_numberfrom",
@@ -28925,7 +28925,7 @@
       "file_type": "code",
       "norm_label": "resolveticket()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L841"
+      "source_location": "L845"
     },
     {
       "id": "lib_load_desk_recovery_resolve_samevalue",
@@ -35873,7 +35873,7 @@
       "file_type": "code",
       "norm_label": "addrelationship()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L252"
+      "source_location": "L265"
     },
     {
       "id": "lib_load_desk_recovery_memory_addvalue",
@@ -35885,7 +35885,7 @@
       "file_type": "code",
       "norm_label": "addvalue()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L220"
+      "source_location": "L227"
     },
     {
       "id": "lib_load_desk_recovery_memory_batchevidence",
@@ -35897,7 +35897,7 @@
       "file_type": "code",
       "norm_label": "batchevidence()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L670"
+      "source_location": "L705"
     },
     {
       "id": "lib_load_desk_recovery_memory_buildmemory",
@@ -35909,7 +35909,7 @@
       "file_type": "code",
       "norm_label": "buildmemory()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L297"
+      "source_location": "L310"
     },
     {
       "id": "lib_load_desk_recovery_memory_collector",
@@ -35921,7 +35921,7 @@
       "file_type": "code",
       "norm_label": "collector()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L404"
+      "source_location": "L419"
     },
     {
       "id": "lib_load_desk_recovery_memory_customerofid",
@@ -35933,7 +35933,7 @@
       "file_type": "code",
       "norm_label": "customerofid()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L436"
+      "source_location": "L451"
     },
     {
       "id": "lib_load_desk_recovery_memory_fits",
@@ -35945,7 +35945,7 @@
       "file_type": "code",
       "norm_label": "fits()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L199"
+      "source_location": "L206"
     },
     {
       "id": "lib_load_desk_recovery_memory_isgap",
@@ -35957,7 +35957,7 @@
       "file_type": "code",
       "norm_label": "isgap()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L190"
+      "source_location": "L197"
     },
     {
       "id": "lib_load_desk_recovery_memory_labelof",
@@ -35969,7 +35969,7 @@
       "file_type": "code",
       "norm_label": "labelof()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L173"
+      "source_location": "L180"
     },
     {
       "id": "lib_load_desk_recovery_memory_matches",
@@ -35981,7 +35981,7 @@
       "file_type": "code",
       "norm_label": "matches()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L633"
+      "source_location": "L668"
     },
     {
       "id": "lib_load_desk_recovery_memory_memoryevidence",
@@ -35993,7 +35993,7 @@
       "file_type": "code",
       "norm_label": "memoryevidence()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L479"
+      "source_location": "L494"
     },
     {
       "id": "lib_load_desk_recovery_memory_otherlabel",
@@ -36005,7 +36005,7 @@
       "file_type": "code",
       "norm_label": "otherlabel()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L639"
+      "source_location": "L674"
     },
     {
       "id": "lib_load_desk_recovery_memory_otherwhole",
@@ -36017,7 +36017,7 @@
       "file_type": "code",
       "norm_label": "otherwhole()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L648"
+      "source_location": "L683"
     },
     {
       "id": "lib_load_desk_recovery_memory_relationshipnote",
@@ -36029,7 +36029,7 @@
       "file_type": "code",
       "norm_label": "relationshipnote()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L449"
+      "source_location": "L464"
     },
     {
       "id": "lib_load_desk_recovery_memory_settled",
@@ -36041,7 +36041,7 @@
       "file_type": "code",
       "norm_label": "settled()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L214"
+      "source_location": "L221"
     },
     {
       "id": "lib_load_desk_recovery_memory_sightingof",
@@ -36053,7 +36053,7 @@
       "file_type": "code",
       "norm_label": "sightingof()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L286"
+      "source_location": "L299"
     },
     {
       "id": "lib_load_desk_recovery_memory_squash",
@@ -36065,7 +36065,7 @@
       "file_type": "code",
       "norm_label": "squash()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L187"
+      "source_location": "L194"
     },
     {
       "id": "lib_load_desk_recovery_memory_tickets",
@@ -36077,7 +36077,7 @@
       "file_type": "code",
       "norm_label": "tickets()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L180"
+      "source_location": "L187"
     },
     {
       "id": "lib_load_desk_recovery_memory_wholevalue",
@@ -36089,7 +36089,7 @@
       "file_type": "code",
       "norm_label": "wholevalue()",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L425"
+      "source_location": "L440"
     },
     {
       "id": "public_ocr_tesseract_core_simd_wasm_ui",
@@ -67157,7 +67157,7 @@
       "file_type": "code",
       "norm_label": "blockssave()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1000"
+      "source_location": "L1004"
     },
     {
       "id": "lib_load_desk_recovery_resolve_confirmfield",
@@ -67169,7 +67169,7 @@
       "file_type": "code",
       "norm_label": "confirmfield()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L946"
+      "source_location": "L950"
     },
     {
       "id": "lib_load_desk_recovery_resolve_emptyrecovery",
@@ -67181,7 +67181,7 @@
       "file_type": "code",
       "norm_label": "emptyrecovery()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L823"
+      "source_location": "L827"
     },
     {
       "id": "lib_load_desk_recovery_resolve_fieldlabel",
@@ -67193,7 +67193,7 @@
       "file_type": "code",
       "norm_label": "fieldlabel()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1020"
+      "source_location": "L1024"
     },
     {
       "id": "lib_load_desk_recovery_resolve_reviewissues",
@@ -67205,7 +67205,7 @@
       "file_type": "code",
       "norm_label": "reviewissues()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1041"
+      "source_location": "L1045"
     },
     {
       "id": "lib_load_desk_recovery_resolve_unresolvedcritical",
@@ -67217,7 +67217,7 @@
       "file_type": "code",
       "norm_label": "unresolvedcritical()",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L989"
+      "source_location": "L993"
     },
     {
       "id": "tests_recovery_end_to_end_test_clipped",
@@ -82272,7 +82272,7 @@
       "file_type": "code",
       "norm_label": "field_labels",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1003"
+      "source_location": "L1007"
     },
     {
       "id": "lib_load_desk_recovery_resolve_reason_text",
@@ -82283,7 +82283,7 @@
       "file_type": "code",
       "norm_label": "reason_text",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1023"
+      "source_location": "L1027"
     },
     {
       "id": "lib_load_desk_types_number_fields",
@@ -83588,7 +83588,7 @@
       "file_type": "code",
       "norm_label": "batch_fields",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L138"
+      "source_location": "L145"
     },
     {
       "id": "lib_load_desk_recovery_memory_customer_bound_fields",
@@ -83599,7 +83599,7 @@
       "file_type": "code",
       "norm_label": "customer_bound_fields",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L131"
+      "source_location": "L138"
     },
     {
       "id": "lib_load_desk_recovery_memory_evidence_value_fields",
@@ -83610,7 +83610,7 @@
       "file_type": "code",
       "norm_label": "evidence_value_fields",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L116"
+      "source_location": "L123"
     },
     {
       "id": "lib_load_desk_recovery_memory_field_labels",
@@ -83621,7 +83621,7 @@
       "file_type": "code",
       "norm_label": "field_labels",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L155"
+      "source_location": "L162"
     },
     {
       "id": "lib_load_desk_recovery_memory_learned_fields",
@@ -83632,7 +83632,7 @@
       "file_type": "code",
       "norm_label": "learned_fields",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L96"
+      "source_location": "L103"
     },
     {
       "id": "lib_load_desk_recovery_memory_rank",
@@ -83643,7 +83643,7 @@
       "file_type": "code",
       "norm_label": "rank",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L401"
+      "source_location": "L416"
     },
     {
       "id": "public_ocr_tesseract_core_simd_lstm_wasm",
@@ -101713,7 +101713,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L260",
+      "source_location": "L273",
       "weight": 1.0
     },
     {
@@ -101725,7 +101725,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L230",
+      "source_location": "L238",
       "weight": 1.0
     },
     {
@@ -101737,7 +101737,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L674",
+      "source_location": "L709",
       "weight": 1.0
     },
     {
@@ -101749,7 +101749,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L675",
+      "source_location": "L710",
       "weight": 1.0
     },
     {
@@ -101761,7 +101761,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L683",
+      "source_location": "L718",
       "weight": 1.0
     },
     {
@@ -101773,7 +101773,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L684",
+      "source_location": "L719",
       "weight": 1.0
     },
     {
@@ -101785,7 +101785,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L686",
+      "source_location": "L721",
       "weight": 1.0
     },
     {
@@ -101797,7 +101797,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L690",
+      "source_location": "L725",
       "weight": 1.0
     },
     {
@@ -101809,7 +101809,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L696",
+      "source_location": "L731",
       "weight": 1.0
     },
     {
@@ -101821,7 +101821,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L716",
+      "source_location": "L751",
       "weight": 1.0
     },
     {
@@ -101833,7 +101833,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L310",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -101845,7 +101845,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L337",
+      "source_location": "L350",
       "weight": 1.0
     },
     {
@@ -101857,7 +101857,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L346",
+      "source_location": "L359",
       "weight": 1.0
     },
     {
@@ -101869,7 +101869,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L363",
+      "source_location": "L378",
       "weight": 1.0
     },
     {
@@ -101881,7 +101881,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L384",
+      "source_location": "L399",
       "weight": 1.0
     },
     {
@@ -101893,7 +101893,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L411",
+      "source_location": "L426",
       "weight": 1.0
     },
     {
@@ -101905,7 +101905,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L438",
+      "source_location": "L453",
       "weight": 1.0
     },
     {
@@ -101917,7 +101917,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L200",
+      "source_location": "L207",
       "weight": 1.0
     },
     {
@@ -101929,7 +101929,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L635",
+      "source_location": "L670",
       "weight": 1.0
     },
     {
@@ -101941,7 +101941,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L484",
+      "source_location": "L499",
       "weight": 1.0
     },
     {
@@ -101953,7 +101953,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L487",
+      "source_location": "L502",
       "weight": 1.0
     },
     {
@@ -101965,7 +101965,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L488",
+      "source_location": "L503",
       "weight": 1.0
     },
     {
@@ -101977,7 +101977,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L505",
+      "source_location": "L520",
       "weight": 1.0
     },
     {
@@ -101989,7 +101989,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L506",
+      "source_location": "L521",
       "weight": 1.0
     },
     {
@@ -102001,7 +102001,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L509",
+      "source_location": "L524",
       "weight": 1.0
     },
     {
@@ -102013,7 +102013,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L513",
+      "source_location": "L528",
       "weight": 1.0
     },
     {
@@ -102025,7 +102025,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L530",
+      "source_location": "L549",
       "weight": 1.0
     },
     {
@@ -102037,7 +102037,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L537",
+      "source_location": "L556",
       "weight": 1.0
     },
     {
@@ -102049,7 +102049,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L588",
+      "source_location": "L607",
       "weight": 1.0
     },
     {
@@ -102061,7 +102061,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L606",
+      "source_location": "L639",
       "weight": 1.0
     },
     {
@@ -102073,7 +102073,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L655",
+      "source_location": "L690",
       "weight": 1.0
     },
     {
@@ -102085,7 +102085,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L450",
+      "source_location": "L465",
       "weight": 1.0
     },
     {
@@ -102097,7 +102097,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L427",
+      "source_location": "L442",
       "weight": 1.0
     },
     {
@@ -102325,7 +102325,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L874",
+      "source_location": "L878",
       "weight": 1.0
     },
     {
@@ -102349,7 +102349,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1001",
+      "source_location": "L1005",
       "weight": 1.0
     },
     {
@@ -102865,7 +102865,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L670",
+      "source_location": "L674",
       "weight": 1.0
     },
     {
@@ -102877,7 +102877,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L717",
+      "source_location": "L721",
       "weight": 1.0
     },
     {
@@ -102889,7 +102889,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L726",
+      "source_location": "L730",
       "weight": 1.0
     },
     {
@@ -102901,7 +102901,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L739",
+      "source_location": "L743",
       "weight": 1.0
     },
     {
@@ -102913,7 +102913,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L753",
+      "source_location": "L757",
       "weight": 1.0
     },
     {
@@ -102925,7 +102925,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L760",
+      "source_location": "L764",
       "weight": 1.0
     },
     {
@@ -102937,7 +102937,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L761",
+      "source_location": "L765",
       "weight": 1.0
     },
     {
@@ -102949,7 +102949,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L847",
+      "source_location": "L851",
       "weight": 1.0
     },
     {
@@ -102961,7 +102961,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L855",
+      "source_location": "L859",
       "weight": 1.0
     },
     {
@@ -102973,7 +102973,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1059",
+      "source_location": "L1063",
       "weight": 1.0
     },
     {
@@ -233020,13 +233020,24 @@
     },
     {
       "source": "lib_load_desk_recovery_memory",
+      "target": "lib_load_desk_recovery_memory_learned_fields",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/memory.ts",
+      "source_location": "L103",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_memory",
       "target": "lib_load_desk_recovery_memory_evidence_value_fields",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L116",
+      "source_location": "L123",
       "weight": 1.0
     },
     {
@@ -233037,7 +233048,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L131",
+      "source_location": "L138",
       "weight": 1.0
     },
     {
@@ -233048,7 +233059,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L138",
+      "source_location": "L145",
       "weight": 1.0
     },
     {
@@ -233059,7 +233070,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L155",
+      "source_location": "L162",
       "weight": 1.0
     },
     {
@@ -233070,7 +233081,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L173",
+      "source_location": "L180",
       "weight": 1.0
     },
     {
@@ -233081,7 +233092,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L180",
+      "source_location": "L187",
       "weight": 1.0
     },
     {
@@ -233092,7 +233103,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L187",
+      "source_location": "L194",
       "weight": 1.0
     },
     {
@@ -233103,7 +233114,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L190",
+      "source_location": "L197",
       "weight": 1.0
     },
     {
@@ -233114,7 +233125,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L199",
+      "source_location": "L206",
       "weight": 1.0
     },
     {
@@ -233125,7 +233136,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L214",
+      "source_location": "L221",
       "weight": 1.0
     },
     {
@@ -233136,7 +233147,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L220",
+      "source_location": "L227",
       "weight": 1.0
     },
     {
@@ -233147,7 +233158,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L252",
+      "source_location": "L265",
       "weight": 1.0
     },
     {
@@ -233158,7 +233169,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L286",
+      "source_location": "L299",
       "weight": 1.0
     },
     {
@@ -233169,7 +233180,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L297",
+      "source_location": "L310",
       "weight": 1.0
     },
     {
@@ -233191,7 +233202,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L401",
+      "source_location": "L416",
       "weight": 1.0
     },
     {
@@ -233202,7 +233213,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L404",
+      "source_location": "L419",
       "weight": 1.0
     },
     {
@@ -233213,7 +233224,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L425",
+      "source_location": "L440",
       "weight": 1.0
     },
     {
@@ -233224,7 +233235,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L436",
+      "source_location": "L451",
       "weight": 1.0
     },
     {
@@ -233235,7 +233246,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L449",
+      "source_location": "L464",
       "weight": 1.0
     },
     {
@@ -233246,7 +233257,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L479",
+      "source_location": "L494",
       "weight": 1.0
     },
     {
@@ -233257,7 +233268,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L52",
+      "source_location": "L59",
       "weight": 1.0
     },
     {
@@ -233268,7 +233279,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L633",
+      "source_location": "L668",
       "weight": 1.0
     },
     {
@@ -233279,7 +233290,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L639",
+      "source_location": "L674",
       "weight": 1.0
     },
     {
@@ -233290,7 +233301,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L648",
+      "source_location": "L683",
       "weight": 1.0
     },
     {
@@ -233301,7 +233312,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L670",
+      "source_location": "L705",
       "weight": 1.0
     },
     {
@@ -233312,7 +233323,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L73",
+      "source_location": "L80",
       "weight": 1.0
     },
     {
@@ -233323,18 +233334,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L84",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_memory",
-      "target": "lib_load_desk_recovery_memory_learned_fields",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/memory.ts",
-      "source_location": "L96",
+      "source_location": "L91",
       "weight": 1.0
     },
     {
@@ -233719,7 +233719,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1000",
+      "source_location": "L1004",
       "weight": 1.0
     },
     {
@@ -233730,7 +233730,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1003",
+      "source_location": "L1007",
       "weight": 1.0
     },
     {
@@ -233741,7 +233741,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1020",
+      "source_location": "L1024",
       "weight": 1.0
     },
     {
@@ -233752,7 +233752,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1023",
+      "source_location": "L1027",
       "weight": 1.0
     },
     {
@@ -233763,7 +233763,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L1041",
+      "source_location": "L1045",
       "weight": 1.0
     },
     {
@@ -234005,7 +234005,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L788",
+      "source_location": "L792",
       "weight": 1.0
     },
     {
@@ -234016,7 +234016,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L823",
+      "source_location": "L827",
       "weight": 1.0
     },
     {
@@ -234027,7 +234027,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L841",
+      "source_location": "L845",
       "weight": 1.0
     },
     {
@@ -234038,7 +234038,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L869",
+      "source_location": "L873",
       "weight": 1.0
     },
     {
@@ -234049,7 +234049,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L923",
+      "source_location": "L927",
       "weight": 1.0
     },
     {
@@ -234060,7 +234060,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L930",
+      "source_location": "L934",
       "weight": 1.0
     },
     {
@@ -234071,7 +234071,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L946",
+      "source_location": "L950",
       "weight": 1.0
     },
     {
@@ -234093,7 +234093,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/resolve.ts",
-      "source_location": "L989",
+      "source_location": "L993",
       "weight": 1.0
     },
     {
@@ -304637,5 +304637,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "79455f7da8b39081accc816ecc11d3a3c70764e2"
+  "built_at_commit": "bbb2c2d48122487305b64691623340d0008dfb72"
 }

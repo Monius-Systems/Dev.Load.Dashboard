@@ -967,13 +967,13 @@ void test('a field somebody worked over still parses after thirty confirmations'
 // --- a name typed once is a name known -----------------------------------
 
 void test('a carrier typed once completes every fragment that fits it from then on', () => {
-  // The person typed "Z FORCE TRANSPORTATION" over "Z FORCE TRANSPO" on one
+  // The person typed the carrier's full name over a cut-off print on one
   // ticket and saved it. That is all the workspace needs: the next ticket
-  // reading "Z FORCE TRANSPO", or only "Z FORCE TRAN", is completed without
+  // reading the same fragment, or a shorter one, is completed without
   // a customer in common, because a carrier is the same fact whoever the
   // ticket is for.
   const typed: SavedRecord = {
-    ...hauled({ carrier_name: 'Z FORCE TRANSPORTATION' }),
+    ...hauled({ carrier_name: 'ILLINOIS BULK CARRIER INC' }),
     recovery: {
       version: 1,
       vendor: 'heidelberg',
@@ -981,19 +981,19 @@ void test('a carrier typed once completes every fragment that fits it from then 
       fields: {
         carrier_name: {
           status: 'confirmed',
-          value: 'Z FORCE TRANSPORTATION',
-          visible_text: 'Z FORCE TRANSPO',
+          value: 'ILLINOIS BULK CARRIER INC',
+          visible_text: 'ILLINOIS BULK CARR',
           source: 'user_confirmed',
           source_clipped: true,
           clipped_edge: 'right',
           confidence: 1,
-          evidence: ['A reviewer typed "Z FORCE TRANSPORTATION" for this field.'],
+          evidence: ['A reviewer typed "ILLINOIS BULK CARRIER INC" for this field.'],
           confirmed_by_user: true,
         },
       },
     },
   };
-  for (const printed of ['Z FORCE TRANSPO', 'Z FORCE TRAN', 'Z FORCE TRANSPORTATI']) {
+  for (const printed of ['ILLINOIS BULK CARR', 'ILLINOIS BULK', 'ILLINOIS BULK CARRIER I']) {
     const { ticket, recovery } = recover({
       observed: observedOf(
         { carrier_name: clipped(printed, 'right') },
@@ -1003,18 +1003,18 @@ void test('a carrier typed once completes every fragment that fits it from then 
     });
     const settled = reviewState(recovery, 'carrier_name');
     assert.equal(settled?.status, 'recovered', printed);
-    assert.equal(settled?.value, 'Z FORCE TRANSPORTATION', printed);
-    assert.equal(ticket.carrier_name, 'Z FORCE TRANSPORTATION', printed);
+    assert.equal(settled?.value, 'ILLINOIS BULK CARRIER INC', printed);
+    assert.equal(ticket.carrier_name, 'ILLINOIS BULK CARRIER INC', printed);
     assert.equal(blocksSave(recovery), false);
   }
 });
 
 void test('the fragment already on file is never offered as its own completion', () => {
-  // Tickets saved with the print as it stood put "Z FORCE TRANSPO" on file.
+  // Tickets saved with the print as it stood put "ILLINOIS BULK CARR" on file.
   // It fits itself; it completes nothing, and must not be listed as if it did.
-  const asItStood = [1, 2, 3].map(() => hauled({ carrier_name: 'Z FORCE TRANSPO' }));
+  const asItStood = [1, 2, 3].map(() => hauled({ carrier_name: 'ILLINOIS BULK CARR' }));
   const { recovery } = recover({
-    observed: observedOf({ carrier_name: clipped('Z FORCE TRANSPO', 'right') }),
+    observed: observedOf({ carrier_name: clipped('ILLINOIS BULK CARR', 'right') }),
     records: asItStood,
   });
   const settled = reviewState(recovery, 'carrier_name');

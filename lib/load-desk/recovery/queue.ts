@@ -15,6 +15,7 @@ import {
   type PaperFrame,
   type TicketRecovery,
 } from './index.ts';
+import { applyKnownCarrier } from './known-carriers.ts';
 import { batchEvidence, buildMemory, memoryEvidence } from './memory.ts';
 import { vendorEvidence } from './vendors.ts';
 
@@ -93,7 +94,9 @@ export function recoverTicket(input: RecoverInput): {
     [...vendor.evidence, ...memory, ...batch],
     context,
   );
-  return { ticket: applyRecovery(extracted, recovery), recovery };
+  // Last, over everything the resolver decided: a carrier the client has
+  // named outright is set to that name, whatever the line printed.
+  return applyKnownCarrier(applyRecovery(extracted, recovery), recovery, observed);
 }
 
 /**

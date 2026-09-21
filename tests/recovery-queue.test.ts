@@ -431,11 +431,11 @@ void test('a carrier sent back for a photograph is completed from reviewed histo
     vendor: 'heidelberg',
     paper: { detected: false, left: 'unknown', right: 'cut', top: 'unknown', bottom: 'unknown' },
     fields: {
-      carrier_name: staleResolution({ visible_text: 'Z FORCE TRANSPO', clipped_edge: 'right', reason: 'camera_crop' }),
+      carrier_name: staleResolution({ visible_text: 'ILLINOIS BULK CARR', clipped_edge: 'right', reason: 'camera_crop' }),
     },
   };
-  const ticket: Ticket = { ...emptyTicket(), carrier_name: 'Z FORCE TRANSPO' };
-  const reviewed = [1, 2, 3].map(() => saved({ carrier_name: 'Z FORCE TRANSPORT' }));
+  const ticket: Ticket = { ...emptyTicket(), carrier_name: 'ILLINOIS BULK CARR' };
+  const reviewed = [1, 2, 3].map(() => saved({ carrier_name: 'ILLINOIS BULK CARRIER' }));
   // The stored frame says the detector called the right side cut; that was
   // the reader's word, written into the frame by the old merge. A detector
   // verdict is trusted, so this stays a retake...
@@ -445,8 +445,8 @@ void test('a carrier sent back for a photograph is completed from reviewed histo
   const doubted = { ...recovery, paper: UNKNOWN_FRAME };
   const again = rerecoverSaved({ ticket, recovery: doubted, records: reviewed, profiles: noProfiles, customer: null });
   assert.equal(again.recovery.fields.carrier_name?.status, 'recovered');
-  assert.equal(again.recovery.fields.carrier_name?.value, 'Z FORCE TRANSPORT');
-  assert.equal(again.ticket.carrier_name, 'Z FORCE TRANSPORT');
+  assert.equal(again.recovery.fields.carrier_name?.value, 'ILLINOIS BULK CARRIER');
+  assert.equal(again.ticket.carrier_name, 'ILLINOIS BULK CARRIER');
 });
 
 void test('a field a person confirmed is never reconsidered, and nothing changes when nothing changes', () => {
