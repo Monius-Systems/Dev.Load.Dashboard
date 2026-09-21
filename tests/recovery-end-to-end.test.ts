@@ -192,6 +192,10 @@ const CLEAN_ANSWER = {
   net_weight: '45,440',
   net_tons: '22.72',
   carrier: 'ILLINOIS BULK CARRIER',
+  // The scale's own stamp. Heidelberg's date box is dot-matrix print in the
+  // margin and is never taken on the reader's word alone (see `faintPrint`
+  // on the vendor); on a clean sheet the stamp is there to confirm it.
+  timestamps: ['26SEP14 12:02'],
 };
 
 // FAILING, and left failing on purpose: `applyRecovery` writes a date that
@@ -507,17 +511,28 @@ void test('a clear verified historical match is recovered', () => {
 void test('conflicting evidence stops a date that was read whole', () => {
   const { ticket, recovery } = recover({
     observed: observedOf(
+      { ticket_date: whole('9/25/26') },
+      { branding: 'Heidelberg Materials', timestamps: ['26SEP14 12:02'] },
+    ),
+    extracted: ticketOf({ ticket_date: '2026-09-25' }),
+  });
+  const settled = reviewState(recovery, 'ticket_date');
+  assert.equal(settled?.status, 'needs_review');
+  assert.equal(settled?.reason, 'conflicting_evidence');
+  assert.deepEqual(settled?.candidates, ['2026-09-14', '9/25/26']);
+  assert.equal(ticket.ticket_date, null, 'no day at all until somebody picks one');
+  assert.equal(blocksSave(recovery), true);
+  // One digit away, on a date box the layout knows is faint print, is that
+  // digit misread: the scale's stamp dates the load, the print is kept.
+  const misread = recover({
+    observed: observedOf(
       { ticket_date: whole('9/15/26') },
       { branding: 'Heidelberg Materials', timestamps: ['26SEP14 12:02'] },
     ),
     extracted: ticketOf({ ticket_date: '2026-09-15' }),
   });
-  const settled = reviewState(recovery, 'ticket_date');
-  assert.equal(settled?.status, 'needs_review');
-  assert.equal(settled?.reason, 'conflicting_evidence');
-  assert.deepEqual(settled?.candidates, ['2026-09-14', '9/15/26']);
-  assert.equal(ticket.ticket_date, null, 'no day at all until somebody picks one');
-  assert.equal(blocksSave(recovery), true);
+  assert.equal(reviewState(misread.recovery, 'ticket_date')?.status, 'recovered');
+  assert.equal(misread.ticket.ticket_date, '2026-09-14');
 });
 
 // --- a pile of tickets on the desk ----------------------------------------

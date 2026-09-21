@@ -29,6 +29,16 @@ export type VendorProfile = {
   redundantEvidence(observed: ObservedTicket): Evidence[];
   /** which fields this vendor's layout is known to carry twice, for the review screen's wording */
   redundantSources: Partial<Record<keyof Ticket, string[]>>;
+  /**
+   * Fields this vendor's printer is known to lay down faintly, whatever the
+   * reader says of the print. A reader asked whether print is faded answers
+   * for the picture in front of it, and a dot-matrix date that is faint on
+   * every sheet has been called clear and read three ways. The layout knows
+   * better: these fields are treated as faded, so a date among them is
+   * taken only with something to confirm it (see the faded-date rule in
+   * resolve.ts).
+   */
+  faintPrint?: readonly (keyof Ticket)[];
 };
 
 /**
@@ -88,6 +98,8 @@ export function detectVendor(observed: ObservedTicket): {
 export function vendorEvidence(observed: ObservedTicket): {
   vendor: string | null;
   evidence: Evidence[];
+  /** The fields the vendor's layout says are printed faintly. */
+  faint: readonly (keyof Ticket)[];
 } {
   const { vendor } = detectVendor(observed);
   const fromVendor = vendor
@@ -109,7 +121,7 @@ export function vendorEvidence(observed: ObservedTicket): {
     ...fromVendor,
     ...genericEvidence(observed),
   ]);
-  return { vendor: vendor?.id ?? null, evidence };
+  return { vendor: vendor?.id ?? null, evidence, faint: vendor?.faintPrint ?? [] };
 }
 
 export {

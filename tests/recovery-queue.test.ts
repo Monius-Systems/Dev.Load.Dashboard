@@ -21,6 +21,7 @@ import {
 import type { ClientProfile, CustomerProfile, TruckProfile } from '../lib/load-desk/profiles.ts';
 import { emptyTicket, type SavedRecord, type Ticket } from '../lib/load-desk/types.ts';
 import { validateTicket } from '../lib/load-desk/validate.ts';
+import { setLearnedConfusions } from '../lib/load-desk/recovery/misread.ts';
 
 // The queue's own wiring: an observation in, a ticket and a record of how it
 // got that way out. Everything here is the pure half of the review screen —
@@ -496,4 +497,97 @@ void test('a customer matched a letter off is written as the name on file', () =
   // No customer matched: the print stands, and it is the customer question.
   const nobody = recoverTicket({ observed, paper: UNKNOWN_FRAME, extracted, records: [], profiles: { customers: [witech], trucks: [], clients: [] }, customer: null });
   assert.equal(nobody.ticket.customer_name, 'VITECH COMPANY INC');
+});
+
+// --- a date on print the paper is known to lay down faintly -----------------
+
+void test("a Heidelberg date is not taken on the reader's word: asked for, unless the stamp or the run confirms it", () => {
+  // The ticket as it came back three times over: the date box in the
+  // dot-matrix margin read as "12/13/2025", called clear, for a 15th. No
+  // encoded stamp on the sheet — only the date box and the time box, which
+  // the reader hands back together.
+  const read = (over: Partial<ObservedTicket> = {}) => ({
+    ...observedOf({
+      ticket_number: whole('1725331394'),
+      ticket_date: whole('12/13/2025'),
+      plant_name: whole('Heidelberg Materials'),
+      plant_code: whole('U857'),
+      customer_name: whole(IAFRATE),
+    }),
+    branding: 'Heidelberg Materials',
+    timestamps: ['12/13/2025 8:33'],
+    ...over,
+  });
+  const extracted = ticketOf({
+    ticket_number: '1725331394',
+    ticket_date: '2025-12-13',
+    plant_name: 'Heidelberg Materials',
+    plant_code: 'U857',
+    customer_name: IAFRATE,
+  });
+  const input = { paper: frame(), extracted, profiles: noProfiles, customer: null };
+
+  // Nothing on file: the date is asked for, and the misread does not pass.
+  const alone = recoverTicket({ ...input, observed: read(), records: [] });
+  assert.equal(alone.recovery.fields.ticket_date?.status, 'needs_review');
+  assert.equal(alone.ticket.ticket_date, null);
+  assert.ok(alone.recovery.fields.ticket_date?.evidence.some((line) => /printed faintly/.test(line)));
+
+  // The scale's own encoded stamp confirms the day: taken, no question.
+  const stamped = recoverTicket({
+    ...input,
+    observed: read({ timestamps: ['25DEC13 08:33'] }),
+    records: [],
+  });
+  assert.equal(stamped.recovery.fields.ticket_date?.status, 'exact');
+  assert.equal(stamped.ticket.ticket_date, '2025-12-13');
+
+  // The plant's run of checked tickets either side, all the 15th: the 13
+  // is one faded digit from it, and read as the 15th with the print kept.
+  const run = [1725331380, 1725331388, 1725331402].map((n) =>
+    hauled({ ticket_number: String(n), ticket_date: '2025-12-15', plant_name: 'Heidelberg Materials' }),
+  );
+  const inRun = recoverTicket({ ...input, observed: read(), records: run });
+  assert.equal(inRun.recovery.fields.ticket_date?.status, 'recovered');
+  assert.equal(inRun.ticket.ticket_date, '2025-12-15');
+  assert.equal(inRun.recovery.fields.ticket_date?.visible_text, '12/13/2025');
+
+  // And a stamp that disagrees with the run is the ticket disagreeing with
+  // itself, two days apart: still a question, never a silent pick.
+  const torn = recoverTicket({
+    ...input,
+    observed: read({ timestamps: ['25DEC11 08:33'] }),
+    records: run,
+  });
+  assert.equal(torn.recovery.fields.ticket_date?.status, 'needs_review');
+});
+
+void test("a vendor whose dates keep being typed over is learned to print them faintly", () => {
+  // Nobody's layout says so, but the deployment has corrected this vendor's
+  // dates three times — three different digits, so no one pair has learned
+  // anything. Together they say the print is faint, and the date is asked.
+  const read = () => ({
+    ...observedOf({ ticket_number: whole('88123456'), ticket_date: whole('12/13/2025') }),
+    branding: 'Ontario Trap Rock',
+  });
+  const extracted = ticketOf({ ticket_number: '88123456', ticket_date: '2025-12-13' });
+  const input = { paper: frame(), extracted, records: [], profiles: noProfiles, customer: null };
+  const vendor = recoverTicket({ ...input, observed: read() }).recovery.vendor;
+  assert.ok(vendor, 'the fixture has to detect a vendor');
+  const before = recoverTicket({ ...input, observed: read() });
+  assert.equal(before.recovery.fields.ticket_date?.status, 'exact');
+  try {
+    setLearnedConfusions([
+      { vendor, field: 'date', read: '3', actual: '5', count: 1 },
+      { vendor, field: 'date', read: '1', actual: '5', count: 1 },
+      { vendor, field: 'date', read: '8', actual: '5', count: 1 },
+    ]);
+    const after = recoverTicket({ ...input, observed: read() });
+    assert.equal(after.recovery.fields.ticket_date?.status, 'needs_review');
+    // Another vendor's corrections say nothing about this one.
+    setLearnedConfusions([{ vendor: 'somebody-else', field: 'date', read: '3', actual: '5', count: 9 }]);
+    assert.equal(recoverTicket({ ...input, observed: read() }).recovery.fields.ticket_date?.status, 'exact');
+  } finally {
+    setLearnedConfusions([]);
+  }
 });

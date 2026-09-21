@@ -71,14 +71,17 @@ const TIME_OF_DAY = /\b\d{1,2}:\d{2}(:\d{2})?\b/;
  * lost. So the question this rule has to answer honestly is not what day a
  * string names but whether the scale printed it.
  *
- * Two things say it did. The encoded form is unmistakable: nothing but the
+ * One thing says it did. The encoded form is unmistakable: nothing but the
  * machine writes the year first in letters, so "26SEP14" is strong however it
- * arrives. A slashed or ISO date is only the machine's when it carries a time
- * of day with it — the scale prints the minute it weighed, a date box does
- * not. A bare "9/14/26" in the timestamps may be the reader echoing the date
- * box back, which is the very field that may have been misread, or the day the
- * office printed the sheet; it is offered as moderate, which corroborates a
- * date that was read without being able to invent one that was not.
+ * arrives. A slashed date is not the scale's on this paper, with or without
+ * a time of day beside it: the date box sits next to the Time In and Time
+ * Out boxes ("12/13/2025 Time In: Time Out: 8:33"), and a reader that hands
+ * the two back as one timestamp is echoing the date box — the very field
+ * that may have been misread — not reporting a second printing of the day.
+ * A slashed date is therefore offered as moderate, which corroborates a
+ * date that was read without being able to confirm or invent one. It used
+ * to be strong when timed, and a date box misread 13 for 15 confirmed
+ * itself through its own echo.
  *
  * A stamp that names a day the calendar has not got gives nothing at all.
  *
@@ -100,11 +103,11 @@ function dateEvidence(observed: ObservedTicket): Evidence[] {
       field: 'ticket_date',
       candidate: day,
       source: 'vendor_rule',
-      strength: encoded || timed ? 'strong' : 'moderate',
+      strength: encoded ? 'strong' : 'moderate',
       note: encoded
         ? `Machine timestamp ${printed} encodes ${day}.`
         : timed
-          ? `Machine timestamp ${printed} names ${day}.`
+          ? `"${printed}" names ${day}, but on this paper a slashed date beside a time is the date box and the time box read together, not the scale's stamp.`
           : `Date ${printed} is printed among the timestamps and names ${day}, with no time of day to mark it as the scale's.`,
     });
   }
@@ -190,6 +193,16 @@ export const HEIDELBERG = {
     ...dateEvidence(observed),
     ...plantEvidence(observed),
   ],
+
+  /**
+   * The date is laid down by the dot-matrix ribbon in the side margin, and
+   * it is faint on every sheet whether or not the reader says so: one such
+   * date has been read as the 13th, the 11th and the 18th for the 15th, the
+   * print called clear each time. So the date is never taken on the reader's
+   * word alone here. The encoded stamp or the plant's run of ticket numbers
+   * confirms it; failing those, it is asked for.
+   */
+  faintPrint: ['ticket_date'] as const satisfies readonly (keyof Ticket)[],
 
   redundantSources: {
     ticket_date: ['explicit date field', 'machine timestamp'],

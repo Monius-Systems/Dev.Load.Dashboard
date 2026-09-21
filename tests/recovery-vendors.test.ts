@@ -127,16 +127,26 @@ void test('the month abbreviation may come back in any case, and the time may be
   }
 });
 
-void test('a slashed stamp with the minute on it is the scale, and strong', () => {
+void test('a slashed date with a time beside it is the date box echoed, not the scale', () => {
+  // "12/13/2025 Time In: Time Out: 8:33" handed back as one timestamp is the
+  // date box — the field that may have been misread — read together with the
+  // time box. It corroborates; it cannot confirm. It used to be strong, and a
+  // 13 misread for 15 confirmed itself through its own echo.
   const dates = forField(
-    vendorEvidence(heidelbergTicket({ timestamps: ['09/14/26 12:02:11'] }))
+    vendorEvidence(heidelbergTicket({ timestamps: ['12/13/2025 8:33'] }))
       .evidence,
     'ticket_date',
   );
   assert.equal(dates.length, 1);
-  assert.equal(dates[0].candidate, '2026-09-14');
-  assert.equal(dates[0].strength, 'strong');
+  assert.equal(dates[0].candidate, '2025-12-13');
+  assert.equal(dates[0].strength, 'moderate');
   assert.equal(dates[0].source, 'vendor_rule');
+  assert.match(dates[0].note, /date box/);
+});
+
+void test("Heidelberg's date is known faint print, whatever the reader says", () => {
+  assert.deepEqual(vendorEvidence(heidelbergTicket()).faint, ['ticket_date']);
+  assert.deepEqual(vendorEvidence(observe({ branding: 'Nobody' })).faint, []);
 });
 
 void test('a bare date among the timestamps is not the scale speaking', () => {

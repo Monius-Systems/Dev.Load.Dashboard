@@ -18,6 +18,7 @@ import {
 } from './index.ts';
 import { applyKnownCarrier } from './known-carriers.ts';
 import { batchEvidence, buildMemory, memoryEvidence } from './memory.ts';
+import { learnedFaint } from './misread.ts';
 import { vendorEvidence } from './vendors.ts';
 import { reconcileWeights } from './weights.ts';
 
@@ -70,6 +71,32 @@ const wholeField = (observed: ObservedTicket, field: keyof Ticket): string | nul
 };
 
 /**
+ * The observation with the fields the paper is known to print faintly marked
+ * faded, whatever the reader said of them.
+ *
+ * Two things know better than the reader's word on one picture: the vendor's
+ * layout, which says where the dot-matrix ribbon runs ("faintPrint" on the
+ * profile); and what people across the deployment have typed over, which
+ * says a vendor's dates keep coming back wrong. A field marked here is read
+ * as it was, but the resolver takes it only with something to confirm it —
+ * for a date, the scale's stamp or the plant's run — and asks otherwise.
+ */
+function asFaint(
+  observed: ObservedTicket,
+  vendor: { vendor: string | null; faint: readonly (keyof Ticket)[] },
+): ObservedTicket {
+  const faint = new Set<keyof Ticket>(vendor.faint);
+  if (learnedFaint(vendor.vendor, 'date')) faint.add('ticket_date');
+  if (!faint.size) return observed;
+  const fields = { ...observed.fields };
+  for (const field of faint) {
+    const seen = fields[field];
+    if (seen && !seen.faded) fields[field] = { ...seen, faded: true };
+  }
+  return { ...observed, fields };
+}
+
+/**
  * One ticket, resolved: the value each field carries and the record of why.
  *
  * The order the evidence is gathered in is the order it is trusted in, and
@@ -81,8 +108,9 @@ export function recoverTicket(input: RecoverInput): {
   ticket: Ticket;
   recovery: TicketRecovery;
 } {
-  const { observed, extracted, records, profiles, customer, others } = input;
-  const vendor = vendorEvidence(observed);
+  const { extracted, records, profiles, customer, others } = input;
+  const vendor = vendorEvidence(input.observed);
+  const observed = asFaint(input.observed, vendor);
   const context = {
     vendor: vendor.vendor,
     customer: customer?.name ?? wholeField(observed, 'customer_name'),

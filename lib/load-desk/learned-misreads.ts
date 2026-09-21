@@ -14,7 +14,9 @@ export async function loadLearnedMisreads(): Promise<void> {
   if (loaded) return;
   loaded = true;
   if ((await dataMode()) !== 'remote') return;
-  const result = await apiJson<{ pairs: { read: string; actual: string; count: number }[] }>(
+  const result = await apiJson<{
+    pairs: { vendor: string; field: string; read: string; actual: string; count: number }[];
+  }>(
     '/api/learn/misreads',
   );
   if (result.ok) setLearnedConfusions(result.data.pairs);

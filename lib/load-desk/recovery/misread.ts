@@ -25,12 +25,37 @@ export const CONFUSABLE_GROUPS: readonly string[] = [
  */
 const learned = new Set<string>();
 export const LEARNED_MIN_COUNT = 3;
+/**
+ * How often a vendor's print of a kind of field has been typed over, all
+ * pairs together. A date corrected three times on one vendor's paper — as
+ * 13, 11 and 18 for 15, three different pairs — says the print is faint
+ * there whatever any one pair's count says, and whatever the reader says
+ * of it. Keyed "vendor|field".
+ */
+const corrected = new Map<string, number>();
 
-export function setLearnedConfusions(pairs: { read: string; actual: string; count: number }[]): void {
+export function setLearnedConfusions(
+  pairs: { read: string; actual: string; count: number; vendor?: string; field?: string }[],
+): void {
   learned.clear();
+  corrected.clear();
   for (const pair of pairs) {
     if (pair.count >= LEARNED_MIN_COUNT) learned.add(`${pair.read}${pair.actual}`);
+    if (pair.vendor && pair.field) {
+      const key = `${pair.vendor.trim().toLowerCase()}|${pair.field}`;
+      corrected.set(key, (corrected.get(key) ?? 0) + pair.count);
+    }
   }
+}
+
+/**
+ * Whether the deployment has learned that this vendor's print of this kind
+ * of field is not to be taken on the reader's word: typed over at least
+ * `LEARNED_MIN_COUNT` times across everyone using the system.
+ */
+export function learnedFaint(vendor: string | null, field: 'date' | 'number' | 'weight'): boolean {
+  if (!vendor) return false;
+  return (corrected.get(`${vendor.trim().toLowerCase()}|${field}`) ?? 0) >= LEARNED_MIN_COUNT;
 }
 
 const confusable = (a: string, b: string) =>

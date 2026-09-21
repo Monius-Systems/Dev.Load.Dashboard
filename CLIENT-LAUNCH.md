@@ -314,6 +314,19 @@ membership. If more client dashboards follow, the website can link to a small
   decides on its own.
 - Anything else is highlighted for confirmation, and ticket numbers, customer
   numbers, weights and dates are never completed from history.
+- Heidelberg's ticket date is dot-matrix print in the margin and is never
+  taken on the reader's word alone: the scale's own stamp (the `25DEC15`
+  form) or the plant's run of checked tickets either side confirms it, and
+  a date one digit off that evidence is put right silently. With neither —
+  the first ticket or two of a day at a plant — the date is asked for under
+  **Needs your input**, once for the group. Any vendor whose dates get typed
+  over three times, by anyone using the system, is treated the same way from
+  then on.
+- Invoice numbers can be changed on any invoice in review. The typed number
+  is where the series starts, worked back from that invoice's place in date
+  order, and the other invoices move along to make room; a number another
+  invoice held is not refused. Account → **Invoice numbers start at** sets
+  the start directly.
 - A photo where the sheet runs off the top, left or right is refused at
   capture.
 - Carriers named under `knownCarriers` in `client.config.json` are set
