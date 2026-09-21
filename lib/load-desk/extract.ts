@@ -99,8 +99,12 @@ type PageReading = { extracted: ExtractedTicket; observed: ObservedTicket };
  * with a pause that grows; a request the server refuses on its merits — a
  * 400, a 401, a 413 — is not, because it will be refused again.
  */
-const READ_ATTEMPTS = 3;
-const READ_BACKOFF_MS = [1500, 4000];
+// The first go again is almost at once: the usual failure is Safari sending
+// the second page down a connection the server closed after the long first
+// one, and reporting the reset as "Load failed" rather than trying again as
+// other browsers do. A fresh request opens a fresh connection.
+const READ_ATTEMPTS = 4;
+const READ_BACKOFF_MS = [300, 1500, 4000];
 const RETRY_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));

@@ -63,11 +63,23 @@ export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<
   try {
     response = await fetch(path, { cache: 'no-store', ...init, headers });
   } catch {
-    return {
-      ok: false,
-      error: 'Could not reach the server. Check your connection and try again.',
-      status: 0,
-    };
+    // Once more, almost at once. A request that dies on the wire is nearly
+    // always Safari sending it down a connection the server has closed since
+    // the last one — after the long wait for a ticket to be read — and
+    // reporting the reset as "Load failed" rather than trying again as other
+    // browsers do. The second go opens a fresh connection. A save that did
+    // reach the server the first time is refused as a duplicate the second,
+    // which the caller already handles; nothing is saved twice.
+    await new Promise<void>((resolve) => setTimeout(resolve, 300));
+    try {
+      response = await fetch(path, { cache: 'no-store', ...init, headers });
+    } catch {
+      return {
+        ok: false,
+        error: 'Could not reach the server. Check your connection and try again.',
+        status: 0,
+      };
+    }
   }
   const body = (await response.json().catch(() => ({}))) as T & { error?: string };
   if (!response.ok) {
