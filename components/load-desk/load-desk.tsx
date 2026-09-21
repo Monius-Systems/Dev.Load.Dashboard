@@ -1489,9 +1489,11 @@ export default function LoadDesk() {
           file: entry.name,
           percent: batchPercent(index, entries.length, fraction),
           label,
-          // Out of sight on a phone that is being put away; on a desk the
-          // bar is the only sign the scan is going through its stages.
-          quiet: !open && isPhone,
+          // Always shown: the bar is how the scan says it is reading, then
+          // resolving, then building invoices, and what it came to is the
+          // line under it. It used to hide when the review was not going to
+          // open, which is now every scan.
+          quiet: false,
         });
       show(0, 'Starting');
       noteTicket(session, `file-${index}`, 'extracting');
