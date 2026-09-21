@@ -322,15 +322,12 @@ void test('a camera crop missing the paper is a retake, and nothing is recovered
     customers: [customerProfile({ addresses: ['MARKHAM, IL'] })],
   });
   const settled = reviewState(recovery, 'project_address');
-  assert.equal(settled?.status, 'needs_review');
-  assert.equal(settled?.reason, 'camera_crop');
-  // The camera did this, not the printer.
-  assert.equal(settled?.source_clipped, false);
-  assert.deepEqual(settled?.candidates, ['MARKHAM, IL'], 'offered, not taken');
-  assert.equal(ticket.project_address, 'ARKHAM, IL', 'the print, never a candidate');
-  assert.ok(
-    settled?.evidence.some((line) => line.includes('a camera crop is never recovered')),
-  );
+  // The job site is never a question, camera crop or not: the one saved
+  // site the fragment fits is taken (see SILENT_FIELDS). A number or a
+  // weight cut off by the camera is still a retake — see the tests below.
+  assert.equal(settled?.status, 'recovered');
+  assert.equal(ticket.project_address, 'MARKHAM, IL');
+  assert.ok(settled?.evidence.some((line) => line.includes('runs off the left')));
 });
 
 void test('a paper edge inside the picture makes the missing print the printer’s doing', () => {
@@ -479,10 +476,12 @@ void test('multiple plausible historical matches come back ambiguous', () => {
     customers: [customerProfile({ addresses: ['NORTH PARK, IL', 'SOUTH PARK, IL'] })],
   });
   const settled = reviewState(recovery, 'project_address');
-  assert.equal(settled?.status, 'needs_review');
+  // Two fit alike: neither is picked, the print stands, both are listed.
+  assert.equal(settled?.status, 'recovered');
+  assert.equal(settled?.source, 'visible');
   assert.equal(settled?.reason, 'ambiguous_candidates');
   assert.deepEqual(settled?.candidates, ['NORTH PARK, IL', 'SOUTH PARK, IL']);
-  assert.equal(ticket.project_address, 'PARK, IL', 'the print, while a person decides');
+  assert.equal(ticket.project_address, 'PARK, IL', 'the print, never a pick between two');
 });
 
 void test('a clear verified historical match is recovered', () => {
@@ -572,7 +571,9 @@ void test('different jobs in one scan batch do not fill each other in', () => {
     others: [sister, { ticket: ticketOf({}), observed: half }],
   });
   const settled = reviewState(waiting.recovery, 'project_address');
-  assert.equal(settled?.status, 'needs_review');
+  assert.equal(settled?.status, 'recovered');
+  assert.equal(settled?.source, 'visible');
+  assert.equal(waiting.ticket.project_address, 'ARKHAM, IL', 'the print, not the sister');
   assert.equal(settled?.reason, 'insufficient_evidence');
   assert.deepEqual(settled?.candidates, ['MARKHAM, IL']);
 });
@@ -630,7 +631,7 @@ void test('an unknown customer gets nothing from another customer’s record', (
   );
   // Nor is a job site somebody saved on Witech's profile: a place another
   // customer's loads go to says nothing about where this one went.
-  assert.equal(settled?.status, 'needs_review');
+  assert.equal(settled?.source, 'visible');
   assert.equal(ticket.project_address, 'ARKHAM, IL');
 });
 
@@ -792,7 +793,7 @@ void test('a text reconstruction with insufficient evidence is not taken', () =>
     }),
   });
   const settled = reviewState(recovery, 'project_name');
-  assert.equal(settled?.status, 'needs_review');
+  assert.equal(settled?.source, 'visible');
   assert.equal(settled?.reason, 'unsupported_proposal');
   assert.equal(ticket.project_name, 'NCOLN HIGHWAY', 'the print, not the guess');
 });
@@ -853,7 +854,7 @@ void test('a correction is not reused outside the context it was made in', () =>
     records: [corrected(WITECH)],
   });
   const settled = reviewState(recovery, 'project_address');
-  assert.equal(settled?.status, 'needs_review');
+  assert.equal(settled?.source, 'visible');
   assert.equal(
     settled?.evidence.some((line) => line.includes('You corrected')),
     false,
@@ -890,7 +891,7 @@ void test('one workspace’s history is nothing to another workspace', () => {
     records: ours,
   });
   const settled = reviewState(withOurs.recovery, 'project_address');
-  assert.equal(settled?.status, 'needs_review');
+  assert.equal(settled?.source, 'visible');
   assert.deepEqual(settled?.candidates, undefined);
   assert.equal(withOurs.ticket.project_address, 'ARKHAM, IL');
 });

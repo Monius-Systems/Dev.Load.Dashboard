@@ -94,3 +94,67 @@ export function fragmentFits(
   }
   return false;
 }
+
+/**
+ * Whether a printed job site is a saved one, read leniently: the fragment
+ * fits it as print; or the saved site is in the print (the reader ran the
+ * job line and the site line together, "20430 BURNHAM--LYNWOOD 20430
+ * BURNHAM LYNWOOD,IL 60411 US"); or, punctuation and spaces aside, the
+ * print is the saved site with characters dropped along it — "DGE ARYN
+ * 46406 US" is "RIDGE GARY,IN 46406 US" with its left edge gone and two
+ * letters lost, "1640 S HALSTED ST VERDALE" is "13640 S HALSTED ST
+ * RIVERDALE" — as long as what printed is at least half of it and the ZIP,
+ * where one printed, is the same; or the two are within two characters.
+ * "ARKHAM, IL 60428" is not "100 Graham Rd, Graham, IL 60428" for sharing
+ * a ZIP. A customer's saved sites are few, and the resolver still refuses
+ * two that fit alike.
+ */
+export function siteFits(fragment: string, candidate: string, edge: ClippedEdge | null): boolean {
+  if (fragmentFits(fragment, candidate, edge)) return true;
+  if (!fragment || !candidate) return false;
+  if (fragment.length >= 8 && ` ${fragment} `.includes(` ${candidate} `)) return true;
+  const squash = (text: string) => text.replace(/[^A-Z0-9]/g, '');
+  const zip = (text: string) => /\b(\d{5})\b(?!.*\b\d{5}\b)/.exec(text)?.[1] ?? null;
+  const a = squash(fragment);
+  const b = squash(candidate);
+  const printedZip = zip(fragment);
+  if (
+    a.length >= 8 &&
+    a.length * 2 >= b.length &&
+    (!printedZip || printedZip === zip(candidate)) &&
+    subsequence(a, b)
+  ) {
+    return true;
+  }
+  return fragment.length >= 8 && editsApart(fragment, candidate, 2) <= 2;
+}
+
+/** Whether every character of `a` appears in `b`, in order. */
+function subsequence(a: string, b: string): boolean {
+  let at = 0;
+  for (const char of a) {
+    at = b.indexOf(char, at);
+    if (at < 0) return false;
+    at += 1;
+  }
+  return true;
+}
+
+/** Levenshtein distance, stopped once it passes `limit`. */
+function editsApart(a: string, b: string, limit: number): number {
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+      best = Math.min(best, current[j]);
+    }
+    if (best > limit) return limit + 1;
+    previous = current;
+  }
+  return previous[b.length];
+}
+

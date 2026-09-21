@@ -140,6 +140,8 @@ export type EvidenceSource =
   | 'historical_relationship'
   /** Other tickets of the same upload or order. */
   | 'batch_context'
+  /** The tickets photographed with this one, numbered either side of it by the same plant, all dated one day. */
+  | 'batch_run'
   /** A correction a person made on an earlier ticket in the same context. */
   | 'user_correction'
   /** The person reviewing this ticket accepted or typed it. */

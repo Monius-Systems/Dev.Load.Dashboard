@@ -1,6 +1,6 @@
 import type { ClientProfile, CustomerProfile, TruckProfile } from '../profiles.ts';
 import { customerAddresses, normalizeName } from '../customer-rates.ts';
-import { fragmentFits } from './fit.ts';
+import { siteFits } from './fit.ts';
 import { printedNumber } from '../printed-number.ts';
 import { isNumberField, type SavedRecord, type Ticket } from '../types.ts';
 import {
@@ -421,24 +421,6 @@ export function acceptableValue(field: keyof Ticket, candidate: string): string 
  * matched to exactly one customer is renamed, which is the only kind the
  * matching hands over.
  */
-/** Levenshtein distance, stopped once it passes `limit`. */
-function editsApart(a: string, b: string, limit: number): number {
-  if (Math.abs(a.length - b.length) > limit) return limit + 1;
-  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    const current = [i];
-    let best = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
-      best = Math.min(best, current[j]);
-    }
-    if (best > limit) return limit + 1;
-    previous = current;
-  }
-  return previous[b.length];
-}
-
 /**
  * The saved job site a printed address is, or null: the one on the customer
  * that reads the same once case and punctuation are set aside ("16222
@@ -453,14 +435,8 @@ export function savedAddressFor(customer: CustomerProfile | null, printed: strin
   const saved = customerAddresses(customer);
   const exact = saved.filter((address) => normalizeName(address) === key);
   if (exact.length) return exact[0];
-  const part = saved.filter((address) => fragmentFits(key, normalizeName(address), null));
-  if (part.length === 1) return part[0];
-  if (part.length > 1) return null;
-  const near = saved
-    .map((address) => ({ address, apart: editsApart(key, normalizeName(address), 2) }))
-    .filter((item) => item.apart <= 2)
-    .sort((a, b) => a.apart - b.apart);
-  return near.length === 1 || (near.length > 1 && near[0].apart < near[1].apart) ? near[0].address : null;
+  const part = saved.filter((address) => siteFits(key, normalizeName(address), null));
+  return part.length === 1 ? part[0] : null;
 }
 
 /**

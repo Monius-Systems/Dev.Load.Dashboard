@@ -521,7 +521,10 @@ void test('(e) several plausible matches are listed, never chosen between', () =
     ],
     here,
   );
-  assert.equal(resolved.status, 'needs_review');
+  // Never a question (SILENT_FIELDS): the print stands, the two listed.
+  assert.equal(resolved.status, 'recovered');
+  assert.equal(resolved.source, 'visible');
+  assert.equal(resolved.value, 'HAM');
   assert.equal(resolved.reason, 'ambiguous_candidates');
   assert.deepEqual(resolved.candidates, ['Graham', 'Markham']);
   assert.ok(notesMention(resolved.evidence, '"Hammond" does not fit'), 'Hammond does not end in HAM');
@@ -538,6 +541,8 @@ void test('(e) a fragment of two characters picks nothing at all', () => {
     ],
     here,
   );
+  assert.equal(resolved.source, 'visible');
+  assert.equal(resolved.value, 'HA');
   assert.equal(resolved.reason, 'insufficient_evidence');
   assert.deepEqual(resolved.candidates, ['Graham', 'Markham']);
   assert.ok(notesMention(resolved.evidence, 'too little to tell'));
@@ -761,7 +766,8 @@ void test('(i) evidence tied to another customer is not applied and says why', (
     ],
     here,
   );
-  assert.equal(resolved.status, 'needs_review');
+  assert.equal(resolved.source, 'visible');
+  assert.equal(resolved.value, 'ARKHAM, IL');
   assert.equal(resolved.reason, 'insufficient_evidence');
   assert.deepEqual(resolved.candidates, undefined);
   assert.ok(notesMention(resolved.evidence, 'a different customer'));
@@ -804,7 +810,8 @@ void test('(i) evidence tied to another vendor or project stays out of it', () =
       ],
       here,
     );
-    assert.equal(resolved.status, 'needs_review', JSON.stringify(context));
+    assert.equal(resolved.source, 'visible', JSON.stringify(context));
+    assert.equal(resolved.value, 'ARKHAM, IL', JSON.stringify(context));
   }
 });
 

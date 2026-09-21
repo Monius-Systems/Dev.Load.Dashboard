@@ -34,7 +34,7 @@ export function printedNumber(text: string | null | undefined): number | null {
   if (!text) return null;
   let cleaned = text.replace(/[,$]/g, '').trim();
   // The marks and the unit after the figure: "27600 *", "27600 lb", "27600 #".
-  cleaned = cleaned.replace(/\s*(?:lbs?|#|\*)+\s*$/i, '').trim();
+  cleaned = cleaned.replace(/\s*(?:lbs?|tons?|tn|t|kgs?|#|\*)+\s*$/i, '').trim();
   // Two figures first, before any space is closed up: "27140 13.57" is the
   // pounds and the tons, not one number with a space in it. A figure printed
   // with a space for its thousands ("68 000") has no decimal second part and

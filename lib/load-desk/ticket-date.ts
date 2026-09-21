@@ -20,6 +20,29 @@ const SLASHED_DATE = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/;
 
 const pad2 = (value: number) => String(value).padStart(2, '0');
 
+const MONTHS: Record<string, number> = {
+  JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6,
+  JUL: 7, AUG: 8, SEP: 9, SEPT: 9, OCT: 10, NOV: 11, DEC: 12,
+};
+/** "September 17, 2026", "Sep 17 2026", "17 September 2026": some printers write the month out. */
+const MONTH_FIRST = /^([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})$/;
+const DAY_FIRST = /^(\d{1,2})\s+([A-Za-z]{3,9})\.?,?\s+(\d{4})$/;
+function wordedDate(text: string): [number, number, number] | null {
+  const first = MONTH_FIRST.exec(text);
+  const [name, day, year] = first
+    ? [first[1], first[2], first[3]]
+    : (() => {
+        const m = DAY_FIRST.exec(text);
+        return m ? [m[2], m[1], m[3]] : ['', '', ''];
+      })();
+  if (!name) return null;
+  const key = name.toUpperCase();
+  const month = MONTHS[key] ?? MONTHS[key.slice(0, 3)];
+  if (!month || !(key.length <= 4 || FULL_MONTHS[month - 1].startsWith(key))) return null;
+  return [Number(year), month, Number(day)];
+}
+const FULL_MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+
 /**
  * The year, month and day a written date names, or null when it names none.
  *
@@ -38,14 +61,17 @@ function dayParts(value: string | null | undefined) {
   if (!text) return null;
   const iso = ISO_DATE.exec(text);
   const slashed = iso ? null : SLASHED_DATE.exec(text);
-  if (!iso && !slashed) return null;
+  const worded = iso || slashed ? null : wordedDate(text);
+  if (!iso && !slashed && !worded) return null;
   const [year, month, day] = iso
     ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
-    : [
-        Number(slashed![3].length === 2 ? `20${slashed![3]}` : slashed![3]),
-        Number(slashed![1]),
-        Number(slashed![2]),
-      ];
+    : slashed
+      ? [
+          Number(slashed[3].length === 2 ? `20${slashed[3]}` : slashed[3]),
+          Number(slashed[1]),
+          Number(slashed[2]),
+        ]
+      : worded!;
   const date = new Date(Date.UTC(year, month - 1, day));
   if (
     date.getUTCFullYear() !== year ||

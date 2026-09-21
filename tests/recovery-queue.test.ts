@@ -184,9 +184,10 @@ void test('the same clipped address with nothing on file keeps the fragment and 
     customer: null,
   });
   const resolution = reviewState(recovery, 'project_address');
-  assert.equal(resolution?.status, 'needs_review');
-  // What the ticket carries is the print, never a candidate: a person
-  // reading the screen is reading the paper.
+  // Never a question (SILENT_FIELDS): the print stands as read, and what
+  // the ticket carries is the print, never a candidate.
+  assert.equal(resolution?.status, 'recovered');
+  assert.equal(resolution?.source, 'visible');
   assert.equal(ticket.project_address, 'ARKHAM, IL');
 });
 
@@ -225,9 +226,21 @@ void test('the sheet running off the picture is a retake, not a recovery', () =>
     customer,
   });
   const resolution = reviewState(recovery, 'project_address');
-  assert.equal(resolution?.status, 'needs_review');
-  assert.equal(resolution?.reason, 'camera_crop');
+  // The site is never a question, and the one saved site it fits is taken;
+  // the cut is noted. A number the camera cut off is still a retake.
+  assert.equal(resolution?.status, 'recovered');
+  assert.equal(resolution?.value, 'MARKHAM, IL');
   assert.equal(resolution?.source_clipped, false);
+  const number = recoverTicket({
+    observed: observedOf({ ticket_number: clipped('254464') }),
+    paper: frame({ left: 'cut' }),
+    extracted: ticketOf({}),
+    records: [],
+    profiles: noProfiles,
+    customer: null,
+  }).recovery.fields.ticket_number;
+  assert.equal(number?.status, 'needs_review');
+  assert.equal(number?.reason, 'camera_crop');
 });
 
 void test('a PDF page with no frame at all still resolves, against an unknown sheet', () => {
@@ -458,10 +471,10 @@ void test('a field a person confirmed is never reconsidered, and nothing changes
     paper: UNKNOWN_FRAME,
     fields: {
       carrier_name: { ...staleResolution({ visible_text: 'Z FORCE TRANSPO' }), status: 'confirmed', value: 'Z FORCE TRANSPO', confirmed_by_user: true, source: 'user_confirmed', confidence: 1 },
-      project_address: staleResolution({ visible_text: 'ARKHAM, IL', clipped_edge: 'left', reason: 'insufficient_evidence' }),
+      product_description: staleResolution({ visible_text: 'A6 CRUSHED', clipped_edge: 'left', reason: 'insufficient_evidence' }),
     },
   };
-  const ticket: Ticket = { ...emptyTicket(), carrier_name: 'Z FORCE TRANSPO', project_address: 'ARKHAM, IL' };
+  const ticket: Ticket = { ...emptyTicket(), carrier_name: 'Z FORCE TRANSPO', product_description: 'A6 CRUSHED' };
   const again = rerecoverSaved({ ticket, recovery, records: [], profiles: noProfiles, customer: null });
   assert.equal(again.recovery, recovery, 'the same object comes back when nothing changed');
   assert.equal(again.ticket, ticket);

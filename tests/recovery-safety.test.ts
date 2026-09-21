@@ -6,6 +6,7 @@ import {
   fieldClass,
   resolveField,
   resolveTicket,
+  SILENT_FIELDS,
   UNKNOWN_FRAME,
   type Evidence,
   type EvidenceSource,
@@ -204,7 +205,13 @@ void test('no field waiting for a person ever leaves a fragment where a number g
   );
   const after = applyRecovery(emptyTicket(), recovery);
   for (const field of FIELD_ORDER) {
-    assert.equal(recovery.fields[field]?.status, 'needs_review', field);
+    // The job and the site are never a question: the print stands (recovered
+    // from the print itself). Everything else waits for a person.
+    assert.equal(
+      recovery.fields[field]?.status,
+      SILENT_FIELDS.has(field) && fieldClass(field) === 'text' ? 'recovered' : 'needs_review',
+      field,
+    );
     if (fieldClass(field) === 'text') {
       assert.equal(after[field], 'X9', field);
     } else {
@@ -231,7 +238,8 @@ void test('a field the workspace has a great deal to say about still fits on the
     evidence,
     { vendor: null },
   );
-  assert.equal(resolution.status, 'needs_review');
+  assert.equal(resolution.status, 'recovered');
+  assert.equal(resolution.value, 'ARKHAM', 'the print stands, none of the thirty picked');
   assert.ok((resolution.candidates?.length ?? 0) <= 10);
   assert.ok(resolution.candidates?.every((value) => value.length <= 200));
   assert.ok(resolution.evidence.length <= 20);

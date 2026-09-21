@@ -1,5 +1,7 @@
 import { normalizeName } from '../customer-rates.ts';
-import { fragmentFits } from './fit.ts';
+import { ticketDay } from '../ticket-date.ts';
+import { fragmentFits, siteFits } from './fit.ts';
+import { SILENT_FIELDS } from './policy.ts';
 import type { CustomerProfile, ClientProfile, TruckProfile } from '../profiles.ts';
 import type { SavedRecord, Ticket } from '../types.ts';
 import type {
@@ -223,10 +225,12 @@ const isGap = (seen: ObservedField) => seen.partial || seen.clipped_edge !== nul
  * must begin with it. Anything else — torn, smudged, a hole punched through —
  * only says the visible run is somewhere inside.
  */
-function fits(candidate: string, fragment: string, edge: ClippedEdge | null): boolean {
+function fits(candidate: string, fragment: string, edge: ClippedEdge | null, field?: keyof Ticket): boolean {
   const value = normalizeName(candidate);
   if (!value || !fragment) return false;
-  return fragmentFits(fragment, value, edge);
+  // The job and the site are read leniently (see `siteFits`): by ZIP, by
+  // the saved site being inside the print, by a letter or two.
+  return field && SILENT_FIELDS.has(field) ? siteFits(fragment, value, edge) : fragmentFits(fragment, value, edge);
 }
 
 /**
@@ -547,20 +551,21 @@ export function memoryEvidence(
         entry.number !== number &&
         (!plant || !entry.plant || normalizeName(entry.plant) === plant),
     );
-    const days = new Map<string, number>();
-    for (const entry of near) days.set(entry.date, (days.get(entry.date) ?? 0) + 1);
-    if (days.size === 1) {
-      const [[day, count]] = days;
-      if (count >= SEQUENCE_MIN_NEIGHBOURS) {
-        const numbers = near.map((entry) => entry.number).sort((a, b) => a - b);
-        out.add({
-          field: 'ticket_date',
-          candidate: day,
-          source: 'verified_history',
-          strength: 'strong',
-          note: `Tickets ${numbers[0]}–${numbers[numbers.length - 1]} on file${plant ? ' from this plant' : ''} are all dated ${day}, and this is ${number}.`,
-        });
-      }
+    const own = observed.fields.ticket_date?.visible?.trim() ?? '';
+    const day = bracketingDay(
+      number,
+      near.map((entry) => ({ number: entry.number, day: entry.date })),
+      own.includes('?') ? null : ticketDay(own),
+      printedDayOfMonth(own),
+    );
+    if (day) {
+      out.add({
+        field: 'ticket_date',
+        candidate: day.day,
+        source: 'verified_history',
+        strength: 'strong',
+        note: `Tickets ${day.numbers[0]}–${day.numbers[day.numbers.length - 1]} on file${plant ? ' from this plant' : ''} are all dated ${day.day}, and this is ${number}.`,
+      });
     }
   }
 
@@ -586,7 +591,7 @@ export function memoryEvidence(
     if (squash(whole).length < 3 || !customer) continue;
     for (const known of memory.values.get(field) ?? []) {
       const value = normalizeName(known.value);
-      if (value === whole || !fragmentFits(whole, value, null)) continue;
+      if (value === whole || !siteFits(whole, value, null)) continue;
       if (!known.customers.has(normalizeName(customer))) continue;
       out.add({
         field,
@@ -610,7 +615,7 @@ export function memoryEvidence(
 
     if (EVIDENCE_VALUE_FIELDS.has(field)) {
       for (const known of memory.values.get(field) ?? []) {
-        if (!fits(known.value, fragment, seen.clipped_edge)) continue;
+        if (!fits(known.value, fragment, seen.clipped_edge, field)) continue;
         // The fragment itself is on file wherever a ticket was saved with the
         // print as it stood. Offered back, it read as "on file: Z FORCE
         // TRANSPO" under a field showing exactly that — a completion that
@@ -680,7 +685,7 @@ export function memoryEvidence(
       // two, and which one this load went to is still an open question.
       const only = related.length === 1;
       for (const link of related) {
-        if (!fits(link.to, fragment, seen.clipped_edge)) continue;
+        if (!fits(link.to, fragment, seen.clipped_edge, field)) continue;
         // The one identifier history may speak about, and only when a named
         // customer owns exactly one of them.
         if (field === 'customer_id' && !only) continue;
@@ -719,7 +724,7 @@ export function memoryEvidence(
       // has said what a ticket reading "Z FORCE TRAN" is too. The fragment
       // has to fit the confirmed value the way it fits any candidate, and
       // a correction that merely restates the fragment is no correction.
-      if (!fits(correction.confirmed_value, fragment, seen.clipped_edge)) continue;
+      if (!fits(correction.confirmed_value, fragment, seen.clipped_edge, field)) continue;
       if (normalizeName(correction.confirmed_value) === fragment) continue;
       const customerSame = matches(correction.customer, customer);
       const projectSame = matches(correction.project, project);
@@ -765,6 +770,139 @@ const otherLabel = (ticket: Ticket) => {
  * Whether another ticket of the upload carries this field end to end. A ticket
  * that is itself missing part of the field has nothing to lend.
  */
+/**
+ * The day this ticket's number falls on in the run of tickets photographed
+ * with it: the same plant's tickets numbered within reach either side, at
+ * least two of them, their dates read whole and all naming one day.
+ *
+ * A pile of eight tickets from one plant, scanned together, is a day's work
+ * in sequence, and the date on each is the same faint dot-matrix print. On
+ * file none of them is checked yet, so the plant's run (memory.ts, from
+ * checked tickets) says nothing, and every one of the eight used to be
+ * asked for its date. The pile speaks for itself here: a date read whole on
+ * two sequential neighbours confirms a faint one, completes a month the
+ * margin cut off, and puts a digit right. Never a day the pile disagrees on.
+ */
+function uploadRun(
+  others: { ticket: Ticket; observed?: ObservedTicket }[],
+  observed: ObservedTicket,
+): Evidence[] {
+  const numberText = wholeValue(observed, 'ticket_number')?.replace(/\D/g, '') ?? '';
+  if (numberText.length < 6) return [];
+  const number = Number(numberText);
+  const plant = normalizeName(wholeValue(observed, 'plant_name') ?? '');
+  const days = new Map<string, number[]>();
+  for (const other of others) {
+    if (other.observed === observed) continue;
+    const digits = otherWhole(other, 'ticket_number')?.replace(/\D/g, '') ?? '';
+    if (digits.length < 6) continue;
+    const theirs = Number(digits);
+    if (theirs === number || Math.abs(theirs - number) > SEQUENCE_REACH) continue;
+    const theirPlant = normalizeName(otherWhole(other, 'plant_name') ?? '');
+    if (plant && theirPlant && plant !== theirPlant) continue;
+    const day = readDay(other);
+    if (!day) continue;
+    days.set(day, [...(days.get(day) ?? []), theirs]);
+  }
+  const own = observed.fields.ticket_date?.visible?.trim() ?? '';
+  const found = bracketingDay(
+    number,
+    [...days].flatMap(([day, numbers]) => numbers.map((n) => ({ number: n, day }))),
+    own.includes('?') ? null : ticketDay(own),
+    printedDayOfMonth(own),
+  );
+  if (!found) return [];
+  return [
+    {
+      field: 'ticket_date',
+      candidate: found.day,
+      source: 'batch_run',
+      strength: 'strong',
+      note: `Tickets ${found.numbers[0]}–${found.numbers[found.numbers.length - 1]} photographed with this one${plant ? ', from this plant' : ''}, numbered either side of ${number}, are all dated ${found.day}.`,
+    },
+  ];
+}
+
+/**
+ * The day a ticket number falls on among its neighbours: the one day whose
+ * tickets are numbered both below and above it, at least two of them. A
+ * plant numbers its tickets in sequence, so a number between two of one
+ * day's is that day's. Neighbours all on one side say less: the tickets
+ * after this one may be the next morning's, and a ticket dated the 17th
+ * with the 18th's tickets numbered just above it was read as the 18th for
+ * exactly that. Two days both bracketing the number is a contradiction, and
+ * nothing is said.
+ */
+function bracketingDay(
+  number: number,
+  neighbours: { number: number; day: string }[],
+  read: string | null = null,
+  dayOfMonth: string | null = null,
+): { day: string; numbers: number[] } | null {
+  const byDay = new Map<string, number[]>();
+  for (const entry of neighbours) {
+    // A day the printed day-of-month rules out is no neighbour to count:
+    // "16/2026" is not the 15th's, however many of the 15th's sit below it.
+    // The digits may themselves be cut on the left — "7/2026" is the 17th's
+    // tail as well as the 7th's — so the day has only to end in them.
+    if (dayOfMonth !== null && !String(Number(entry.day.slice(8, 10))).endsWith(dayOfMonth)) continue;
+    byDay.set(entry.day, [...(byDay.get(entry.day) ?? []), entry.number]);
+  }
+  const bracketing = [...byDay]
+    .filter(([, numbers]) => numbers.length >= SEQUENCE_MIN_NEIGHBOURS && numbers.some((n) => n < number) && numbers.some((n) => n > number))
+    .map(([day, numbers]) => ({ day, numbers: [...numbers].sort((a, b) => a - b) }));
+  if (bracketing.length === 1) {
+    // Another day's ticket inside the bracket — between the nearest of the
+    // day's below and above — is the run disagreeing with itself.
+    const [found] = bracketing;
+    const below = Math.max(...found.numbers.filter((n) => n < number));
+    const above = Math.min(...found.numbers.filter((n) => n > number));
+    const inside = neighbours.some((entry) => entry.day !== found.day && entry.number > below && entry.number < above);
+    return inside ? null : found;
+  }
+  if (bracketing.length > 1) return null;
+  // The first or last ticket of a day has its day's tickets on one side
+  // only. Its own date, read whole, is confirmed when it is the day of the
+  // tickets numbered nearest it, at least two of them: a confirmation of
+  // what printed, never a completion of what did not.
+  if (read) {
+    const nearest = [...neighbours].sort((a, b) => Math.abs(a.number - number) - Math.abs(b.number - number))[0];
+    const numbers = byDay.get(read);
+    if (!nearest || nearest.day !== read || !numbers || numbers.length < SEQUENCE_MIN_NEIGHBOURS) return null;
+    return { day: read, numbers: [...numbers].sort((a, b) => a - b) };
+  }
+  // A date with its month cut off, and every neighbour within reach on one
+  // day: that day is offered, and the resolver takes it only if the day
+  // digits that did print are that day's — "16/2026" is not completed to
+  // the 15th by the 15th's tickets numbered just below it.
+  if (byDay.size === 1) {
+    const [[day, numbers]] = byDay;
+    if (numbers.length >= SEQUENCE_MIN_NEIGHBOURS) return { day, numbers: [...numbers].sort((a, b) => a - b) };
+  }
+  return null;
+}
+
+/** The day of the month a date fragment still carries: "16/2026" and "/15/2026" name theirs. */
+function printedDayOfMonth(fragment: string): string | null {
+  if (!fragment || fragment.includes('?') || ticketDay(fragment)) return null;
+  const m = /(\d{1,2})[/-]\d{2,4}\s*$/.exec(fragment);
+  const day = m ? Number(m[1]) : NaN;
+  return day >= 0 && day <= 31 ? String(day) : null;
+}
+
+/** A neighbour's date as it printed, whole — month, day and year — whatever was said of its margin. */
+function readDay(other: { ticket: Ticket; observed?: ObservedTicket }): string | null {
+  const seen = other.observed?.fields.ticket_date;
+  const printed = seen?.visible?.trim();
+  if (printed && !printed.includes('?')) {
+    const day = ticketDay(printed);
+    if (day) return day;
+  }
+  // Else the day its own hearing gave it — from its stamp, or the run — and
+  // never one invented: the resolver does not date a ticket on a guess.
+  return ticketDay(other.ticket.ticket_date);
+}
+
 function otherWhole(
   other: { ticket: Ticket; observed?: ObservedTicket },
   field: keyof Ticket,
@@ -792,6 +930,7 @@ export function batchEvidence(
   observed: ObservedTicket,
 ): Evidence[] {
   const out = collector();
+  for (const item of uploadRun(others, observed)) out.add(item);
   const order = wholeValue(observed, 'order_number');
   const customerId = wholeValue(observed, 'customer_id');
   const customerName = wholeValue(observed, 'customer_name');

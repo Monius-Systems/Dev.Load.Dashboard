@@ -1,7 +1,7 @@
 import { normalizeKey, normalizeName } from '../profiles.ts';
 import { ticketDay } from '../ticket-date.ts';
 import { printedNumber } from '../printed-number.ts';
-import { fragmentFits } from './fit.ts';
+import { fragmentFits, siteFits } from './fit.ts';
 import { oneDigitConfused, oneMisreadApart } from './misread.ts';
 import { printedDays } from './printed-days.ts';
 import { balanced, WEIGHT_FIELDS, weightFix, type WeightField, type Weights } from './weights.ts';
@@ -27,6 +27,7 @@ import {
   UNKNOWN_FRAME,
   type ClippedEdge,
   type Evidence,
+  type EvidenceSource,
   type FieldResolution,
   type ObservedField,
   type ObservedTicket,
@@ -114,7 +115,13 @@ const coerce = (field: keyof Ticket, text: string): string | number | null => {
  * only has to appear somewhere in it. An empty fragment constrains nothing,
  * which is why an empty one is never allowed to select on its own.
  */
-function fits(fragment: string, candidate: string, edge: ClippedEdge | null): boolean {
+/**
+ * The runs of ticket numbers that may date a ticket: the plant's run of
+ * checked tickets on file, and the run photographed with it.
+ */
+const DATES_RUN: ReadonlySet<EvidenceSource> = new Set<EvidenceSource>(['verified_history', 'batch_run']);
+
+function fitsExactly(fragment: string, candidate: string, edge: ClippedEdge | null): boolean {
   if (!fragment) return true;
   return fragmentFits(fragment, candidate, edge);
 }
@@ -152,7 +159,7 @@ const UNSURE = '?';
 
 /** Whether a piece of print with unreadable digits could be `candidate`, character for character. */
 function fitsWithGaps(print: string, candidate: string, edge: ClippedEdge | null): boolean {
-  if (!print.includes(UNSURE)) return fits(print, candidate, edge);
+  if (!print.includes(UNSURE)) return fitsExactly(print, candidate, edge);
   const matches = (a: string, b: string) => {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) if (a[i] !== UNSURE && a[i] !== b[i]) return false;
@@ -170,11 +177,18 @@ function fitsWithGaps(print: string, candidate: string, edge: ClippedEdge | null
 /** Letters, digits and the unsure mark, so a "?" survives where normalizeKey would drop it. */
 const keyWithGaps = (text: string) => text.toUpperCase().replace(/[^A-Z0-9?]/g, '');
 
-const dateFragmentFits = (fragment: string, iso: string, edge: ClippedEdge | null) => {
+const dateFragmentFits = (fragment: string, iso: string, edge: ClippedEdge | null): boolean => {
   if (!fragment) return true;
   if (ticketDay(fragment) === iso) return true;
   const key = dateKey(fragment);
-  return printedDays(iso).some((form) => fitsWithGaps(key, dateKey(form), edge));
+  if (printedDays(iso).some((form) => fitsWithGaps(key, dateKey(form), edge))) return true;
+  // The first character of print cut off on the left is half a glyph as
+  // often as a whole one: "0/15/2026" is the right half of a 9. It is let go
+  // once, and the rest has to fit.
+  if (edge === 'left' && /^\d[/-]/.test(fragment) && fragment.length >= 6) {
+    return dateFragmentFits(fragment.slice(1), iso, edge);
+  }
+  return false;
 };
 
 // --- weighing the evidence ------------------------------------------------
@@ -327,7 +341,13 @@ export function resolveField(
   const proposed = proposedRaw || null;
   const edge = observed?.clipped_edge ?? null;
   const fragment = stripPlaceholders(visible ?? '');
-  const isPartial = observed?.partial === true || edge !== null;
+  // A date that reads as a whole day — month, day and year — is whole,
+  // whatever the reader said about the margin beside it: "9/14/2026" with
+  // the left edge called cut is a complete date next to a cut edge, and
+  // used to be sent for a retake as a fragment.
+  const wholeDate = cls === 'date' && !fragment.includes(UNSURE) && ticketDay(fragment) !== null;
+  const isPartial = !wholeDate && (observed?.partial === true || edge !== null);
+  const silent = cls === 'text' && SILENT_FIELDS.has(field);
 
   const finish = (draft: Draft): FieldResolution => ({
     status: draft.status,
@@ -347,7 +367,22 @@ export function resolveField(
   // on file is allowed near this: the missing characters are not lost, they
   // are outside the frame, and one more photograph brings them back. Filling
   // it in from history would turn a retake into a permanent invention.
-  if (edge !== null && paper[edge] === 'cut') {
+  if (edge !== null && paper[edge] === 'cut' && !wholeDate && !silent) {
+    // A date the camera cut is still dated by a run of ticket numbers: the
+    // plant's checked tickets either side, or the pile it was photographed
+    // with. Neither reads the missing print; they say what day the number
+    // falls on, and a fragment the day fits is that day. "15/2026" with the
+    // month outside the frame used to be a retake with the run in hand.
+    if (cls === 'date' && fragment) {
+      const run = resolveDate(fragment, edge, proposed, applicable, [], (value) => value);
+      if (run.status === 'recovered') {
+        notes.push(
+          `The sheet runs off the ${edge} of the picture; the run of ticket numbers dates it regardless.`,
+        );
+        for (const item of applicable) notes.push(item.note);
+        return finish(run);
+      }
+    }
     notes.push(
       `The sheet runs off the ${edge} of the picture, so the missing print was cut off by the camera rather than the printer: take the photograph again.`,
     );
@@ -372,7 +407,12 @@ export function resolveField(
   // (b) No sheet edge was found on the clipped side. The clipping is taken at
   // face value so the field is still recoverable, but the frame was never
   // confirmed, and the confidence and the notes both say so.
-  const frameUnverified = edge !== null && paper[edge] === 'unknown';
+  const frameUnverified = edge !== null && paper[edge] === 'unknown' && !wholeDate;
+  if (silent && edge !== null && paper[edge] === 'cut') {
+    notes.push(
+      `The sheet runs off the ${edge} of the picture. The job is never a question: a saved site that fits is taken, and failing that the print stands as read.`,
+    );
+  }
   if (frameUnverified) {
     notes.push(
       `No sheet edge was found on the ${edge} of the picture, so nothing confirms the printer cut this off rather than the camera.`,
@@ -403,7 +443,7 @@ export function resolveField(
     const disputes = applicable.filter(
       (item) =>
         item.strength === 'strong' &&
-        (DERIVATION_SOURCES.has(item.source) || (cls === 'date' && item.source === 'verified_history')) &&
+        (DERIVATION_SOURCES.has(item.source) || (cls === 'date' && DATES_RUN.has(item.source))) &&
         !sameValue(field, cls, item.candidate, value),
     );
     // A date read whole that the evidence says is another day, one digit
@@ -470,7 +510,7 @@ export function resolveField(
           item.strength === 'strong' &&
           VERIFIED_SOURCES.has(item.source) &&
           normalizeName(item.candidate) !== key &&
-          fragmentFits(key, normalizeName(item.candidate), null),
+          siteFits(key, normalizeName(item.candidate), null),
       );
       const distinct = [...new Set(containing.map((item) => normalizeName(item.candidate)))];
       if (distinct.length === 1) {
@@ -488,7 +528,7 @@ export function resolveField(
       const confirmed = applicable.some(
         (item) =>
           item.strength === 'strong' &&
-          (DERIVATION_SOURCES.has(item.source) || item.source === 'verified_history') &&
+          (DERIVATION_SOURCES.has(item.source) || DATES_RUN.has(item.source)) &&
           sameValue(field, cls, item.candidate, value),
       );
       if (!confirmed) {
@@ -549,9 +589,28 @@ export function resolveField(
     return finish(resolveDate(fragment, edge, proposed, applicable, notes, capConfidence));
   }
   if (cls === 'text') {
-    return finish(
-      resolveText(fragment, edge, proposed, applicable, notes, capConfidence, visible),
-    );
+    const draft = resolveText(fragment, edge, proposed, applicable, notes, capConfidence, visible, silent);
+    if (silent && draft.status === 'needs_review') {
+      // The job and the site are never a question (see SILENT_FIELDS):
+      // nothing on file fits, so the print stands as read, to be corrected
+      // in review if anyone cares to.
+      notes.push('Nothing on file fits; the print stands as read.');
+      const stands = fragment || null;
+      return finish(
+        stands
+          ? {
+              status: 'recovered',
+              value: stands,
+              source: 'visible',
+              confidence: capConfidence(0.4),
+              // What was on offer is still shown, for a person who cares to choose.
+              ...(draft.reason ? { reason: draft.reason } : {}),
+              ...(draft.candidates?.length ? { candidates: draft.candidates } : {}),
+            }
+          : { status: 'missing', value: null, source: null, confidence: 0 },
+      );
+    }
+    return finish(draft);
   }
   return finish(
     resolveDerived(field, cls, fragment, edge, proposed, applicable, notes, capConfidence),
@@ -583,7 +642,7 @@ function resolveDate(
   const authoritative = applicable.filter(
     (item) =>
       item.strength === 'strong' &&
-      (DERIVATION_SOURCES.has(item.source) || item.source === 'verified_history'),
+      (DERIVATION_SOURCES.has(item.source) || DATES_RUN.has(item.source)),
   );
   const fitting = authoritative.filter((item) => {
     const day = ticketDay(item.candidate);
@@ -626,10 +685,13 @@ function resolveDate(
   // A weak record disagreeing is still two sources disagreeing about the one
   // field an invoice is filed under, and that is a question for a person.
   const day = days[0];
+  // A run of ticket numbers is positional, not a reading of this sheet: a
+  // run naming a day the print cannot be — the 15th's tickets numbered just
+  // above a "14/2026" — is not applied, and is no dispute either.
   const otherDays = [
     ...new Set(
       applicable
-        .filter((item) => !ADVISORY_SOURCES.has(item.source))
+        .filter((item) => !ADVISORY_SOURCES.has(item.source) && !DATES_RUN.has(item.source))
         .map((item) => ticketDay(item.candidate))
         .filter((other): other is string => other !== null && other !== day),
     ),
@@ -761,9 +823,11 @@ function resolveText(
   notes: string[],
   capConfidence: (value: number) => number,
   visible: string | null,
+  lenient = false,
 ): Draft {
   const held = visible;
   const fragmentKey = normalizeName(fragment);
+  const fits = lenient ? siteFits : fitsExactly;
   const pool = applicable.filter(
     (item) => !ADVISORY_SOURCES.has(item.source) && item.candidate.trim(),
   );

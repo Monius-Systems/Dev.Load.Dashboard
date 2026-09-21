@@ -1829,23 +1829,58 @@ export default function LoadDesk() {
     // everything else and cannot outvote print — so a second upload of two
     // unrelated jobs comes back exactly as it went in.
     if (added.some((item) => item.observed)) {
-      const others = added.map((item) => ({ ticket: item.ticket, observed: item.observed }));
       const snapshot = getRecordsSnapshot().records;
       const known = getProfilesSnapshot();
-      for (const [index, item] of added.entries()) {
-        if (!item.observed) continue;
-        const resolved = recoverTicket({
-          observed: item.observed,
-          paper: undefined,
-          extracted: item.ticket,
-          records: snapshot,
-          profiles: known,
-          customer:
-            known.customers.find((customer) => customer.id === item.customer_profile_id) ??
-            null,
-          others,
-        });
-        added[index] = { ...item, ticket: resolved.ticket, recovery: resolved.recovery };
+      const reheard = new Set<number>();
+      // Heard again until nothing changes, three rounds at most: a page the
+      // pile dates in one round is a whole-dated neighbour for the next, and
+      // a pile of faint dates settles itself a page at a time.
+      for (let round = 0; round < 3; round++) {
+        const others = added.map((item) => ({ ticket: item.ticket, observed: item.observed }));
+        let changed = false;
+        for (const [index, item] of added.entries()) {
+          if (!item.observed) continue;
+          const resolved = recoverTicket({
+            observed: item.observed,
+            paper: item.recovery?.paper,
+            extracted: item.ticket,
+            records: snapshot,
+            profiles: known,
+            customer:
+              known.customers.find((customer) => customer.id === item.customer_profile_id) ??
+              null,
+            others,
+          });
+          if (
+            JSON.stringify(resolved.ticket) === JSON.stringify(item.ticket) &&
+            JSON.stringify(resolved.recovery) === JSON.stringify(item.recovery)
+          ) {
+            continue;
+          }
+          added[index] = { ...item, ticket: resolved.ticket, recovery: resolved.recovery };
+          reheard.add(index);
+          changed = true;
+        }
+        if (!changed) break;
+      }
+      // What the pile settled is written to the records the pages were filed
+      // as, so it is what is stored and what is numbered from — a date the
+      // pile supplied puts the page on that day's invoice. It used to stay on
+      // the screen only: the record kept the first hearing, the copy on the
+      // screen read as edited, and the approval waited on an edit nobody
+      // had made.
+      const filedNow = [...reheard].filter((index) => added[index].saved_record_id !== null);
+      if (filedNow.length) {
+        const result = await updateSavedRecords(
+          filedNow.map((index) => ({ ...editOf(added[index]), bookkeeping: true })),
+        );
+        if ('error' in result) {
+          failures.push(result.error);
+        } else {
+          for (const index of filedNow) {
+            added[index] = { ...added[index], baseline: editKey(editOf(added[index])) };
+          }
+        }
       }
     }
     setExtraction((current) => current && { ...current, percent: 100, label: 'Resolving ticket data' });

@@ -92,7 +92,7 @@ void test('two saved job sites that both line up are a question, not a pick', ()
     profiles: { customers: [customer], trucks: [], clients: [] },
     customer,
   });
-  assert.equal(recovery.fields.project_address?.status, 'needs_review');
+  assert.equal(recovery.fields.project_address?.source, 'visible');
   assert.equal(recovery.fields.project_address?.reason, 'ambiguous_candidates');
   assert.equal(ticket.project_address, 'ARKHAM, IL 60428 US', 'the print stands until a person picks');
   assert.deepEqual(recovery.fields.project_address?.candidates?.length, 2);
@@ -108,7 +108,7 @@ void test('a saved job site that does not line up is not forced onto the ticket'
     profiles: { customers: [customer], trucks: [], clients: [] },
     customer,
   });
-  assert.equal(recovery.fields.project_address?.status, 'needs_review');
+  assert.equal(recovery.fields.project_address?.source, 'visible');
   assert.equal(ticket.project_address, 'ARKHAM, IL 60428 US');
 });
 

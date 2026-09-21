@@ -37,7 +37,7 @@ const MONTHS: Record<string, number> = {
 };
 
 /** The scale's own stamp: two-digit year, month in letters, two-digit day. */
-const MACHINE_STAMP = /^(\d{2})([A-Za-z]{3})(\d{2})\b/;
+const MACHINE_STAMP = /^(\d{2})[-\s]?([A-Za-z]{3})[-\s]?(\d{2})\b/;
 
 /**
  * The day a Heidelberg machine timestamp encodes: "26SEP14 12:02" is the 14th
@@ -58,6 +58,31 @@ export function machineStampDay(stamp: string): string | null {
   const month = MONTHS[match[2].toUpperCase()];
   if (!month) return null;
   return ticketDay(`20${match[1]}-${month}-${match[3]}`);
+}
+
+/**
+ * The stamp's day with a year a ticket can have. The two year digits are the
+ * faintest on the stamp, and "26SEP14" read as "29SEP14" is the 14th of
+ * September 2029 — the right day, three years out; "27SEP14" and
+ * "25-SEP-14" have been read off the same stamp. The date box's four-digit
+ * year is the year wherever the box prints one a ticket can have; failing
+ * that the stamp's own, if it is not in the future or years past; failing
+ * that this year's. The day and month are the scale's either way.
+ */
+function plausibleYear(stamped: string, observed: ObservedTicket): { day: string } | null {
+  const year = Number(stamped.slice(0, 4));
+  const now = new Date().getUTCFullYear();
+  const plausible = (value: number) => value >= now - 2 && value <= now;
+  // The date box prints the year in four digits, in larger type than the
+  // stamp's two; where the box has a year a ticket can have, it is the year,
+  // and a stamp two digits away from it is the stamp misread.
+  const box = observed.fields.ticket_date?.visible ?? '';
+  const printedYear = /(\d{4})\s*$/.exec(box.trim())?.[1];
+  const boxYear = printedYear && plausible(Number(printedYear)) ? Number(printedYear) : null;
+  const chosen = boxYear ?? (plausible(year) ? year : now);
+  if (chosen === year) return { day: stamped };
+  const day = ticketDay(`${chosen}${stamped.slice(4)}`);
+  return day ? { day } : null;
 }
 
 /** An hour and a minute printed beside the date, which a date box never has. */
@@ -95,8 +120,9 @@ function dateEvidence(observed: ObservedTicket): Evidence[] {
   const evidence: Evidence[] = [];
   for (const stamp of observed.timestamps) {
     const printed = stamp.trim();
-    const encoded = machineStampDay(printed);
-    const day = encoded ?? timestampDay(printed);
+    const stamped = machineStampDay(printed);
+    const encoded = stamped ? plausibleYear(stamped, observed) : null;
+    const day = encoded?.day ?? timestampDay(printed);
     if (!day) continue;
     const timed = TIME_OF_DAY.test(printed);
     evidence.push({
@@ -105,7 +131,9 @@ function dateEvidence(observed: ObservedTicket): Evidence[] {
       source: 'vendor_rule',
       strength: encoded ? 'strong' : 'moderate',
       note: encoded
-        ? `Machine timestamp ${printed} encodes ${day}.`
+        ? encoded.day === stamped
+          ? `Machine timestamp ${printed} encodes ${day}.`
+          : `Machine timestamp ${printed} encodes ${stamped}, a year no ticket is dated: the day and month are the scale's, the year is the date box's, ${day}.`
         : timed
           ? `"${printed}" names ${day}, but on this paper a slashed date beside a time is the date box and the time box read together, not the scale's stamp.`
           : `Date ${printed} is printed among the timestamps and names ${day}, with no time of day to mark it as the scale's.`,

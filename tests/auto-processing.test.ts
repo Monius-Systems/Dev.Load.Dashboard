@@ -162,7 +162,11 @@ void test('a clipped site is settled by the tickets beside it agreeing, and what
     observed: clipped, paper: UNKNOWN_FRAME, extracted: { ...emptyTicket(), customer_id: '60311596', customer_name: FIVE },
     records: [], profiles: profiles([customer(FIVE, [], ['60311596'])]), customer: customer(FIVE, [], ['60311596']), others: siblings,
   });
-  assert.equal(alone.recovery.fields.project_address?.status, 'needs_review');
+  // The scan alone settles nothing — but the site is never a question: the
+  // print stands as read, with what was on offer listed beside it.
+  assert.equal(alone.recovery.fields.project_address?.status, 'recovered');
+  assert.equal(alone.recovery.fields.project_address?.source, 'visible');
+  assert.equal(alone.ticket.project_address, 'ARKHAM, IL 60428');
 });
 
 void test('a ticket that plainly says another site keeps it', () => {

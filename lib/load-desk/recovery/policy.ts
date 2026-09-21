@@ -172,6 +172,7 @@ export const EVIDENCE_WEIGHTS: Readonly<
   // Strong is a scan agreeing with itself (see memory.ts, consensus): worth
   // more than a single sighting, and still short of the point on its own.
   batch_context: { strong: 0.6, moderate: 0.25, weak: 0.1 },
+  batch_run: { strong: 0.7, moderate: 0.3, weak: 0.1 },
   user_confirmed: { strong: 1.5, moderate: 1.5, weak: 1.5 },
 };
 

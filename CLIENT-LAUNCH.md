@@ -319,13 +319,20 @@ membership. If more client dashboards follow, the website can link to a small
 - Anything else is highlighted for confirmation, and ticket numbers, customer
   numbers, weights and dates are never completed from history.
 - Heidelberg's ticket date is dot-matrix print in the margin and is never
-  taken on the reader's word alone: the scale's own stamp (the `25DEC15`
-  form) or the plant's run of checked tickets either side confirms it, and
-  a date one digit off that evidence is put right silently. With neither —
-  the first ticket or two of a day at a plant — the date is asked for under
-  **Needs your input**, once for the group. Any vendor whose dates get typed
-  over three times, by anyone using the system, is treated the same way from
-  then on.
+  taken on the reader's word alone. Three things confirm it: the scale's own
+  stamp (the `25DEC15` form, its year taken from the date box when the two
+  faint year digits disagree), the plant's run of checked tickets numbered
+  either side of it, and the pile it was scanned with — a day's tickets
+  from one plant, numbered in sequence, date each other. A date one digit
+  off that evidence is put right silently, and a month the margin cut off
+  is completed. With none of it — a single ticket scanned on its own — the
+  date is asked for under **Needs your input**. Any vendor whose dates get
+  typed over three times, by anyone using the system, is treated the same
+  way from then on.
+- The job and the job site are never a question. A printed site that is one
+  saved on the customer — the same once case and punctuation are set aside,
+  or cut short, or a letter or two off — is written as saved; otherwise the
+  print stands as read and can be corrected in review.
 - Invoice numbers can be changed on any invoice in review. The typed number
   is where the series starts, worked back from that invoice's place in date
   order, and the other invoices move along to make room; a number another
