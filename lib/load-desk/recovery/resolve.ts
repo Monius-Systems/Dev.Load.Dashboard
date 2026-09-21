@@ -116,6 +116,44 @@ function fits(fragment: string, candidate: string, edge: ClippedEdge | null): bo
   return fragmentFits(fragment, candidate, edge);
 }
 
+/**
+ * The pairs of digits a faded or smudged print turns into one another: a 3
+ * for a 5 with its top gone, a 1 for a 7, an 8 for a 0 or a 6 with a bar
+ * lost. Folding both sides of a pair to one shape says whether two dates
+ * differ only by such a digit.
+ */
+const CONFUSABLE_DIGITS: Record<string, string> = {
+  '3': '5', '5': '3',
+  '1': '7', '7': '1',
+  '0': '8', '8': '0',
+  '6': '8',
+  '2': '7',
+};
+
+/**
+ * Whether a printed date and an ISO day are the same date but for one digit
+ * that faded print confuses. The print is put into the day's own shape first
+ * — the month, the day and the four-digit year — so "12/13/2025" and
+ * "2025-12-15" line up digit for digit.
+ */
+export function misreadDigitApart(printed: string, iso: string): boolean {
+  // The padded form, so a one-digit month lines up with a two-digit one.
+  const read = printedDays(iso)[1];
+  const m = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/.exec(printed.trim());
+  if (!m || !read) return false;
+  const year = m[3].length === 2 ? `20${m[3]}` : m[3].padStart(4, '0');
+  const a = `${m[1].padStart(2, '0')}${m[2].padStart(2, '0')}${year}`;
+  const b = read.replace(/\D/g, '');
+  if (a.length !== b.length) return false;
+  let differ = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] === b[i]) continue;
+    differ += 1;
+    if (CONFUSABLE_DIGITS[a[i]] !== b[i] && CONFUSABLE_DIGITS[b[i]] !== a[i]) return false;
+  }
+  return differ === 1;
+}
+
 /** Separators are printing too: "2026-09-14" and "2026/09/14" are one day. */
 const dateKey = (text: string) => text.replace(/\s+/g, '').replace(/[-.]/g, '/');
 
@@ -368,9 +406,31 @@ export function resolveField(
     const disputes = applicable.filter(
       (item) =>
         item.strength === 'strong' &&
-        DERIVATION_SOURCES.has(item.source) &&
+        (DERIVATION_SOURCES.has(item.source) || (cls === 'date' && item.source === 'verified_history')) &&
         !sameValue(field, cls, item.candidate, value),
     );
+    // A date read whole that the evidence says is another day, one digit
+    // away, in a digit faded print confuses — 12/13/2025 against a scale
+    // stamp and a run of neighbouring ticket numbers all dated the 15th — is
+    // a misread of that digit, not a ticket from another day. It is
+    // corrected to the evidenced day with the print kept beside it. Two
+    // digits away, or a digit faded print does not confuse, is still the
+    // ticket disagreeing with itself, and still a question.
+    if (cls === 'date' && disputes.length && typeof value === 'string') {
+      const days = [...new Set(disputes.map((item) => ticketDay(item.candidate)).filter((d): d is string => d !== null))];
+      if (days.length === 1 && misreadDigitApart(fragment, days[0])) {
+        for (const item of applicable) notes.push(item.note);
+        notes.push(
+          `The printed "${fragment}" is one faded digit from ${days[0]}, which the rest of the evidence names; read as ${days[0]}.`,
+        );
+        return finish({
+          status: 'recovered',
+          value: days[0],
+          source: leadEvidence(disputes).source,
+          confidence: capConfidence(Math.min(DERIVED_CONFIDENCE_CAP, recoveredConfidence(combinedWeight(disputes)))),
+        });
+      }
+    }
     for (const item of applicable) {
       // (g) A record that merely remembers the field differently is out of
       // date, not a contradiction; the ink wins and nobody is stopped.

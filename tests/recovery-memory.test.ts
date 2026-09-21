@@ -598,6 +598,7 @@ void test('memory is only ever what the caller handed over', () => {
     [...memory.values].map(([field, list]) => [field, list.map((known) => ({ ...known, customers: [...known.customers], projects: [...known.projects] }))]),
     memory.relationships,
     memory.corrections,
+    memory.sequence,
   ]);
   for (const stranger of ['OTHER TENANT LLC', 'MILWAUKEE, WI', '88888888']) {
     assert.equal(everything.includes(stranger), false, stranger);
@@ -608,7 +609,7 @@ void test('memory is only ever what the caller handed over', () => {
     project: null,
   });
   assert.deepEqual(evidence, []);
-  assert.deepEqual(buildMemory([], noProfiles), { values: new Map(), relationships: [], corrections: [] });
+  assert.deepEqual(buildMemory([], noProfiles), { values: new Map(), relationships: [], corrections: [], sequence: [] });
   // Building B's memory does not touch A's: nothing here is shared or kept.
   buildMemory(workspaceB, noProfiles);
   assert.deepEqual(valuesOf(memory, 'project_address'), ['MARKHAM, IL']);
@@ -775,4 +776,39 @@ void test('an unreviewed ticket lends nothing it did not read whole', () => {
   assert.equal((buildMemory([bare, bare, bare], noProfiles).values.get('carrier_name') ?? []).length, 0);
   // And no correction is ever taken from a ticket nobody reviewed.
   assert.equal(memory.corrections.length, 0);
+});
+
+// --- the plant's run of ticket numbers ------------------------------------
+
+void test('the tickets numbered either side of this one say what day it is', () => {
+  // A plant numbers its tickets in sequence. Three checked tickets a few
+  // dozen numbers away, all dated the 15th, say this one is the 15th too —
+  // whatever a faded digit in its own date box made the reader think.
+  const onFile = [1725331380, 1725331388, 1725331402].map((n) =>
+    hauled({ ticket_number: String(n), ticket_date: '2025-12-15', plant_name: 'Heidelberg Materials' }),
+  );
+  const memory = buildMemory(onFile, noProfiles);
+  assert.equal(memory.sequence.length, 3);
+  const evidence = memoryEvidence(
+    memory,
+    observedOf({
+      ticket_number: whole('1725331394'),
+      ticket_date: whole('12/13/2025'),
+      plant_name: whole('Heidelberg Materials'),
+    }),
+    { vendor: 'heidelberg', customer: null, project: null },
+  );
+  const run = evidence.find((item) => item.field === 'ticket_date');
+  assert.ok(run);
+  assert.equal(run.candidate, '2025-12-15');
+  assert.equal(run.strength, 'strong');
+  assert.equal(run.source, 'verified_history');
+  assert.match(run.note, /1725331380–1725331402 .* dated 2025-12-15/);
+  // A run that disagrees with itself says nothing; a number far away is not in the run.
+  const mixed = buildMemory([...onFile, hauled({ ticket_number: '1725331390', ticket_date: '2025-12-16', plant_name: 'Heidelberg Materials' })], noProfiles);
+  assert.equal(memoryEvidence(mixed, observedOf({ ticket_number: whole('1725331394') }), { vendor: null, customer: null, project: null }).some((i) => i.field === 'ticket_date'), false);
+  assert.equal(memoryEvidence(memory, observedOf({ ticket_number: whole('1725339999') }), { vendor: null, customer: null, project: null }).some((i) => i.field === 'ticket_date'), false);
+  // Nor does a run learned from tickets nobody checked.
+  const unchecked = buildMemory(onFile.map((r) => ({ ...r, reviewed_at: null })), noProfiles);
+  assert.equal(unchecked.sequence.length, 0);
 });

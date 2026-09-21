@@ -93,7 +93,26 @@ export type WorkspaceMemory = {
   values: Map<keyof Ticket, VerifiedValue[]>;
   relationships: Relationship[];
   corrections: Correction[];
+  /**
+   * The ticket numbers on file and the days they were dated, by plant. A
+   * plant's tickets are numbered in sequence, so the numbers either side of
+   * a new one say what day it is — the one thing on the paper that can
+   * catch a faded digit in the date.
+   */
+  sequence: Sequence[];
 };
+
+export type Sequence = {
+  /** The ticket number as a number, for distance. */
+  number: number;
+  plant: string | null;
+  date: string;
+};
+
+/** How far apart two ticket numbers may be and still be the same day's run. */
+export const SEQUENCE_REACH = 400;
+/** How many neighbours have to agree before the run says what day it is. */
+export const SEQUENCE_MIN_NEIGHBOURS = 2;
 
 /**
  * The fields a reviewed ticket teaches. Names, places and descriptions: things
@@ -346,10 +365,20 @@ export function buildMemory(
 
   const index = new Map<string, Relationship>();
   const corrections: Correction[] = [];
+  const sequence: Sequence[] = [];
 
   for (const record of records) {
     const { ticket, recovery } = record;
     const sighting = sightingOf(record);
+    // The run: a checked ticket's number and day. Only a number read whole
+    // and a day somebody or something stood behind.
+    if (sighting.checked && ticket.ticket_number && ticket.ticket_date) {
+      const digits = ticket.ticket_number.replace(/\D/g, '');
+      const day = settled(recovery?.fields.ticket_date) ? ticket.ticket_date : null;
+      if (digits.length >= 6 && day) {
+        sequence.push({ number: Number(digits), plant: ticket.plant_name?.trim() || null, date: day });
+      }
+    }
     const weight = sighting.checked ? 1 : UNREVIEWED_SIGHTING;
     const verified = (field: keyof Ticket): string | null => {
       const value = ticket[field];
@@ -412,7 +441,7 @@ export function buildMemory(
     }
   }
 
-  return { values, relationships: [...index.values()], corrections };
+  return { values, relationships: [...index.values()], corrections, sequence };
 }
 
 const RANK = { strong: 3, moderate: 2, weak: 1 } as const;
@@ -504,6 +533,36 @@ export function memoryEvidence(
     wholeValue(observed, 'customer_name') ||
     customerOfId(memory, wholeValue(observed, 'customer_id'));
   const project = context.project?.trim() || wholeValue(observed, 'project_name');
+
+  // The day this ticket's number falls on in the plant's run. Read for every
+  // ticket with a whole number, whether or not its date was read whole: a
+  // date read whole can still be a digit wrong, and this is what catches it.
+  const numberText = wholeValue(observed, 'ticket_number')?.replace(/\D/g, '') ?? '';
+  if (numberText.length >= 6) {
+    const number = Number(numberText);
+    const plant = normalizeName(wholeValue(observed, 'plant_name') ?? '');
+    const near = memory.sequence.filter(
+      (entry) =>
+        Math.abs(entry.number - number) <= SEQUENCE_REACH &&
+        entry.number !== number &&
+        (!plant || !entry.plant || normalizeName(entry.plant) === plant),
+    );
+    const days = new Map<string, number>();
+    for (const entry of near) days.set(entry.date, (days.get(entry.date) ?? 0) + 1);
+    if (days.size === 1) {
+      const [[day, count]] = days;
+      if (count >= SEQUENCE_MIN_NEIGHBOURS) {
+        const numbers = near.map((entry) => entry.number).sort((a, b) => a - b);
+        out.add({
+          field: 'ticket_date',
+          candidate: day,
+          source: 'verified_history',
+          strength: 'strong',
+          note: `Tickets ${numbers[0]}–${numbers[numbers.length - 1]} on file${plant ? ' from this plant' : ''} are all dated ${day}, and this is ${number}.`,
+        });
+      }
+    }
+  }
 
   // What on this ticket is solid enough to look a relationship up by.
   const anchors: { kind: Relationship['kind']; from: string | null }[] = [

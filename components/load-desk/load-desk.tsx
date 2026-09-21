@@ -1620,6 +1620,19 @@ export default function LoadDesk() {
         }
       } catch (error) {
         failures.push(`${entry.name}: ${t(errorMessage(error))}`);
+        // The photograph is not lost. A page the reader could not be reached
+        // for goes back to the list waiting to be processed, so one tap sends
+        // it again; the picture is the thing a driver cannot take twice once
+        // the paper has gone with the truck.
+        if (kind === 'upload' && entry.blob instanceof File) {
+          const file = entry.blob;
+          setPending((current) =>
+            current.some((waiting) => fileKey(waiting) === fileKey(file)) ? current : [...current, file],
+          );
+        } else if (kind === 'upload') {
+          const file = new File([entry.blob], entry.name, { type: entry.blob.type });
+          setPending((current) => [...current, file]);
+        }
         // Terminal either way. A file nothing could be read from must not hold
         // the upload open, or one unreadable scan would leave every other ticket
         // of the morning waiting for a number that never came.

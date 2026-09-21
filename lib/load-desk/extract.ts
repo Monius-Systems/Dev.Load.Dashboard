@@ -89,15 +89,52 @@ type PageReading = { extracted: ExtractedTicket; observed: ObservedTicket };
  * browser that reached an older route, or a route that answered without the
  * observation, still gets a reading nothing was completed in.
  */
+/**
+ * How many times one page is sent before the read is given up on, and how
+ * long to wait between goes. The model takes several seconds over a page,
+ * and a phone's connection beside a truck does not always last that long:
+ * Safari reports the dropped request as "Load failed", and a scan of two
+ * tickets lost one of them to it. A request that dies on the wire, or that
+ * the server turns away for a moment (a 502, a 503, a 429), is sent again,
+ * with a pause that grows; a request the server refuses on its merits — a
+ * 400, a 401, a 413 — is not, because it will be refused again.
+ */
+const READ_ATTEMPTS = 3;
+const READ_BACKOFF_MS = [1500, 4000];
+const RETRY_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+const pause = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Posts one image, sending it again when the wire or the server lets it down. */
+async function postImage(image: Blob): Promise<Response> {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < READ_ATTEMPTS; attempt++) {
+    if (attempt > 0) await pause(READ_BACKOFF_MS[Math.min(attempt - 1, READ_BACKOFF_MS.length - 1)]);
+    try {
+      const response = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': image.type || 'image/jpeg' },
+        body: image,
+      });
+      if (!RETRY_STATUSES.has(response.status) || attempt === READ_ATTEMPTS - 1) return response;
+      lastError = new Error(`The reader answered ${response.status}.`);
+    } catch (error) {
+      // A TypeError is the fetch itself failing — no network, a dropped
+      // connection, the page put away mid-request — and is worth another go.
+      lastError = error;
+    }
+  }
+  throw new Error(
+    'The reader could not be reached. Check the connection and tap Process tickets again.',
+    { cause: lastError },
+  );
+}
+
 async function readPage(page: HTMLCanvasElement): Promise<PageReading> {
   const sized = sizedForModel(page);
   const image = await blobOf(sized);
   if (sized !== page) sized.width = sized.height = 0;
-  const response = await fetch('/api/extract', {
-    method: 'POST',
-    headers: { 'Content-Type': image.type || 'image/jpeg' },
-    body: image,
-  });
+  const response = await postImage(image);
   const answer = (await response.json().catch(() => null)) as
     | { extracted?: unknown; observed?: unknown; error?: string }
     | null;

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   EVIDENCE_WEIGHTS,
+  UNKNOWN_FRAME,
   UNVERIFIED_FRAME_CONFIDENCE_CAP,
   recoveredConfidence,
   resolveField,
@@ -864,4 +865,53 @@ void test('resolving the same field twice gives the same answer', () => {
   const second = resolveField('customer_name', observed, frame(), evidence, here);
   assert.deepEqual(first, second);
   assert.equal(JSON.stringify(first), JSON.stringify(second));
+});
+
+void test('a date read whole but one faded digit from the day the evidence names is read as that day', () => {
+  // "12/13/2025" in a faded box, against a machine stamp and the plant's run
+  // both saying the 15th: a 3 for a 5 with its top gone, not a ticket from
+  // another day. Corrected, with the print kept beside it.
+  const stamped = resolveField(
+    'ticket_date',
+    { visible: '12/13/2025', proposed: null, clipped_edge: null, partial: false },
+    UNKNOWN_FRAME,
+    [
+      { field: 'ticket_date', candidate: '2025-12-15', source: 'vendor_rule', strength: 'strong', note: 'Machine timestamp 25DEC15 08:33 encodes 2025-12-15.' },
+      { field: 'ticket_date', candidate: '2025-12-15', source: 'verified_history', strength: 'strong', note: 'Tickets 1725331380–1725331402 on file are all dated 2025-12-15.' },
+    ],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(stamped.status, 'recovered');
+  assert.equal(stamped.value, '2025-12-15');
+  assert.equal(stamped.visible_text, '12/13/2025');
+  assert.ok(stamped.evidence.some((line) => /one faded digit/.test(line)));
+  // Two digits away is another day, and still a question.
+  const far = resolveField(
+    'ticket_date',
+    { visible: '11/13/2025', proposed: null, clipped_edge: null, partial: false },
+    UNKNOWN_FRAME,
+    [{ field: 'ticket_date', candidate: '2025-12-15', source: 'vendor_rule', strength: 'strong', note: 'stamp' }],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(far.status, 'needs_review');
+  assert.equal(far.reason, 'conflicting_evidence');
+  // A digit faded print does not confuse — a 4 for a 5 — is a question too.
+  const notConfusable = resolveField(
+    'ticket_date',
+    { visible: '12/14/2025', proposed: null, clipped_edge: null, partial: false },
+    UNKNOWN_FRAME,
+    [{ field: 'ticket_date', candidate: '2025-12-15', source: 'vendor_rule', strength: 'strong', note: 'stamp' }],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(notConfusable.status, 'needs_review');
+  // And the run alone, from tickets already on file, is enough.
+  const runOnly = resolveField(
+    'ticket_date',
+    { visible: '12/13/2025', proposed: null, clipped_edge: null, partial: false },
+    UNKNOWN_FRAME,
+    [{ field: 'ticket_date', candidate: '2025-12-15', source: 'verified_history', strength: 'strong', note: 'run' }],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(runOnly.status, 'recovered');
+  assert.equal(runOnly.value, '2025-12-15');
 });
