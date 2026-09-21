@@ -93,6 +93,7 @@ import { MAX_EDITS, type RecordEdit } from '@/lib/load-desk/record-input';
 import {
   blocksSave,
   unresolvedCritical,
+  SILENT_FIELDS,
   type FieldResolution,
   type ReviewReason,
   type TicketRecovery,
@@ -105,7 +106,7 @@ import {
   type ExceptionGroup,
   type ExceptionType,
 } from '@/lib/load-desk/recovery/exceptions';
-import { knowledgeOf, ticketOutcome } from '@/lib/load-desk/recovery/outcome';
+import { knowledgeOf, sitesToLearn, ticketOutcome } from '@/lib/load-desk/recovery/outcome';
 import {
   acceptableValue,
   cameraCropFields,
@@ -962,10 +963,38 @@ export default function LoadDesk() {
         },
       ];
     });
-    void updateSavedRecords(edits).then((result) => {
-      if ('error' in result) for (const member of batch) approving.current.delete(member.id);
+    void updateSavedRecords(edits).then(async (result) => {
+      if ('error' in result) {
+        for (const member of batch) approving.current.delete(member.id);
+        return;
+      }
+      // What these tickets teach: a job site the customer's profile does not
+      // carry yet goes onto it, so the next scan from that site is known and
+      // the site is there to pick and to rate.
+      const learned = sitesToLearn(batch, knowledge);
+      for (const [customerId, sites] of learned) {
+        const customer = getProfilesSnapshot().customers.find((known) => known.id === customerId);
+        if (!customer) continue;
+        await saveProfile(
+          'customer',
+          {
+            name: customer.name,
+            ticket_customer_ids: customer.ticket_customer_ids,
+            ticket_names: customer.ticket_names,
+            addresses: sites.reduce((list, site) => addCustomerAddress({ addresses: list }, site), customerAddresses(customer)),
+            location_rates: customerLocationRates(customer),
+            flat_rate: customer.flat_rate,
+            rate_type: customer.rate_type ?? 'flat',
+            fuel_charge: customer.fuel_charge,
+            fuel_type: customer.fuel_type ?? 'flat',
+            notes: customer.notes,
+            created_at: customer.created_at,
+          },
+          customer.id,
+        );
+      }
     });
-  }, [openMembers, records, store.ready, extraction, busy]);
+  }, [openMembers, records, store.ready, extraction, busy, knowledge]);
 
   /** What a person has typed against each open question, by group. */
   const [groupAnswers, setGroupAnswers] = useState<Record<string, Record<string, string>>>({});
@@ -1044,6 +1073,13 @@ export default function LoadDesk() {
           const typed = (answerFor(group, 'customer_name') || group.customer || '').replace(/\s+/g, ' ').trim();
           if (!typed) throw new Error(t('Enter the customer name.'));
           const printedId = group.detected.customer_id?.trim();
+          // The sites this customer's tickets went to start their list, so
+          // the next scan from any of them is known.
+          const sites = records
+            .filter((record) => group.ticketIds.includes(record.id))
+            .map((record) => record.ticket.project_address?.trim() ?? '')
+            .filter(Boolean)
+            .reduce((list, site) => addCustomerAddress({ addresses: list }, site), [] as string[]);
           const profile = {
             name: typed,
             ticket_customer_ids: printedId ? [printedId] : [],
@@ -1051,7 +1087,7 @@ export default function LoadDesk() {
               group.customer && normalizeName(group.customer) !== normalizeName(typed)
                 ? [group.customer]
                 : [],
-            addresses: [] as string[],
+            addresses: sites,
             location_rates: [],
             flat_rate: null,
             rate_type: 'flat' as const,
@@ -2720,6 +2756,30 @@ export default function LoadDesk() {
       );
     }
     if (!unsettledField(resolution)) return null;
+    // The job and the site are never a question (SILENT_FIELDS): what was
+    // read stands, and this only says so, quietly, with what is on file a
+    // tap away for anyone who wants to change it.
+    if (SILENT_FIELDS.has(def.name)) {
+      const options = resolution.candidates ?? [];
+      return (
+        <div className="ld-recovered">
+          <small className="ld-field-hint">
+            {resolution.visible_text
+              ? t('Read from a cut-off line — the ticket shows “{print}”', { print: resolution.visible_text })
+              : t('Not read whole on this ticket')}
+          </small>
+          {options.length ? (
+            <span className="ld-confirm-actions">
+              {options.map((candidate) => (
+                <Button key={candidate} type="button" variant="secondary" size="xs" onClick={() => setField(def.name, candidate, 'accepted')}>
+                  <span className="ui-literal">{candidate}</span>
+                </Button>
+              ))}
+            </span>
+          ) : null}
+        </div>
+      );
+    }
     // A camera crop is not a question about the value, it is a question
     // about the photograph: offering candidates for print that was never in
     // the picture is exactly the guessing this layer exists to refuse.
@@ -2774,6 +2834,7 @@ export default function LoadDesk() {
   const recoveryMark = (def: FieldDef): string | undefined => {
     const resolution = active?.recovery?.fields[def.name];
     if (!resolution || resolution.status === 'exact') return undefined;
+    if (SILENT_FIELDS.has(def.name) && unsettledField(resolution)) return 'recovered';
     if (resolution.status === 'confirmed') return 'confirmed';
     if (resolution.status === 'recovered') return 'recovered';
     return unsettledField(resolution) ? 'needs-review' : undefined;

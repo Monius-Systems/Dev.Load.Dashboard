@@ -114,6 +114,23 @@ export const CRITICAL_FIELDS: readonly (keyof Ticket)[] = [
  */
 export const RECOVERABLE_FROM_CONTEXT: ReadonlySet<keyof Ticket> = TEXT_CLASS;
 
+/**
+ * The fields that are never put to a person.
+ *
+ * The job's name and where the load went are read off every ticket, and
+ * the workspace is meant to know them: matched to the customer's sites, to
+ * the scan around them, to reviewed history. Where all of that finds
+ * nothing, what the paper says stands — a site nobody has saved yet is a
+ * site to learn, not a question — and the invoice carries it as read.
+ * Nothing is billed on either. So neither ever blocks a save, is listed as
+ * an issue, or opens a question; the customer, which decides whose invoice
+ * this is, still can.
+ */
+export const SILENT_FIELDS: ReadonlySet<keyof Ticket> = new Set<keyof Ticket>([
+  'project_name',
+  'project_address',
+]);
+
 type Strength = Evidence['strength'];
 
 /**

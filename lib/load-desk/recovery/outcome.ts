@@ -3,6 +3,7 @@ import type { CustomerProfile } from '../profiles.ts';
 import type { SavedRecord, Ticket } from '../types.ts';
 import type { FieldResolution, TicketRecovery } from './contract.ts';
 import { buildMemory, type WorkspaceMemory } from './memory.ts';
+import { SILENT_FIELDS } from './policy.ts';
 import { unresolvedCritical } from './resolve.ts';
 
 // Where a ticket goes once it has been read and recovered: through, to a
@@ -185,6 +186,9 @@ export function ticketOutcome(
   for (const name of Object.keys(recovery.fields) as (keyof Ticket)[]) {
     const resolution = recovery.fields[name];
     if (own.includes(name) || business.includes(name)) continue;
+    // The job and the site are never a question: what was read, or what
+    // the evidence completed, or the print, stands (see SILENT_FIELDS).
+    if (SILENT_FIELDS.has(name)) continue;
     if (unsettled(resolution)) {
       (TICKET_OWN_FIELDS.has(name) ? own : business).push(name);
     }
@@ -203,12 +207,36 @@ export function ticketOutcome(
   if (!context.customerKnown) {
     reasons.push('This customer is not on file.');
     if (!business.includes('customer_name')) business.push('customer_name');
-  } else if (context.location && !context.locationKnown) {
-    reasons.push('This job site is not on file for this customer.');
-    if (!business.includes('project_address')) business.push('project_address');
   }
+  // A job site the customer has not been to before is not a question: it is
+  // a site to learn. The page saves it onto the customer as the ticket is
+  // approved (see `sitesToLearn`), and the next scan from it is known.
   if (business.length) {
     return { outcome: 'group_confirmation', fields: business, reasons, context };
   }
   return { outcome: 'auto_approved', fields: [], reasons: [], context };
+}
+
+/**
+ * The job sites the approved tickets teach: for each customer on file, the
+ * sites their tickets went to that the profile does not carry yet. Only a
+ * site read whole or completed on evidence — never a fragment — and only
+ * for a customer the workspace knows, because a site is that customer's.
+ */
+export function sitesToLearn(
+  approved: { ticket: Ticket; recovery?: TicketRecovery }[],
+  knowledge: Knowledge,
+): Map<number, string[]> {
+  const out = new Map<number, string[]>();
+  for (const { ticket, recovery } of approved) {
+    const customer = customerOf(ticket, knowledge);
+    const site = ticket.project_address?.trim();
+    if (!customer || !site) continue;
+    const status = recovery?.fields.project_address?.status;
+    if (status !== undefined && status !== 'exact' && status !== 'recovered' && status !== 'confirmed') continue;
+    const known = [...(customer.addresses ?? []), ...(out.get(customer.id) ?? [])];
+    if (known.some((address) => key(address) === key(site))) continue;
+    out.set(customer.id, [...(out.get(customer.id) ?? []), site]);
+  }
+  return out;
 }

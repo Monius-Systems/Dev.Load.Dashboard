@@ -103,10 +103,8 @@ function typeOf(member: Member): ExceptionType {
     return 'CONFLICTING_GROUP_DATA';
   }
   if (!report.context.customerKnown) return 'NEW_CUSTOMER';
-  if (report.context.location && !report.context.locationKnown) {
-    return member.ticket.project_name?.trim() ? 'NEW_CUSTOMER_PROJECT_COMBINATION' : 'NEW_LOCATION';
-  }
-  if (report.fields.includes('project_name')) return 'NEW_PROJECT';
+  // The job and the site never raise a question of their own (SILENT_FIELDS);
+  // the location types remain for the record's sake and are not produced.
   return 'CLIPPED_TEXT_RECOVERABLE';
 }
 
@@ -141,9 +139,6 @@ export function groupExceptions(members: Member[]): ExceptionGroup[] {
         ? member.report.fields
         : [...new Set<keyof Ticket>([
             ...member.report.fields,
-            ...(type === 'NEW_LOCATION' || type === 'NEW_CUSTOMER_PROJECT_COMBINATION'
-              ? (['project_name', 'project_address'] as (keyof Ticket)[])
-              : []),
             ...(type === 'NEW_CUSTOMER' ? (['customer_name'] as (keyof Ticket)[]) : []),
           ])];
     const found = groups.get(groupKey);

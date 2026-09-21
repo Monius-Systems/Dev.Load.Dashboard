@@ -372,11 +372,13 @@ void test('the issue lines say what is wrong, what printed and what was on offer
     ],
     here,
   );
+  // The project is never an issue (SILENT_FIELDS): its line is not listed,
+  // though the resolution and its candidates are on the record.
   assert.deepEqual(reviewIssues(recovery), [
     'Needs confirmation: ticket number — part of the print was cut off; visible "17254464_"',
     'Needs confirmation: customer name — the sheet ran off the photograph: take the picture again; visible "ARKHAM PAVING"',
-    'Needs confirmation: project name — the sheet ran off the photograph: take the picture again; visible "HAM"; on file: "Graham", "Markham"',
   ]);
+  assert.deepEqual(recovery.fields.project_name?.candidates, ['Graham', 'Markham']);
 });
 
 void test('the issue lines name the weights the way the rest of the app does', () => {

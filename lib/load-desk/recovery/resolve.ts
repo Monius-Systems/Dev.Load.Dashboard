@@ -18,6 +18,7 @@ import {
   reachesThreshold,
   recoveredConfidence,
   type FieldClass,
+  SILENT_FIELDS,
 } from './policy.ts';
 import {
   UNKNOWN_FRAME,
@@ -1044,7 +1045,7 @@ export function reviewIssues(recovery: TicketRecovery): string[] {
   const lines: string[] = [];
   for (const field of FIELD_ORDER) {
     const resolution = recovery.fields[field];
-    if (!resolution) continue;
+    if (!resolution || SILENT_FIELDS.has(field)) continue;
     const unsettled =
       resolution.status === 'needs_review' ||
       (resolution.status === 'missing' && resolution.source_clipped);

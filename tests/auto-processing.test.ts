@@ -6,7 +6,7 @@ import {
   groupExceptions,
   membersOf,
 } from '../lib/load-desk/recovery/exceptions.ts';
-import { knowledgeOf, ticketOutcome, OUTCOME_POLICY } from '../lib/load-desk/recovery/outcome.ts';
+import { knowledgeOf, sitesToLearn, ticketOutcome, OUTCOME_POLICY } from '../lib/load-desk/recovery/outcome.ts';
 import { recoverTicket } from '../lib/load-desk/recovery/queue.ts';
 import { UNKNOWN_FRAME, type FieldResolution, type ObservedField, type ObservedTicket, type TicketRecovery } from '../lib/load-desk/recovery/index.ts';
 import { validateTicket } from '../lib/load-desk/validate.ts';
@@ -95,18 +95,18 @@ void test('ten tickets from a known job go through with nobody looking', () => {
   assert.deepEqual(groups, []);
 });
 
-void test('ten tickets from one new job are one question, not ten', () => {
+void test('ten tickets from a new job site are not a question: the site is learned', () => {
   const records = Array.from({ length: 10 }, () => read({ project_address: JOLIET }));
-  const { groups } = sort(records, [five]);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0].type, 'NEW_LOCATION');
-  assert.equal(groups[0].customer, FIVE);
-  assert.equal(groups[0].ticketIds.length, 10);
-  assert.equal(groups[0].detected.project_address, JOLIET);
-  assert.ok(groups[0].asks.includes('project_name') && groups[0].asks.includes('project_address'));
+  const { members, groups } = sort(records, [five]);
+  assert.ok(members.every((m) => m.report.outcome === 'auto_approved'), 'a site read whole stands');
+  assert.deepEqual(groups, []);
+  const learned = sitesToLearn(records, knowledgeOf([], profiles([five])));
+  assert.deepEqual(learned.get(five.id), [JOLIET], 'and goes onto the customer once');
+  // Already on the profile: nothing to learn.
+  assert.equal(sitesToLearn(records, knowledgeOf([], profiles([{ ...five, addresses: [...five.addresses!, JOLIET] }]))).size, 0);
 });
 
-void test('several new jobs in one scan are several questions, and the known job is none', () => {
+void test('a scan of several jobs, known and new, is no question at all when the customers are known', () => {
   const records = [
     ...Array.from({ length: 8 }, () => read({})),
     ...Array.from({ length: 6 }, () => read({ project_address: STRAWBERRY })),
@@ -114,27 +114,24 @@ void test('several new jobs in one scan are several questions, and the known job
     ...Array.from({ length: 3 }, () => read({ project_address: '9 ELM ST, PEORIA, IL' })),
   ];
   const { members, groups } = sort(records, [five, iafrate]);
-  assert.equal(members.filter((m) => m.report.outcome === 'auto_approved').length, 14);
-  assert.equal(groups.length, 2);
-  assert.deepEqual(groups.map((g) => [g.customer, g.ticketIds.length]), [[IAFRATE, 4], [FIVE, 3]]);
+  assert.equal(members.filter((m) => m.report.outcome === 'auto_approved').length, 21);
+  assert.deepEqual(groups, []);
+  const learned = sitesToLearn(records, knowledgeOf([], profiles([five, iafrate])));
+  assert.deepEqual(learned.get(iafrate.id), [JOLIET]);
+  assert.deepEqual(learned.get(five.id), ['9 ELM ST, PEORIA, IL']);
 });
 
-void test('same customer at two unknown sites is two questions; two customers at one site is two', () => {
-  const twoSites = sort(
-    [...Array.from({ length: 3 }, () => read({ project_address: JOLIET })), ...Array.from({ length: 2 }, () => read({ project_address: '9 ELM ST, PEORIA, IL' }))],
-    [five],
-  );
-  assert.equal(twoSites.groups.length, 2);
-  const twoCustomers = sort(
-    [
-      ...Array.from({ length: 3 }, () => read({ project_address: JOLIET })),
-      ...Array.from({ length: 2 }, () => read({ customer_name: IAFRATE, customer_id: '60350616', project_address: JOLIET })),
-    ],
-    [five, iafrate],
-  );
-  assert.equal(twoCustomers.groups.length, 2);
+void test('two unknown customers at one site are two questions, one per customer, and the site is theirs', () => {
+  const records = [
+    ...Array.from({ length: 3 }, () => read({ customer_name: 'NORTH HAULING', customer_id: '70000001', project_address: JOLIET })),
+    ...Array.from({ length: 2 }, () => read({ customer_name: 'SOUTH HAULING', customer_id: '70000002', project_address: JOLIET })),
+  ];
+  const { groups } = sort(records, [five]);
+  assert.equal(groups.length, 2);
+  assert.ok(groups.every((g) => g.type === 'NEW_CUSTOMER'));
+  assert.ok(groups.every((g) => g.asks.length === 1 && g.asks[0] === 'customer_name'), 'only the customer is asked');
   const byName = (a: string | null, b: string | null) => String(a).localeCompare(String(b));
-  assert.deepEqual(twoCustomers.groups.map((g) => g.customer).sort(byName), [IAFRATE, FIVE].sort(byName));
+  assert.deepEqual(groups.map((g) => g.customer).sort(byName), ['NORTH HAULING', 'SOUTH HAULING']);
 });
 
 const observedWhole = (fields: Partial<Record<keyof Ticket, string>>): ObservedTicket => ({
@@ -174,13 +171,13 @@ void test('a clipped site is settled by the tickets beside it agreeing, and what
   assert.equal(alone.recovery.fields.project_address?.status, 'needs_review');
 });
 
-void test('a ticket that plainly says another site is not pulled into the majority', () => {
+void test('a ticket that plainly says another site keeps it, and the site is learned as its own', () => {
   const records = [...Array.from({ length: 9 }, () => read({})), read({ project_address: JOLIET })];
   const { members, groups } = sort(records, [five]);
-  assert.equal(members.filter((m) => m.report.outcome === 'auto_approved').length, 9);
-  assert.equal(groups.length, 1);
-  assert.equal(groups[0].detected.project_address, JOLIET);
-  assert.equal(groups[0].ticketIds.length, 1);
+  assert.ok(members.every((m) => m.report.outcome === 'auto_approved'));
+  assert.deepEqual(groups, []);
+  assert.equal(members[9].ticket.project_address, JOLIET, 'not pulled into the majority');
+  assert.deepEqual(sitesToLearn(records, knowledgeOf([], profiles([five]))).get(five.id), [JOLIET]);
 });
 
 void test('an unreadable BOL holds its own ticket and nothing else', () => {
@@ -212,32 +209,38 @@ void test('a known job written differently is still the known job', () => {
   assert.ok(members.every((m) => m.report.outcome === 'auto_approved'), 'case, punctuation and spacing are not differences');
 });
 
-void test('an ambiguous site and a conflicting reading are their own kinds of question', () => {
+void test('an ambiguous or conflicting site is never a question: the print stands, the choices are on the record', () => {
   const ambiguous = read({}, { project_address: waiting('ARKHAM, IL', { reason: 'ambiguous_candidates', candidates: [MARKHAM, '5 MAIN ST, MARKHAM, IL'] }) });
   const conflicting = read({}, { project_address: waiting('MARKHAM, IL', { reason: 'conflicting_evidence', candidates: [MARKHAM, JOLIET] }) });
-  const { groups } = sort([ambiguous, conflicting], [five]);
-  assert.deepEqual(groups.map((g) => g.type).sort(), ['AMBIGUOUS_LOCATION', 'CONFLICTING_GROUP_DATA']);
-  assert.deepEqual(groups.find((g) => g.type === 'AMBIGUOUS_LOCATION')?.candidates.project_address, [MARKHAM, '5 MAIN ST, MARKHAM, IL']);
+  const { members, groups } = sort([ambiguous, conflicting], [five]);
+  assert.deepEqual(groups, []);
+  assert.ok(members.every((m) => m.report.outcome === 'auto_approved'));
+  assert.ok(!validateTicket(ambiguous.ticket, ambiguous.recovery).some((issue) => /destination|project/i.test(issue)), 'not listed as an issue');
+  assert.deepEqual(ambiguous.recovery?.fields.project_address?.candidates, [MARKHAM, '5 MAIN ST, MARKHAM, IL']);
+  // A fragment is not a site to learn.
+  assert.equal(sitesToLearn([ambiguous], knowledgeOf([], profiles([five]))).size, 0);
 });
 
-void test('one answer settles every ticket of the group, and teaches the job', () => {
-  const records = Array.from({ length: 7 }, () => read({ customer_name: IAFRATE, customer_id: '60350616', project_address: JOLIET }));
-  const { groups } = sort(records, [five, iafrate]);
+void test('one answer settles every ticket of a new customer’s group, and teaches the customer', () => {
+  const records = Array.from({ length: 7 }, () => read({ customer_name: 'NEW HAULING LLC', customer_id: '70000001', project_address: JOLIET }));
+  const { groups } = sort(records, [five]);
   const [group] = groups;
+  assert.equal(group.type, 'NEW_CUSTOMER');
+  const created = customer('NEW HAULING LLC', [JOLIET], ['70000001']);
   const at = '2026-09-20T12:00:00.000Z';
   const edits = applyGroupAnswer(records, group, {
-    values: { project_name: 'MARKHAM PLANT 2026', project_address: JOLIET },
-    customerProfileId: iafrate.id,
+    values: { customer_name: created.name },
+    customerProfileId: created.id,
     // Rates are per job site; this site already has one on the profile.
-    customer: { ...iafrate, addresses: [JOLIET], location_rates: [{ address: JOLIET, flat_rate: 95, fuel_charge: null }] },
+    customer: { ...created, location_rates: [{ address: JOLIET, flat_rate: 95, fuel_charge: null }] },
   }, at);
   assert.equal(edits.length, 7);
   for (const edit of edits) {
-    assert.equal(edit.ticket.project_name, 'MARKHAM PLANT 2026');
-    assert.equal(edit.customer_profile_id, iafrate.id);
+    assert.equal(edit.ticket.customer_name, created.name);
+    assert.equal(edit.customer_profile_id, created.id);
     assert.equal(edit.invoice.invoice_number, '1042', 'the invoice it is on is untouched');
-    assert.equal(edit.recovery?.fields.project_name?.status, 'confirmed');
-    assert.ok(edit.recovery?.fields.project_name?.evidence.at(-1)?.includes('Confirmed once for 7 tickets'));
+    assert.equal(edit.recovery?.fields.customer_name?.status, 'confirmed');
+    assert.ok(edit.recovery?.fields.customer_name?.evidence.at(-1)?.includes('Confirmed once for 7 tickets'));
     assert.equal(edit.ticket.rate, 95, 'charged as this site is charged');
   }
   // The edits are what the server accepts, and saving them marks the tickets checked.
@@ -245,9 +248,8 @@ void test('one answer settles every ticket of the group, and teaches the job', (
   assert.ok('value' in parsed);
   const saved = applyRecordEdit(records[0], parsed.value[0], at);
   assert.equal(saved.reviewed_at, at);
-  // Learned: with the site on the profile, the next scan from the job is nobody's question.
-  const taught = { ...iafrate, addresses: [JOLIET] };
-  const again = sort(Array.from({ length: 3 }, () => read({ customer_name: IAFRATE, customer_id: '60350616', project_address: JOLIET })), [five, taught]);
+  // Learned: with the customer on file, the next scan from them is nobody's question.
+  const again = sort(Array.from({ length: 3 }, () => read({ customer_name: 'NEW HAULING LLC', customer_id: '70000001', project_address: JOLIET })), [five, created]);
   assert.deepEqual(again.groups, []);
 });
 
@@ -311,13 +313,13 @@ void test('the dates are asked first and inline, and dating a ticket sends it ba
     invoice: { invoice_number: 'DRAFT-batch-undated', invoice_date: '2026-09-14', return_date: '', truck_number: '', bill_to: { name: '', address_lines: ['', ''], phone: '' } },
   });
   const unclearProject = Array.from({ length: 3 }, () => read({}, { project_name: waiting('MARKHAM PL') }));
-  const { groups } = sort([...unclearProject, undated], [five]);
+  const { members, groups } = sort([...unclearProject, undated], [five]);
   assert.equal(groups[0].needsDate, true, 'the date comes first');
   assert.equal(groups[0].ticketIds[0], undated.id);
-  // Three tickets with an unclear project on a known job: one question.
-  assert.equal(groups.length, 2);
-  assert.equal(groups[1].ticketIds.length, 3);
-  assert.ok(groups[1].asks.includes('project_name'));
+  // Three tickets with an unclear project on a known job are no question at
+  // all: the project is never asked, and what printed stands.
+  assert.equal(groups.length, 1);
+  assert.ok(members.filter((m) => m.id !== undated.id).every((m) => m.report.outcome === 'auto_approved'));
 
   // The date, typed once: the ticket is dated, joins that day's invoice with
   // the other tickets of that day, and is not marked reviewed — it goes back
@@ -332,7 +334,5 @@ void test('the dates are asked first and inline, and dating a ticket sends it ba
   const dated = applyRecordEdit(undated, edit, '2026-09-20T12:00:00.000Z');
   assert.equal(dated.reviewed_at, null);
   const after = sort([...unclearProject, dated], [five]);
-  assert.ok(after.groups.every((g) => !g.needsDate));
-  assert.equal(after.groups.length, 1, 'the job question is the only one left');
-  assert.ok(!after.groups[0].ticketIds.includes(dated.id), 'nothing else was unsettled on it, so it passes');
+  assert.deepEqual(after.groups, [], 'dated, it passes with the rest');
 });
