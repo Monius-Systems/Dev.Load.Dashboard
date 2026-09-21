@@ -2176,3 +2176,19 @@ details[open] > .ld-section-summary .ld-section-chevron {
     flex-wrap: wrap;
   }
 }
+
+/* The right-hand column on a desk: the questions, then the batches under
+   them. On a phone the grid is one column and this changes nothing. */
+.ld-side {
+  display: grid;
+  gap: var(--ui-space-5);
+  min-width: 0;
+}
+/* The panel's boxes are two to a row on a desk: a date or a job site in a
+   quarter of the panel showed half of itself. */
+.ld-exception-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.ld-exception .ld-field input[type='date'] {
+  min-width: 11em;
+}

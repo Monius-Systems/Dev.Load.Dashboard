@@ -3981,6 +3981,10 @@ export default function LoadDesk() {
               settled is not here; it is on its invoice already. What is here
               is answered once and applied to every ticket it covers, and the
               review screen is only for a ticket with a question of its own. */}
+          {/* The right-hand column: what is left to answer, and under it the
+              batches. One column, so the batches sit under the questions on a
+              desk rather than being pushed under the upload by them. */}
+          <div className="ld-side">
           {exceptions.length ? (
             <section className="ld-panel ld-exceptions" aria-labelledby="ld-input-title" ref={exceptionsPanel}>
               <div className="ld-panel-head">
@@ -4021,7 +4025,7 @@ export default function LoadDesk() {
                           </p>
                           {group.needsDate ? (
                             <div className="ld-fields ld-exception-fields">
-                              <div className="ld-field">
+                              <div className="ld-field" data-span={2}>
                                 <label htmlFor={`${fieldId}-${group.key}-date`}>{t('Date')}</label>
                                 <Input
                                   id={`${fieldId}-${group.key}-date`}
@@ -4292,6 +4296,7 @@ export default function LoadDesk() {
               ))
             )}
           </section>
+          </div>
         </div>
 
         {active && ticket && check ? (
