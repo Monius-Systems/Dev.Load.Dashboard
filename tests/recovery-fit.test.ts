@@ -111,3 +111,42 @@ void test('a saved job site that does not line up is not forced onto the ticket'
   assert.equal(recovery.fields.project_address?.status, 'needs_review');
   assert.equal(ticket.project_address, 'ARKHAM, IL 60428 US');
 });
+
+void test('a city line read whole is the customer’s saved site that contains it', () => {
+  // The ticket prints the street and the city on two lines; the reader
+  // took the city line and called it the whole address. The customer has
+  // one saved site that contains it, word for word: that site stands.
+  const customer = {
+    ...kFive(['STRAWBERRY RD AND IN-2, NEW CARLISLE, IN 46552 US']),
+    name: 'ANGELO IAFRATE CONSTRUCTION',
+    ticket_customer_ids: ['60350616'],
+  };
+  const observed: ObservedTicket = {
+    fields: {
+      customer_id: { visible: '60350616', proposed: null, clipped_edge: null, partial: false },
+      customer_name: { visible: 'ANGELO IAFRATE CONSTRUCTION', proposed: null, clipped_edge: null, partial: false },
+      project_address: { visible: 'NEW CARLISLE,IN 46552 US', proposed: null, clipped_edge: null, partial: false },
+    },
+    timestamps: [], branding: 'Heidelberg Materials', paper_edges: null,
+  };
+  const extracted: Ticket = { ...emptyTicket(), customer_id: '60350616', customer_name: customer.name, project_address: 'NEW CARLISLE,IN 46552 US' };
+  const { ticket, recovery } = recoverTicket({
+    observed, paper: UNKNOWN_FRAME, extracted, records: [], profiles: { customers: [customer], trucks: [], clients: [] }, customer,
+  });
+  assert.equal(ticket.project_address, 'STRAWBERRY RD AND IN-2, NEW CARLISLE, IN 46552 US');
+  assert.equal(recovery.fields.project_address?.status, 'recovered');
+  assert.equal(recovery.fields.project_address?.visible_text, 'NEW CARLISLE,IN 46552 US');
+  assert.equal(blocksSave(recovery), false);
+  // Two saved sites in the same town both contain the city line: the print stands.
+  const two = { ...customer, addresses: [...customer.addresses!, '9 ELM ST, NEW CARLISLE, IN 46552'] };
+  const ambiguous = recoverTicket({
+    observed, paper: UNKNOWN_FRAME, extracted, records: [], profiles: { customers: [two], trucks: [], clients: [] }, customer: two,
+  });
+  assert.equal(ambiguous.ticket.project_address, 'NEW CARLISLE,IN 46552 US');
+  // Another customer's saved site says nothing about this one's ticket.
+  const other = { ...customer, id: 99, name: 'SOMEONE ELSE', ticket_customer_ids: ['1'] };
+  const stranger = recoverTicket({
+    observed, paper: UNKNOWN_FRAME, extracted, records: [], profiles: { customers: [other], trucks: [], clients: [] }, customer: null,
+  });
+  assert.equal(stranger.ticket.project_address, 'NEW CARLISLE,IN 46552 US');
+});

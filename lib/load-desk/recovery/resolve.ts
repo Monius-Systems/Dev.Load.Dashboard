@@ -473,6 +473,31 @@ export function resolveField(
     // for. The reader has read the same faded digit three ways on three
     // scans, sure each time; the print's own word on itself is the one
     // thing that did not change.
+    // A job site or project read whole that is part of one the workspace has
+    // saved for this customer — the city line without the street above it —
+    // is that saved value. Exactly one saved value containing what printed,
+    // from a verified source; two, and the print stands as read.
+    if (cls === 'text' && SILENT_FIELDS.has(field) && typeof value === 'string') {
+      const key = normalizeName(value);
+      const containing = applicable.filter(
+        (item) =>
+          item.strength === 'strong' &&
+          VERIFIED_SOURCES.has(item.source) &&
+          normalizeName(item.candidate) !== key &&
+          fragmentFits(key, normalizeName(item.candidate), null),
+      );
+      const distinct = [...new Set(containing.map((item) => normalizeName(item.candidate)))];
+      if (distinct.length === 1) {
+        for (const item of applicable) notes.push(item.note);
+        notes.push(`The printed "${fragment}" is part of it; read as the saved value.`);
+        return finish({
+          status: 'recovered',
+          value: bestSpelling(containing),
+          source: leadEvidence(containing).source,
+          confidence: capConfidence(recoveredConfidence(combinedWeight(containing))),
+        });
+      }
+    }
     if (cls === 'date' && observed?.faded && !disputes.length) {
       const confirmed = applicable.some(
         (item) =>

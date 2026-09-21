@@ -575,6 +575,30 @@ export function memoryEvidence(
     { kind: 'product_code_description', from: wholeValue(observed, 'product_code') },
   ];
 
+  // A job site the reader read whole that is part of one the customer has
+  // saved: the reader took the city line and left the street above it, and
+  // called what it took the whole. The saved site that contains it, word for
+  // word, is offered; the resolver takes it when there is exactly one.
+  for (const field of CUSTOMER_BOUND_FIELDS) {
+    const seen = observed.fields[field];
+    if (!seen || isGap(seen)) continue;
+    const whole = normalizeName(seen.visible?.trim() ?? '');
+    if (squash(whole).length < 3 || !customer) continue;
+    for (const known of memory.values.get(field) ?? []) {
+      const value = normalizeName(known.value);
+      if (value === whole || !fragmentFits(whole, value, null)) continue;
+      if (!known.customers.has(normalizeName(customer))) continue;
+      out.add({
+        field,
+        candidate: known.value,
+        source: known.source,
+        strength: known.source === 'verified_profile' || known.confirmed ? 'strong' : 'moderate',
+        note: `The saved ${labelOf(field)} for ${customer}, ${known.value}, contains what printed here`,
+        context: { customer },
+      });
+    }
+  }
+
   for (const name of Object.keys(observed.fields)) {
     const field = name as keyof Ticket;
     const seen = observed.fields[field];
