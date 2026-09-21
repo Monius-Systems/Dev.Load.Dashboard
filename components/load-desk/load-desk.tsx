@@ -976,8 +976,16 @@ export default function LoadDesk() {
    * that fails is tried again on the next pass.
    */
   const approving = useRef(new Set<number>());
+  /**
+   * True from the first page of an upload to the last number written. The
+   * progress bar and the busy state clear when the reading ends, and the
+   * numbering runs after that; an approval written in between carried the
+   * record's draft mark and could land after the number, leaving an invoice
+   * on "Waiting for the rest of this upload" for good.
+   */
+  const [settling, setSettling] = useState(false);
   useEffect(() => {
-    if (!store.ready || extraction !== null || busy) return;
+    if (!store.ready || extraction !== null || busy || settling) return;
     const fresh = openMembers.filter(
       (member) => member.report.outcome === 'auto_approved' && !approving.current.has(member.id),
     );
@@ -1034,7 +1042,53 @@ export default function LoadDesk() {
         );
       }
     });
-  }, [openMembers, records, store.ready, extraction, busy, knowledge]);
+  }, [openMembers, records, store.ready, extraction, busy, settling, knowledge]);
+
+  /**
+   * An invoice left on its draft mark — numbering that never ran or never
+   * landed — is numbered now, in date order after everything on file, the
+   * same way an upload's are. The undated batch is not an invoice and keeps
+   * its mark. Once per stranded batch; a write that fails is tried again on
+   * the next pass.
+   */
+  const renumbering = useRef(new Set<string>());
+  useEffect(() => {
+    if (!store.ready || extraction !== null || busy || settling) return;
+    const stranded = [
+      ...new Set(
+        records
+          .filter(
+            (record) =>
+              isPendingInvoiceNumber(record.invoice.invoice_number) &&
+              !isUndatedBatch(recordBatch(record)) &&
+              ticketDay(record.ticket.ticket_date) !== null,
+          )
+          .map((record) => recordBatch(record)),
+      ),
+    ].filter((batchId) => !renumbering.current.has(batchId));
+    if (!stranded.length) return;
+    for (const batchId of stranded) renumbering.current.add(batchId);
+    const wanted = numbersByTicketDate(records, stranded);
+    const edits: RecordEdit[] = [];
+    for (const record of records) {
+      const number = wanted.get(recordBatch(record));
+      if (number === undefined || number === record.invoice.invoice_number) continue;
+      edits.push({
+        id: record.id,
+        ticket: record.ticket,
+        invoice: { ...record.invoice, invoice_number: number },
+        ocr_text: record.ocr_text,
+        customer_profile_id: record.customer_profile_id ?? null,
+        truck_id: record.truck_id ?? null,
+        ...(record.recovery ? { recovery: record.recovery } : {}),
+        bookkeeping: true,
+      });
+    }
+    if (!edits.length) return;
+    void updateSavedRecords(edits).then((result) => {
+      if ('error' in result) for (const batchId of stranded) renumbering.current.delete(batchId);
+    });
+  }, [records, store.ready, extraction, busy, settling]);
 
   /** What a person has typed against each open question, by group. */
   const [groupAnswers, setGroupAnswers] = useState<Record<string, Record<string, string>>>({});
@@ -1571,6 +1625,20 @@ export default function LoadDesk() {
     kind: SourceKind,
     target: QueueItem | null = null,
     open = false,
+  ) {
+    setSettling(true);
+    try {
+      await addToQueueSettling(entries, kind, target, open);
+    } finally {
+      setSettling(false);
+    }
+  }
+
+  async function addToQueueSettling(
+    entries: Entry[],
+    kind: SourceKind,
+    target: QueueItem | null,
+    open: boolean,
   ) {
     const start = queue.length;
     const added: QueueItem[] = [];
