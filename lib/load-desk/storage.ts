@@ -4,11 +4,14 @@ import { datedFromTicket, staleInvoiceDates } from './invoice-dates';
 import { applyRecordEdit, type RecordEdit } from './record-input';
 import {
   findInvoiceClash,
+  invoicePlacement,
   isPendingInvoiceNumber,
   numbersInDateOrder,
   pendingInvoiceNumber,
   recordBatch,
+  strandedDated,
 } from './records';
+import { ticketDay } from './ticket-date.ts';
 import { getProfilesSnapshot } from './profiles.ts';
 import type { SavedRecord } from './types';
 
@@ -333,10 +336,41 @@ export async function updateSavedRecords(
 let reordering = false;
 export async function reorderInvoicesByDate(): Promise<SavedRecord[]> {
   if (reordering || !snapshot.ready) return [];
+  const stranded = strandedDated(snapshot.records);
   const wanted = numbersInDateOrder(snapshot.records, getProfilesSnapshot().company?.invoice_start);
-  if (!wanted.size) return [];
+  if (!wanted.size && !stranded.length) return [];
   reordering = true;
   try {
+    // First, tickets that have a date and are still on the undated batch go
+    // onto their date's invoice — a group answer used to date them and
+    // leave them there. Their numbers are then part of the run below.
+    if (stranded.length) {
+      const moved: SavedRecord[] = [];
+      for (const record of stranded) {
+        const placed = invoicePlacement(record, ticketDay(record.ticket.ticket_date)!, snapshot.records);
+        if (!placed.batchId) continue;
+        const result = await updateSavedRecords([
+          {
+            id: record.id,
+            ticket: record.ticket,
+            invoice: placed.invoice,
+            ocr_text: record.ocr_text,
+            customer_profile_id: record.customer_profile_id ?? null,
+            truck_id: record.truck_id ?? null,
+            ...(record.recovery ? { recovery: record.recovery } : {}),
+            invoice_batch_id: placed.batchId,
+            bookkeeping: true,
+          },
+        ]);
+        if ('error' in result) return moved;
+        moved.push(...result.records);
+      }
+      // Numbered from the ledger as it is now, on the next pass.
+      const rest = numbersInDateOrder(snapshot.records, getProfilesSnapshot().company?.invoice_start);
+      if (!rest.size) return moved;
+      reordering = false;
+      return [...moved, ...(await reorderInvoicesByDate())];
+    }
     const edit = (record: SavedRecord, number: string): RecordEdit => ({
       id: record.id,
       ticket: record.ticket,

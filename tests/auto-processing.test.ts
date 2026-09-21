@@ -10,7 +10,7 @@ import { knowledgeOf, ticketOutcome, OUTCOME_POLICY } from '../lib/load-desk/rec
 import { recoverTicket } from '../lib/load-desk/recovery/queue.ts';
 import { UNKNOWN_FRAME, type FieldResolution, type ObservedField, type ObservedTicket, type TicketRecovery } from '../lib/load-desk/recovery/index.ts';
 import { validateTicket } from '../lib/load-desk/validate.ts';
-import { needsReview, numbersByTicketDate } from '../lib/load-desk/records.ts';
+import { needsReview, numbersByTicketDate, strandedDated, UNDATED_BATCH } from '../lib/load-desk/records.ts';
 import { applyRecordEdit, parseRecordEdits } from '../lib/load-desk/record-input.ts';
 import { deskSnapshot, setDeskField, clearDesk } from '../lib/load-desk/desk-session.ts';
 import type { CustomerProfile } from '../lib/load-desk/profiles.ts';
@@ -348,4 +348,43 @@ void test('a ticket whose date was never read at all is a date question, asked i
   assert.equal(groups[0].type, 'INDIVIDUAL_CRITICAL_FIELD');
   assert.equal(groups[0].needsDate, true, 'the panel offers the date box, not only the review');
   assert.deepEqual(groups[0].asks, ['ticket_date']);
+});
+
+void test('a date given with a group answer puts the tickets on that date’s invoice, off the undated batch', () => {
+  // A client answered a new-customer question whose tickets were also
+  // waiting for their date: the answer dated them and left them on "Date
+  // not found", checked and unbillable. The date given in any answer places
+  // the ticket as the date box does.
+  const undated = (fields: Partial<Ticket> = {}) =>
+    read(
+      { customer_name: 'NEW HAULING LLC', customer_id: '70000001', project_address: JOLIET, ...fields },
+      { ticket_date: { status: 'needs_review', value: null, source: null, confidence: 0, reason: 'not_read', evidence: [], visible_text: null, candidates: [], confirmed_by_user: false } as unknown as FieldResolution },
+      {
+        invoice_batch_id: UNDATED_BATCH,
+        invoice: { invoice_number: 'DRAFT-batch-undated', invoice_date: '', return_date: '', truck_number: '', bill_to: { name: 'ILLINOIS BULK CARRIER', address_lines: ['', ''], phone: '' } },
+      },
+    );
+  const stuck = [undated(), undated(), undated()];
+  const onFile = read({ ticket_date: '2026-09-16' }, {}, { invoice_batch_id: 'batch-2026-09-16', invoice: { invoice_number: '1042', invoice_date: '2026-09-16', return_date: '', truck_number: '', bill_to: { name: 'ILLINOIS BULK CARRIER', address_lines: ['', ''], phone: '' } }, reviewed_at: '2026-09-16T12:00:00.000Z' });
+  const records = [...stuck, onFile];
+  assert.equal(strandedDated(records).length, 0, 'not stranded while undated');
+  const created = customer('NEW HAULING LLC', [JOLIET], ['70000001']);
+  const group = { ...sort(records, [five]).groups[0], ticketIds: stuck.map((r) => r.id), asks: ['customer_name', 'ticket_date'] as (keyof Ticket)[] };
+  // The 16th, an invoice already on file: they join it.
+  const joined = applyGroupAnswer(records, group, { values: { customer_name: created.name, ticket_date: '2026-09-16' }, customerProfileId: created.id, customer: created }, '2026-09-21T21:37:04.466Z');
+  for (const edit of joined) {
+    assert.equal(edit.ticket.ticket_date, '2026-09-16');
+    assert.equal(edit.invoice_batch_id, 'batch-2026-09-16');
+    assert.equal(edit.invoice.invoice_number, '1042');
+    assert.equal(edit.invoice.invoice_date, '2026-09-16');
+  }
+  // The 15th, nothing filed: they open that day's invoice, together.
+  const opened = applyGroupAnswer(records, group, { values: { customer_name: created.name, ticket_date: '2026-09-15' }, customerProfileId: created.id, customer: created }, '2026-09-21T21:37:04.466Z');
+  assert.equal(new Set(opened.map((edit) => edit.invoice_batch_id)).size, 1);
+  assert.equal(opened[0].invoice_batch_id, 'batch-2026-09-15');
+  assert.ok(!opened.some((edit) => /undated/i.test(edit.invoice.invoice_number)));
+  // Tickets dated and left on the undated batch before this fix are found,
+  // so the ledger can put them right.
+  const strays = stuck.map((record) => ({ ...record, ticket: { ...record.ticket, ticket_date: '2026-09-16' } }));
+  assert.equal(strandedDated([...strays, onFile]).length, 3);
 });

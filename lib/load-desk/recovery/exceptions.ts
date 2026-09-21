@@ -4,7 +4,8 @@ import type { RecordEdit } from '../record-input.ts';
 import type { SavedRecord, Ticket } from '../types.ts';
 import type { TicketRecovery } from './contract.ts';
 import { businessContext, ticketOutcome, type Knowledge, type OutcomeReport } from './outcome.ts';
-import { invoiceMoveFor, recordBatch } from '../records.ts';
+import { invoicePlacement, recordBatch } from '../records.ts';
+import { ticketDay } from '../ticket-date.ts';
 import { confirmField } from './resolve.ts';
 
 // The questions a scan leaves behind, asked once each.
@@ -270,14 +271,23 @@ export function applyGroupAnswer(
         ticket.fuel_type = rated.fuel_type;
       }
     }
+    // A date given here puts the ticket on that date's invoice, as the date
+    // box does: the answer used to set the date and leave the ticket on the
+    // undated batch, checked and unbillable.
+    const day = ticketDay(ticket.ticket_date);
+    const placed =
+      day !== null && day !== ticketDay(record.ticket.ticket_date)
+        ? invoicePlacement(record, day, records)
+        : null;
     edits.push({
       id: record.id,
       ticket,
-      invoice: record.invoice,
+      invoice: placed?.invoice ?? record.invoice,
       ocr_text: record.ocr_text,
       customer_profile_id: answer.customerProfileId ?? record.customer_profile_id ?? null,
       truck_id: record.truck_id ?? null,
       ...(recovery ? { recovery } : {}),
+      ...(placed?.batchId ? { invoice_batch_id: placed.batchId } : {}),
     });
   }
   return edits;
@@ -297,27 +307,20 @@ export const contextOf = businessContext;
  * classification with a date, to pass or to join its job's question.
  */
 export function dateEdit(record: SavedRecord, date: string, records: SavedRecord[]): RecordEdit {
-  const others = records.filter((other) => other.id !== record.id);
-  const move = invoiceMoveFor({ batchId: recordBatch(record), date }, others, []);
+  const placed = invoicePlacement(record, date, records);
   const ticket: Ticket = { ...record.ticket, ticket_date: date };
   const recovery = record.recovery
     ? confirmField(record.recovery, 'ticket_date', date, 'edited')
     : undefined;
-  const invoice =
-    move.kind === 'join'
-      ? { ...move.invoice, bill_to: { ...move.invoice.bill_to }, invoice_date: date }
-      : move.kind === 'open'
-        ? { ...record.invoice, invoice_number: move.invoiceNumber, invoice_date: date }
-        : { ...record.invoice, invoice_date: date };
   return {
     id: record.id,
     ticket,
-    invoice,
+    invoice: placed.invoice,
     ocr_text: record.ocr_text,
     customer_profile_id: record.customer_profile_id ?? null,
     truck_id: record.truck_id ?? null,
     ...(recovery ? { recovery } : {}),
-    ...(move.kind === 'stay' ? {} : { invoice_batch_id: move.batchId }),
+    ...(placed.batchId ? { invoice_batch_id: placed.batchId } : {}),
     bookkeeping: true,
   };
 }

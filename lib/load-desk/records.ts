@@ -784,6 +784,49 @@ export function invoiceMoveFor(
   return { kind: 'open', batchId: target.batch_id, invoiceNumber };
 }
 
+/**
+ * The invoice a saved ticket takes once its date is `date`: the details and
+ * the batch, worked out from `invoiceMoveFor` against every other saved
+ * ticket. `batchId` is null when the ticket stays where it is. Every path
+ * that gives a ticket its date goes through here — the date box in the
+ * panel, a job confirmed for a group of tickets, the ledger's own repair —
+ * because a ticket dated and left on the undated batch is a ticket nobody
+ * can bill: the group answer used to set the date and leave the ticket
+ * there, checked, on "Date not found" for good.
+ */
+export function invoicePlacement(
+  record: SavedRecord,
+  date: string,
+  records: SavedRecord[],
+): { invoice: InvoiceDraft; batchId: string | null } {
+  const others = records.filter((other) => other.id !== record.id);
+  const move = invoiceMoveFor({ batchId: recordBatch(record), date }, others, []);
+  if (move.kind === 'join') {
+    return {
+      invoice: { ...move.invoice, bill_to: { ...move.invoice.bill_to }, invoice_date: date },
+      batchId: move.batchId,
+    };
+  }
+  if (move.kind === 'open') {
+    return {
+      invoice: { ...record.invoice, invoice_number: move.invoiceNumber, invoice_date: date },
+      batchId: move.batchId,
+    };
+  }
+  return { invoice: { ...record.invoice, invoice_date: date }, batchId: null };
+}
+
+/**
+ * Saved tickets that have a date and are still on the undated batch. They
+ * belong on their date's invoice, and the ledger puts them there (see
+ * `reorderInvoicesByDate`): however they came to be dated, a ticket with a
+ * day is not one waiting for its day.
+ */
+export const strandedDated = (records: SavedRecord[]): SavedRecord[] =>
+  records.filter(
+    (record) => isUndatedBatch(recordBatch(record)) && ticketDay(record.ticket.ticket_date) !== null,
+  );
+
 export const ticketStatus = (record: SavedRecord) =>
   // With the recovery record, so a ticket whose fields are still waiting on a
   // person reads the same here — in the list, the filter and the count — as it
