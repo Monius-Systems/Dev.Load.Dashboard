@@ -468,8 +468,9 @@ void test('an older ticket uploaded later takes the lower number, and the newer 
   // order, whatever order the paper arrived in.
   const january = saved('2026-01-01', '1', { invoice_batch_id: 'batch-2026-01-01' });
   const december = saved('2025-12-31', 'DRAFT-batch-2025-12-31', { invoice_batch_id: 'batch-2025-12-31' });
+  const byBatchId = (a: [string, string], b: [string, string]) => a[0].localeCompare(b[0]);
   const wanted = numbersInDateOrder([january, december]);
-  assert.deepEqual([...wanted].sort(), [
+  assert.deepEqual([...wanted].sort(byBatchId), [
     ['batch-2025-12-31', '1'],
     ['batch-2026-01-01', '2'],
   ]);
@@ -487,8 +488,9 @@ void test('the same pool of numbers is permuted, prefix and padding kept, and ne
   const b = saved('2026-01-02', 'INV-0012', { invoice_batch_id: 'batch-2026-01-02' });
   const c = saved('2026-01-04', 'INV-0011', { invoice_batch_id: 'batch-2026-01-04' });
   const fresh = saved('2026-01-08', 'DRAFT-batch-2026-01-08', { invoice_batch_id: 'batch-2026-01-08' });
+  const byBatchId = (x: [string, string], y: [string, string]) => x[0].localeCompare(y[0]);
   const wanted = numbersInDateOrder([a, b, c, fresh]);
-  assert.deepEqual([...wanted].sort(), [
+  assert.deepEqual([...wanted].sort(byBatchId), [
     ['batch-2026-01-02', 'INV-0010'],
     ['batch-2026-01-06', 'INV-0012'],
     ['batch-2026-01-08', 'INV-0013'],
