@@ -1,6 +1,7 @@
 import { normalizeKey, normalizeName } from '../profiles.ts';
 import { ticketDay } from '../ticket-date.ts';
 import { printedNumber } from '../printed-number.ts';
+import { fragmentFits } from './fit.ts';
 import { isNumberField, type Ticket } from '../types.ts';
 import {
   ADVISORY_SOURCES,
@@ -111,10 +112,7 @@ const coerce = (field: keyof Ticket, text: string): string | number | null => {
  */
 function fits(fragment: string, candidate: string, edge: ClippedEdge | null): boolean {
   if (!fragment) return true;
-  if (fragment === candidate) return true;
-  if (edge === 'left') return candidate.endsWith(fragment);
-  if (edge === 'right') return candidate.startsWith(fragment);
-  return candidate.includes(fragment);
+  return fragmentFits(fragment, candidate, edge);
 }
 
 /** Separators are printing too: "2026-09-14" and "2026/09/14" are one day. */

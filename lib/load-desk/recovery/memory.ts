@@ -1,4 +1,5 @@
 import { normalizeName } from '../customer-rates.ts';
+import { fragmentFits } from './fit.ts';
 import type { CustomerProfile, ClientProfile, TruckProfile } from '../profiles.ts';
 import type { SavedRecord, Ticket } from '../types.ts';
 import type {
@@ -206,9 +207,7 @@ const isGap = (seen: ObservedField) => seen.partial || seen.clipped_edge !== nul
 function fits(candidate: string, fragment: string, edge: ClippedEdge | null): boolean {
   const value = normalizeName(candidate);
   if (!value || !fragment) return false;
-  if (edge === 'left') return value.endsWith(fragment);
-  if (edge === 'right') return value.startsWith(fragment);
-  return value.includes(fragment);
+  return fragmentFits(fragment, value, edge);
 }
 
 /**
