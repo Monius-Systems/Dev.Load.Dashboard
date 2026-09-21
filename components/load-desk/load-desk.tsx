@@ -167,6 +167,7 @@ import {
   loadStoredOriginal,
   saveRecord,
   subscribeRecords,
+  reorderInvoicesByDate,
   updateSavedRecords,
 } from '@/lib/load-desk/storage';
 import {
@@ -1234,62 +1235,14 @@ export default function LoadDesk() {
     });
   }, [openMembers, records, store.ready, extraction, busy, settling]);
 
-  /**
-   * The ledger read in date order (see `numbersInDateOrder`): where the
-   * numbers on file do not follow the dates, they are moved so that they do.
-   *
-   * In two writes, because a number is claimed by one batch at a time and
-   * two batches swapping numbers in one go would each be refused the other's:
-   * first every batch that is moving is put on a draft mark of its own,
-   * which releases its number; then each takes the number the date order
-   * gives it: one straight run from the lowest on file, gaps closed. Held
-   * off while an upload is being read and numbered, and never run twice at
-   * once.
-   */
-  const reordering = useRef(false);
-  const settleInvoiceNumbers = async (): Promise<SavedRecord[]> => {
-    if (reordering.current) return [];
-    const { records: now } = getRecordsSnapshot();
-    const wanted = numbersInDateOrder(now);
-    if (!wanted.size) return [];
-    reordering.current = true;
-    try {
-      const edit = (record: SavedRecord, number: string): RecordEdit => ({
-        id: record.id,
-        ticket: record.ticket,
-        invoice: { ...record.invoice, invoice_number: number },
-        ocr_text: record.ocr_text,
-        customer_profile_id: record.customer_profile_id ?? null,
-        truck_id: record.truck_id ?? null,
-        ...(record.recovery ? { recovery: record.recovery } : {}),
-        bookkeeping: true,
-      });
-      const moving = now.filter((record) => {
-        const number = wanted.get(recordBatch(record));
-        return number !== undefined && number !== record.invoice.invoice_number;
-      });
-      // First out of the way: every moving batch onto its own mark.
-      const parked = moving
-        .filter((record) => !isPendingInvoiceNumber(record.invoice.invoice_number))
-        .map((record) => edit(record, pendingInvoiceNumber(`reorder-${recordBatch(record)}`)));
-      if (parked.length) {
-        const result = await updateSavedRecords(parked);
-        if ('error' in result) return [];
-      }
-      // Then each onto the number the dates give it.
-      const placed = moving.map((record) => edit(record, wanted.get(recordBatch(record))!));
-      const result = await updateSavedRecords(placed);
-      return 'error' in result ? [] : result.records;
-    } finally {
-      reordering.current = false;
-    }
-  };
-
-  // Whenever the ledger is quiet, it is asked to read in date order.
+  // Whenever the ledger is quiet, it is asked to read in date order; and the
+  // review's copies follow the records, so a number moved from another page
+  // is the number shown here.
   useEffect(() => {
     if (!store.ready || extraction !== null || busy || settling) return;
+    refreshQueueFrom(records);
     if (!numbersInDateOrder(records).size) return;
-    void settleInvoiceNumbers().then(refreshQueueFrom);
+    void reorderInvoicesByDate().then(refreshQueueFrom);
   }, [records, store.ready, extraction, busy, settling]);
 
 
@@ -1896,7 +1849,7 @@ export default function LoadDesk() {
       if (ordered.error) failures.push(ordered.error);
       // And the whole ledger in date order after it: an upload of older
       // tickets moves the newer invoices along to make room.
-      const reordered = await settleInvoiceNumbers();
+      const reordered = await reorderInvoicesByDate();
       if (reordered.length) {
         const byId = new Map(reordered.map((record) => [record.id, record]));
         filed = filed.map((item) => {
