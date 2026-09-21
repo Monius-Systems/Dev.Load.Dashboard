@@ -1235,8 +1235,6 @@ export default function LoadDesk() {
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
   /** The photographed ticket, over the screen, while a field is being checked. */
   const [viewingTicket, setViewingTicket] = useState(false);
-  /** A saved ticket whose picture is to open as soon as it has loaded. */
-  const viewPending = useRef<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   /**
    * The camera is the session's, not this page's: "Scan ticket" on the home
@@ -2648,15 +2646,38 @@ export default function LoadDesk() {
    * not scrolled to, and the picture opens as soon as it has loaded.
    */
   function openTicketPicture(record: SavedRecord) {
-    const open = queue.find((item) => item.saved_record_id === record.id);
-    if (open?.preview_status === 'ready') {
-      editSaved(record, false);
-      setViewingTicket(true);
-      return;
-    }
-    viewPending.current = record.id;
-    editSaved(record, false);
+    // Nothing to do with the review: the picture is loaded on its own and
+    // shown over whatever page this is, and closing it leaves the page as
+    // it was. Putting the ticket on the review to show its picture opened
+    // the review under it, and closing the picture left the review open.
+    const shown = itemFromRecord(record, recordBatch(record));
+    setPictureOf({ ...shown, preview_status: 'loading' });
+    void loadStoredOriginal(record).then((blob) => {
+      if (!blob) {
+        toast.add({ title: t('The original is not stored for this ticket.'), type: 'error' });
+      }
+      setPictureOf((current) => {
+        if (!current || current.saved_record_id !== record.id) return current;
+        if (!blob) return null;
+        return {
+          ...current,
+          original: blob,
+          preview_url:
+            URL.createObjectURL(blob) + (record.source.page ? `#page=${record.source.page}` : ''),
+          preview_status: 'ready',
+        };
+      });
+    });
   }
+
+  /** The photograph opened from the panel, over the page; null when none is. */
+  const [pictureOf, setPictureOf] = useState<QueueItem | null>(null);
+  const closePicture = () => {
+    setPictureOf((current) => {
+      if (current?.preview_url) URL.revokeObjectURL(current.preview_url.split('#')[0]);
+      return null;
+    });
+  };
 
   /** Reopens a saved ticket, with the other saved tickets on its invoice, to edit. */
   function editSaved(record: SavedRecord, scroll = true) {
@@ -2680,11 +2701,6 @@ export default function LoadDesk() {
     for (const [index, line] of lines.entries()) {
       const itemId = added[index].id;
       void loadStoredOriginal(line).then((blob) => {
-        // The picture somebody asked to see, opened the moment it is here.
-        if (viewPending.current === line.id) {
-          viewPending.current = null;
-          if (blob) setViewingTicket(true);
-        }
         setQueue((current) =>
           current.map((item) => {
             if (item.id !== itemId) return item;
@@ -4992,6 +5008,9 @@ export default function LoadDesk() {
 
       {viewingTicket && active ? (
         <TicketViewer item={active} onClose={() => setViewingTicket(false)} />
+      ) : null}
+      {pictureOf && pictureOf.preview_status === 'ready' ? (
+        <TicketViewer item={pictureOf} onClose={closePicture} />
       ) : null}
 
       <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />
