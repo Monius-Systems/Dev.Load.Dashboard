@@ -1,8 +1,9 @@
+import { normalizeName } from './customer-rates.ts';
 import { csvCell, lineTotal } from './format.ts';
 import { unresolvedCritical } from './recovery/index.ts';
 import { ticketDateValue, ticketDay } from './ticket-date.ts';
 import { validateTicket } from './validate.ts';
-import type { InvoiceDraft, SavedRecord } from './types.ts';
+import type { InvoiceDraft, SavedRecord, Ticket } from './types.ts';
 
 export { isUnreadableDate, ticketDateValue, ticketDay } from './ticket-date.ts';
 
@@ -397,6 +398,32 @@ export function joinsInvoiceFor(
   if (!ticket) return true;
   const invoice = invoiceDate?.trim();
   return !invoice || invoice === ticket;
+}
+
+/**
+ * The saved ticket this one is a second photograph of, or null.
+ *
+ * A file is refused twice by its fingerprint, but the same sheet photographed
+ * again is a new file, and it was saved again — on the invoice a second time,
+ * billed twice. A plant's ticket number is the ticket, so a number already
+ * on file from the same plant is the same ticket. Six digits at least, so a
+ * short number two suppliers might both print is not mistaken for a repeat;
+ * the plant compared where both name one.
+ */
+export function sameTicketOnFile(
+  records: SavedRecord[],
+  ticket: Pick<Ticket, 'ticket_number' | 'plant_name'>,
+): SavedRecord | null {
+  const number = (ticket.ticket_number ?? '').replace(/\D/g, '');
+  if (number.length < 6) return null;
+  const plant = normalizeName(ticket.plant_name ?? '');
+  return (
+    records.find((record) => {
+      if ((record.ticket.ticket_number ?? '').replace(/\D/g, '') !== number) return false;
+      const other = normalizeName(record.ticket.plant_name ?? '');
+      return !plant || !other || plant === other;
+    }) ?? null
+  );
 }
 
 /** Photographed and read, but nobody has checked it against the picture yet. */

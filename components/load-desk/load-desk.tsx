@@ -132,6 +132,7 @@ import {
   numbersByTicketDate,
   numbersForWaitingBatches,
   recordBatch,
+  sameTicketOnFile,
   isPendingInvoiceNumber,
   isUndatedBatch,
   isUnreadableDate,
@@ -593,6 +594,21 @@ async function fileInBatch(
   records: SavedRecord[],
 ): Promise<{ item: QueueItem; error: string | null; opened: string | null }> {
   const item = invoiceDated(original);
+  // The same sheet photographed again is not a new ticket. It is left in the
+  // queue unsaved, saying which record it already is, rather than filed on
+  // the invoice a second time.
+  const already = sameTicketOnFile(records, item.ticket);
+  if (already) {
+    return {
+      item: {
+        ...item,
+        note: `This ticket is already saved as record ${already.id} (ticket ${already.ticket.ticket_number}). A second photograph of it was not filed again.`,
+        note_problem: true,
+      },
+      error: `already saved as record ${already.id}`,
+      opened: null,
+    };
+  }
   const batch = batchInvoiceFor(records, item.ticket.ticket_date);
   const result = await saveRecord(
     {
@@ -2239,11 +2255,12 @@ export default function LoadDesk() {
       });
       return;
     }
-    const duplicate = records.find(
-      (record) =>
-        record.source.sha256 === active.source.sha256 &&
-        (record.source.page ?? 1) === (active.source.page ?? 1),
-    );
+    const duplicate =
+      records.find(
+        (record) =>
+          record.source.sha256 === active.source.sha256 &&
+          (record.source.page ?? 1) === (active.source.page ?? 1),
+      ) ?? sameTicketOnFile(records, active.ticket);
     if (duplicate) {
       updateActive((item) => ({ ...item, saved_record_id: duplicate.id }));
       setSaveStatus({

@@ -495,3 +495,18 @@ void test('an older route answering with the flat fields alone still reads', () 
   assert.equal(isObservedTicket({ fields: 'no' }), false);
   assert.equal(observedFromWire(null).fields.ticket_number?.visible, null);
 });
+
+void test('a ? in the print is a digit the reader could not make out, and the field is partial', () => {
+  const observed = readObserved({
+    date: { visible: '12/1?/2025', proposed: '12/15/2025', clipped_edge: null, partial: false },
+    bol: { visible: '17253313?4', proposed: '1725331394', clipped_edge: null, partial: false },
+  });
+  assert.equal(observed.fields.ticket_date?.partial, true, 'whatever the reader ticked');
+  assert.equal(observed.fields.ticket_date?.visible, '12/1?/2025');
+  assert.equal(observed.fields.ticket_number?.partial, true);
+  assert.equal(observed.fields.ticket_number?.proposed, null, 'a completed number is dropped');
+  const flat = observedToExtracted(observed);
+  assert.equal(flat.date, null, 'never a date');
+  assert.equal(flat.bol, null, 'never a number');
+  assert.match(EXTRACTION_INSTRUCTIONS, /put a \? in visible/);
+});

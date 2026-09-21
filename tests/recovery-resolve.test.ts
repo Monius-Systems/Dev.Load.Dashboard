@@ -423,12 +423,17 @@ void test('(d) a softer record naming another day still stops the recovery', () 
 });
 
 void test('(d) a clipped date is never completed from a profile or the pile', () => {
+  // The pile, a profile, a correction: none of them is about this ticket's
+  // day. The one piece of history that is — the plant's run of numbers
+  // either side of this one, which is the only date memory ever emits — may
+  // complete it (see the run tests); nothing else from outside the ticket.
   const resolved = resolveField(
     'ticket_date',
     seen({ visible: '9/14', clipped_edge: 'right', partial: true }),
     frame(),
     [
-      ev({ field: 'ticket_date', candidate: '2026-09-14', source: 'verified_history', strength: 'strong' }),
+      ev({ field: 'ticket_date', candidate: '2026-09-14', source: 'verified_profile', strength: 'strong' }),
+      ev({ field: 'ticket_date', candidate: '2026-09-14', source: 'user_correction', strength: 'strong' }),
       ev({ field: 'ticket_date', candidate: '2026-09-14', source: 'batch_context', strength: 'strong' }),
     ],
     here,
@@ -914,4 +919,56 @@ void test('a date read whole but one faded digit from the day the evidence names
   );
   assert.equal(runOnly.status, 'recovered');
   assert.equal(runOnly.value, '2025-12-15');
+});
+
+void test('a digit the reader could not make out is a gap, asked about unless the evidence fills it', () => {
+  // "12/1?/2025": the digit is there and unreadable. With nothing on file it
+  // is asked; with the plant's run or the scale's stamp naming the 15th, it
+  // fits the 15th and is read as it — and does not fit the 25th.
+  const asked = resolveField(
+    'ticket_date',
+    { visible: '12/1?/2025', proposed: null, clipped_edge: null, partial: true },
+    UNKNOWN_FRAME,
+    [],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(asked.status, 'needs_review');
+  assert.equal(asked.value, null);
+  const settled = resolveField(
+    'ticket_date',
+    { visible: '12/1?/2025', proposed: null, clipped_edge: null, partial: true },
+    UNKNOWN_FRAME,
+    [{ field: 'ticket_date', candidate: '2025-12-15', source: 'verified_history', strength: 'strong', note: 'run' }],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(settled.status, 'recovered');
+  assert.equal(settled.value, '2025-12-15');
+  const wrong = resolveField(
+    'ticket_date',
+    { visible: '12/1?/2025', proposed: null, clipped_edge: null, partial: true },
+    UNKNOWN_FRAME,
+    [{ field: 'ticket_date', candidate: '2025-12-25', source: 'verified_history', strength: 'strong', note: 'run' }],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(wrong.status, 'needs_review', 'the 25th does not fit 12/1?');
+  // A ticket number with a gap is asked, never guessed; a weight with a gap
+  // is filled only by the ticket's own arithmetic when the digits fit.
+  const bol = resolveField(
+    'ticket_number',
+    { visible: '17253313?4', proposed: '1725331394', clipped_edge: null, partial: true },
+    UNKNOWN_FRAME,
+    [],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(bol.status, 'needs_review');
+  assert.equal(bol.value, null);
+  const tare = resolveField(
+    'tare_lb',
+    { visible: '277?0', proposed: null, clipped_edge: null, partial: true },
+    UNKNOWN_FRAME,
+    [{ field: 'tare_lb', candidate: '27720', source: 'same_ticket', strength: 'strong', note: 'gross − net' }],
+    { vendor: 'heidelberg' },
+  );
+  assert.equal(tare.status, 'recovered');
+  assert.equal(tare.value, 27720);
 });

@@ -266,6 +266,8 @@ clipped_edge — 'left', 'right', 'top' or 'bottom' when the field's print runs 
 
 partial — true when characters of the field are missing for any reason: clipped, torn, smudged out, or faded past reading.
 
+A digit you are not certain of is a digit you cannot read. Never pick the likeliest digit: put a ? in visible where it stands — "12/1?/2025", "17253313?4", "277?0" — and set partial to true. This matters most for the date, the BOL or ticket number, the customer number and the weights: a wrong digit there bills the wrong day or the wrong load, and a ? is asked about while a wrong digit is not. Faded, smudged, broken or overprinted digits are ? digits.
+
 Also report, once for the whole ticket:
 
 timestamps — every timestamp printed anywhere on the sheet, verbatim and in the order they appear. Machine timestamps, weigh times, print times, all of them. Do not convert them, do not reformat them, do not work a date out of them.
@@ -343,7 +345,12 @@ function observeField(name: ObservedFieldName, value: unknown): ObservedField {
   // Print that ran off an edge is print with characters missing, whatever the
   // reader ticked. The contract has clipped_edge as one of the reasons a field
   // is partial, so the two are never allowed to contradict each other here.
-  const partial = clipped_edge !== null || (source ? source.partial === true : false);
+  // A "?" in the print is the reader saying a character is there and cannot
+  // be made out: that is print with a character missing, whatever it ticked.
+  const partial =
+    clipped_edge !== null ||
+    (source ? source.partial === true : false) ||
+    (visible !== null && visible.includes('?'));
   let proposed = source ? printOf(source.proposed, numeric) : null;
   // The prompt forbids completing an identifier or a weight. This is the same
   // rule again, in code, because a prompt is a request and this is not.

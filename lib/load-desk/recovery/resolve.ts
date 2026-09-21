@@ -173,11 +173,40 @@ function printedDays(iso: string): string[] {
   ];
 }
 
+/**
+ * The mark the reader puts where a digit is on the paper but cannot be made
+ * out: "12/1?/2025", "17253313?4". It is a character of the print — the
+ * digit is there, it is only unreadable — so it takes the place of exactly
+ * one character, and a value on file fits the print when every readable
+ * character matches and the unreadable ones fall anywhere.
+ */
+const UNSURE = '?';
+
+/** Whether a piece of print with unreadable digits could be `candidate`, character for character. */
+function fitsWithGaps(print: string, candidate: string, edge: ClippedEdge | null): boolean {
+  if (!print.includes(UNSURE)) return fits(print, candidate, edge);
+  const matches = (a: string, b: string) => {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== UNSURE && a[i] !== b[i]) return false;
+    return true;
+  };
+  if (edge === 'left') return candidate.length >= print.length && matches(print, candidate.slice(-print.length));
+  if (edge === 'right') return candidate.length >= print.length && matches(print, candidate.slice(0, print.length));
+  if (candidate.length === print.length) return matches(print, candidate);
+  for (let start = 0; start + print.length <= candidate.length; start++) {
+    if (matches(print, candidate.slice(start, start + print.length))) return true;
+  }
+  return false;
+}
+
+/** Letters, digits and the unsure mark, so a "?" survives where normalizeKey would drop it. */
+const keyWithGaps = (text: string) => text.toUpperCase().replace(/[^A-Z0-9?]/g, '');
+
 const dateFragmentFits = (fragment: string, iso: string, edge: ClippedEdge | null) => {
   if (!fragment) return true;
   if (ticketDay(fragment) === iso) return true;
   const key = dateKey(fragment);
-  return printedDays(iso).some((form) => fits(key, dateKey(form), edge));
+  return printedDays(iso).some((form) => fitsWithGaps(key, dateKey(form), edge));
 };
 
 // --- weighing the evidence ------------------------------------------------
@@ -512,8 +541,13 @@ function resolveDate(
   notes: string[],
   capConfidence: (value: number) => number,
 ): Draft {
+  // The ticket's own stamps, the vendor's layout, and the one piece of
+  // checked history that is about this very ticket: the plant's run of
+  // numbers either side of it (memory.ts emits no other date from history).
   const authoritative = applicable.filter(
-    (item) => item.strength === 'strong' && DERIVATION_SOURCES.has(item.source),
+    (item) =>
+      item.strength === 'strong' &&
+      (DERIVATION_SOURCES.has(item.source) || item.source === 'verified_history'),
   );
   const fitting = authoritative.filter((item) => {
     const day = ticketDay(item.candidate);
@@ -523,7 +557,7 @@ function resolveDate(
     notes.push(
       fitting.includes(item)
         ? item.note
-        : `Not applied: ${item.note} — only the ticket's own timestamps and the vendor's layout may complete a date${fragment ? `, and it must fit the printed "${fragment}"` : ''}.`,
+        : `Not applied: ${item.note} — only the ticket's own timestamps, the vendor's layout and the plant's run of ticket numbers may complete a date${fragment ? `, and it must fit the printed "${fragment}"` : ''}.`,
     );
   }
 
@@ -610,13 +644,13 @@ function resolveDerived(
   notes: string[],
   capConfidence: (value: number) => number,
 ): Draft {
-  const fragmentKey = normalizeKey(fragment);
+  const fragmentKey = keyWithGaps(fragment);
   const fitting = applicable.filter((item) => {
     if (item.strength !== 'strong' || !DERIVATION_SOURCES.has(item.source)) return false;
     const key = normalizeKey(item.candidate);
     if (!key || key.length < fragmentKey.length) return false;
     if (isNumberField(field) && numberFrom(item.candidate) === null) return false;
-    return fits(fragmentKey, key, edge);
+    return fitsWithGaps(fragmentKey, key, edge);
   });
   for (const item of applicable) {
     notes.push(

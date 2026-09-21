@@ -9,6 +9,7 @@ import {
   stepReviewStop,
   ticketStatus,
   type ReviewStop,
+  sameTicketOnFile,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord, type Ticket } from '../lib/load-desk/types.ts';
 
@@ -229,4 +230,21 @@ void test('invoices are worked through oldest first, whatever order they queued 
     { invoice: 'dated', day: Date.UTC(2026, 0, 6), reviewed: false },
   ];
   assert.equal(nextReviewStop(undated, 0), 1);
+});
+
+void test('a second photograph of a ticket already on file is the same ticket', () => {
+  const onFile = {
+    id: 42,
+    saved_at: '2026-09-14T15:00:00.000Z',
+    ticket: { ...emptyTicket(), ticket_number: '1725331394', plant_name: 'Heidelberg Materials' },
+    invoice: { invoice_number: '7', invoice_date: '2026-09-14', return_date: '', truck_number: '', bill_to: { name: '', address_lines: ['', ''], phone: '' } },
+    source: { file_name: 'a.jpg', sha256: 'a'.repeat(64), size: 1, type: 'image/jpeg', kind: 'upload' as const },
+    original_stored: true,
+    ocr_text: '',
+  } satisfies SavedRecord;
+  assert.equal(sameTicketOnFile([onFile], { ticket_number: '1725331394', plant_name: 'Heidelberg Materials' })?.id, 42);
+  assert.equal(sameTicketOnFile([onFile], { ticket_number: 'BOL 1725331394', plant_name: null })?.id, 42, 'digits are what count; no plant named is no disagreement');
+  assert.equal(sameTicketOnFile([onFile], { ticket_number: '1725331394', plant_name: 'Ontario Trap Rock' }), null, 'another plant’s number is another ticket');
+  assert.equal(sameTicketOnFile([onFile], { ticket_number: '1725331395', plant_name: 'Heidelberg Materials' }), null);
+  assert.equal(sameTicketOnFile([onFile], { ticket_number: '12345', plant_name: 'Heidelberg Materials' }), null, 'too short to be sure of');
 });
