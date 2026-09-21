@@ -1714,12 +1714,14 @@ export default function LoadDesk() {
       // covers both, so somebody looking at a ticket with a date on it is not
       // told no date was found on it.
       const undated = grouped.filter((item) => isUndatedBatch(item.batch_id)).length;
+      /** The long form of what is wrong, for a screen with room for it. */
+      const explained: string[] = [];
       if (undated) {
         const notice = t(
           'No usable date was read from {tickets}, now waiting in “Date not found”, on no invoice. Enter the date to put each on one.',
           { tickets: plural(undated, 'ticket') },
         );
-        failures.unshift(notice);
+        explained.push(notice);
         toast.add({
           title: t('Date not found on {tickets}', { tickets: plural(undated, 'ticket') }),
           description: notice,
@@ -1775,25 +1777,44 @@ export default function LoadDesk() {
       const retake = grouped.filter(
         (item) => item.recovery && cameraCropFields(item.recovery).length > 0,
       ).length;
+      // What to say, and how much of it. A desk has the room for the whole
+      // account; a phone held beside a truck wants the count and, if there
+      // is anything to do, what it is in three words — "Please review: date
+      // unclear" — and the panel below says the rest.
+      const reasons = [
+        undated ? t('date unclear') : '',
+        retake ? t('retake the photo') : '',
+        toConfirm && !undated && !retake ? t('fields cut off') : '',
+        askedGroups ? t('new job') : '',
+      ].filter(Boolean);
+      const short = [
+        t('✓ {tickets} processed', { tickets: plural(added.length, 'ticket') }),
+        reasons.length ? `${t('Please review')}: ${reasons.join(', ')}` : '',
+        ...failures,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      const long = [
+        summary,
+        toConfirm
+          ? t('{tickets} have fields to confirm against the original.', {
+              tickets: plural(toConfirm, 'ticket'),
+            })
+          : '',
+        retake
+          ? t(
+              '{tickets} were photographed with the sheet running off the picture — retake them.',
+              { tickets: plural(retake, 'ticket') },
+            )
+          : '',
+        ...explained,
+        ...failures,
+      ]
+        .filter(Boolean)
+        .join(' · ');
       setUploadStatus({
-        message: [
-          summary,
-          toConfirm
-            ? t('{tickets} have fields to confirm against the original.', {
-                tickets: plural(toConfirm, 'ticket'),
-              })
-            : '',
-          retake
-            ? t(
-                '{tickets} were photographed with the sheet running off the picture — retake them.',
-                { tickets: plural(retake, 'ticket') },
-              )
-            : '',
-          ...failures,
-        ]
-          .filter(Boolean)
-          .join(' · '),
-        tone: failures.length ? 'error' : 'info',
+        message: isPhone ? short : long,
+        tone: failures.length || undated ? 'error' : 'info',
       });
     }
     setQueue((current) => [...current, ...grouped]);
