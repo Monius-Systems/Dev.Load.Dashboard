@@ -10,6 +10,7 @@ import {
   UNDATED_BATCH,
   needsReview,
   numbersByTicketDate,
+  numbersInDateOrder,
   shownInvoiceNumber,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
@@ -457,4 +458,49 @@ void test('one day written two ways is one batch, not two', () => {
   assert.equal(joined.invoice_number, '1042');
   assert.equal(joined.opened, false);
   assert.equal(batchDate(saved('1/6/2026', '1043')), '2026-01-06');
+});
+
+// --- the ledger in date order -------------------------------------------
+
+void test('an older ticket uploaded later takes the lower number, and the newer moves along', () => {
+  // Invoice 1 was given to the 1st of January. Then the 31st of December
+  // arrives: it takes 1, and January becomes 2 — the books read in date
+  // order, whatever order the paper arrived in.
+  const january = saved('2026-01-01', '1', { invoice_batch_id: 'batch-2026-01-01' });
+  const december = saved('2025-12-31', 'DRAFT-batch-2025-12-31', { invoice_batch_id: 'batch-2025-12-31' });
+  const wanted = numbersInDateOrder([january, december]);
+  assert.deepEqual([...wanted].sort(), [
+    ['batch-2025-12-31', '1'],
+    ['batch-2026-01-01', '2'],
+  ]);
+});
+
+void test('a ledger already in date order is left exactly as it is', () => {
+  const a = saved('2025-12-31', '1', { invoice_batch_id: 'batch-2025-12-31' });
+  const b = saved('2026-01-01', '2', { invoice_batch_id: 'batch-2026-01-01' });
+  const c = saved('2026-01-06', '3', { invoice_batch_id: 'batch-2026-01-06' });
+  assert.equal(numbersInDateOrder([a, b, c]).size, 0);
+});
+
+void test('the same pool of numbers is permuted, prefix and padding kept, and new batches take new numbers', () => {
+  const a = saved('2026-01-06', 'INV-0010', { invoice_batch_id: 'batch-2026-01-06' });
+  const b = saved('2026-01-02', 'INV-0012', { invoice_batch_id: 'batch-2026-01-02' });
+  const c = saved('2026-01-04', 'INV-0011', { invoice_batch_id: 'batch-2026-01-04' });
+  const fresh = saved('2026-01-08', 'DRAFT-batch-2026-01-08', { invoice_batch_id: 'batch-2026-01-08' });
+  const wanted = numbersInDateOrder([a, b, c, fresh]);
+  assert.deepEqual([...wanted].sort(), [
+    ['batch-2026-01-02', 'INV-0010'],
+    ['batch-2026-01-06', 'INV-0012'],
+    ['batch-2026-01-08', 'INV-0013'],
+  ]);
+  assert.equal(wanted.has('batch-2026-01-04'), false, 'INV-0011 on the 4th is already in its place');
+});
+
+void test('two invoices on one day keep their order; the undated batch and a hand-typed number are left alone', () => {
+  const first = saved('2026-01-06', '5', { invoice_batch_id: 'batch-a' });
+  const second = saved('2026-01-06', '6', { invoice_batch_id: 'batch-b' });
+  const undated = saved(null, 'DRAFT-batch-undated', { invoice_batch_id: UNDATED_BATCH });
+  const typed = saved('2025-01-01', 'SPECIAL', { invoice_batch_id: 'batch-special' });
+  const wanted = numbersInDateOrder([first, second, undated, typed]);
+  assert.equal(wanted.size, 0);
 });

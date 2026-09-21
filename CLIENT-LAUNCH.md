@@ -311,6 +311,11 @@ membership. If more client dashboards follow, the website can link to a small
   filled in the same way.
 - Tickets uploaded together are grouped by their ticket date: one invoice per
   date. More tickets can be added to an invoice while reviewing it.
+- Invoice numbers follow the ticket dates across the whole ledger, whatever
+  order the paper arrives in: uploading older tickets after newer ones moves
+  the newer invoices' numbers along to make room. An invoice already printed
+  or sent can therefore change its number afterwards — treat a number as
+  final only once every older ticket is in.
 - Load Desk keeps an upload in progress while you look at other pages, and a
   scan carries on reading in the background. Reloading the browser clears the
   queue; a ticket is only kept once it is saved.

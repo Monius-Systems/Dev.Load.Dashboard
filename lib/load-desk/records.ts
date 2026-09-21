@@ -254,6 +254,64 @@ export function numbersByTicketDate(
   );
 }
 
+/**
+ * Every dated invoice's number, so that the numbers run in date order across
+ * the whole ledger: the oldest date takes the lowest number on file, the next
+ * date the next, and a batch not numbered yet takes a new number past the
+ * highest. Returned as the batches whose number would change, keyed by batch.
+ *
+ * Invoices used to keep their numbers for life, and an upload of older
+ * tickets after a newer one left the books climbing in numbers while
+ * jumping back in dates: invoice 1 for the 1st of January, then invoice 2
+ * for the 31st of December. The ledger is asked to read in date order
+ * instead, and where it does not the numbers are moved — a number is a
+ * position in the books, and the books are in date order. It is the same
+ * pool of numbers, permuted, so nothing new collides with anything and no
+ * number is burnt; two batches on one day keep their order between them.
+ * Numbers with no digits to order by are left alone, with their batches;
+ * the undated batch is not an invoice and takes none.
+ */
+export function numbersInDateOrder(records: SavedRecord[]): Map<string, string> {
+  type Batch = { batchId: string; day: number; number: string | null; digits: number; arrived: number };
+  const batches = new Map<string, Batch>();
+  for (const record of [...records].sort((a, b) => a.id - b.id)) {
+    const batchId = recordBatch(record);
+    if (isUndatedBatch(batchId)) continue;
+    const day = ticketDateValue(record.ticket.ticket_date);
+    if (day === null) continue;
+    if (batches.has(batchId)) continue;
+    const number = record.invoice.invoice_number.trim();
+    const pending = isPendingInvoiceNumber(number);
+    const match = pending ? null : NUMBERED.exec(number);
+    // A hand-typed number with no digits is somebody's own scheme; its batch
+    // is not moved and its number is not in the pool.
+    if (!pending && !match) continue;
+    batches.set(batchId, {
+      batchId,
+      day,
+      number: pending ? null : number,
+      digits: match ? Number(match[2]) : Number.POSITIVE_INFINITY,
+      arrived: batches.size,
+    });
+  }
+  const list = [...batches.values()];
+  if (!list.length) return new Map();
+  const pool = list
+    .filter((batch) => batch.number !== null)
+    .sort((a, b) => a.digits - b.digits || a.arrived - b.arrived)
+    .map((batch) => batch.number!);
+  // New numbers for the batches without one, past the highest on file.
+  const numbers = [...pool];
+  while (numbers.length < list.length) numbers.push(openingInvoiceNumber(numbers));
+  const inOrder = [...list].sort((a, b) => a.day - b.day || a.digits - b.digits || a.arrived - b.arrived);
+  const changes = new Map<string, string>();
+  inOrder.forEach((batch, index) => {
+    const wanted = numbers[index];
+    if (wanted !== batch.number) changes.set(batch.batchId, wanted);
+  });
+  return changes;
+}
+
 /** Every saved ticket on an invoice, in print order. */
 export function invoiceLines(
   records: SavedRecord[],

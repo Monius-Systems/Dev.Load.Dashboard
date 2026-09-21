@@ -132,6 +132,7 @@ import {
   nextReviewStop,
   numbersByTicketDate,
   numbersForWaitingBatches,
+  numbersInDateOrder,
   recordBatch,
   sameTicketOnFile,
   isPendingInvoiceNumber,
@@ -966,130 +967,6 @@ export default function LoadDesk() {
     setDeskField('needsInput', { groups: groupsAsked.length, tickets: ticketsAsked.length });
   }, [groupsAsked.length, ticketsAsked.length]);
 
-  /**
-   * Approving on the evidence: a filed ticket every field of which was read
-   * whole or recovered above the bar, from a customer and a job site on
-   * file, is marked approved and leaves the "to check" list — the app's own
-   * bookkeeping, so `reviewed_at` stays null and the record says which it
-   * was. Never while an upload is still being read or numbered, so two
-   * writes to one record cannot cross. Each ticket is sent once; a write
-   * that fails is tried again on the next pass.
-   */
-  const approving = useRef(new Set<number>());
-  /**
-   * True from the first page of an upload to the last number written. The
-   * progress bar and the busy state clear when the reading ends, and the
-   * numbering runs after that; an approval written in between carried the
-   * record's draft mark and could land after the number, leaving an invoice
-   * on "Waiting for the rest of this upload" for good.
-   */
-  const [settling, setSettling] = useState(false);
-  useEffect(() => {
-    if (!store.ready || extraction !== null || busy || settling) return;
-    const fresh = openMembers.filter(
-      (member) => member.report.outcome === 'auto_approved' && !approving.current.has(member.id),
-    );
-    if (!fresh.length) return;
-    const batch = fresh.slice(0, MAX_EDITS);
-    for (const member of batch) approving.current.add(member.id);
-    const at = new Date().toISOString();
-    const byId = new Map(records.map((record) => [record.id, record]));
-    const edits: RecordEdit[] = batch.flatMap((member) => {
-      const record = byId.get(member.id);
-      if (!record) return [];
-      return [
-        {
-          id: record.id,
-          ticket: record.ticket,
-          invoice: record.invoice,
-          ocr_text: record.ocr_text,
-          customer_profile_id: record.customer_profile_id ?? null,
-          truck_id: record.truck_id ?? null,
-          ...(record.recovery ? { recovery: record.recovery } : {}),
-          bookkeeping: true,
-          auto_approved_at: at,
-        },
-      ];
-    });
-    void updateSavedRecords(edits).then(async (result) => {
-      if ('error' in result) {
-        for (const member of batch) approving.current.delete(member.id);
-        return;
-      }
-      // What these tickets teach: a job site the customer's profile does not
-      // carry yet goes onto it, so the next scan from that site is known and
-      // the site is there to pick and to rate.
-      const learned = sitesToLearn(batch, knowledge);
-      for (const [customerId, sites] of learned) {
-        const customer = getProfilesSnapshot().customers.find((known) => known.id === customerId);
-        if (!customer) continue;
-        await saveProfile(
-          'customer',
-          {
-            name: customer.name,
-            ticket_customer_ids: customer.ticket_customer_ids,
-            ticket_names: customer.ticket_names,
-            addresses: sites.reduce((list, site) => addCustomerAddress({ addresses: list }, site), customerAddresses(customer)),
-            location_rates: customerLocationRates(customer),
-            flat_rate: customer.flat_rate,
-            rate_type: customer.rate_type ?? 'flat',
-            fuel_charge: customer.fuel_charge,
-            fuel_type: customer.fuel_type ?? 'flat',
-            notes: customer.notes,
-            created_at: customer.created_at,
-          },
-          customer.id,
-        );
-      }
-    });
-  }, [openMembers, records, store.ready, extraction, busy, settling, knowledge]);
-
-  /**
-   * An invoice left on its draft mark — numbering that never ran or never
-   * landed — is numbered now, in date order after everything on file, the
-   * same way an upload's are. The undated batch is not an invoice and keeps
-   * its mark. Once per stranded batch; a write that fails is tried again on
-   * the next pass.
-   */
-  const renumbering = useRef(new Set<string>());
-  useEffect(() => {
-    if (!store.ready || extraction !== null || busy || settling) return;
-    const stranded = [
-      ...new Set(
-        records
-          .filter(
-            (record) =>
-              isPendingInvoiceNumber(record.invoice.invoice_number) &&
-              !isUndatedBatch(recordBatch(record)) &&
-              ticketDay(record.ticket.ticket_date) !== null,
-          )
-          .map((record) => recordBatch(record)),
-      ),
-    ].filter((batchId) => !renumbering.current.has(batchId));
-    if (!stranded.length) return;
-    for (const batchId of stranded) renumbering.current.add(batchId);
-    const wanted = numbersByTicketDate(records, stranded);
-    const edits: RecordEdit[] = [];
-    for (const record of records) {
-      const number = wanted.get(recordBatch(record));
-      if (number === undefined || number === record.invoice.invoice_number) continue;
-      edits.push({
-        id: record.id,
-        ticket: record.ticket,
-        invoice: { ...record.invoice, invoice_number: number },
-        ocr_text: record.ocr_text,
-        customer_profile_id: record.customer_profile_id ?? null,
-        truck_id: record.truck_id ?? null,
-        ...(record.recovery ? { recovery: record.recovery } : {}),
-        bookkeeping: true,
-      });
-    }
-    if (!edits.length) return;
-    void updateSavedRecords(edits).then((result) => {
-      if ('error' in result) for (const batchId of stranded) renumbering.current.delete(batchId);
-    });
-  }, [records, store.ready, extraction, busy, settling]);
-
   /** What a person has typed against each open question, by group. */
   const [groupAnswers, setGroupAnswers] = useState<Record<string, Record<string, string>>>({});
   const [groupBusy, setGroupBusy] = useState<string | null>(null);
@@ -1127,6 +1004,7 @@ export default function LoadDesk() {
     try {
       const result = await updateSavedRecords([dateEdit(record, ticketDay(typed)!, records)]);
       if ('error' in result) throw new Error(result.error);
+      refreshQueueFrom(result.records);
       setGroupAnswers((current) => {
         const next = { ...current };
         delete next[group.key];
@@ -1242,6 +1120,7 @@ export default function LoadDesk() {
       );
       const result = await updateSavedRecords(edits);
       if ('error' in result) throw new Error(result.error);
+      refreshQueueFrom(result.records);
       setGroupAnswers((current) => {
         const next = { ...current };
         delete next[group.key];
@@ -1267,6 +1146,171 @@ export default function LoadDesk() {
     | DeskSession[K]
     | ((current: DeskSession[K]) => DeskSession[K]);
   const setQueue = (value: Field<'queue'>) => setDeskField('queue', value);
+
+  /**
+   * The review's copies of saved tickets, brought up to date with what was
+   * saved: an answer given in the panel, a date typed there, a number moved
+   * into date order. A copy somebody is in the middle of editing is left
+   * alone, so nothing typed is lost; the rest take the record as it stands,
+   * and stop asking for what has been answered.
+   */
+  const refreshQueueFrom = (updated: SavedRecord[]) => {
+    if (!updated.length) return;
+    const byId = new Map(updated.map((record) => [record.id, record]));
+    setQueue((current) =>
+      current.map((item) => {
+        const record = item.saved_record_id === null ? undefined : byId.get(item.saved_record_id);
+        if (!record || hasChanges(item)) return item;
+        const next: QueueItem = {
+          ...item,
+          ticket: record.ticket,
+          invoice: record.invoice,
+          batch_id: recordBatch(record),
+          ...(record.recovery ? { recovery: record.recovery } : {}),
+        };
+        return { ...next, baseline: editKey(next) };
+      }),
+    );
+  };
+
+  /**
+   * Approving on the evidence: a filed ticket every field of which was read
+   * whole or recovered above the bar, from a customer and a job site on
+   * file, is marked approved and leaves the "to check" list — the app's own
+   * bookkeeping, so `reviewed_at` stays null and the record says which it
+   * was. Never while an upload is still being read or numbered, so two
+   * writes to one record cannot cross. Each ticket is sent once; a write
+   * that fails is tried again on the next pass.
+   */
+  const approving = useRef(new Set<number>());
+  /**
+   * True from the first page of an upload to the last number written. The
+   * progress bar and the busy state clear when the reading ends, and the
+   * numbering runs after that; an approval written in between carried the
+   * record's draft mark and could land after the number, leaving an invoice
+   * on "Waiting for the rest of this upload" for good.
+   */
+  const [settling, setSettling] = useState(false);
+  useEffect(() => {
+    if (!store.ready || extraction !== null || busy || settling) return;
+    const fresh = openMembers.filter(
+      (member) => member.report.outcome === 'auto_approved' && !approving.current.has(member.id),
+    );
+    if (!fresh.length) return;
+    const batch = fresh.slice(0, MAX_EDITS);
+    for (const member of batch) approving.current.add(member.id);
+    const at = new Date().toISOString();
+    const byId = new Map(records.map((record) => [record.id, record]));
+    const edits: RecordEdit[] = batch.flatMap((member) => {
+      const record = byId.get(member.id);
+      if (!record) return [];
+      return [
+        {
+          id: record.id,
+          ticket: record.ticket,
+          invoice: record.invoice,
+          ocr_text: record.ocr_text,
+          customer_profile_id: record.customer_profile_id ?? null,
+          truck_id: record.truck_id ?? null,
+          ...(record.recovery ? { recovery: record.recovery } : {}),
+          bookkeeping: true,
+          auto_approved_at: at,
+        },
+      ];
+    });
+    void updateSavedRecords(edits).then(async (result) => {
+      if ('error' in result) {
+        for (const member of batch) approving.current.delete(member.id);
+        return;
+      }
+      refreshQueueFrom(result.records);
+      // What these tickets teach: a job site the customer's profile does not
+      // carry yet goes onto it, so the next scan from that site is known and
+      // the site is there to pick and to rate.
+      const learned = sitesToLearn(batch, knowledge);
+      for (const [customerId, sites] of learned) {
+        const customer = getProfilesSnapshot().customers.find((known) => known.id === customerId);
+        if (!customer) continue;
+        await saveProfile(
+          'customer',
+          {
+            name: customer.name,
+            ticket_customer_ids: customer.ticket_customer_ids,
+            ticket_names: customer.ticket_names,
+            addresses: sites.reduce((list, site) => addCustomerAddress({ addresses: list }, site), customerAddresses(customer)),
+            location_rates: customerLocationRates(customer),
+            flat_rate: customer.flat_rate,
+            rate_type: customer.rate_type ?? 'flat',
+            fuel_charge: customer.fuel_charge,
+            fuel_type: customer.fuel_type ?? 'flat',
+            notes: customer.notes,
+            created_at: customer.created_at,
+          },
+          customer.id,
+        );
+      }
+    });
+  }, [openMembers, records, store.ready, extraction, busy, settling, knowledge]);
+
+  /**
+   * The ledger read in date order (see `numbersInDateOrder`): where the
+   * numbers on file do not follow the dates, they are moved so that they do.
+   *
+   * In two writes, because a number is claimed by one batch at a time and
+   * two batches swapping numbers in one go would each be refused the other's:
+   * first every batch that is moving is put on a draft mark of its own,
+   * which releases its number; then each takes the number the date order
+   * gives it. Nothing new is minted for a batch that had a number, and a
+   * batch that had none takes the next past the highest. Held off while an
+   * upload is being read and numbered, and never run twice at once.
+   */
+  const reordering = useRef(false);
+  const settleInvoiceNumbers = async (): Promise<SavedRecord[]> => {
+    if (reordering.current) return [];
+    const { records: now } = getRecordsSnapshot();
+    const wanted = numbersInDateOrder(now);
+    if (!wanted.size) return [];
+    reordering.current = true;
+    try {
+      const edit = (record: SavedRecord, number: string): RecordEdit => ({
+        id: record.id,
+        ticket: record.ticket,
+        invoice: { ...record.invoice, invoice_number: number },
+        ocr_text: record.ocr_text,
+        customer_profile_id: record.customer_profile_id ?? null,
+        truck_id: record.truck_id ?? null,
+        ...(record.recovery ? { recovery: record.recovery } : {}),
+        bookkeeping: true,
+      });
+      const moving = now.filter((record) => {
+        const number = wanted.get(recordBatch(record));
+        return number !== undefined && number !== record.invoice.invoice_number;
+      });
+      // First out of the way: every moving batch onto its own mark.
+      const parked = moving
+        .filter((record) => !isPendingInvoiceNumber(record.invoice.invoice_number))
+        .map((record) => edit(record, pendingInvoiceNumber(`reorder-${recordBatch(record)}`)));
+      if (parked.length) {
+        const result = await updateSavedRecords(parked);
+        if ('error' in result) return [];
+      }
+      // Then each onto the number the dates give it.
+      const placed = moving.map((record) => edit(record, wanted.get(recordBatch(record))!));
+      const result = await updateSavedRecords(placed);
+      return 'error' in result ? [] : result.records;
+    } finally {
+      reordering.current = false;
+    }
+  };
+
+  // Whenever the ledger is quiet, it is asked to read in date order.
+  useEffect(() => {
+    if (!store.ready || extraction !== null || busy || settling) return;
+    if (!numbersInDateOrder(records).size) return;
+    void settleInvoiceNumbers().then(refreshQueueFrom);
+  }, [records, store.ready, extraction, busy, settling]);
+
+
   const setActiveIndex = (value: Field<'activeIndex'>) => setDeskField('activeIndex', value);
   const setPending = (value: Field<'pending'>) => setDeskField('pending', value);
   const setBusy = (value: Field<'busy'>) => setDeskField('busy', value);
@@ -1866,8 +1910,19 @@ export default function LoadDesk() {
       }
       setExtraction((current) => current && { ...current, percent: 100, label: 'Building invoices' });
       const ordered = await finalizeInvoiceNumbers(session, wasFiled, openedBatches);
-      const filed = ordered.items;
+      let filed = ordered.items;
       if (ordered.error) failures.push(ordered.error);
+      // And the whole ledger in date order after it: an upload of older
+      // tickets moves the newer invoices along to make room.
+      const reordered = await settleInvoiceNumbers();
+      if (reordered.length) {
+        const byId = new Map(reordered.map((record) => [record.id, record]));
+        filed = filed.map((item) => {
+          const record = item.saved_record_id === null ? undefined : byId.get(item.saved_record_id);
+          return record ? { ...item, invoice: record.invoice, batch_id: recordBatch(record) } : item;
+        });
+        refreshQueueFrom(reordered);
+      }
       // One invoice per ticket date, dated that day, oldest first. Invoice
       // numbers continue in order after the latest saved or queued invoice —
       // read after the renumbering above, so they follow it — and a workspace
