@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import OpenAI from 'openai';
 import { authClient, localPreview, noStore, sameOrigin, workspaceUser } from '@/lib/server/auth';
 import { OPENAI_KEY_NAME, openaiKey } from '@/lib/server/openai-key';
@@ -47,11 +48,10 @@ async function readImage(request: Request) {
   const bytes = new Uint8Array(await request.arrayBuffer());
   if (!bytes.byteLength) throw new Error('No image was posted.');
   if (bytes.byteLength > MAX_IMAGE_BYTES) throw new Error('That image is too large to read.');
-  let binary = '';
-  for (let at = 0; at < bytes.length; at += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(at, at + 0x8000));
-  }
-  return `data:${type};base64,${btoa(binary)}`;
+  // Encoded natively. Building a binary string a chunk at a time and
+  // handing it to btoa costs the worker CPU time and three copies of the
+  // image; Buffer does it in one pass.
+  return `data:${type};base64,${Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64')}`;
 }
 
 /** Asks the model to read the ticket, once, as structured JSON. */
