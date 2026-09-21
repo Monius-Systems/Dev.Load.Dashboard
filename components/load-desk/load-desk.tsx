@@ -99,6 +99,7 @@ import {
 } from '@/lib/load-desk/recovery';
 import {
   applyGroupAnswer,
+  dateEdit,
   groupExceptions,
   membersOf,
   type ExceptionGroup,
@@ -983,6 +984,37 @@ export default function LoadDesk() {
       ...current,
       [group.key]: { ...current[group.key], [field]: value },
     }));
+
+  /**
+   * The date a ticket lost, typed once in the panel. Saved as the app's own
+   * bookkeeping so the ticket comes back through classification dated —
+   * to pass, or to join its job's question — rather than being marked
+   * checked with the rest of it still unsettled.
+   */
+  async function saveDate(group: ExceptionGroup) {
+    if (groupBusy) return;
+    const record = records.find((item) => item.id === group.ticketIds[0]);
+    const typed = answerFor(group, 'ticket_date');
+    if (!record || !ticketDay(typed)) {
+      setGroupError((current) => ({ ...current, [group.key]: t('Enter the date as it is printed on the ticket.') }));
+      return;
+    }
+    setGroupBusy(group.key);
+    setGroupError((current) => ({ ...current, [group.key]: '' }));
+    try {
+      const result = await updateSavedRecords([dateEdit(record, ticketDay(typed)!, records)]);
+      if ('error' in result) throw new Error(result.error);
+      setGroupAnswers((current) => {
+        const next = { ...current };
+        delete next[group.key];
+        return next;
+      });
+    } catch (error) {
+      setGroupError((current) => ({ ...current, [group.key]: errorMessage(error) }));
+    } finally {
+      setGroupBusy(null);
+    }
+  }
 
   /**
    * One answer for a whole job.
@@ -3810,14 +3842,45 @@ export default function LoadDesk() {
                       {individual ? (
                         <>
                           <p className="ld-exception-why">
-                            {group.asks.length
-                              ? t('Not settled: {fields}.', {
-                                  fields: group.asks.map((field) => t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))).join(', '),
-                                })
-                              : t(group.reasons[0] ?? 'This ticket has not been looked at.')}
+                            {group.needsDate
+                              ? t('No date could be read. Enter it from the ticket; it then goes on that day’s invoice.')
+                              : group.asks.length
+                                ? t('Not settled: {fields}.', {
+                                    fields: group.asks.map((field) => t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))).join(', '),
+                                  })
+                                : t(group.reasons[0] ?? 'This ticket has not been looked at.')}
                           </p>
+                          {group.needsDate ? (
+                            <div className="ld-fields ld-exception-fields">
+                              <div className="ld-field">
+                                <label htmlFor={`${fieldId}-${group.key}-date`}>{t('Date')}</label>
+                                <Input
+                                  id={`${fieldId}-${group.key}-date`}
+                                  type="date"
+                                  value={groupAnswers[group.key]?.ticket_date ?? ''}
+                                  onChange={(event) => setAnswer(group, 'ticket_date', event.target.value)}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                          {error ? <p className="ld-status" data-tone="error">{error}</p> : null}
                           <div className="ld-confirm-actions">
-                            <Button type="button" size="sm" onClick={() => record && editSaved(record)}>
+                            {group.needsDate ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={groupBusy !== null}
+                                onClick={() => void saveDate(group)}
+                              >
+                                {groupBusy === group.key ? t('Saving…') : t('Save date')}
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={group.needsDate ? 'secondary' : 'default'}
+                              onClick={() => record && editSaved(record)}
+                            >
                               {t('Open in review')}
                             </Button>
                           </div>

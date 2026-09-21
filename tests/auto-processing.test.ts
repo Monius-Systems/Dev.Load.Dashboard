@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   applyGroupAnswer,
+  dateEdit,
   groupExceptions,
   membersOf,
 } from '../lib/load-desk/recovery/exceptions.ts';
@@ -286,4 +287,52 @@ void test('a ticket filed before automatic checking is still a person’s to loo
   const old = { ...read({}), recovery: undefined };
   const report = ticketOutcome(old.ticket, undefined, knowledgeOf([], profiles([five])), []);
   assert.equal(report.outcome, 'individual_review');
+});
+
+// --- the address is on file: it is never a check --------------------------
+
+void test('a cut-off address matched to the customer’s saved site passes without a check', () => {
+  // The resolver's threshold is the bar. A second bar on the confidence
+  // figure once sat just above what a profile match scores, and an address
+  // the workspace had on file still came up as something to check.
+  const recovered: FieldResolution = {
+    status: 'recovered', value: MARKHAM, visible_text: 'ARKHAM, IL 60428 US', source: 'verified_profile',
+    source_clipped: true, clipped_edge: 'left', confidence: 0.72, evidence: ['Known job site for FIVE CONST CORP: 222 WESTERN AVE, MARKHAM, IL 60428 (saved on a profile)'],
+  };
+  const records = Array.from({ length: 4 }, () => read({ project_address: MARKHAM }, { project_address: recovered }));
+  const { members, groups } = sort(records, [five]);
+  assert.ok(members.every((m) => m.report.outcome === 'auto_approved'), 'recovered is settled');
+  assert.deepEqual(groups, []);
+});
+
+void test('the dates are asked first and inline, and dating a ticket sends it back through the sorting', () => {
+  const undated = read({ ticket_date: null }, { ticket_date: waiting('', { reason: 'not_read', clipped_edge: null, source_clipped: false }) }, {
+    invoice_batch_id: 'batch-undated',
+    invoice: { invoice_number: 'DRAFT-batch-undated', invoice_date: '2026-09-14', return_date: '', truck_number: '', bill_to: { name: '', address_lines: ['', ''], phone: '' } },
+  });
+  const unclearProject = Array.from({ length: 3 }, () => read({}, { project_name: waiting('MARKHAM PL') }));
+  const { groups } = sort([...unclearProject, undated], [five]);
+  assert.equal(groups[0].needsDate, true, 'the date comes first');
+  assert.equal(groups[0].ticketIds[0], undated.id);
+  // Three tickets with an unclear project on a known job: one question.
+  assert.equal(groups.length, 2);
+  assert.equal(groups[1].ticketIds.length, 3);
+  assert.ok(groups[1].asks.includes('project_name'));
+
+  // The date, typed once: the ticket is dated, joins that day's invoice with
+  // the other tickets of that day, and is not marked reviewed — it goes back
+  // through the sorting, where its job's question is the only one left.
+  const all = [...unclearProject, undated];
+  const edit = dateEdit(undated, '2026-09-14', all);
+  assert.equal(edit.ticket.ticket_date, '2026-09-14');
+  assert.equal(edit.invoice.invoice_number, '1042', 'joined the invoice already filed for that day');
+  assert.equal(edit.invoice_batch_id, 'batch-2026-09-14');
+  assert.equal(edit.bookkeeping, true);
+  assert.equal(edit.recovery?.fields.ticket_date?.status, 'confirmed');
+  const dated = applyRecordEdit(undated, edit, '2026-09-20T12:00:00.000Z');
+  assert.equal(dated.reviewed_at, null);
+  const after = sort([...unclearProject, dated], [five]);
+  assert.ok(after.groups.every((g) => !g.needsDate));
+  assert.equal(after.groups.length, 1, 'the job question is the only one left');
+  assert.ok(!after.groups[0].ticketIds.includes(dated.id), 'nothing else was unsettled on it, so it passes');
 });

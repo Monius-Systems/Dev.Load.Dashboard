@@ -28,8 +28,6 @@ export type Outcome = 'auto_approved' | 'group_confirmation' | 'individual_revie
  * exported so the thresholds are one place to read and one place to change.
  */
 export const OUTCOME_POLICY = {
-  /** A field the app filled in is trusted through without a look at or above this. */
-  autoApproveMinConfidence: 0.75,
   /** How many sibling tickets have to agree before their reading is strong evidence. */
   consensusMinTickets: 3,
 } as const;
@@ -141,14 +139,12 @@ const unsettled = (resolution: FieldResolution | undefined) =>
   (resolution.status === 'needs_review' ||
     (resolution.status === 'missing' && resolution.source_clipped));
 
-/**
- * A field the app filled in on evidence that fell short of the bar. It is
- * not wrong — it cleared the resolver — but it is not something to wave
- * through without anyone looking, either; it goes to the group.
- */
-const thinlyRecovered = (resolution: FieldResolution | undefined) =>
-  resolution?.status === 'recovered' &&
-  resolution.confidence < OUTCOME_POLICY.autoApproveMinConfidence;
+// A field the resolver recovered is settled. There used to be a second bar
+// here, on the confidence figure, and a job site matched to the customer's
+// own profile fell just under it — so an address the workspace had on file,
+// cut off on the left and found, still came up as something to check, which
+// was the one thing this layer was built to stop. The resolver's threshold is
+// the bar; nothing is recovered that did not clear it.
 
 export type OutcomeReport = {
   outcome: Outcome;
@@ -189,7 +185,7 @@ export function ticketOutcome(
   for (const name of Object.keys(recovery.fields) as (keyof Ticket)[]) {
     const resolution = recovery.fields[name];
     if (own.includes(name) || business.includes(name)) continue;
-    if (unsettled(resolution) || thinlyRecovered(resolution)) {
+    if (unsettled(resolution)) {
       (TICKET_OWN_FIELDS.has(name) ? own : business).push(name);
     }
   }

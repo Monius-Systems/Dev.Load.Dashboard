@@ -8711,7 +8711,7 @@
       "file_type": "code",
       "norm_label": "observedfieldname",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L109"
+      "source_location": "L108"
     },
     {
       "id": "lib_load_desk_ticket_extraction_schemanode",
@@ -8724,7 +8724,7 @@
       "file_type": "code",
       "norm_label": "schemanode",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L174"
+      "source_location": "L172"
     },
     {
       "id": "tests_ticket_extraction_test_observation",
@@ -73622,7 +73622,7 @@
       "file_type": "code",
       "norm_label": "clean()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L298"
+      "source_location": "L296"
     },
     {
       "id": "lib_load_desk_ticket_extraction_edgeof",
@@ -73634,7 +73634,7 @@
       "file_type": "code",
       "norm_label": "edgeof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L315"
+      "source_location": "L313"
     },
     {
       "id": "lib_load_desk_ticket_extraction_edgestateof",
@@ -73646,7 +73646,7 @@
       "file_type": "code",
       "norm_label": "edgestateof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L358"
+      "source_location": "L356"
     },
     {
       "id": "lib_load_desk_ticket_extraction_extracteddate",
@@ -73658,7 +73658,7 @@
       "file_type": "code",
       "norm_label": "extracteddate()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L511"
+      "source_location": "L509"
     },
     {
       "id": "lib_load_desk_ticket_extraction_finite",
@@ -73670,7 +73670,7 @@
       "file_type": "code",
       "norm_label": "finite()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L307"
+      "source_location": "L305"
     },
     {
       "id": "lib_load_desk_ticket_extraction_isobservedticket",
@@ -73682,7 +73682,7 @@
       "file_type": "code",
       "norm_label": "isobservedticket()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L465"
+      "source_location": "L463"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observationof",
@@ -73694,7 +73694,7 @@
       "file_type": "code",
       "norm_label": "observationof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L177"
+      "source_location": "L175"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observedfromwire",
@@ -73706,7 +73706,7 @@
       "file_type": "code",
       "norm_label": "observedfromwire()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L485"
+      "source_location": "L483"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observedtoextracted",
@@ -73718,7 +73718,7 @@
       "file_type": "code",
       "norm_label": "observedtoextracted()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L430"
+      "source_location": "L428"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observefield",
@@ -73730,7 +73730,7 @@
       "file_type": "code",
       "norm_label": "observefield()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L337"
+      "source_location": "L335"
     },
     {
       "id": "lib_load_desk_ticket_extraction_paperedge",
@@ -73742,7 +73742,7 @@
       "file_type": "code",
       "norm_label": "paperedge()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L204"
+      "source_location": "L202"
     },
     {
       "id": "lib_load_desk_ticket_extraction_printof",
@@ -73754,7 +73754,7 @@
       "file_type": "code",
       "norm_label": "printof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L325"
+      "source_location": "L323"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readextracted",
@@ -73766,7 +73766,7 @@
       "file_type": "code",
       "norm_label": "readextracted()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L494"
+      "source_location": "L492"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readobserved",
@@ -73778,7 +73778,7 @@
       "file_type": "code",
       "norm_label": "readobserved()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L395"
+      "source_location": "L393"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readpaperedges",
@@ -73790,7 +73790,7 @@
       "file_type": "code",
       "norm_label": "readpaperedges()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L366"
+      "source_location": "L364"
     },
     {
       "id": "lib_load_desk_ticket_extraction_readtimestamps",
@@ -73802,7 +73802,7 @@
       "file_type": "code",
       "norm_label": "readtimestamps()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L380"
+      "source_location": "L378"
     },
     {
       "id": "lib_load_desk_ticket_extraction_ticketfromextraction",
@@ -73814,7 +73814,7 @@
       "file_type": "code",
       "norm_label": "ticketfromextraction()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L529"
+      "source_location": "L527"
     },
     {
       "id": "lib_load_desk_ticket_extraction_tonsof",
@@ -73826,7 +73826,7 @@
       "file_type": "code",
       "norm_label": "tonsof()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L498"
+      "source_location": "L496"
     },
     {
       "id": "lib_load_desk_ticket_extraction_trimmed",
@@ -73838,7 +73838,7 @@
       "file_type": "code",
       "norm_label": "trimmed()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L305"
+      "source_location": "L303"
     },
     {
       "id": "lib_load_desk_ticket_extraction_weightdisagreement",
@@ -73850,7 +73850,7 @@
       "file_type": "code",
       "norm_label": "weightdisagreement()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L557"
+      "source_location": "L555"
     },
     {
       "id": "lib_load_desk_ticket_extraction_whole",
@@ -73862,7 +73862,7 @@
       "file_type": "code",
       "norm_label": "whole()",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L417"
+      "source_location": "L415"
     },
     {
       "id": "tests_ticket_extraction_test_answer",
@@ -73886,7 +73886,7 @@
       "file_type": "code",
       "norm_label": "seen()",
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L229"
+      "source_location": "L231"
     },
     {
       "id": "tests_ticket_extraction_test_types",
@@ -87799,7 +87799,7 @@
       "file_type": "code",
       "norm_label": "clipped_edges",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L168"
+      "source_location": "L166"
     },
     {
       "id": "lib_load_desk_ticket_extraction_extraction_fields",
@@ -87821,7 +87821,7 @@
       "file_type": "code",
       "norm_label": "extraction_instructions",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L255"
+      "source_location": "L253"
     },
     {
       "id": "lib_load_desk_ticket_extraction_extraction_schema",
@@ -87832,7 +87832,7 @@
       "file_type": "code",
       "norm_label": "extraction_schema",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L216"
+      "source_location": "L214"
     },
     {
       "id": "lib_load_desk_ticket_extraction_field_notes",
@@ -87843,7 +87843,7 @@
       "file_type": "code",
       "norm_label": "field_notes",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L114"
+      "source_location": "L113"
     },
     {
       "id": "lib_load_desk_ticket_extraction_guarded_fields",
@@ -87854,7 +87854,7 @@
       "file_type": "code",
       "norm_label": "guarded_fields",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L154"
+      "source_location": "L152"
     },
     {
       "id": "lib_load_desk_ticket_extraction_numeric_answer",
@@ -87865,7 +87865,7 @@
       "file_type": "code",
       "norm_label": "numeric_answer",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L142"
+      "source_location": "L140"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observed_field_names",
@@ -87876,7 +87876,7 @@
       "file_type": "code",
       "norm_label": "observed_field_names",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L111"
+      "source_location": "L110"
     },
     {
       "id": "lib_load_desk_ticket_extraction_observed_fields",
@@ -105013,7 +105013,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L512",
+      "source_location": "L510",
       "weight": 1.0
     },
     {
@@ -105025,7 +105025,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L311",
+      "source_location": "L309",
       "weight": 1.0
     },
     {
@@ -105037,7 +105037,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L486",
+      "source_location": "L484",
       "weight": 1.0
     },
     {
@@ -105049,7 +105049,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L486",
+      "source_location": "L484",
       "weight": 1.0
     },
     {
@@ -105061,7 +105061,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L431",
+      "source_location": "L429",
       "weight": 1.0
     },
     {
@@ -105073,7 +105073,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L443",
+      "source_location": "L441",
       "weight": 1.0
     },
     {
@@ -105085,7 +105085,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L343",
+      "source_location": "L341",
       "weight": 1.0
     },
     {
@@ -105097,7 +105097,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L344",
+      "source_location": "L342",
       "weight": 1.0
     },
     {
@@ -105109,7 +105109,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L328",
+      "source_location": "L326",
       "weight": 1.0
     },
     {
@@ -105121,7 +105121,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L495",
+      "source_location": "L493",
       "weight": 1.0
     },
     {
@@ -105133,7 +105133,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L495",
+      "source_location": "L493",
       "weight": 1.0
     },
     {
@@ -105145,7 +105145,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L401",
+      "source_location": "L399",
       "weight": 1.0
     },
     {
@@ -105157,7 +105157,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L405",
+      "source_location": "L403",
       "weight": 1.0
     },
     {
@@ -105169,7 +105169,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L406",
+      "source_location": "L404",
       "weight": 1.0
     },
     {
@@ -105181,7 +105181,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L407",
+      "source_location": "L405",
       "weight": 1.0
     },
     {
@@ -105193,7 +105193,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L370",
+      "source_location": "L368",
       "weight": 1.0
     },
     {
@@ -105205,7 +105205,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L385",
+      "source_location": "L383",
       "weight": 1.0
     },
     {
@@ -105217,7 +105217,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L530",
+      "source_location": "L528",
       "weight": 1.0
     },
     {
@@ -105229,7 +105229,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L534",
+      "source_location": "L532",
       "weight": 1.0
     },
     {
@@ -105241,7 +105241,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L543",
+      "source_location": "L541",
       "weight": 1.0
     },
     {
@@ -105253,7 +105253,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L305",
+      "source_location": "L303",
       "weight": 1.0
     },
     {
@@ -189709,7 +189709,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L236",
+      "source_location": "L238",
       "weight": 1.0
     },
     {
@@ -238152,7 +238152,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L109",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -238163,7 +238163,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L111",
+      "source_location": "L110",
       "weight": 1.0
     },
     {
@@ -238174,7 +238174,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L114",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -238185,7 +238185,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L142",
+      "source_location": "L140",
       "weight": 1.0
     },
     {
@@ -238196,7 +238196,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L154",
+      "source_location": "L152",
       "weight": 1.0
     },
     {
@@ -238207,7 +238207,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L168",
+      "source_location": "L166",
       "weight": 1.0
     },
     {
@@ -238218,7 +238218,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L174",
+      "source_location": "L172",
       "weight": 1.0
     },
     {
@@ -238229,7 +238229,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L177",
+      "source_location": "L175",
       "weight": 1.0
     },
     {
@@ -238240,7 +238240,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L204",
+      "source_location": "L202",
       "weight": 1.0
     },
     {
@@ -238251,7 +238251,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L216",
+      "source_location": "L214",
       "weight": 1.0
     },
     {
@@ -238262,7 +238262,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L255",
+      "source_location": "L253",
       "weight": 1.0
     },
     {
@@ -238273,7 +238273,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L298",
+      "source_location": "L296",
       "weight": 1.0
     },
     {
@@ -238284,7 +238284,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L305",
+      "source_location": "L303",
       "weight": 1.0
     },
     {
@@ -238295,7 +238295,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L307",
+      "source_location": "L305",
       "weight": 1.0
     },
     {
@@ -238306,7 +238306,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L315",
+      "source_location": "L313",
       "weight": 1.0
     },
     {
@@ -238317,7 +238317,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L325",
+      "source_location": "L323",
       "weight": 1.0
     },
     {
@@ -238339,7 +238339,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L337",
+      "source_location": "L335",
       "weight": 1.0
     },
     {
@@ -238350,7 +238350,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L358",
+      "source_location": "L356",
       "weight": 1.0
     },
     {
@@ -238372,7 +238372,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L366",
+      "source_location": "L364",
       "weight": 1.0
     },
     {
@@ -238383,7 +238383,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L380",
+      "source_location": "L378",
       "weight": 1.0
     },
     {
@@ -238394,7 +238394,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L395",
+      "source_location": "L393",
       "weight": 1.0
     },
     {
@@ -238405,7 +238405,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L417",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -238416,7 +238416,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L430",
+      "source_location": "L428",
       "weight": 1.0
     },
     {
@@ -238427,7 +238427,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L465",
+      "source_location": "L463",
       "weight": 1.0
     },
     {
@@ -238438,7 +238438,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L485",
+      "source_location": "L483",
       "weight": 1.0
     },
     {
@@ -238449,7 +238449,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L494",
+      "source_location": "L492",
       "weight": 1.0
     },
     {
@@ -238460,7 +238460,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L498",
+      "source_location": "L496",
       "weight": 1.0
     },
     {
@@ -238471,7 +238471,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L511",
+      "source_location": "L509",
       "weight": 1.0
     },
     {
@@ -238482,7 +238482,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L529",
+      "source_location": "L527",
       "weight": 1.0
     },
     {
@@ -238504,7 +238504,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/ticket-extraction.ts",
-      "source_location": "L557",
+      "source_location": "L555",
       "weight": 1.0
     },
     {
@@ -263496,7 +263496,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L229",
+      "source_location": "L231",
       "weight": 1.0
     },
     {
@@ -263507,7 +263507,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "tests/ticket-extraction.test.ts",
-      "source_location": "L235",
+      "source_location": "L237",
       "weight": 1.0
     },
     {
@@ -308171,5 +308171,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c61515daef8a726aa89696aeec98cf6efc23b6c8"
+  "built_at_commit": "c919693166b591e409fc529300c664d2b31b9d0a"
 }

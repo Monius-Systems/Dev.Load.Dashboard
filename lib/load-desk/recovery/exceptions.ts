@@ -4,6 +4,7 @@ import type { RecordEdit } from '../record-input.ts';
 import type { SavedRecord, Ticket } from '../types.ts';
 import type { TicketRecovery } from './contract.ts';
 import { businessContext, ticketOutcome, type Knowledge, type OutcomeReport } from './outcome.ts';
+import { invoiceMoveFor, recordBatch } from '../records.ts';
 import { confirmField } from './resolve.ts';
 
 // The questions a scan leaves behind, asked once each.
@@ -38,6 +39,13 @@ export type Ask = 'customer_name' | 'project_name' | 'project_address' | keyof T
 export type ExceptionGroup = {
   key: string;
   type: ExceptionType;
+  /**
+   * The ticket has no date anyone could read. Asked before anything else and
+   * inline — a date box and one button — because a ticket with no date is on
+   * no invoice at all, and the date is what puts it on one; once it has one,
+   * whatever else is unsettled about it joins its job's question.
+   */
+  needsDate: boolean;
   /** The customer as the tickets name it, or as the profile names it. */
   customer: string | null;
   customerProfileId: number | null;
@@ -158,6 +166,7 @@ export function groupExceptions(members: Member[]): ExceptionGroup[] {
     groups.set(groupKey, {
       key: groupKey,
       type,
+      needsDate: type === 'INDIVIDUAL_CRITICAL_FIELD' && asks.includes('ticket_date'),
       customer: customerName,
       customerProfileId: member.report.context.customer?.id ?? null,
       detected,
@@ -174,7 +183,14 @@ export function groupExceptions(members: Member[]): ExceptionGroup[] {
       ...group,
       confidence: group.ticketIds.length ? Math.round((agree / group.ticketIds.length) * 100) / 100 : 0,
     }))
-    .sort((a, b) => b.ticketIds.length - a.ticketIds.length || a.key.localeCompare(b.key));
+    .sort(
+      (a, b) =>
+        // Dates first: a ticket with no date is on no invoice yet.
+        Number(b.needsDate) - Number(a.needsDate) ||
+        // Then the questions that settle the most tickets.
+        b.ticketIds.length - a.ticketIds.length ||
+        a.key.localeCompare(b.key),
+    );
 }
 
 /** The members of a workspace's backlog: every filed ticket nobody or nothing has settled. */
@@ -274,3 +290,39 @@ export function applyGroupAnswer(
 
 /** Whether the ticket's job is one the workspace now knows, for the confirmation's learning step. */
 export const contextOf = businessContext;
+
+/**
+ * A saved ticket given its date from the panel, as the edit that saves it.
+ *
+ * A ticket belongs on the invoice of its date, so dating it can move it:
+ * onto the invoice its date's other tickets are on, or onto one of its own
+ * with the next number — the same move the review screen makes. It is the
+ * app's own bookkeeping, not a review: `reviewed_at` stays as it was, the
+ * date is marked confirmed on the record, and the ticket goes back through
+ * classification with a date, to pass or to join its job's question.
+ */
+export function dateEdit(record: SavedRecord, date: string, records: SavedRecord[]): RecordEdit {
+  const others = records.filter((other) => other.id !== record.id);
+  const move = invoiceMoveFor({ batchId: recordBatch(record), date }, others, []);
+  const ticket: Ticket = { ...record.ticket, ticket_date: date };
+  const recovery = record.recovery
+    ? confirmField(record.recovery, 'ticket_date', date, 'edited')
+    : undefined;
+  const invoice =
+    move.kind === 'join'
+      ? { ...move.invoice, bill_to: { ...move.invoice.bill_to }, invoice_date: date }
+      : move.kind === 'open'
+        ? { ...record.invoice, invoice_number: move.invoiceNumber, invoice_date: date }
+        : { ...record.invoice, invoice_date: date };
+  return {
+    id: record.id,
+    ticket,
+    invoice,
+    ocr_text: record.ocr_text,
+    customer_profile_id: record.customer_profile_id ?? null,
+    truck_id: record.truck_id ?? null,
+    ...(recovery ? { recovery } : {}),
+    ...(move.kind === 'stay' ? {} : { invoice_batch_id: move.batchId }),
+    bookkeeping: true,
+  };
+}
