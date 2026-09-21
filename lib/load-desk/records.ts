@@ -265,11 +265,11 @@ export function numbersByTicketDate(
  * jumping back in dates: invoice 1 for the 1st of January, then invoice 2
  * for the 31st of December. The ledger is asked to read in date order
  * instead, and where it does not the numbers are moved — a number is a
- * position in the books, and the books are in date order. It is the same
- * pool of numbers, permuted, so nothing new collides with anything and no
- * number is burnt; two batches on one day keep their order between them.
- * Numbers with no digits to order by are left alone, with their batches;
- * the undated batch is not an invoice and takes none.
+ * position in the books, and the books are in date order, with no gaps:
+ * from the lowest number on file, one after another, so an invoice deleted
+ * from the middle closes up behind it. Two batches on one day keep their
+ * order between them. Numbers with no digits to order by are left alone,
+ * with their batches; the undated batch is not an invoice and takes none.
  */
 export function numbersInDateOrder(records: SavedRecord[]): Map<string, string> {
   type Batch = { batchId: string; day: number; number: string | null; digits: number; arrived: number };
@@ -300,9 +300,15 @@ export function numbersInDateOrder(records: SavedRecord[]): Map<string, string> 
     .filter((batch) => batch.number !== null)
     .sort((a, b) => a.digits - b.digits || a.arrived - b.arrived)
     .map((batch) => batch.number!);
-  // New numbers for the batches without one, past the highest on file.
-  const numbers = [...pool];
-  while (numbers.length < list.length) numbers.push(openingInvoiceNumber(numbers));
+  // One straight run from the lowest number on file — its prefix and
+  // padding kept — one per dated invoice, oldest date first. A run, not the
+  // pool as it was: an invoice deleted from the middle used to leave its
+  // number as a gap for good, and the books read 1, 3, 4. The run closes it,
+  // and 3 becomes 2. A ledger with no number yet starts at the first.
+  const numbers: string[] = [];
+  while (numbers.length < list.length) {
+    numbers.push(numbers.length ? openingInvoiceNumber(numbers) : (pool[0] ?? FIRST_INVOICE_NUMBER));
+  }
   const inOrder = [...list].sort((a, b) => a.day - b.day || a.digits - b.digits || a.arrived - b.arrived);
   const changes = new Map<string, string>();
   inOrder.forEach((batch, index) => {

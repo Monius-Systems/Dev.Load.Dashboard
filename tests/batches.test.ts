@@ -506,3 +506,23 @@ void test('two invoices on one day keep their order; the undated batch and a han
   const wanted = numbersInDateOrder([first, second, undated, typed]);
   assert.equal(wanted.size, 0);
 });
+
+void test('deleting an invoice closes the gap: 3 becomes 2', () => {
+  const one = saved('2026-01-02', '1', { invoice_batch_id: 'batch-2026-01-02' });
+  const three = saved('2026-01-06', '3', { invoice_batch_id: 'batch-2026-01-06' });
+  const four = saved('2026-01-08', '4', { invoice_batch_id: 'batch-2026-01-08' });
+  // Invoice 2 has been deleted.
+  const wanted = numbersInDateOrder([one, three, four]);
+  const byBatchId = (a: [string, string], b: [string, string]) => a[0].localeCompare(b[0]);
+  assert.deepEqual([...wanted].sort(byBatchId), [
+    ['batch-2026-01-06', '2'],
+    ['batch-2026-01-08', '3'],
+  ]);
+  // A ledger starting at INV-0010 with a gap after it closes up from there.
+  const a = saved('2026-01-02', 'INV-0010', { invoice_batch_id: 'batch-a' });
+  const b = saved('2026-01-04', 'INV-0014', { invoice_batch_id: 'batch-b' });
+  assert.deepEqual([...numbersInDateOrder([a, b])], [['batch-b', 'INV-0011']]);
+  // Nothing numbered yet: the first invoice starts the books.
+  const fresh = saved('2026-01-02', 'DRAFT-batch-x', { invoice_batch_id: 'batch-x' });
+  assert.deepEqual([...numbersInDateOrder([fresh])], [['batch-x', '1']]);
+});

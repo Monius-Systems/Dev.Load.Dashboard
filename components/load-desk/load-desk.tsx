@@ -1234,9 +1234,9 @@ export default function LoadDesk() {
    * two batches swapping numbers in one go would each be refused the other's:
    * first every batch that is moving is put on a draft mark of its own,
    * which releases its number; then each takes the number the date order
-   * gives it. Nothing new is minted for a batch that had a number, and a
-   * batch that had none takes the next past the highest. Held off while an
-   * upload is being read and numbered, and never run twice at once.
+   * gives it: one straight run from the lowest on file, gaps closed. Held
+   * off while an upload is being read and numbered, and never run twice at
+   * once.
    */
   const reordering = useRef(false);
   const settleInvoiceNumbers = async (): Promise<SavedRecord[]> => {
