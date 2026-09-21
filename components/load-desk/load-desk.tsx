@@ -107,7 +107,7 @@ import {
   type ExceptionGroup,
   type ExceptionType,
 } from '@/lib/load-desk/recovery/exceptions';
-import { knowledgeOf, sitesToLearn, ticketOutcome } from '@/lib/load-desk/recovery/outcome';
+import { knowledgeOf, ticketOutcome } from '@/lib/load-desk/recovery/outcome';
 import {
   acceptableValue,
   cameraCropFields,
@@ -1045,13 +1045,8 @@ export default function LoadDesk() {
           const typed = (answerFor(group, 'customer_name') || group.customer || '').replace(/\s+/g, ' ').trim();
           if (!typed) throw new Error(t('Enter the customer name.'));
           const printedId = group.detected.customer_id?.trim();
-          // The sites this customer's tickets went to start their list, so
-          // the next scan from any of them is known.
-          const sites = records
-            .filter((record) => group.ticketIds.includes(record.id))
-            .map((record) => record.ticket.project_address?.trim() ?? '')
-            .filter(Boolean)
-            .reduce((list, site) => addCustomerAddress({ addresses: list }, site), [] as string[]);
+          // No job sites yet: those are saved by a person, from review, once
+          // one has been read right.
           const profile = {
             name: typed,
             ticket_customer_ids: printedId ? [printedId] : [],
@@ -1059,7 +1054,7 @@ export default function LoadDesk() {
               group.customer && normalizeName(group.customer) !== normalizeName(typed)
                 ? [group.customer]
                 : [],
-            addresses: sites,
+            addresses: [] as string[],
             location_rates: [],
             flat_rate: null,
             rate_type: 'flat' as const,
@@ -1224,33 +1219,12 @@ export default function LoadDesk() {
         return;
       }
       refreshQueueFrom(result.records);
-      // What these tickets teach: a job site the customer's profile does not
-      // carry yet goes onto it, so the next scan from that site is known and
-      // the site is there to pick and to rate.
-      const learned = sitesToLearn(batch, knowledge);
-      for (const [customerId, sites] of learned) {
-        const customer = getProfilesSnapshot().customers.find((known) => known.id === customerId);
-        if (!customer) continue;
-        await saveProfile(
-          'customer',
-          {
-            name: customer.name,
-            ticket_customer_ids: customer.ticket_customer_ids,
-            ticket_names: customer.ticket_names,
-            addresses: sites.reduce((list, site) => addCustomerAddress({ addresses: list }, site), customerAddresses(customer)),
-            location_rates: customerLocationRates(customer),
-            flat_rate: customer.flat_rate,
-            rate_type: customer.rate_type ?? 'flat',
-            fuel_charge: customer.fuel_charge,
-            fuel_type: customer.fuel_type ?? 'flat',
-            notes: customer.notes,
-            created_at: customer.created_at,
-          },
-          customer.id,
-        );
-      }
+      // Nothing is learned from an approval on its own. A job site goes onto
+      // a customer when a person saves it there — the button under the
+      // address in review — and not because a scan read it: a site read a
+      // letter wrong and saved would be matched to every later ticket.
     });
-  }, [openMembers, records, store.ready, extraction, busy, settling, knowledge]);
+  }, [openMembers, records, store.ready, extraction, busy, settling]);
 
   /**
    * The ledger read in date order (see `numbersInDateOrder`): where the

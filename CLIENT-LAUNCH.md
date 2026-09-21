@@ -291,8 +291,9 @@ membership. If more client dashboards follow, the website can link to a small
   customer nobody has hauled for, a date that could not be read — and one
   answer covers every ticket it applies to. The project and the job site are
   never asked: what was read, or what the customer's saved sites complete,
-  stands, and a site the customer has not been to before is saved onto them
-  as the ticket is approved. Only a ticket with a problem of its own (a
+  stands. A job site is saved onto a customer only when a person saves it
+  there from review — never because a scan read it. Only a ticket with a
+  problem of its own (a
   cut-off ticket number, a weight that will not balance) opens the full
   review.
 - Fields the reader cannot see whole are never completed by guessing.

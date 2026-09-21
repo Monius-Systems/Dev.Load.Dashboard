@@ -6,7 +6,7 @@ import {
   groupExceptions,
   membersOf,
 } from '../lib/load-desk/recovery/exceptions.ts';
-import { knowledgeOf, sitesToLearn, ticketOutcome, OUTCOME_POLICY } from '../lib/load-desk/recovery/outcome.ts';
+import { knowledgeOf, ticketOutcome, OUTCOME_POLICY } from '../lib/load-desk/recovery/outcome.ts';
 import { recoverTicket } from '../lib/load-desk/recovery/queue.ts';
 import { UNKNOWN_FRAME, type FieldResolution, type ObservedField, type ObservedTicket, type TicketRecovery } from '../lib/load-desk/recovery/index.ts';
 import { validateTicket } from '../lib/load-desk/validate.ts';
@@ -95,15 +95,12 @@ void test('ten tickets from a known job go through with nobody looking', () => {
   assert.deepEqual(groups, []);
 });
 
-void test('ten tickets from a new job site are not a question: the site is learned', () => {
+void test('ten tickets from a new job site are not a question', () => {
   const records = Array.from({ length: 10 }, () => read({ project_address: JOLIET }));
   const { members, groups } = sort(records, [five]);
   assert.ok(members.every((m) => m.report.outcome === 'auto_approved'), 'a site read whole stands');
   assert.deepEqual(groups, []);
-  const learned = sitesToLearn(records, knowledgeOf([], profiles([five])));
-  assert.deepEqual(learned.get(five.id), [JOLIET], 'and goes onto the customer once');
-  // Already on the profile: nothing to learn.
-  assert.equal(sitesToLearn(records, knowledgeOf([], profiles([{ ...five, addresses: [...five.addresses!, JOLIET] }]))).size, 0);
+  // Nothing is learned from the scan on its own: a site is saved by a person.
 });
 
 void test('a scan of several jobs, known and new, is no question at all when the customers are known', () => {
@@ -116,9 +113,6 @@ void test('a scan of several jobs, known and new, is no question at all when the
   const { members, groups } = sort(records, [five, iafrate]);
   assert.equal(members.filter((m) => m.report.outcome === 'auto_approved').length, 21);
   assert.deepEqual(groups, []);
-  const learned = sitesToLearn(records, knowledgeOf([], profiles([five, iafrate])));
-  assert.deepEqual(learned.get(iafrate.id), [JOLIET]);
-  assert.deepEqual(learned.get(five.id), ['9 ELM ST, PEORIA, IL']);
 });
 
 void test('two unknown customers at one site are two questions, one per customer, and the site is theirs', () => {
@@ -171,13 +165,12 @@ void test('a clipped site is settled by the tickets beside it agreeing, and what
   assert.equal(alone.recovery.fields.project_address?.status, 'needs_review');
 });
 
-void test('a ticket that plainly says another site keeps it, and the site is learned as its own', () => {
+void test('a ticket that plainly says another site keeps it', () => {
   const records = [...Array.from({ length: 9 }, () => read({})), read({ project_address: JOLIET })];
   const { members, groups } = sort(records, [five]);
   assert.ok(members.every((m) => m.report.outcome === 'auto_approved'));
   assert.deepEqual(groups, []);
   assert.equal(members[9].ticket.project_address, JOLIET, 'not pulled into the majority');
-  assert.deepEqual(sitesToLearn(records, knowledgeOf([], profiles([five]))).get(five.id), [JOLIET]);
 });
 
 void test('an unreadable BOL holds its own ticket and nothing else', () => {
@@ -217,8 +210,6 @@ void test('an ambiguous or conflicting site is never a question: the print stand
   assert.ok(members.every((m) => m.report.outcome === 'auto_approved'));
   assert.ok(!validateTicket(ambiguous.ticket, ambiguous.recovery).some((issue) => /destination|project/i.test(issue)), 'not listed as an issue');
   assert.deepEqual(ambiguous.recovery?.fields.project_address?.candidates, [MARKHAM, '5 MAIN ST, MARKHAM, IL']);
-  // A fragment is not a site to learn.
-  assert.equal(sitesToLearn([ambiguous], knowledgeOf([], profiles([five]))).size, 0);
 });
 
 void test('one answer settles every ticket of a new customer’s group, and teaches the customer', () => {
