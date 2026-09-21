@@ -3547,7 +3547,6 @@ export default function LoadDesk() {
   const batchesByDate = allBatches.filter(
     (batch, index) => index < RECENT_BATCHES || batch.date === null,
   );
-  const olderBatches = allBatches.length - batchesByDate.length;
 
   const STEPS = ['Ticket', 'Customer and job', 'Weight', 'Invoice'];
   const lastStep = STEPS.length - 1;
@@ -4580,12 +4579,6 @@ export default function LoadDesk() {
               </section>
               ))
             )}
-            {olderBatches > 0 ? (
-              <p className="ld-field-hint">
-                {t('{count} older batches are on Invoices & Tickets.', { count: olderBatches })}{' '}
-                <Link href="/records">{t('All invoices & tickets')}</Link>
-              </p>
-            ) : null}
           </section>
           </div>
         </div>
