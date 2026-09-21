@@ -10,6 +10,7 @@ import {
 } from '../lib/load-desk/recovery/index.ts';
 import {
   acceptableValue,
+  savedAddressFor,
   canLeaveEmpty,
   confirmValue,
   noteSameOrderFill,
@@ -590,4 +591,47 @@ void test("a vendor whose dates keep being typed over is learned to print them f
   } finally {
     setLearnedConfusions([]);
   }
+});
+
+// --- the job site, as saved --------------------------------------------------
+
+void test('a job site is written as the customer has it saved, however the ticket prints it', () => {
+  const site = '16222 Western Ave, Markham, IL';
+  const customer = customerProfile({ addresses: [site, '5 MAIN ST, JOLIET, IL'] });
+  // Case and punctuation aside, the same site.
+  assert.equal(savedAddressFor(customer, '16222 Western Ave MARKHAM, IL'), site);
+  assert.equal(savedAddressFor(customer, '16222 WESTERN AVE. MARKHAM IL'), site);
+  // Part of it: the city line alone.
+  assert.equal(savedAddressFor(customer, 'MARKHAM, IL'), site);
+  // A character or two off.
+  assert.equal(savedAddressFor(customer, '16222 Westem Ave, Markham, IL'), site);
+  // Another site is another site.
+  assert.equal(savedAddressFor(customer, '99 ELM ST, MARKHAM, IL'), null);
+  assert.equal(savedAddressFor(null, site), null);
+  // And through the queue: the ticket carries the saved spelling, with the
+  // print kept beside it.
+  const { ticket, recovery } = recoverTicket({
+    observed: observedOf({
+      customer_name: whole(IAFRATE),
+      project_address: whole('16222 Western Ave MARKHAM, IL'),
+    }),
+    paper: frame(),
+    extracted: ticketOf({ customer_name: IAFRATE, project_address: '16222 Western Ave MARKHAM, IL' }),
+    records: [],
+    profiles: { ...noProfiles, customers: [customer] },
+    customer,
+  });
+  assert.equal(ticket.project_address, site);
+  assert.equal(recovery.fields.project_address?.visible_text, '16222 Western Ave MARKHAM, IL');
+  assert.equal(blocksSave(recovery), false);
+  // Printed as saved: nothing to change.
+  const same = recoverTicket({
+    observed: observedOf({ customer_name: whole(IAFRATE), project_address: whole(site) }),
+    paper: frame(),
+    extracted: ticketOf({ customer_name: IAFRATE, project_address: site }),
+    records: [],
+    profiles: { ...noProfiles, customers: [customer] },
+    customer,
+  });
+  assert.equal(same.recovery.fields.project_address?.status, 'exact');
 });

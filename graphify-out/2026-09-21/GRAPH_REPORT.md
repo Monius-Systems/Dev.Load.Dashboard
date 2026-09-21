@@ -1,17 +1,17 @@
 # Graph Report - dashboard-shell  (2026-09-21)
 
 ## Corpus Check
-- 270 files · ~303,358 words
+- 270 files · ~303,357 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 33 file(s) not represented in the graph (top: (none) 11, .css 8, .wasm 6)
 
 ## Summary
-- 7551 nodes · 19101 edges · 210 communities (165 shown, 45 thin omitted)
+- 7551 nodes · 19100 edges · 213 communities (170 shown, 43 thin omitted)
 - Extraction: 97% EXTRACTED · 3% INFERRED · 0% AMBIGUOUS · INFERRED: 501 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `3f47a8ea`
+- Built from commit: `0ef4852b`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -23,7 +23,7 @@
 - TemplateNamespace
 - home-page.tsx
 - StringObject
-- getMeasurement
+- Subform
 - .success
 - memberRoute
 - ContentObject
@@ -45,7 +45,7 @@
 - tesseract-core.wasm.js
 - queue.ts
 - I
-- getInteger
+- Option01
 - I
 - I
 - S
@@ -55,10 +55,10 @@
 - I
 - S
 - I
-- account.ts
+- useT
 - S
 - XFAObject
-- .push
+- Dict
 - .toString
 - memory.ts
 - cn
@@ -66,13 +66,13 @@
 - E
 - E
 - E
-- image-cropper.tsx
+- app-cursor.tsx
 - .getBytes
-- Ticket
-- storage.ts
+- types.ts
+- records-page.tsx
 - .get
-- LocaleSetNamespace
-- FileSpec
+- sidebar.tsx
+- WidgetAnnotation
 - E
 - load-desk-store.ts
 - .checkAndRepair
@@ -82,9 +82,9 @@
 - unreachable
 - field-ocr.ts
 - rules
-- .getTextContent
+- .push
 - profiles.ts
-- .write
+- Glyph
 - ChunkedStream
 - .process
 - ColorSpace
@@ -92,63 +92,63 @@
 - A
 - E
 - A
-- graphify reference: query, path, explain
-- SimpleDOMNode
+- recovery-end-to-end.test.ts
+- ConnectionSetNamespace
 - What You Must Do When Invoked
-- react
+- ref_node_assert_strict
 - extract/route.ts
 - .createDocumentHandler
 - bi
 - What You Must Do When Invoked
 - ticket-extraction.ts
-- use-t.ts
+- translate.ts
 - .parse
 - CFFCompiler
 - TextMeasure
 - IntegerObject
 - components.json
-- find
+- extract.ts
 - TicketRecovery
 - O
 - lexer_Lexer
 - .getUint16
-- Root
+- empty.tsx
 - compilerOptions
 - dependencies
-- JpegStream
+- image-cropper.tsx
 - PsNode
 - A
 - 202609150001_load_desk.sql
 - devDependencies
-- ._hash
+- calculateSHA512
 - XMLParserBase
 - XhtmlObject
 - O
 - ._parseBlock
 - O
 - O
-- types.ts
+- auto-processing.test.ts
 - Annotation
 - JpegImage
 - geometry.ts
 - .add
 - Datasets
 - Base
-- Builder
-- CipherTransformFactory
+- utils.ts
+- dropdown-menu.tsx
 - $h
 - r
-- calculateSHA512
+- field.tsx
 - AlternateCS
 - 202609180001_move_ticket_invoice.sql
 - Br
-- XFAAttribute
+- validate.ts
 - $h
 - $h
 - $h
 - bi
 - Gf
-- section-pager.tsx
+- ref_next
 - avatar/route.ts
 - z
 - write
@@ -156,49 +156,53 @@
 - DecodeStream
 - .getByte
 - XmlObject
-- MetadataParser
+- enhance.ts
 - MessageHandler
-- setupDoc
+- CompiledFont
 - assert
 - r
 - r
 - $h
-- MathClamp
-- .shift
+- CalRGBCS
+- ta
 - GlobalImageCache
 - SingleIntersector
-- ButtonWidgetAnnotation
+- document-scanner.tsx
 - NullOptimizer
 - write
 - LabCS
 - A & D Trucking of Chicago — Load Desk launch
 - graphify reference: extra exports and benchmark
-- BasePDFStreamReader
+- rectify.ts
 - write
 - write
 - scripts
-- ImageResizer
-- SimpleGlyph
-- toast.tsx
-- .parse
+- sheet.tsx
+- popover.tsx
+- desk-session.ts
+- .getArray
 - .cg
 - .compile
 - PsJsCompiler
 - graphify reference: extra exports and benchmark
 - r
-- GlyphHeader
+- Image
+- default-client.test.ts
 - Stream
+- DeviceRgbCS
 - TextState
 - .oxfmtrc.json
+- account-display.ts
 - AnnotationBorderStyle
-- xdp_Xdp
+- DeviceGrayCS
 - ui
 - ui
 - ui
 - og
 - field-regions.test.ts
 - og
-- (workspace)/layout.tsx
+- DeviceCmykCS
+- GlobalColorSpaceCache
 - .#Be
 - parser.ts
 - ref_node_fs_promises
@@ -219,7 +223,6 @@
 - .claude/CLAUDE.md
 - .claude/skills/graphify/references/extraction-spec.md
 - .codex/skills/graphify/references/extraction-spec.md
-- subscribeProfiles
 - pg
 - 202609210001_misreads.sql
 - ref_lib_scanner_scanner_worker_ts_worker
@@ -242,62 +245,62 @@
   .claude/skills/graphify/references/query.md → tests/recovery-end-to-end.test.ts
 - `Step 1 — Traversal` --references--> `corrected()`  [INFERRED]
   .codex/skills/graphify/references/query.md → tests/recovery-end-to-end.test.ts
-- `savePhoto()` --calls--> `uploadAvatar()`  [EXTRACTED]
-  components/account/account-page.tsx → lib/account.ts
 - `save()` --indirect_call--> `phone()`  [INFERRED]
   components/account/account-page.tsx → tests/scanner-environment.test.ts
-- `saveName()` --calls--> `saveCompanyDisplayName()`  [EXTRACTED]
-  components/account/account-page.tsx → lib/load-desk/profiles.ts
+- `Delta()` --calls--> `useT()`  [EXTRACTED]
+  components/home/home-page.tsx → lib/i18n/use-t.ts
+- `InvoiceSheet()` --indirect_call--> `getProfilesSnapshot()`  [INFERRED]
+  components/load-desk/invoice-sheet.tsx → lib/load-desk/profiles.ts
 
 ## Import Cycles
 - 4-file cycle: `lib/load-desk/format.ts -> lib/load-desk/recovery/index.ts -> lib/load-desk/recovery/resolve.ts -> lib/load-desk/profiles.ts -> lib/load-desk/format.ts`
 - 5-file cycle: `lib/load-desk/format.ts -> lib/load-desk/validate.ts -> lib/load-desk/recovery/index.ts -> lib/load-desk/recovery/resolve.ts -> lib/load-desk/profiles.ts -> lib/load-desk/format.ts`
 
-## Communities (210 total, 45 thin omitted)
+## Communities (213 total, 43 thin omitted)
 
 ### Community 0 - "pdf.worker.min.mjs"
 Cohesion: 0.01
-Nodes (190): a, aa, af, Ai, al, Ao, ar, as (+182 more)
+Nodes (191): a, aa, af, Ai, al, Ao, ar, as (+183 more)
 
 ### Community 1 - "ConfigNamespace"
-Cohesion: 0.02
-Nodes (55): ADBE_JSConsole, ADBE_JSDebugger, AddSilentPrint, AddViewerPreferences, Attributes, AutoSave, Change, CompressLogicalStructure (+47 more)
+Cohesion: 0.01
+Nodes (70): Acrobat7, ADBE_JSConsole, ADBE_JSDebugger, Attributes, AutoSave, BatchOutput, Cache, Compress (+62 more)
 
 ### Community 2 - "warn"
 Cohesion: 0.04
-Nodes (22): Catalog, appendIfJavaScriptDict(), CmykICCBasedCS, decodeString(), FeatureTest, fetchBinaryData(), fetchDest(), fetchRemoteDest() (+14 more)
+Nodes (13): Catalog, addPageError(), CmykICCBasedCS, decodeString(), FeatureTest, fetchSync(), fonts_Glyph, InfoUtils (+5 more)
 
 ### Community 4 - "TemplateNamespace"
 Cohesion: 0.01
-Nodes (51): Step 2 - Detect files, Step 2 - Detect files, Assist, BatchOutput, Bind, BindItems, Bookend, Calculate (+43 more)
+Nodes (73): Arc, Assist, Barcode, Bind, BindItems, Bookend, Border, Break (+65 more)
 
 ### Community 5 - "home-page.tsx"
-Cohesion: 0.09
-Nodes (39): metadata, AttentionItem, HomePage(), tonsText(), blankDraft(), draftFrom(), FleetPage(), confirmDelete() (+31 more)
+Cohesion: 0.06
+Nodes (61): metadata, AXIS_TICK, ChartLine, LazyChart, LoadsAreaChart(), LoadsAreaChart(), PointTooltip(), tonsText() (+53 more)
 
 ### Community 6 - "StringObject"
 Cohesion: 0.02
-Nodes (41): Amd, AppearanceFilter, Certificate, config_Picture, connection_set_Uri, ConnectionSet, ConnectionSetNamespace, Creator (+33 more)
+Nodes (43): Amd, AppearanceFilter, Certificate, config_Picture, Creator, CurrencySymbol, DatePattern, DateTimeSymbols (+35 more)
 
-### Community 7 - "getMeasurement"
-Cohesion: 0.03
-Nodes (24): addHTML(), Area, Border, Caption, ContentArea, createLine(), Draw, ExclGroup (+16 more)
+### Community 7 - "Subform"
+Cohesion: 0.06
+Nodes (9): addHTML(), Area, createLine(), ExclGroup, flushHTML(), getAvailableSpace(), getContainedChildren(), Subform (+1 more)
 
 ### Community 8 - ".success"
-Cohesion: 0.07
-Nodes (29): applyAssist(), ariaLabel(), CheckButton, checkDimensions(), ChoiceList, computeBbox(), Corner, createWrapper() (+21 more)
+Cohesion: 0.05
+Nodes (39): applyAssist(), ariaLabel(), CheckButton, checkDimensions(), ChoiceList, computeBbox(), createWrapper(), Edge (+31 more)
 
 ### Community 9 - "memberRoute"
-Cohesion: 0.14
-Nodes (30): LANGUAGES, PUT(), POST(), GET(), oneLine(), PUT(), DELETE(), GET() (+22 more)
+Cohesion: 0.16
+Nodes (25): LANGUAGES, PUT(), POST(), DELETE(), GET(), POST(), ALLOWED_TYPES, Context (+17 more)
 
 ### Community 10 - "ContentObject"
 Cohesion: 0.02
-Nodes (24): AlwaysEmbed, BehaviorOverride, BooleanElement, ContentObject, DateElement, DateTime, DateTimeSymbols, Decimal (+16 more)
+Nodes (23): AlwaysEmbed, BehaviorOverride, BooleanElement, ContentObject, DateElement, DateTime, Decimal, DefaultTypeface (+15 more)
 
 ### Community 11 - ".getOperatorList"
-Cohesion: 0.03
-Nodes (29): addCachedImageOps(), BaseShading, CheckedOperatorList, ColorSpaceUtils, DummyShading, FunctionBasedShading, getColorConversionBatchSize(), getPdfColorArray() (+21 more)
+Cohesion: 0.04
+Nodes (26): addCachedImageOps(), AppearanceStreamEvaluator, BaseLocalCache, CheckedOperatorList, EvalState, fetchBinaryData(), getNewAnnotationsMap(), getTilingPatternIR() (+18 more)
 
 ### Community 12 - "tesseract-core-simd.wasm.js"
 Cohesion: 0.03
@@ -313,15 +316,15 @@ Nodes (58): Aa, B(), chmod(), chown(), close(), create(), Db(), fchmod() (+50 mo
 
 ### Community 15 - "PDFDocument"
 Cohesion: 0.05
-Nodes (13): addChildren(), clearGlobalCaches(), generateFont(), getFamilyName(), getFontSubstitution(), getXfaFontDict(), ObjectLoader, PDFDocument (+5 more)
+Nodes (6): DataHandler, getXfaFontDict(), PDFDocument, validateCSSFont(), validateFontName(), XFAFactory
 
 ### Community 16 - "account-page.tsx"
-Cohesion: 0.06
-Nodes (78): ProfileHero(), savePhoto(), shortDate(), Delta(), InvoiceDialog(), InvoiceView, SourcePreview(), addressOf() (+70 more)
+Cohesion: 0.05
+Nodes (80): FittedInvoice(), TicketViewer(), addressOf(), blankClient(), ClientDraft, ClientsSection(), confirmDelete(), draftFromClient() (+72 more)
 
 ### Community 17 - "resolve.ts"
-Cohesion: 0.05
-Nodes (81): EvidenceSource, FieldResolution, PaperFrame, ReviewReason, oneMisreadApart(), ADVISORY_SOURCES, combinedWeight(), CRITICAL_FIELDS (+73 more)
+Cohesion: 0.08
+Nodes (59): EvidenceSource, FieldStatus, ReviewReason, oneDigitConfused(), oneMisreadApart(), ADVISORY_SOURCES, combinedWeight(), CRITICAL_FIELDS (+51 more)
 
 ### Community 18 - "worker.min.js"
 Cohesion: 0.08
@@ -329,11 +332,11 @@ Nodes (72): buildMeshVertexData(), getB(), MeshShading, MeshStreamReader, a(), a
 
 ### Community 19 - "FormatError"
 Cohesion: 0.06
-Nodes (24): EvaluatorPreprocessor, expectInt(), expectString(), extendCMap(), FormatError, info(), InvalidPDFException, isCmd() (+16 more)
+Nodes (25): an, EvaluatorPreprocessor, expectInt(), expectString(), extendCMap(), FormatError, info(), InvalidPDFException (+17 more)
 
 ### Community 20 - "load-desk.tsx"
-Cohesion: 0.04
-Nodes (156): metadata, applyCustomer(), applyTruck(), ASK_LABELS, buildQueueItem(), clientBillTo(), defaultInvoice(), editKey() (+148 more)
+Cohesion: 0.03
+Nodes (165): InvoiceDialog(), InvoiceView, applyCustomer(), applyTruck(), ASK_LABELS, buildQueueItem(), clientBillTo(), editKey() (+157 more)
 
 ### Community 21 - "tesseract-core-lstm.wasm.js"
 Cohesion: 0.04
@@ -344,32 +347,32 @@ Cohesion: 0.04
 Nodes (52): Aa, B(), chown(), Db(), fchmod(), fchown(), fstat(), hi() (+44 more)
 
 ### Community 23 - ".translateFont"
-Cohesion: 0.06
-Nodes (23): adjustWidths(), amendFallbackToUnicode(), applyStandardFontGlyphMap(), buildToFontChar(), CFFFont, CMapFactory, es, getEncoding() (+15 more)
+Cohesion: 0.07
+Nodes (20): applyStandardFontGlyphMap(), buildToFontChar(), CMapFactory, es, getEncoding(), getLookupTableFactory(), getStandardFontName(), getUnicodeForGlyph() (+12 more)
 
 ### Community 24 - "S"
 Cohesion: 0.04
 Nodes (6): F(), G(), Jh(), O(), S(), ui()
 
 ### Community 25 - "record-input.ts"
-Cohesion: 0.11
-Nodes (40): business, amount(), cleanAddresses(), cleanLocationRates(), CLIPPED_EDGES, dateOrEmpty(), EDGE_STATES, EVIDENCE_SOURCES (+32 more)
+Cohesion: 0.09
+Nodes (46): business, amount(), cleanAddresses(), cleanLocationRates(), CLIPPED_EDGES, dateOrEmpty(), EDGE_STATES, EVIDENCE_SOURCES (+38 more)
 
 ### Community 26 - "tesseract-core.wasm.js"
 Cohesion: 0.04
 Nodes (35): Aa, B(), Bg(), Db(), fchmod(), fchown(), fstat(), gb() (+27 more)
 
 ### Community 27 - "queue.ts"
-Cohesion: 0.07
-Nodes (44): blockedByReview(), recoveryStatus(), printedNumber(), applyKnownCarrier(), KNOWN_CARRIERS, KnownCarrier, knownCarrierIn(), letters() (+36 more)
+Cohesion: 0.06
+Nodes (44): blockedByReview(), UNKNOWN_FRAME, applyKnownCarrier(), KNOWN_CARRIERS, KnownCarrier, knownCarrierIn(), letters(), learnedFaint() (+36 more)
 
 ### Community 28 - "I"
 Cohesion: 0.04
 Nodes (9): Ai(), Ha(), I(), ii(), Ja(), Kh(), ri(), vi() (+1 more)
 
-### Community 29 - "getInteger"
+### Community 29 - "Option01"
 Cohesion: 0.03
-Nodes (24): Arc, Barcode, Break, BreakAfter, BreakBefore, Comb, config_Area, Equate (+16 more)
+Nodes (20): AddSilentPrint, AddViewerPreferences, Change, CompressLogicalStructure, config_Encrypt, ContentCopy, DocumentAssembly, Embed (+12 more)
 
 ### Community 30 - "I"
 Cohesion: 0.04
@@ -407,9 +410,9 @@ Nodes (4): F(), G(), Jh(), S()
 Cohesion: 0.04
 Nodes (7): Ai(), Ha(), I(), ii(), ri(), vi(), yi()
 
-### Community 39 - "account.ts"
+### Community 39 - "useT"
 Cohesion: 0.05
-Nodes (56): AccountPage(), DetailsForm(), save(), SecurityPanel(), leave(), submit(), AccountLink(), AccountMenu() (+48 more)
+Nodes (77): client_config, AccountPage(), DetailsForm(), save(), InvoiceAddressPanel(), ProfileHero(), savePhoto(), SecurityPanel() (+69 more)
 
 ### Community 40 - "S"
 Cohesion: 0.05
@@ -417,23 +420,23 @@ Nodes (6): F(), G(), Jh(), O(), S(), ui()
 
 ### Community 41 - "XFAObject"
 Cohesion: 0.01
-Nodes (55): Acrobat, Acrobat7, Agent, Cache, Common, Compression, Config, config_Encryption (+47 more)
+Nodes (48): Acrobat, Agent, CalendarSymbols, Common, Config, config_FontInfo, ConnectionSet, CurrencySymbols (+40 more)
 
-### Community 42 - ".push"
-Cohesion: 0.05
-Nodes (28): ChoiceWidgetAnnotation, computeIDs(), createImage(), createImageDict(), DefaultAppearanceEvaluator, Dict, encodeToXmlString(), ErrorFont (+20 more)
+### Community 42 - "Dict"
+Cohesion: 0.04
+Nodes (19): clearGlobalCaches(), createImage(), createImageDict(), Dict, DocumentData, FakeUnicodeFont, HighlightAnnotation, InkAnnotation (+11 more)
 
 ### Community 43 - ".toString"
-Cohesion: 0.05
-Nodes (20): addPageDict(), addPageError(), parseNestedOrder(), parseOnOff(), parseOrder(), deepCompare(), DocumentData, EvalState (+12 more)
+Cohesion: 0.06
+Nodes (16): ButtonWidgetAnnotation, parseNestedOrder(), parseOnOff(), parseOrder(), computeIDs(), getIndexes(), getModificationDate(), incrementalUpdate() (+8 more)
 
 ### Community 44 - "memory.ts"
-Cohesion: 0.10
-Nodes (39): save(), normalizeName(), ClippedEdge, alignedFrom(), COUNTRY, fragmentFits(), words(), addRelationship() (+31 more)
+Cohesion: 0.06
+Nodes (44): ClientProfile, ClippedEdge, alignedFrom(), COUNTRY, fragmentFits(), words(), addRelationship(), addValue() (+36 more)
 
 ### Community 45 - "cn"
-Cohesion: 0.02
-Nodes (135): SWIPE_PAGES, AlertDialogMedia(), AlertDialogOverlay(), Avatar(), AvatarBadge(), AvatarFallback(), AvatarGroup(), AvatarGroupCount() (+127 more)
+Cohesion: 0.07
+Nodes (42): AlertDialogMedia(), AlertDialogOverlay(), Avatar(), AvatarBadge(), AvatarFallback(), AvatarGroup(), AvatarGroupCount(), AvatarImage() (+34 more)
 
 ### Community 46 - "E"
 Cohesion: 0.06
@@ -451,45 +454,45 @@ Nodes (7): E(), J(), K(), M(), Of(), Q(), zi()
 Cohesion: 0.06
 Nodes (8): E(), J(), L(), M(), Nf(), Q(), Rf(), zi()
 
-### Community 50 - "image-cropper.tsx"
-Cohesion: 0.08
-Nodes (32): app_globals, metadata, viewport, ImageCropper(), keep(), zoomTo(), AppCursor(), subscribe() (+24 more)
+### Community 50 - "app-cursor.tsx"
+Cohesion: 0.12
+Nodes (18): app_globals, metadata, viewport, AppCursor(), subscribe(), wanted(), hideDrawnCursor(), smoothCursorSuspended() (+10 more)
 
 ### Community 51 - ".getBytes"
 Cohesion: 0.13
-Nodes (7): decrypt(), findBlock(), isHexDigit(), isSpecial(), Type1CharString, Type1Font, Type1Parser
+Nodes (8): decrypt(), findBlock(), isHexDigit(), isSpecial(), Type1CharString, Type1Font, Type1Parser, rememberToken()
 
-### Community 52 - "Ticket"
-Cohesion: 0.07
-Nodes (41): Evidence, FieldStatus, ObservedField, ObservedTicket, detectVendor(), anyText(), GENERIC_REDUNDANT_SOURCES, genericEvidence() (+33 more)
+### Community 52 - "types.ts"
+Cohesion: 0.09
+Nodes (39): Evidence, ObservedField, ObservedTicket, detectVendor(), anyText(), GENERIC_REDUNDANT_SOURCES, genericEvidence(), isPartial() (+31 more)
 
-### Community 53 - "storage.ts"
+### Community 53 - "records-page.tsx"
 Cohesion: 0.07
-Nodes (46): clearUnreadableRecords(), downloadLedger(), RecordsPage(), confirmDelete(), exportCsv(), openOriginal(), csvCell(), ledgerCsv() (+38 more)
+Nodes (63): metadata, COLUMNS, InvoiceLine, InvoiceSheet(), lineLayout(), marked(), defaultInvoice(), downloadLedger() (+55 more)
 
 ### Community 54 - ".get"
+Cohesion: 0.05
+Nodes (28): adjustMapping(), appendIfJavaScriptDict(), addPageDict(), collectActions(), _collectJS(), deepCompare(), fetchDest(), fetchRemoteDest() (+20 more)
+
+### Community 55 - "sidebar.tsx"
 Cohesion: 0.07
-Nodes (12): adjustMapping(), collectActions(), _collectJS(), getInheritableProperty(), getSoundFormat(), isArrayEqual(), isDict(), isName() (+4 more)
+Nodes (33): Sidebar(), SidebarContent(), SidebarContext, SidebarContextProps, SidebarFooter(), SidebarGroup(), SidebarGroupAction(), SidebarGroupContent() (+25 more)
 
-### Community 55 - "LocaleSetNamespace"
-Cohesion: 0.03
-Nodes (24): CalendarSymbols, CurrencySymbol, CurrencySymbols, DatePattern, DatePatterns, Day, DayNames, Era (+16 more)
-
-### Community 56 - "FileSpec"
-Cohesion: 0.13
-Nodes (5): FileSpec, MediaAnnotation, RichMediaAnnotation, ScreenAnnotation, SoundAnnotation
+### Community 56 - "WidgetAnnotation"
+Cohesion: 0.12
+Nodes (9): ChoiceWidgetAnnotation, ErrorFont, escapeString(), getPdfColor(), numberToString(), parseDefaultAppearance(), SignatureWidgetAnnotation, TextWidgetAnnotation (+1 more)
 
 ### Community 57 - "E"
 Cohesion: 0.07
 Nodes (6): E(), J(), L(), M(), Nf(), Q()
 
 ### Community 58 - "load-desk-store.ts"
-Cohesion: 0.12
-Nodes (36): DELETE(), GET(), PUT(), setLogoVersion(), tooLarge(), CompanyProfile, applyRecordEdit(), invoiceKeyOf() (+28 more)
+Cohesion: 0.16
+Nodes (30): DELETE(), GET(), PUT(), setLogoVersion(), tooLarge(), applyRecordEdit(), invoiceKeyOf(), ticketDateColumn() (+22 more)
 
 ### Community 59 - ".checkAndRepair"
-Cohesion: 0.07
-Nodes (27): compileFontInfo(), convertCidString(), createCmapTable(), createNameTable(), createOS2Table(), createPostscriptName(), createPostTable(), DataBuilder (+19 more)
+Cohesion: 0.06
+Nodes (30): adjustWidths(), amendFallbackToUnicode(), CFFFont, compileFontInfo(), convertCidString(), createCmapTable(), createNameTable(), createOS2Table() (+22 more)
 
 ### Community 60 - "A"
 Cohesion: 0.11
@@ -500,12 +503,12 @@ Cohesion: 0.06
 Nodes (33): engines, node, name, private, type, version, @base-ui/react, @cloudflare/vite-plugin (+25 more)
 
 ### Community 62 - "auth.ts"
-Cohesion: 0.18
-Nodes (23): POST(), POST(), GET(), POST(), redirect(), POST(), authClient(), AuthMode (+15 more)
+Cohesion: 0.11
+Nodes (33): GET(), oneLine(), PUT(), POST(), POST(), GET(), POST(), redirect() (+25 more)
 
 ### Community 63 - "unreachable"
-Cohesion: 0.08
-Nodes (4): BasePdfManager, BaseStream, PatternCS, unreachable()
+Cohesion: 0.04
+Nodes (8): BasePdfManager, BasePDFStreamRangeReader, BasePDFStreamReader, BaseStream, JpxImage, Pattern, unreachable(), WasmImage
 
 ### Community 64 - "field-ocr.ts"
 Cohesion: 0.20
@@ -515,29 +518,25 @@ Nodes (21): blankCanvas(), center(), FIELD_OCR_MARKER, fieldRegions(), find(), h
 Cohesion: 0.06
 Nodes (33): categories, correctness, env, browser, builtin, node, ignorePatterns, options (+25 more)
 
-### Community 66 - ".getTextContent"
-Cohesion: 0.06
-Nodes (24): AppearanceStreamEvaluator, BaseLocalCache, GlobalColorSpaceCache, LocalColorSpaceCache, LocalFunctionCache, LocalGStateCache, LocalImageCache, LocalTilingPatternCache (+16 more)
+### Community 66 - ".push"
+Cohesion: 0.07
+Nodes (29): addChildren(), createDataNode(), encodeToXmlString(), escapePDFName(), generateFont(), getFamilyName(), getFontSubstitution(), isArrayEqual() (+21 more)
 
 ### Community 67 - "profiles.ts"
-Cohesion: 0.05
-Nodes (83): InvoiceAddressForm(), chooseDefault(), chooseTruck(), commitInvoiceStart(), save(), oneLine(), COLUMNS, InvoiceLine (+75 more)
+Cohesion: 0.06
+Nodes (61): InvoiceAddressForm(), chooseDefault(), chooseTruck(), commitInvoiceStart(), save(), oneLine(), WorkspacePanel(), dropLogo() (+53 more)
 
-### Community 68 - ".write"
-Cohesion: 0.16
-Nodes (3): CompositeGlyph, GlyfTable, Glyph
+### Community 68 - "Glyph"
+Cohesion: 0.08
+Nodes (6): CompositeGlyph, Contour, GlyfTable, Glyph, GlyphHeader, SimpleGlyph
 
 ### Community 69 - "ChunkedStream"
-Cohesion: 0.11
-Nodes (3): ChunkedStream, ChunkedStreamManager, MissingDataException
+Cohesion: 0.10
+Nodes (4): arrayBuffersToBytes(), ChunkedStream, ChunkedStreamManager, MissingDataException
 
 ### Community 70 - ".process"
 Cohesion: 0.06
 Nodes (9): addHex(), BinaryCMapReader, BinaryCMapStream, CMap, createBuiltInCMap(), hexToInt(), hexToStr(), IdentityCMap (+1 more)
-
-### Community 71 - "ColorSpace"
-Cohesion: 0.10
-Nodes (4): ColorSpace, DeviceGrayCS, DeviceRgbCS, isDefaultDecodeHelper()
 
 ### Community 72 - "A"
 Cohesion: 0.16
@@ -555,29 +554,29 @@ Nodes (8): E(), J(), Kf(), L(), M(), Of(), Q(), zi()
 Cohesion: 0.16
 Nodes (30): A(), Ab(), Bb(), Cb(), chdir(), chmod(), create(), createNode() (+22 more)
 
-### Community 76 - "graphify reference: query, path, explain"
-Cohesion: 0.15
-Nodes (10): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal, For /graphify explain, For /graphify path, graphify reference: query, path, explain (+2 more)
+### Community 76 - "recovery-end-to-end.test.ts"
+Cohesion: 0.06
+Nodes (35): For /graphify explain, For /graphify path, graphify reference: query, path, explain, Step 0 — Constrained query expansion (REQUIRED before traversal), Step 1 — Traversal, For /graphify explain, For /graphify path, graphify reference: query, path, explain (+27 more)
 
-### Community 77 - "SimpleDOMNode"
-Cohesion: 0.14
-Nodes (4): DatasetReader, DatasetXMLParser, SimpleDOMNode, SimpleXMLParser
+### Community 77 - "ConnectionSetNamespace"
+Cohesion: 0.06
+Nodes (12): connection_set_Uri, ConnectionSetNamespace, EffectiveInputPolicy, EffectiveOutputPolicy, Operation, RootElement, SoapAction, SoapAddress (+4 more)
 
 ### Community 78 - "What You Must Do When Invoked"
 Cohesion: 0.08
 Nodes (23): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+15 more)
 
-### Community 79 - "react"
-Cohesion: 0.08
-Nodes (38): AXIS_TICK, ChartLine, LazyChart, LoadsAreaChart(), LoadsAreaChart(), PointTooltip(), tonsText(), barPath() (+30 more)
+### Community 79 - "ref_node_assert_strict"
+Cohesion: 0.09
+Nodes (12): RecoveryContext, ref_node_assert_strict, ref_node_fs, ref_node_test, sql, load(), NOW, EvidenceSeed (+4 more)
 
 ### Community 80 - "extract/route.ts"
 Cohesion: 0.16
-Nodes (15): ALLOWED_TYPES, extract(), failure(), ModelAnswer, ModelError, outputText(), read(), readImage() (+7 more)
+Nodes (16): ALLOWED_TYPES, extract(), failure(), ModelAnswer, ModelError, outputText(), POST(), read() (+8 more)
 
 ### Community 81 - ".createDocumentHandler"
-Cohesion: 0.10
-Nodes (7): AnnotationFactory, Intersector, finishWorkerTask(), getPassword(), loadDocument(), startWorkerTask(), WorkerTask
+Cohesion: 0.09
+Nodes (14): AnnotationFactory, NetworkPdfManager, buildPath(), WorkerMessageHandler, ensureNotTerminated(), finishWorkerTask(), getPassword(), loadDocument() (+6 more)
 
 ### Community 82 - "bi"
 Cohesion: 0.13
@@ -588,16 +587,16 @@ Cohesion: 0.08
 Nodes (23): For /graphify add and --watch, For /graphify query, For the commit hook and native CLAUDE.md integration, For --update and --cluster-only, /graphify, Honesty Rules, Interpreter guard for subcommands, Part A - Structural extraction for code files (+15 more)
 
 ### Community 84 - "ticket-extraction.ts"
-Cohesion: 0.06
-Nodes (56): blobOf(), canvasOf(), ExtractedPage, extractPages(), PageReading, pause(), postImage(), batchPercent() (+48 more)
+Cohesion: 0.08
+Nodes (37): printedNumber(), EdgeState, acceptableValue(), clean(), CLIPPED_EDGES, edgeOf(), edgeStateOf(), extractedDate() (+29 more)
 
-### Community 85 - "use-t.ts"
-Cohesion: 0.12
-Nodes (27): LanguagePanel(), choose(), PL_PAGES, PL_NOUNS, PL_PATTERNS, PL_TEXT, adoptAccountLocale(), apply() (+19 more)
+### Community 85 - "translate.ts"
+Cohesion: 0.09
+Nodes (34): LanguagePanel(), choose(), PL_PAGES, PL_NOUNS, PL_PATTERNS, PL_TEXT, adoptAccountLocale(), apply() (+26 more)
 
 ### Community 86 - ".parse"
-Cohesion: 0.10
-Nodes (10): CFF, CFFDict, CFFEncoding, CFFFDSelect, CFFHeader, CFFParser, parseOperand(), looksLikeUnsigned16BitNegative() (+2 more)
+Cohesion: 0.08
+Nodes (10): CFF, CFFCharset, CFFDict, CFFFDSelect, CFFHeader, CFFParser, parseOperand(), CFFPrivateDict (+2 more)
 
 ### Community 87 - "CFFCompiler"
 Cohesion: 0.12
@@ -615,13 +614,13 @@ Nodes (13): AdjustData, AdobeExtensionLevel, CompressObjectStream, Copies, Curre
 Cohesion: 0.09
 Nodes (21): aliases, components, hooks, lib, ui, utils, iconLibrary, menuAccent (+13 more)
 
-### Community 91 - "find"
-Cohesion: 0.09
-Nodes (11): find(), FontFinder, FontInfo, FontSelector, getCurrentPara(), makeObj(), PageSet, selectFont() (+3 more)
+### Community 91 - "extract.ts"
+Cohesion: 0.13
+Nodes (21): blobOf(), canvasOf(), ExtractedPage, extractPages(), PageReading, pause(), postImage(), clamp() (+13 more)
 
 ### Community 92 - "TicketRecovery"
-Cohesion: 0.12
-Nodes (22): apiJson(), ApiResult, dataMode, Session, loadLearnedMisreads(), noteMisread(), TicketRecovery, dateDigits() (+14 more)
+Cohesion: 0.20
+Nodes (12): TicketRecovery, dateDigits(), dateMisread(), figureMisread(), Misread, singleCharacterChange(), confusable(), CONFUSABLE_GROUPS (+4 more)
 
 ### Community 93 - "O"
 Cohesion: 0.09
@@ -632,8 +631,12 @@ Cohesion: 0.31
 Nodes (4): buildPostScriptWasmFunction(), lexer_Lexer, parsePostScriptFunction(), Token
 
 ### Community 95 - ".getUint16"
-Cohesion: 0.16
-Nodes (17): buildComponentData(), decodeScan(), decodeBlock(), decodeHuffman(), decodeMcu(), readBit(), receive(), receiveAndExtend() (+9 more)
+Cohesion: 0.14
+Nodes (19): buildComponentData(), buildHuffmanTable(), decodeScan(), decodeBlock(), decodeHuffman(), decodeMcu(), readBit(), receive() (+11 more)
+
+### Community 96 - "empty.tsx"
+Cohesion: 0.11
+Nodes (18): Badge(), badgeVariants, Empty(), EmptyContent(), EmptyDescription(), EmptyHeader(), EmptyMedia(), emptyMediaVariants (+10 more)
 
 ### Community 97 - "compilerOptions"
 Cohesion: 0.10
@@ -643,9 +646,9 @@ Nodes (19): compilerOptions, allowImportingTsExtensions, allowJs, esModuleIntero
 Cohesion: 0.11
 Nodes (19): dependencies, @base-ui/react, class-variance-authority, clsx, lucide-react, motion, pdfjs-dist, react (+11 more)
 
-### Community 99 - "JpegStream"
-Cohesion: 0.08
-Nodes (4): JBig2CCITTFaxImage, JpegStream, Pattern, WasmImage
+### Community 99 - "image-cropper.tsx"
+Cohesion: 0.22
+Nodes (13): ImageCropper(), keep(), zoomTo(), suspendSmoothCursor(), Box, clampOffset(), coverScale(), MAX_ZOOM (+5 more)
 
 ### Community 100 - "PsNode"
 Cohesion: 0.17
@@ -663,13 +666,13 @@ Nodes (15): auth.users, public.load_desk_release_invoice, load_desk_profiles_one
 Cohesion: 0.11
 Nodes (18): devDependencies, @cloudflare/vite-plugin, @cloudflare/workers-types, @openai/sites-vite-plugin, oxfmt, oxlint, oxlint-tsgolint, @playwright/test (+10 more)
 
-### Community 104 - "._hash"
-Cohesion: 0.12
-Nodes (8): AES128Cipher, AES256Cipher, AESBaseCipher, calculateSHA384(), NullCipher, PDF17, PDF20, PDFBase
+### Community 104 - "calculateSHA512"
+Cohesion: 0.06
+Nodes (20): AES128Cipher, AES256Cipher, AESBaseCipher, ARCFourCipher, calculateMD5(), calculateSHA384(), calculateSHA512(), ch() (+12 more)
 
 ### Community 105 - "XMLParserBase"
-Cohesion: 0.13
-Nodes (3): XFAParser, XMLParserBase, skipWs()
+Cohesion: 0.06
+Nodes (8): DatasetReader, DatasetXMLParser, MetadataParser, SimpleDOMNode, SimpleXMLParser, XFAParser, XMLParserBase, skipWs()
 
 ### Community 106 - "XhtmlObject"
 Cohesion: 0.06
@@ -691,21 +694,21 @@ Nodes (4): bi(), O(), pi(), si()
 Cohesion: 0.11
 Nodes (4): bi(), O(), pi(), si()
 
-### Community 111 - "types.ts"
-Cohesion: 0.04
-Nodes (63): lib_load_desk_profiles_customeraddresses, CustomerProfile, nextId(), lib_load_desk_profiles_normalizeaddress, TruckProfile, UNKNOWN_FRAME, Ask, contextOf (+55 more)
+### Community 111 - "auto-processing.test.ts"
+Cohesion: 0.07
+Nodes (53): errorMessage(), confirmGroup(), fileWithoutProfile(), rememberAddress(), rememberSpelling(), saveNewClient(), saveNewCustomer(), save() (+45 more)
 
 ### Community 112 - "Annotation"
 Cohesion: 0.05
-Nodes (20): Annotation, CaretAnnotation, CircleAnnotation, FileAttachmentAnnotation, FreeTextAnnotation, HighlightAnnotation, InkAnnotation, LineAnnotation (+12 more)
+Nodes (22): Annotation, CaretAnnotation, CircleAnnotation, FileAttachmentAnnotation, FreeTextAnnotation, getPdfColorArray(), getQuadPoints(), getRgbColor() (+14 more)
 
 ### Community 114 - "geometry.ts"
-Cohesion: 0.06
-Nodes (60): blobFrom(), canvas(), DocumentScanner(), capture(), checkFraming(), frame(), startCamera(), stopCamera() (+52 more)
+Cohesion: 0.15
+Nodes (22): clippedAtBottom(), Detection, dimensions(), distance(), expandCorners(), guidance(), movement(), orderCorners() (+14 more)
 
 ### Community 115 - ".add"
-Cohesion: 0.07
-Nodes (12): CFFCharset, CFFPrivateDict, CFFTopDict, Commands, lineTo(), moveTo(), compileGlyf(), lineTo() (+4 more)
+Cohesion: 0.06
+Nodes (10): Commands, lineTo(), moveTo(), compileGlyf(), lineTo(), moveTo(), quadraticCurveTo(), getFloat214() (+2 more)
 
 ### Community 116 - "Datasets"
 Cohesion: 0.20
@@ -715,9 +718,13 @@ Nodes (3): Datasets, datasets_Data, DatasetsNamespace
 Cohesion: 0.22
 Nodes (5): graphify reference: transcribe video and audio, Step 2.5 - Transcribe video / audio files (only if video files detected), graphify reference: transcribe video and audio, Step 2.5 - Transcribe video / audio files (only if video files detected), Base
 
-### Community 119 - "CipherTransformFactory"
-Cohesion: 0.20
-Nodes (4): ARCFourCipher, calculateMD5(), CipherTransformFactory, PasswordException
+### Community 118 - "utils.ts"
+Cohesion: 0.11
+Nodes (12): Checkbox(), NativeSelect(), NativeSelectOptGroup(), NativeSelectOption(), NativeSelectProps, ScrollArea(), ScrollBar(), Switch() (+4 more)
+
+### Community 119 - "dropdown-menu.tsx"
+Cohesion: 0.12
+Nodes (12): DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuItem(), DropdownMenuLabel(), DropdownMenuRadioItem(), DropdownMenuSeparator(), DropdownMenuShortcut() (+4 more)
 
 ### Community 120 - "$h"
 Cohesion: 0.12
@@ -727,9 +734,13 @@ Nodes (8): gb(), $h(), a(), hb(), ig(), Mb(), V(), Zf()
 Cohesion: 0.11
 Nodes (21): bg(), chmod(), close(), create(), fsync(), Ja(), lchmod(), lstat() (+13 more)
 
-### Community 122 - "calculateSHA512"
-Cohesion: 0.32
-Nodes (8): calculateSHA512(), ch(), littleSigma(), littleSigmaPrime(), maj(), sigma(), sigmaPrime(), Word64
+### Community 122 - "field.tsx"
+Cohesion: 0.14
+Nodes (14): Field(), FieldContent(), FieldDescription(), FieldError(), FieldGroup(), FieldLabel(), FieldLegend(), FieldSeparator() (+6 more)
+
+### Community 126 - "validate.ts"
+Cohesion: 0.18
+Nodes (11): FieldResolution, weightsJudged(), balanced(), derived(), round2(), TON_TOLERANCE, WEIGHT_FIELDS, WEIGHT_TOLERANCE_LB (+3 more)
 
 ### Community 127 - "$h"
 Cohesion: 0.13
@@ -751,13 +762,13 @@ Nodes (5): bi(), pi(), sg(), si(), T()
 Cohesion: 0.13
 Nodes (6): dg(), Gf(), $h(), a(), Mb(), Uf()
 
-### Community 132 - "section-pager.tsx"
-Cohesion: 0.05
-Nodes (25): app_login_login, metadata, metadata, metadata, metadata, metadata, client_config, LoginForm() (+17 more)
+### Community 132 - "ref_next"
+Cohesion: 0.10
+Nodes (9): app_login_login, metadata, metadata, metadata, metadata, metadata, LoginForm(), nextConfig (+1 more)
 
 ### Community 133 - "avatar/route.ts"
-Cohesion: 0.27
-Nodes (11): DELETE(), GET(), PUT(), tooLarge(), AVATAR_VERSION, folder(), loadAvatar(), MAX_AVATAR_BYTES (+3 more)
+Cohesion: 0.24
+Nodes (12): DELETE(), GET(), PUT(), tooLarge(), AVATAR_VERSION, folder(), loadAvatar(), MAX_AVATAR_BYTES (+4 more)
 
 ### Community 134 - "z"
 Cohesion: 0.20
@@ -773,27 +784,31 @@ Nodes (10): Ja(), lstat(), r(), Rb(), readFile(), Sb(), C, h() (+2 more)
 
 ### Community 137 - "DecodeStream"
 Cohesion: 0.04
-Nodes (13): Ascii85Stream, AsciiHexStream, CCITTFaxStream, DecodeStream, DecryptStream, Jbig2Stream, JpxImage, JpxStream (+5 more)
+Nodes (14): Ascii85Stream, AsciiHexStream, CCITTFaxStream, DecodeStream, DecryptStream, Jbig2Stream, JpegStream, JpxError (+6 more)
 
 ### Community 138 - ".getByte"
-Cohesion: 0.09
-Nodes (8): bytesToString(), CipherTransform, Cmd, FlateStream, getFontFileType(), isTrueTypeCollectionFile(), isWhiteSpace(), Parser
+Cohesion: 0.10
+Nodes (10): bytesToString(), CipherTransform, Cmd, compileCharString(), bezierCurveTo(), getFontFileType(), isTrueTypeCollectionFile(), isWhiteSpace() (+2 more)
 
 ### Community 139 - "XmlObject"
-Cohesion: 0.10
-Nodes (6): Binder, createDataNode(), createText(), parseExpression(), searchNode(), XmlObject
+Cohesion: 0.05
+Nodes (7): Binder, Builder, createText(), Root, UnknownNamespace, XFAAttribute, XmlObject
+
+### Community 140 - "enhance.ts"
+Cohesion: 0.21
+Nodes (13): DOCUMENT_FILTERS, enhanceDocument(), greyOf(), luminance(), needsEnhancing(), OCR_LONG_EDGE, ocrScale(), paperAt() (+5 more)
 
 ### Community 141 - "MessageHandler"
-Cohesion: 0.15
-Nodes (6): AbortException, MessageHandler, ResponseException, UnknownErrorException, WorkerMessageHandler, wrapReason()
-
-### Community 142 - "setupDoc"
 Cohesion: 0.08
-Nodes (12): arrayBuffersToBytes(), BasePDFStream, BasePDFStreamRangeReader, LocalPdfManager, NetworkPdfManager, PDFWorkerStream, PDFWorkerStreamRangeReader, ensureNotTerminated() (+4 more)
+Nodes (9): AbortException, BasePDFStream, MessageHandler, PDFWorkerStream, PDFWorkerStreamRangeReader, PDFWorkerStreamReader, ResponseException, UnknownErrorException (+1 more)
+
+### Community 142 - "CompiledFont"
+Cohesion: 0.12
+Nodes (7): CompiledFont, FontRendererFactory, getSubroutineBias(), lookupCmap(), parseCff(), TrueTypeCompiled, Type2Compiled
 
 ### Community 143 - "assert"
-Cohesion: 0.15
-Nodes (7): assert(), buildHuffmanTable(), convertBlackAndWhiteToRGBA(), convertToRGBA(), ea, PDFImage, toRomanNumerals()
+Cohesion: 0.12
+Nodes (6): assert(), convertBlackAndWhiteToRGBA(), convertToRGBA(), ImageResizer, PDFImage, toRomanNumerals()
 
 ### Community 144 - "r"
 Cohesion: 0.23
@@ -807,21 +822,17 @@ Nodes (10): bg(), Ja(), lstat(), r(), Rb(), readFile(), Sb(), C (+2 more)
 Cohesion: 0.17
 Nodes (4): dg(), $h(), a(), symlink()
 
-### Community 147 - "MathClamp"
-Cohesion: 0.27
-Nodes (3): CalRGBCS, IndexedCS, MathClamp()
+### Community 148 - "ta"
+Cohesion: 0.19
+Nodes (10): JBig2CCITTFaxImage, Jbig2Error, n, oa(), doRun(), receiveInstance(), updateMemoryViews(), ta() (+2 more)
 
-### Community 148 - ".shift"
-Cohesion: 0.15
-Nodes (13): an, Jbig2Error, JpxError, n, oa(), doRun(), receiveInstance(), updateMemoryViews() (+5 more)
+### Community 151 - "document-scanner.tsx"
+Cohesion: 0.24
+Nodes (13): blobFrom(), canvas(), DocumentScanner(), capture(), checkFraming(), frame(), startCamera(), stopCamera() (+5 more)
 
 ### Community 153 - "write"
 Cohesion: 0.22
 Nodes (5): ag(), Jf(), sg(), T(), write()
-
-### Community 154 - "LabCS"
-Cohesion: 0.14
-Nodes (3): CalGrayCS, DeviceCmykCS, LabCS
 
 ### Community 155 - "A & D Trucking of Chicago — Load Desk launch"
 Cohesion: 0.18
@@ -830,6 +841,10 @@ Nodes (10): 1. Create the database tables (once) — done, 2. Give A & D Truckin
 ### Community 156 - "graphify reference: extra exports and benchmark"
 Cohesion: 0.22
 Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only if --wiki flag), Step 7 - Neo4j export (only if --neo4j or --neo4j-push flag), Step 7a - FalkorDB export (only if --falkordb or --falkordb-push flag), Step 7b - SVG export (only if --svg flag), Step 7c - GraphML export (only if --graphml flag), Step 7d - MCP server (only if --mcp flag), Step 8 - Token reduction benchmark (only if total_words > 5000)
+
+### Community 157 - "rectify.ts"
+Cohesion: 0.30
+Nodes (12): paperFrameOf(), analysisOf(), areaOf(), ask(), canvasOf(), detectIn(), detectPaperFrame(), rectifyPage() (+4 more)
 
 ### Community 158 - "write"
 Cohesion: 0.18
@@ -843,13 +858,21 @@ Nodes (8): close(), eg(), fsync(), sg(), T(), wg(), write(), writeFile()
 Cohesion: 0.20
 Nodes (10): scripts, build, dev, format, lint, prebuild, start, test (+2 more)
 
-### Community 163 - "toast.tsx"
-Cohesion: 0.08
-Nodes (25): AppShell(), DeskActivity(), ToastAction(), ToastClose(), ToastContent(), ToastDescription(), Toaster(), ToastTitle() (+17 more)
+### Community 161 - "sheet.tsx"
+Cohesion: 0.17
+Nodes (8): Sheet(), SheetContent(), SheetDescription(), SheetFooter(), SheetHeader(), SheetOverlay(), SheetTitle(), ref_base_ui_react_dialog
 
-### Community 164 - ".parse"
-Cohesion: 0.10
-Nodes (4): DataHandler, PDFFunction, toNumberArray(), XFAFactory
+### Community 162 - "popover.tsx"
+Cohesion: 0.25
+Nodes (5): PopoverContent(), PopoverDescription(), PopoverHeader(), PopoverTitle(), ref_base_ui_react_popover
+
+### Community 163 - "desk-session.ts"
+Cohesion: 0.21
+Nodes (14): DeskActivity(), announce(), clearDesk(), DeskExtraction, DeskSession, deskSnapshot(), DeskStatus, EMPTY (+6 more)
+
+### Community 164 - ".getArray"
+Cohesion: 0.08
+Nodes (15): BaseShading, ColorSpaceUtils, DefaultAppearanceEvaluator, DummyShading, FunctionBasedShading, getColorConversionBatchSize(), IccColorSpace, IndexedCS (+7 more)
 
 ### Community 165 - ".cg"
 Cohesion: 0.29
@@ -867,25 +890,29 @@ Nodes (8): graphify reference: extra exports and benchmark, Step 6b - Wiki (only
 Cohesion: 0.18
 Nodes (11): Bg(), Ja(), r(), Rb(), read(), Sb(), C, h() (+3 more)
 
+### Community 170 - "Image"
+Cohesion: 0.33
+Nodes (3): Step 2 - Detect files, Step 2 - Detect files, Image
+
 ### Community 172 - "Stream"
-Cohesion: 0.06
-Nodes (11): BrotliStream, compileCharString(), bezierCurveTo(), CompiledFont, FontRendererFactory, getSubroutineBias(), lookupCmap(), parseCff() (+3 more)
+Cohesion: 0.07
+Nodes (4): BrotliStream, FlateStream, LocalPdfManager, Stream
 
 ### Community 175 - ".oxfmtrc.json"
 Cohesion: 0.33
 Nodes (5): ignorePatterns, printWidth, $schema, singleQuote, sortPackageJson
 
+### Community 176 - "account-display.ts"
+Cohesion: 0.60
+Nodes (3): SessionUser, shellAccountFrom(), text()
+
 ### Community 183 - "field-regions.test.ts"
 Cohesion: 0.50
 Nodes (3): OcrWord, page(), word()
 
-### Community 186 - "(workspace)/layout.tsx"
-Cohesion: 0.25
-Nodes (8): app_workspace_account_account, app_workspace_home, WorkspaceLayout(), app_workspace_load_desk_load_desk, app_workspace_profiles, app_workspace_records_records, sessionShellAccount(), ref_next_headers
-
 ### Community 189 - "parser.ts"
 Cohesion: 0.15
-Nodes (24): applyFieldRows(), cityStateZip(), cleanRow(), detectLayout(), digitString(), fieldRows(), heidelbergSite(), isoDate() (+16 more)
+Nodes (25): applyFieldRows(), cityStateZip(), cleanRow(), detectLayout(), digitString(), fieldRows(), heidelbergSite(), isoDate() (+17 more)
 
 ### Community 198 - "graphify reference: add a URL and watch a folder"
 Cohesion: 0.50
@@ -911,29 +938,25 @@ Nodes (3): For git commit hook, For native CLAUDE.md integration, graphify refer
 Cohesion: 0.50
 Nodes (3): For --cluster-only, For --update (incremental re-extraction), graphify reference: incremental update and cluster-only
 
-### Community 213 - "subscribeProfiles"
-Cohesion: 0.17
-Nodes (15): InvoiceAddressPanel(), WorkspacePanel(), dropLogo(), saveLogo(), saveName(), ShellNavigation(), useCompanyLogo(), useCompanyName() (+7 more)
-
 ## Knowledge Gaps
 - **584 isolated node(s):** `$schema`, `singleQuote`, `printWidth`, `sortPackageJson`, `ignorePatterns` (+579 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 2289 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **45 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **43 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `f()` connect `worker.min.js` to `pdf.worker.min.mjs`, `A`, `A`, `A`, `A`, `tesseract-core-simd.wasm.js`, `tesseract-core-relaxedsimd.wasm.js`, `tesseract-core-relaxedsimd-lstm.wasm.js`, `tesseract-core-lstm.wasm.js`, `tesseract-core-simd-lstm.wasm.js`, `tesseract-core.wasm.js`, `A`?**
   _High betweenness centrality (0.363) - this node is a cross-community bridge._
-- **Why does `TemplateNamespace` connect `TemplateNamespace` to `pdf.worker.min.mjs`, `PsWasmCompiler`, `StringObject`, `getMeasurement`, `.success`, `XFAObject`, `ContentObject`, `.toString`, `graphify reference: query, path, explain`, `assert`, `types.ts`, `find`, `getInteger`?**
+- **Why does `TemplateNamespace` connect `TemplateNamespace` to `pdf.worker.min.mjs`, `ConfigNamespace`, `PsWasmCompiler`, `StringObject`, `Subform`, `.success`, `XFAObject`, `ContentObject`, `Image`, `recovery-end-to-end.test.ts`, `.toString`, `assert`, `validate.ts`?**
   _High betweenness centrality (0.142) - this node is a cross-community bridge._
-- **Why does `Line` connect `TemplateNamespace` to `pdf.worker.min.mjs`, `.success`, `types.ts`, `XFAObject`?**
+- **Why does `Line` connect `.success` to `pdf.worker.min.mjs`, `XFAObject`, `validate.ts`?**
   _High betweenness centrality (0.118) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `LoadDesk()` (e.g. with `deskSnapshot()` and `serverDeskSnapshot()`) actually correct?**
   _`LoadDesk()` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `$schema`, `singleQuote`, `printWidth` to the rest of the system?**
   _584 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `pdf.worker.min.mjs` be split into smaller, more focused modules?**
-  _Cohesion score 0.010652222974497857 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.010541234830365842 - nodes in this community are weakly interconnected._
 - **Should `ConfigNamespace` be split into smaller, more focused modules?**
-  _Cohesion score 0.015594974131559497 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.01073057319145131 - nodes in this community are weakly interconnected._

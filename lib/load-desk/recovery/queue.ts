@@ -1,5 +1,6 @@
 import type { ClientProfile, CustomerProfile, TruckProfile } from '../profiles.ts';
-import { normalizeName } from '../customer-rates.ts';
+import { customerAddresses, normalizeName } from '../customer-rates.ts';
+import { fragmentFits } from './fit.ts';
 import { printedNumber } from '../printed-number.ts';
 import { isNumberField, type SavedRecord, type Ticket } from '../types.ts';
 import {
@@ -128,7 +129,8 @@ export function recoverTicket(input: RecoverInput): {
   // outright is set to that name, whatever the line printed; and one weight
   // the other three prove wrong by a faded digit is put right from them.
   const carried = applyKnownCarrier(applyRecovery(extracted, recovery), recovery, observed);
-  const named = applyCustomerSpelling(carried.ticket, carried.recovery, customer);
+  const spelt = applyCustomerSpelling(carried.ticket, carried.recovery, customer);
+  const named = applyAddressSpelling(spelt.ticket, spelt.recovery, customer);
   const weighed = reconcileWeights(named.ticket, named.recovery);
   // Gross and tare tons are never read; they are the pounds over two
   // thousand, and follow the pounds wherever the resolver put them.
@@ -419,6 +421,93 @@ export function acceptableValue(field: keyof Ticket, candidate: string): string 
  * matched to exactly one customer is renamed, which is the only kind the
  * matching hands over.
  */
+/** Levenshtein distance, stopped once it passes `limit`. */
+function editsApart(a: string, b: string, limit: number): number {
+  if (Math.abs(a.length - b.length) > limit) return limit + 1;
+  let previous = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const current = [i];
+    let best = i;
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + cost);
+      best = Math.min(best, current[j]);
+    }
+    if (best > limit) return limit + 1;
+    previous = current;
+  }
+  return previous[b.length];
+}
+
+/**
+ * The saved job site a printed address is, or null: the one on the customer
+ * that reads the same once case and punctuation are set aside ("16222
+ * Western Ave MARKHAM, IL" is "16222 Western Ave, Markham, IL"), failing
+ * that the one it is part of, failing that the one within two characters of
+ * it. One saved site has to be the answer; two as close, and nothing is
+ * chosen.
+ */
+export function savedAddressFor(customer: CustomerProfile | null, printed: string): string | null {
+  const key = normalizeName(printed);
+  if (!customer || !key) return null;
+  const saved = customerAddresses(customer);
+  const exact = saved.filter((address) => normalizeName(address) === key);
+  if (exact.length) return exact[0];
+  const part = saved.filter((address) => fragmentFits(key, normalizeName(address), null));
+  if (part.length === 1) return part[0];
+  if (part.length > 1) return null;
+  const near = saved
+    .map((address) => ({ address, apart: editsApart(key, normalizeName(address), 2) }))
+    .filter((item) => item.apart <= 2)
+    .sort((a, b) => a.apart - b.apart);
+  return near.length === 1 || (near.length > 1 && near[0].apart < near[1].apart) ? near[0].address : null;
+}
+
+/**
+ * The job site written as the customer's profile has it. The reader gives
+ * back what the ticket prints — "16222 Western Ave MARKHAM, IL" on one,
+ * "16222 Western Ave, Markham, IL" on the next — and an invoice with the
+ * one site spelt two ways reads as two sites. The saved spelling is the
+ * spelling, whenever the printed one is that site.
+ */
+function applyAddressSpelling(
+  ticket: Ticket,
+  recovery: TicketRecovery,
+  customer: CustomerProfile | null,
+): { ticket: Ticket; recovery: TicketRecovery } {
+  const printed = ticket.project_address?.trim();
+  const previous = recovery.fields.project_address;
+  // A site still in question — the camera cut it off — is a question about
+  // the photograph, not a spelling.
+  if (!printed || previous?.status === 'needs_review' || previous?.status === 'missing') {
+    return { ticket, recovery };
+  }
+  const saved = savedAddressFor(customer, printed);
+  if (!saved || saved === printed) return { ticket, recovery };
+  return {
+    ticket: { ...ticket, project_address: saved },
+    recovery: {
+      ...recovery,
+      fields: {
+        ...recovery.fields,
+        project_address: {
+          status: previous?.status === 'confirmed' ? 'confirmed' : 'recovered',
+          value: saved,
+          visible_text: previous?.visible_text ?? printed,
+          source: 'verified_profile',
+          source_clipped: previous?.source_clipped ?? false,
+          clipped_edge: previous?.clipped_edge ?? null,
+          confidence: 0.95,
+          evidence: [
+            ...(previous?.evidence ?? []),
+            `Written as saved on ${customer!.name}: "${saved}"; the ticket prints "${printed}".`,
+          ],
+        },
+      },
+    },
+  };
+}
+
 function applyCustomerSpelling(
   ticket: Ticket,
   recovery: TicketRecovery,
