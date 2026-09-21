@@ -768,50 +768,50 @@
     "semantic_hash": "4526cad9fbe090942fa36521105970dd"
   },
   "public/ocr/pdf.worker.min.mjs": {
-    "mtime": 1790022566.1388316,
-    "seen": 1790022606.2793632,
+    "mtime": 1790023117.9859066,
+    "seen": 1790023168.960633,
     "ast_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e",
     "semantic_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e"
   },
   "public/ocr/tesseract-core-lstm.wasm.js": {
-    "mtime": 1790022566.1550057,
-    "seen": 1790022606.279364,
+    "mtime": 1790023117.9999864,
+    "seen": 1790023168.960634,
     "ast_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3",
     "semantic_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3"
   },
   "public/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": {
-    "mtime": 1790022566.176422,
-    "seen": 1790022606.279365,
+    "mtime": 1790023118.0147297,
+    "seen": 1790023168.960635,
     "ast_hash": "f267f4efd6219843707c73b3a9a70604",
     "semantic_hash": "f267f4efd6219843707c73b3a9a70604"
   },
   "public/ocr/tesseract-core-relaxedsimd.wasm.js": {
-    "mtime": 1790022566.196894,
-    "seen": 1790022606.2793658,
+    "mtime": 1790023118.0333526,
+    "seen": 1790023168.960636,
     "ast_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb",
     "semantic_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb"
   },
   "public/ocr/tesseract-core-simd-lstm.wasm.js": {
-    "mtime": 1790022566.2209044,
-    "seen": 1790022606.279367,
+    "mtime": 1790023118.0583923,
+    "seen": 1790023168.960636,
     "ast_hash": "2bd630487581a49b7d7cce1bfe42314c",
     "semantic_hash": "2bd630487581a49b7d7cce1bfe42314c"
   },
   "public/ocr/tesseract-core-simd.wasm.js": {
-    "mtime": 1790022566.2417138,
-    "seen": 1790022606.279368,
+    "mtime": 1790023118.0801215,
+    "seen": 1790023168.9606369,
     "ast_hash": "3fb1f6589c0569134cc593e0155acec4",
     "semantic_hash": "3fb1f6589c0569134cc593e0155acec4"
   },
   "public/ocr/tesseract-core.wasm.js": {
-    "mtime": 1790022566.2663674,
-    "seen": 1790022606.279368,
+    "mtime": 1790023118.1047955,
+    "seen": 1790023168.960638,
     "ast_hash": "7ec67b8a67ab4d41b74dd8df49db9224",
     "semantic_hash": "7ec67b8a67ab4d41b74dd8df49db9224"
   },
   "public/ocr/worker.min.js": {
-    "mtime": 1790022566.1406527,
-    "seen": 1790022606.2793689,
+    "mtime": 1790023117.9877596,
+    "seen": 1790023168.960639,
     "ast_hash": "b1ab464237e687b323da236fff45ba05",
     "semantic_hash": "b1ab464237e687b323da236fff45ba05"
   },
@@ -1290,9 +1290,9 @@
     "semantic_hash": ""
   },
   "CLIENT-LAUNCH.md": {
-    "mtime": 1790019183.790931,
-    "seen": 1790019195.451984,
-    "ast_hash": "782103291fc5dd75c27660ab008d149e",
+    "mtime": 1790023151.943228,
+    "seen": 1790023168.960716,
+    "ast_hash": "471616b3d82ecad5274d7393e9bee2b8",
     "semantic_hash": ""
   },
   "tests/README.md": {
@@ -1482,9 +1482,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/queue.ts": {
-    "mtime": 1790021476.5336056,
-    "seen": 1790021528.879916,
-    "ast_hash": "c1222aacf13620d8cb930aa84dbcd160",
+    "mtime": 1790023011.0572364,
+    "seen": 1790023168.960594,
+    "ast_hash": "4dc87c4f98a386e039765a0e0f76d5ab",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/resolve.ts": {
@@ -1494,9 +1494,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/vendors.ts": {
-    "mtime": 1789861433.6331558,
-    "seen": 1789863956.886421,
-    "ast_hash": "67afebdd3905e1dc7c175946b17fc08e",
+    "mtime": 1790023011.0564785,
+    "seen": 1790023168.960595,
+    "ast_hash": "dd690a48f0e345b2600155ee18f93545",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/vendors/generic.ts": {
@@ -1506,9 +1506,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/vendors/heidelberg.ts": {
-    "mtime": 1789861433.632879,
-    "seen": 1789863956.886422,
-    "ast_hash": "011ce1399355bb8da43a002aef995e20",
+    "mtime": 1790023111.5207293,
+    "seen": 1790023168.960597,
+    "ast_hash": "51b16110eb035a5ea946881415f2499c",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/vendors/ontario-trap-rock.ts": {
@@ -1524,9 +1524,9 @@
     "semantic_hash": ""
   },
   "tests/recovery-end-to-end.test.ts": {
-    "mtime": 1789956197.1091647,
-    "seen": 1789956236.3407092,
-    "ast_hash": "c8219f31c4c3b07cc674683a002c03cf",
+    "mtime": 1790023093.368848,
+    "seen": 1790023168.9606771,
+    "ast_hash": "143d7622c867cd83dec936aecf80934b",
     "semantic_hash": ""
   },
   "tests/recovery-memory.test.ts": {
@@ -1542,9 +1542,9 @@
     "semantic_hash": ""
   },
   "tests/recovery-queue.test.ts": {
-    "mtime": 1790021497.0314624,
-    "seen": 1790021528.8800142,
-    "ast_hash": "8ac050c7910166780fc7f480bb14a29b",
+    "mtime": 1790023054.654024,
+    "seen": 1790023168.96068,
+    "ast_hash": "fe2c7a616b7207d85b4ebb7d5517e32f",
     "semantic_hash": ""
   },
   "tests/recovery-resolve.test.ts": {
@@ -1566,9 +1566,9 @@
     "semantic_hash": ""
   },
   "tests/recovery-vendors.test.ts": {
-    "mtime": 1789861462.7115347,
-    "seen": 1789863956.886497,
-    "ast_hash": "1b6c9b402570295226be74318bceedd6",
+    "mtime": 1790023054.6536458,
+    "seen": 1790023168.960683,
+    "ast_hash": "01110c4398cf86a6b96d88a62082168f",
     "semantic_hash": ""
   },
   "lib/load-desk/printed-number.ts": {
@@ -1626,9 +1626,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/misread.ts": {
-    "mtime": 1790019079.751543,
-    "seen": 1790019195.451853,
-    "ast_hash": "a41e9603095377a2d821b85cced50b24",
+    "mtime": 1790023011.0569808,
+    "seen": 1790023168.960591,
+    "ast_hash": "3aa7bc0ca302230bc83a4cf978b42c6d",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/weights.ts": {
@@ -1650,9 +1650,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/learned-misreads.ts": {
-    "mtime": 1790019112.225944,
-    "seen": 1790019195.4518342,
-    "ast_hash": "fe73772894bfb24d685bfc7ffbfa2e1f",
+    "mtime": 1790023134.5652642,
+    "seen": 1790023168.9605749,
+    "ast_hash": "cdb4ca22453250ccc0fa25b4bdf686f8",
     "semantic_hash": ""
   },
   "lib/load-desk/recovery/learned.ts": {

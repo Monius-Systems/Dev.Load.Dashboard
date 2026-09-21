@@ -1184,11 +1184,22 @@ export default function LoadDesk() {
    * whole or recovered above the bar, from a customer and a job site on
    * file, is marked approved and leaves the "to check" list — the app's own
    * bookkeeping, so `reviewed_at` stays null and the record says which it
-   * was. Never while an upload is still being read or numbered, so two
-   * writes to one record cannot cross. Each ticket is sent once; a write
-   * that fails is tried again on the next pass.
+   * was. Each ticket is sent once; a write that fails is tried again on the
+   * next pass.
+   *
+   * An approval carries the record as it stands, so it must not cross
+   * another write to the same record: it is held back, record by record,
+   * for the tickets the running upload is filing and numbering
+   * (`filing`), for a ticket on a draft mark still waiting for its number,
+   * for a ticket somebody is editing or saving in review, and for the whole
+   * ledger while its numbers are out of date order and about to move. It
+   * used to wait for the whole upload and every save to finish instead, and
+   * a date typed under "Needs your input" while the next ticket was being
+   * read left "1 to check" standing until the scan was done.
    */
   const approving = useRef(new Set<number>());
+  /** The records the running upload has filed and is still numbering. */
+  const filing = useRef(new Set<number>());
   /**
    * True from the first page of an upload to the last number written. The
    * progress bar and the busy state clear when the reading ends, and the
@@ -1198,15 +1209,33 @@ export default function LoadDesk() {
    */
   const [settling, setSettling] = useState(false);
   useEffect(() => {
-    if (!store.ready || extraction !== null || busy || settling) return;
-    const fresh = openMembers.filter(
-      (member) => member.report.outcome === 'auto_approved' && !approving.current.has(member.id),
+    if (!store.ready) return;
+    if (numbersInDateOrder(records, profileStore.company?.invoice_start).size) return;
+    const activeId = queue[activeIndex]?.id;
+    const editing = new Set(
+      queue
+        .filter(
+          (item) =>
+            item.saved_record_id !== null && (hasChanges(item) || (busy && item.id === activeId)),
+        )
+        .map((item) => item.saved_record_id),
     );
+    const byId = new Map(records.map((record) => [record.id, record]));
+    const fresh = openMembers.filter((member) => {
+      const record = byId.get(member.id);
+      return (
+        member.report.outcome === 'auto_approved' &&
+        !approving.current.has(member.id) &&
+        !filing.current.has(member.id) &&
+        !editing.has(member.id) &&
+        record !== undefined &&
+        !isPendingInvoiceNumber(record.invoice.invoice_number)
+      );
+    });
     if (!fresh.length) return;
     const batch = fresh.slice(0, MAX_EDITS);
     for (const member of batch) approving.current.add(member.id);
     const at = new Date().toISOString();
-    const byId = new Map(records.map((record) => [record.id, record]));
     const edits: RecordEdit[] = batch.flatMap((member) => {
       const record = byId.get(member.id);
       if (!record) return [];
@@ -1235,7 +1264,7 @@ export default function LoadDesk() {
       // address in review — and not because a scan read it: a site read a
       // letter wrong and saved would be matched to every later ticket.
     });
-  }, [openMembers, records, store.ready, extraction, busy, settling]);
+  }, [openMembers, records, queue, activeIndex, busy, store.ready, profileStore.company?.invoice_start]);
 
   // Whenever the ledger is quiet, it is asked to read in date order; and the
   // review's copies follow the records, so a number moved from another page
@@ -1611,6 +1640,7 @@ export default function LoadDesk() {
     try {
       await addToQueueSettling(entries, kind, target, open);
     } finally {
+      filing.current.clear();
       setSettling(false);
     }
   }
@@ -1680,6 +1710,7 @@ export default function LoadDesk() {
             });
             // Kept before anyone is asked to look at it.
             const filed = await fileInBatch(built, getRecordsSnapshot().records);
+            if (filed.item.saved_record_id !== null) filing.current.add(filed.item.saved_record_id);
             if (filed.error) failures.push(`${entry.name}: ${t(filed.error)}`);
             if (filed.opened) openedBatches.add(filed.opened);
             added.push(filed.item);
