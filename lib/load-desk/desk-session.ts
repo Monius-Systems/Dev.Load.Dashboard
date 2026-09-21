@@ -51,6 +51,14 @@ export type DeskSession = {
   truckChoice: string;
   /** The upload whose invoice tickets are being added to, while they extract. */
   addingTo: string | null;
+  /**
+   * What the last pass over the filed tickets left for a person: questions
+   * about a job, asked once per job, and tickets with something of their own
+   * to settle. Worked out on Load Desk from the records and profiles it holds
+   * and said here, so the top bar on every other page can say "1 group needs
+   * input" without working anything out itself.
+   */
+  needsInput: { groups: number; tickets: number };
 };
 
 const EMPTY: DeskSession = {
@@ -65,6 +73,7 @@ const EMPTY: DeskSession = {
   editRequest: null,
   truckChoice: '',
   addingTo: null,
+  needsInput: { groups: 0, tickets: 0 },
 };
 
 let session: DeskSession = EMPTY;

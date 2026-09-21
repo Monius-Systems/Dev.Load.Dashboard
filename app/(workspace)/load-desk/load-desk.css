@@ -2075,3 +2075,57 @@ details[open] > .ld-section-summary .ld-section-chevron {
   color: rgb(255 255 255 / 54%);
   text-align: center;
 }
+
+/* The questions a scan left, asked once per job. Above the batches, because
+   answering them is what finishes the batches. */
+.ld-exception-list {
+  display: grid;
+  gap: var(--ui-space-3);
+}
+.ld-exception {
+  display: grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-border);
+  border-left: 3px solid var(--ui-warning);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+}
+.ld-exception[data-kind='ticket'] {
+  border-left-color: var(--ui-border-strong);
+}
+.ld-exception-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px var(--ui-space-3);
+}
+.ld-exception-head strong {
+  font-weight: var(--type-semibold);
+}
+.ld-exception-head span {
+  font-size: var(--type-sm);
+  color: var(--ui-text-3);
+}
+.ld-exception-why {
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
+}
+.ld-exception-detected {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--ui-space-2) var(--ui-space-4);
+  font-size: var(--type-sm);
+}
+.ld-exception-detected dt {
+  font-size: var(--type-2xs);
+  color: var(--ui-text-3);
+}
+.ld-exception-detected dd {
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+.ld-exception-fields {
+  margin-top: var(--ui-space-2);
+}

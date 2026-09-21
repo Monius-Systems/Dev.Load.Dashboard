@@ -191,4 +191,13 @@ export type SavedRecord = {
    * because of it.
    */
   reviewed_at?: string | null;
+  /**
+   * When the app approved this ticket on the evidence, with nobody looking:
+   * every field read whole or recovered above the bar, from a customer and a
+   * job site the workspace has on file. Such a ticket is off the "to check"
+   * list as a reviewed one is, and is billed as one; `reviewed_at` stays
+   * null, so the record says which of the two it was. Absent on tickets
+   * filed before automatic approval existed.
+   */
+  auto_approved_at?: string | null;
 };

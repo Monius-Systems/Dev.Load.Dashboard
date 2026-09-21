@@ -400,7 +400,8 @@ export function joinsInvoiceFor(
 }
 
 /** Photographed and read, but nobody has checked it against the picture yet. */
-export const needsReview = (record: SavedRecord) => !record.reviewed_at;
+export const needsReview = (record: SavedRecord) =>
+  !record.reviewed_at && !record.auto_approved_at;
 
 /**
  * One ticket of a review, as the navigation sees it.

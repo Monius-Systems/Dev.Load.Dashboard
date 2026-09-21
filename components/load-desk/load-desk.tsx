@@ -4,6 +4,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -88,7 +89,7 @@ import {
   type CustomerProfile,
   type TruckProfile,
 } from '@/lib/load-desk/profiles';
-import type { RecordEdit } from '@/lib/load-desk/record-input';
+import { MAX_EDITS, type RecordEdit } from '@/lib/load-desk/record-input';
 import {
   blocksSave,
   unresolvedCritical,
@@ -96,6 +97,14 @@ import {
   type ReviewReason,
   type TicketRecovery,
 } from '@/lib/load-desk/recovery';
+import {
+  applyGroupAnswer,
+  groupExceptions,
+  membersOf,
+  type ExceptionGroup,
+  type ExceptionType,
+} from '@/lib/load-desk/recovery/exceptions';
+import { knowledgeOf, ticketOutcome } from '@/lib/load-desk/recovery/outcome';
 import {
   acceptableValue,
   cameraCropFields,
@@ -305,6 +314,35 @@ type NewCustomerDraft = {
   name: string;
   error: string | null;
   saving: boolean;
+};
+
+/** What each kind of open question is called on the screen. */
+const EXCEPTION_TITLES: Record<ExceptionType, string> = {
+  NEW_CUSTOMER: 'New customer',
+  NEW_LOCATION: 'New job site',
+  NEW_PROJECT: 'Project name needed',
+  NEW_CUSTOMER_PROJECT_COMBINATION: 'New job for this customer',
+  AMBIGUOUS_LOCATION: 'Which job site?',
+  AMBIGUOUS_CUSTOMER: 'Which customer?',
+  CLIPPED_TEXT_RECOVERABLE: 'Print cut off',
+  CONFLICTING_GROUP_DATA: 'Readings disagree',
+  INDIVIDUAL_CRITICAL_FIELD: 'This ticket needs a look',
+};
+
+/** What a field the group asks about is called beside its box. */
+const ASK_LABELS: Partial<Record<keyof Ticket, string>> = {
+  customer_name: 'Customer',
+  customer_id: 'Customer ID',
+  project_name: 'Project',
+  project_address: 'Job site / destination',
+  plant_name: 'Plant',
+  plant_address: 'Plant address',
+  product_code: 'Product code',
+  product_description: 'Product',
+  carrier_name: 'Carrier',
+  vehicle_id: 'Vehicle',
+  order_number: 'Order number',
+  po_number: 'PO',
 };
 
 /**
@@ -837,6 +875,7 @@ export default function LoadDesk() {
     getServerProfilesSnapshot,
   );
   const { customers, trucks, clients } = profileStore;
+
   const fieldId = useId();
   // The queue, the files waiting and the extraction live outside React, so
   // opening another page and coming back does not throw the work away, and an
@@ -855,6 +894,213 @@ export default function LoadDesk() {
     truckChoice,
     addingTo,
   } = desk;
+
+  /**
+   * What the workspace knows, and what of the filed tickets it does not.
+   *
+   * Worked out from the records and profiles the page already holds — in the
+   * browser, never on the server — and only over the tickets nobody and
+   * nothing has settled, which is a short list. A ticket the evidence
+   * settles is approved below without a look; the rest are sorted into the
+   * questions they raise, one per job, and asked once.
+   */
+  const knowledge = useMemo(
+    () => knowledgeOf(records, { customers, trucks, clients }),
+    [records, customers, trucks, clients],
+  );
+  const openMembers = useMemo(
+    () =>
+      membersOf(records.filter(needsReview), knowledge, (record) =>
+        validateTicket(record.ticket, record.recovery),
+      ),
+    [records, knowledge],
+  );
+  const exceptions = useMemo(() => groupExceptions(openMembers), [openMembers]);
+  const groupsAsked = exceptions.filter((group) => group.type !== 'INDIVIDUAL_CRITICAL_FIELD');
+  const ticketsAsked = exceptions.filter((group) => group.type === 'INDIVIDUAL_CRITICAL_FIELD');
+
+  // Said to the session, so the top bar on every other page can say it.
+  useEffect(() => {
+    setDeskField('needsInput', { groups: groupsAsked.length, tickets: ticketsAsked.length });
+  }, [groupsAsked.length, ticketsAsked.length]);
+
+  /**
+   * Approving on the evidence: a filed ticket every field of which was read
+   * whole or recovered above the bar, from a customer and a job site on
+   * file, is marked approved and leaves the "to check" list — the app's own
+   * bookkeeping, so `reviewed_at` stays null and the record says which it
+   * was. Never while an upload is still being read or numbered, so two
+   * writes to one record cannot cross. Each ticket is sent once; a write
+   * that fails is tried again on the next pass.
+   */
+  const approving = useRef(new Set<number>());
+  useEffect(() => {
+    if (!store.ready || extraction !== null || busy) return;
+    const fresh = openMembers.filter(
+      (member) => member.report.outcome === 'auto_approved' && !approving.current.has(member.id),
+    );
+    if (!fresh.length) return;
+    const batch = fresh.slice(0, MAX_EDITS);
+    for (const member of batch) approving.current.add(member.id);
+    const at = new Date().toISOString();
+    const byId = new Map(records.map((record) => [record.id, record]));
+    const edits: RecordEdit[] = batch.flatMap((member) => {
+      const record = byId.get(member.id);
+      if (!record) return [];
+      return [
+        {
+          id: record.id,
+          ticket: record.ticket,
+          invoice: record.invoice,
+          ocr_text: record.ocr_text,
+          customer_profile_id: record.customer_profile_id ?? null,
+          truck_id: record.truck_id ?? null,
+          ...(record.recovery ? { recovery: record.recovery } : {}),
+          bookkeeping: true,
+          auto_approved_at: at,
+        },
+      ];
+    });
+    void updateSavedRecords(edits).then((result) => {
+      if ('error' in result) for (const member of batch) approving.current.delete(member.id);
+    });
+  }, [openMembers, records, store.ready, extraction, busy]);
+
+  /** What a person has typed against each open question, by group. */
+  const [groupAnswers, setGroupAnswers] = useState<Record<string, Record<string, string>>>({});
+  const [groupBusy, setGroupBusy] = useState<string | null>(null);
+  const [groupError, setGroupError] = useState<Record<string, string>>({});
+  const exceptionsPanel = useRef<HTMLElement>(null);
+  const answerFor = (group: ExceptionGroup, field: string) =>
+    groupAnswers[group.key]?.[field] ??
+    (field === 'customer_profile'
+      ? group.customerProfileId !== null
+        ? String(group.customerProfileId)
+        : NEW_CUSTOMER
+      : (group.detected[field as keyof Ticket] ?? ''));
+  const setAnswer = (group: ExceptionGroup, field: string, value: string) =>
+    setGroupAnswers((current) => ({
+      ...current,
+      [group.key]: { ...current[group.key], [field]: value },
+    }));
+
+  /**
+   * One answer for a whole job.
+   *
+   * The customer is settled first — an existing profile, or a new one made
+   * from what the tickets printed — then the job site is saved onto that
+   * profile, so the next scan from the same job asks nothing. Then every
+   * ticket of the group takes the answer, in one save that marks them all
+   * checked. The rest of the scan was never waiting on this.
+   */
+  async function confirmGroup(group: ExceptionGroup) {
+    if (groupBusy) return;
+    setGroupBusy(group.key);
+    setGroupError((current) => ({ ...current, [group.key]: '' }));
+    try {
+      const now = new Date().toISOString();
+      let customer: CustomerProfile | null =
+        customers.find((known) => known.id === group.customerProfileId) ?? null;
+      const asksCustomer = group.asks.includes('customer_name') || !customer;
+      let customerName = customer?.name ?? group.customer ?? '';
+      if (asksCustomer) {
+        const chosen = answerFor(group, 'customer_profile');
+        if (chosen && chosen !== NEW_CUSTOMER) {
+          customer = customers.find((known) => String(known.id) === chosen) ?? null;
+          customerName = customer?.name ?? customerName;
+        } else {
+          const typed = (answerFor(group, 'customer_name') || group.customer || '').replace(/\s+/g, ' ').trim();
+          if (!typed) throw new Error(t('Enter the customer name.'));
+          const printedId = group.detected.customer_id?.trim();
+          const profile = {
+            name: typed,
+            ticket_customer_ids: printedId ? [printedId] : [],
+            ticket_names:
+              group.customer && normalizeName(group.customer) !== normalizeName(typed)
+                ? [group.customer]
+                : [],
+            addresses: [] as string[],
+            location_rates: [],
+            flat_rate: null,
+            rate_type: 'flat' as const,
+            fuel_charge: null,
+            fuel_type: 'flat' as const,
+            notes: '',
+            created_at: now,
+          };
+          const error = await saveProfile('customer', profile, null);
+          if (error) throw new Error(t(error));
+          customer =
+            getProfilesSnapshot().customers.find(
+              (known) => known.created_at === now && known.name === typed,
+            ) ?? null;
+          if (!customer) throw new Error(t('The customer was saved but could not be found. Reload and try again.'));
+          customerName = customer.name;
+        }
+      }
+      const address = normalizeAddress(
+        answerFor(group, 'project_address') || group.detected.project_address || '',
+      );
+      const project = (answerFor(group, 'project_name') || group.detected.project_name || '').trim();
+      // Learned: the job site goes onto the customer, and the next scan from
+      // it asks nothing.
+      if (customer && address && !customerAddresses(customer).some((known) => normalizeName(known) === normalizeName(address))) {
+        const error = await saveProfile(
+          'customer',
+          {
+            name: customer.name,
+            ticket_customer_ids: customer.ticket_customer_ids,
+            ticket_names: customer.ticket_names,
+            addresses: addCustomerAddress(customer, address),
+            location_rates: customerLocationRates(customer),
+            flat_rate: customer.flat_rate,
+            rate_type: customer.rate_type ?? 'flat',
+            fuel_charge: customer.fuel_charge,
+            fuel_type: customer.fuel_type ?? 'flat',
+            notes: customer.notes,
+            created_at: customer.created_at,
+          },
+          customer.id,
+        );
+        if (error) throw new Error(t(error));
+        customer = getProfilesSnapshot().customers.find((known) => known.id === customer!.id) ?? customer;
+      }
+      const values: Partial<Record<keyof Ticket, string | null>> = {};
+      for (const ask of group.asks) {
+        if (ask === 'customer_name') values.customer_name = customerName || null;
+        else if (ask === 'project_address') values.project_address = address || null;
+        else if (ask === 'project_name') values.project_name = project || null;
+        else values[ask] = (answerFor(group, ask) || group.detected[ask] || '').trim() || null;
+      }
+      const edits = applyGroupAnswer(
+        records,
+        group,
+        { values, customerProfileId: customer?.id ?? null, customer },
+        now,
+      );
+      const result = await updateSavedRecords(edits);
+      if ('error' in result) throw new Error(result.error);
+      setGroupAnswers((current) => {
+        const next = { ...current };
+        delete next[group.key];
+        return next;
+      });
+      toast.add({
+        title: t('Applied to {tickets}', { tickets: plural(group.ticketIds.length, 'ticket') }),
+        description: customerName
+          ? t('{customer} · {tickets} checked and on their invoices.', {
+              customer: customerName,
+              tickets: plural(group.ticketIds.length, 'ticket'),
+            })
+          : t('{tickets} checked and on their invoices.', { tickets: plural(group.ticketIds.length, 'ticket') }),
+        type: 'success',
+      });
+    } catch (error) {
+      setGroupError((current) => ({ ...current, [group.key]: errorMessage(error) }));
+    } finally {
+      setGroupBusy(null);
+    }
+  }
   type Field<K extends keyof DeskSession> =
     | DeskSession[K]
     | ((current: DeskSession[K]) => DeskSession[K]);
@@ -1216,7 +1462,7 @@ export default function LoadDesk() {
     entries: Entry[],
     kind: SourceKind,
     target: QueueItem | null = null,
-    open = true,
+    open = false,
   ) {
     const start = queue.length;
     const added: QueueItem[] = [];
@@ -1243,7 +1489,9 @@ export default function LoadDesk() {
           file: entry.name,
           percent: batchPercent(index, entries.length, fraction),
           label,
-          quiet: !open,
+          // Out of sight on a phone that is being put away; on a desk the
+          // bar is the only sign the scan is going through its stages.
+          quiet: !open && isPhone,
         });
       show(0, 'Starting');
       noteTicket(session, `file-${index}`, 'extracting');
@@ -1351,6 +1599,7 @@ export default function LoadDesk() {
         added[index] = { ...item, ticket: resolved.ticket, recovery: resolved.recovery };
       }
     }
+    setExtraction((current) => current && { ...current, percent: 100, label: 'Resolving ticket data' });
     // One job's scans often miss a field another page read: fill blanks from
     // tickets in this upload with the same order number.
     for (const [index, result] of fillFromSameOrder(
@@ -1424,6 +1673,7 @@ export default function LoadDesk() {
       if (extracted(session).length) {
         setUploadStatus({ message: t('Finalizing invoice numbers…'), tone: 'info' });
       }
+      setExtraction((current) => current && { ...current, percent: 100, label: 'Building invoices' });
       const ordered = await finalizeInvoiceNumbers(session, wasFiled, openedBatches);
       const filed = ordered.items;
       if (ordered.error) failures.push(ordered.error);
@@ -1480,16 +1730,38 @@ export default function LoadDesk() {
             .filter((item) => !isUndatedBatch(item.batch_id))
             .map((item) => item.invoice.invoice_number.trim().toLowerCase()),
         ).size;
-      const summary = !open
-        ? t('{tickets} filed to check later. Open the batch below when you are ready.', {
-            tickets: plural(added.length, 'ticket'),
-          })
-        : invoices > 1
-          ? t('{tickets} ready for review on {invoices}, one per ticket date.', {
-              tickets: plural(added.length, 'ticket'),
-              invoices: plural(invoices, 'invoice'),
-            })
-          : t('{tickets} ready for review.', { tickets: plural(added.length, 'ticket') });
+      // What this scan came to, by what the evidence settled: tickets the
+      // app approved on its own, questions about a job to ask once, and
+      // tickets with something of their own to look at. Worked out over the
+      // records as they stand now, profiles included, so a customer the
+      // scan itself just taught is already known by the time it is counted.
+      setExtraction((current) => current && { ...current, percent: 100, label: 'Matching jobs' });
+      const known = knowledgeOf(getRecordsSnapshot().records, getProfilesSnapshot());
+      const outcomes = groupExceptions(
+        grouped.map((item, index) => ({
+          id: item.saved_record_id ?? -(index + 1),
+          ticket: item.ticket,
+          recovery: item.recovery,
+          report: ticketOutcome(item.ticket, item.recovery, known, validateTicket(item.ticket, item.recovery)),
+        })),
+      );
+      const askedGroups = outcomes.filter((group) => group.type !== 'INDIVIDUAL_CRITICAL_FIELD').length;
+      const askedTickets = outcomes.filter((group) => group.type === 'INDIVIDUAL_CRITICAL_FIELD').length;
+      const settled = grouped.length - outcomes.reduce((sum, group) => sum + group.ticketIds.length, 0);
+      const summary = [
+        t('✓ {tickets} processed', { tickets: plural(added.length, 'ticket') }),
+        invoices ? t('✓ {invoices} created', { invoices: plural(invoices, 'invoice') }) : '',
+        settled < added.length
+          ? [
+              askedGroups ? t('{groups} need your input', { groups: plural(askedGroups, 'group') }) : '',
+              askedTickets ? t('{tickets} need a look', { tickets: plural(askedTickets, 'ticket') }) : '',
+            ]
+              .filter(Boolean)
+              .join(', ')
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
       // Counted here rather than left to be discovered one ticket at a time:
       // the pages are filed the moment they are read, and somebody who
       // photographed a stack of them beside a truck has put the phone away by
@@ -1524,9 +1796,16 @@ export default function LoadDesk() {
     }
     setQueue((current) => [...current, ...grouped]);
     setSaveStatus(null);
-    // Filed either way — they are in their date's batch already, marked as
-    // nobody having checked them. This is only whether to ask about them now.
-    if (!open) return;
+    // Filed either way — they are in their date's batch already. The evidence
+    // approves what it can (see the approval effect), and what it cannot is
+    // asked about in the panel above the batches; the review screen opens
+    // only when somebody asked for it.
+    if (!open) {
+      if (!target && !isPhone) {
+        exceptionsPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
     setActiveIndex(start);
     scrollToReview();
   }
@@ -1547,7 +1826,7 @@ export default function LoadDesk() {
     setAddingTo(null);
   }
 
-  async function extractPending(open = true) {
+  async function extractPending(open = false) {
     if (busy || !pending.length) return;
     setBusy(true);
     const entries = pending.map((file) => ({ blob: file, name: file.name }));
@@ -3441,27 +3720,28 @@ export default function LoadDesk() {
               </small>
             </div>
             <div className="ld-actions">
+              {/* Read, checked, filed and invoiced: nothing opens unless
+                  something is left to ask, and what is left is asked once
+                  per job in the panel below. Beside a truck that is the whole
+                  job; at a desk the second button opens the review as well,
+                  for a look at every ticket. */}
               <Button
                 onClick={() => void extractPending()}
                 disabled={busy || !pending.length}
               >
-                {t('Extract tickets')}
+                {t('Process tickets')}
                 <ChevronRight data-icon="inline-end" />
               </Button>
-              {/* Beside a truck there is another ticket to photograph, not
-                  thirty boxes to check. This reads the picture and files it in
-                  its date's batch without asking anything; the batch below
-                  says how many are waiting, and opens them when there is time. */}
-              {isPhone ? (
+              {isPhone ? null : (
                 <Button
                   variant="secondary"
-                  onClick={() => void extractPending(false)}
+                  onClick={() => void extractPending(true)}
                   disabled={busy || !pending.length}
                 >
                   <Clock data-icon="inline-start" />
-                  {t('Review later')}
+                  {t('Process and review')}
                 </Button>
-              ) : null}
+              )}
             </div>
             {addingTo ? null : extractionProgress}
             <p
@@ -3472,6 +3752,152 @@ export default function LoadDesk() {
               {uploadStatus?.message}
             </p>
           </section>
+
+          {/* The questions the scans left, one per job. A ticket the evidence
+              settled is not here; it is on its invoice already. What is here
+              is answered once and applied to every ticket it covers, and the
+              review screen is only for a ticket with a question of its own. */}
+          {exceptions.length ? (
+            <section className="ld-panel ld-exceptions" aria-labelledby="ld-input-title" ref={exceptionsPanel}>
+              <div className="ld-panel-head">
+                <div>
+                  <p className="ld-step">{t('Answer once')}</p>
+                  <h2 id="ld-input-title">{t('Needs your input')}</h2>
+                </div>
+              </div>
+              <ul className="ld-exception-list">
+                {exceptions.map((group) => {
+                  const individual = group.type === 'INDIVIDUAL_CRITICAL_FIELD';
+                  const record = individual ? records.find((item) => item.id === group.ticketIds[0]) : null;
+                  const asksCustomer = group.asks.includes('customer_name') || group.customerProfileId === null;
+                  const chosenCustomer = answerFor(group, 'customer_profile');
+                  const error = groupError[group.key];
+                  return (
+                    <li key={group.key} className="ld-exception" data-kind={individual ? 'ticket' : 'group'}>
+                      <div className="ld-exception-head">
+                        <strong>{t(EXCEPTION_TITLES[group.type])}</strong>
+                        <span>
+                          {individual
+                            ? [record?.ticket.ticket_number ? t('Ticket {number}', { number: record.ticket.ticket_number }) : t('Unnumbered ticket'), record?.ticket.ticket_date ? date(record.ticket.ticket_date) : null]
+                                .filter(Boolean)
+                                .join(' · ')
+                            : [group.customer ?? t('Customer not read'), t('{tickets}', { tickets: plural(group.ticketIds.length, 'ticket') })].join(' · ')}
+                        </span>
+                      </div>
+                      {individual ? (
+                        <>
+                          <p className="ld-exception-why">
+                            {group.asks.length
+                              ? t('Not settled: {fields}.', {
+                                  fields: group.asks.map((field) => t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))).join(', '),
+                                })
+                              : t(group.reasons[0] ?? 'This ticket has not been looked at.')}
+                          </p>
+                          <div className="ld-confirm-actions">
+                            <Button type="button" size="sm" onClick={() => record && editSaved(record)}>
+                              {t('Open in review')}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {group.reasons[0] ? <p className="ld-exception-why">{t(group.reasons[0])}</p> : null}
+                          {Object.keys(group.detected).length ? (
+                            <dl className="ld-exception-detected">
+                              {(Object.entries(group.detected) as [keyof Ticket, string][]).map(([field, value]) => (
+                                <div key={field}>
+                                  <dt>{t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))}</dt>
+                                  <dd className="ui-literal">{value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : null}
+                          <p className="ld-field-hint">
+                            {t('{agree} of {tickets} read this whole.', {
+                              agree: Math.round(group.confidence * group.ticketIds.length),
+                              tickets: plural(group.ticketIds.length, 'ticket'),
+                            })}
+                          </p>
+                          <div className="ld-fields ld-exception-fields">
+                            {asksCustomer ? (
+                              <div className="ld-field" data-span={2}>
+                                <label htmlFor={`${fieldId}-${group.key}-customer`}>{t('Customer')}</label>
+                                <SelectField
+                                  id={`${fieldId}-${group.key}-customer`}
+                                  value={chosenCustomer}
+                                  onValueChange={(value) => setAnswer(group, 'customer_profile', value)}
+                                  options={[
+                                    ...customers.map((customer) => ({ value: String(customer.id), label: customer.name })),
+                                    {
+                                      value: NEW_CUSTOMER,
+                                      label: group.customer
+                                        ? t('+ New customer: {name}', { name: group.customer })
+                                        : t('+ New customer'),
+                                    },
+                                  ]}
+                                />
+                                {chosenCustomer === NEW_CUSTOMER ? (
+                                  <Input
+                                    aria-label={t('Customer name')}
+                                    value={answerFor(group, 'customer_name') || group.customer || ''}
+                                    onChange={(event) => setAnswer(group, 'customer_name', event.target.value)}
+                                  />
+                                ) : null}
+                              </div>
+                            ) : null}
+                            {group.asks
+                              .filter((field) => field !== 'customer_name')
+                              .map((field) => (
+                                <div key={field} className="ld-field" data-span={2}>
+                                  <label htmlFor={`${fieldId}-${group.key}-${field}`}>
+                                    {t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))}
+                                  </label>
+                                  <Input
+                                    id={`${fieldId}-${group.key}-${field}`}
+                                    value={answerFor(group, field)}
+                                    onChange={(event) => setAnswer(group, field, event.target.value)}
+                                  />
+                                  {group.candidates[field]?.length ? (
+                                    <span className="ld-confirm-actions">
+                                      {group.candidates[field]!.map((candidate) => (
+                                        <Button
+                                          key={candidate}
+                                          type="button"
+                                          variant="secondary"
+                                          size="xs"
+                                          onClick={() => setAnswer(group, field, candidate)}
+                                        >
+                                          <span className="ui-literal">{candidate}</span>
+                                        </Button>
+                                      ))}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ))}
+                          </div>
+                          {error ? (
+                            <p className="ld-status" data-tone="error">{error}</p>
+                          ) : null}
+                          <div className="ld-confirm-actions">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={groupBusy !== null}
+                              onClick={() => void confirmGroup(group)}
+                            >
+                              {groupBusy === group.key
+                                ? t('Saving…')
+                                : t('Confirm for all {tickets}', { tickets: plural(group.ticketIds.length, 'ticket') })}
+                            </Button>
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
 
           <section className="ld-panel" aria-labelledby="ld-saved-title">
             <div className="ld-panel-head">

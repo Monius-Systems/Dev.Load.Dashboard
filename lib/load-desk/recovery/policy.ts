@@ -147,7 +147,9 @@ export const EVIDENCE_WEIGHTS: Readonly<
   verified_profile: { strong: 0.8, moderate: 0.5, weak: 0.25 },
   verified_history: { strong: 0.7, moderate: 0.45, weak: 0.2 },
   historical_relationship: { strong: 0.5, moderate: 0.3, weak: 0.15 },
-  batch_context: { strong: 0.4, moderate: 0.25, weak: 0.1 },
+  // Strong is a scan agreeing with itself (see memory.ts, consensus): worth
+  // more than a single sighting, and still short of the point on its own.
+  batch_context: { strong: 0.6, moderate: 0.25, weak: 0.1 },
   user_confirmed: { strong: 1.5, moderate: 1.5, weak: 1.5 },
 };
 

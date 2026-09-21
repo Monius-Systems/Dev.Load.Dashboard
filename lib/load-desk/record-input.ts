@@ -284,7 +284,10 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
     !(value.invoice_batch_id as string) ||
     !(value.reviewed_at === undefined ||
       value.reviewed_at === null ||
-      (text(value.reviewed_at, 40) && !Number.isNaN(Date.parse(value.reviewed_at as string))))
+      (text(value.reviewed_at, 40) && !Number.isNaN(Date.parse(value.reviewed_at as string)))) ||
+    !(value.auto_approved_at === undefined ||
+      value.auto_approved_at === null ||
+      (text(value.auto_approved_at, 40) && !Number.isNaN(Date.parse(value.auto_approved_at as string))))
   ) {
     return { error: 'The ticket record is not valid.' };
   }
@@ -307,6 +310,7 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
       invoice_batch_id: value.invoice_batch_id as string,
       // Absent means nobody has checked it yet; see SavedRecord.reviewed_at.
       reviewed_at: (value.reviewed_at as string | null | undefined) ?? null,
+      ...(typeof value.auto_approved_at === 'string' ? { auto_approved_at: value.auto_approved_at } : {}),
     }),
   };
 }
@@ -342,6 +346,12 @@ export type RecordEdit = {
    * and the batch read "all checked" before anyone had opened it.
    */
   bookkeeping?: true;
+  /**
+   * The app approving the ticket on the evidence, as part of a bookkeeping
+   * edit: the mark is written, and `reviewed_at` is left as it was. Absent
+   * on every other edit.
+   */
+  auto_approved_at?: string;
 };
 
 export const MAX_EDITS = 200;
@@ -378,6 +388,12 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
     if (item.bookkeeping !== undefined && item.bookkeeping !== true) {
       return { error: 'The ticket changes are not valid.' };
     }
+    if (
+      item.auto_approved_at !== undefined &&
+      !(text(item.auto_approved_at, 40) && !Number.isNaN(Date.parse(item.auto_approved_at as string)))
+    ) {
+      return { error: 'The ticket changes are not valid.' };
+    }
     const recovery = recoveryOf(item.recovery);
     if ('error' in recovery) return recovery;
     // An invoice is dated by its ticket here too: a change that came in over
@@ -393,6 +409,7 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
         ...(recovery.value ? { recovery: recovery.value } : {}),
         ...(batch !== undefined ? { invoice_batch_id: batch as string } : {}),
         ...(item.bookkeeping === true ? { bookkeeping: true as const } : {}),
+        ...(typeof item.auto_approved_at === 'string' ? { auto_approved_at: item.auto_approved_at } : {}),
       }),
     );
   }
@@ -426,6 +443,7 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
     ...(edit.bookkeeping
       ? {}
       : { edited_at: editedAt, reviewed_at: editedAt }),
+    ...(edit.auto_approved_at ? { auto_approved_at: edit.auto_approved_at } : {}),
   };
 }
 

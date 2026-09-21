@@ -296,7 +296,10 @@ function addRelationship(
  * ticket nobody reviewed.
  */
 const sightingOf = (record: SavedRecord): { checked: boolean } => ({
-  checked: record.reviewed_at !== null,
+  // A person's mark, an absent mark from before marks existed, or the app's
+  // own approval on evidence that cleared the bar: all three are a ticket
+  // somebody or something has stood behind.
+  checked: record.reviewed_at !== null || Boolean(record.auto_approved_at),
 });
 
 const UNREVIEWED_SIGHTING = 0.5;
@@ -759,7 +762,43 @@ export function batchEvidence(
           : {}),
       });
     }
+
+    // Consensus. Five tickets of one scan reading "MARKHAM, IL" whole, and a
+    // sixth reading "ARKHAM, IL" with its left edge gone, are not five weak
+    // remarks about the sixth: they are the same job, photographed together,
+    // and the sixth very likely says what the five say. When enough of them
+    // agree, and nothing else whole in the scan fits the print, their reading
+    // is strong evidence — strong enough, with anything verified on file
+    // beside it, to settle the field, and never enough on its own, because a
+    // scan can be all one wrong job as easily as all one right one.
+    if (!blank) {
+      const agreeing = new Map<string, { value: string; count: number }>();
+      for (const other of others) {
+        if (other.observed === observed) continue;
+        const value = otherWhole(other, field);
+        if (!value || !fits(value, fragment, seen?.clipped_edge ?? null)) continue;
+        const k = normalizeName(value);
+        const found = agreeing.get(k);
+        if (found) found.count += 1;
+        else agreeing.set(k, { value, count: 1 });
+      }
+      if (agreeing.size === 1) {
+        const [only] = agreeing.values();
+        if (only.count >= CONSENSUS_MIN_TICKETS) {
+          out.add({
+            field,
+            candidate: only.value,
+            source: 'batch_context',
+            strength: 'strong',
+            note: `${only.count} other tickets in this upload read “${only.value}” whole`,
+          });
+        }
+      }
+    }
   }
 
   return out.list();
 }
+
+/** How many sibling tickets have to agree before their reading is strong. */
+export const CONSENSUS_MIN_TICKETS = 3;

@@ -284,6 +284,13 @@ membership. If more client dashboards follow, the website can link to a small
 
 ## Known limits to tell the client
 
+- Scanning is meant to be hands-off: tickets are read, checked against what
+  the workspace knows, filed on their date's invoice and numbered without
+  anyone looking. A ticket the evidence settles is approved on its own. What
+  it cannot settle is asked once per job under **Needs your input** on Load
+  Desk — a new customer, a new job site — and one answer covers every ticket
+  of that job. Only a ticket with a problem of its own (a cut-off ticket
+  number, a weight that will not balance) opens the full review.
 - Fields the reader cannot see whole are never completed by guessing.
 - A field the printer cut off is completed only when the ticket itself, the
   vendor's layout, a saved customer profile, or a correction somebody made
