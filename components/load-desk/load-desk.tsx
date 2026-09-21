@@ -334,6 +334,12 @@ const EXCEPTION_TITLES: Record<ExceptionType, string> = {
 
 /** What a field the group asks about is called beside its box. */
 const ASK_LABELS: Partial<Record<keyof Ticket, string>> = {
+  ticket_number: 'Ticket / BOL',
+  ticket_date: 'Date',
+  gross_lb: 'Gross pounds',
+  tare_lb: 'Tare pounds',
+  net_lb: 'Net pounds',
+  net_tons: 'Net tons',
   customer_name: 'Customer',
   customer_id: 'Customer ID',
   project_name: 'Project',

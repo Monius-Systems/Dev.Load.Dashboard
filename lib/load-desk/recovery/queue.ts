@@ -18,6 +18,7 @@ import {
 import { applyKnownCarrier } from './known-carriers.ts';
 import { batchEvidence, buildMemory, memoryEvidence } from './memory.ts';
 import { vendorEvidence } from './vendors.ts';
+import { reconcileWeights } from './weights.ts';
 
 // The recovery layer as the queue uses it: one call that takes a ticket as it
 // was read and hands back the ticket as it stands, with the record of how it
@@ -94,9 +95,22 @@ export function recoverTicket(input: RecoverInput): {
     [...vendor.evidence, ...memory, ...batch],
     context,
   );
-  // Last, over everything the resolver decided: a carrier the client has
-  // named outright is set to that name, whatever the line printed.
-  return applyKnownCarrier(applyRecovery(extracted, recovery), recovery, observed);
+  // Over everything the resolver decided: a carrier the client has named
+  // outright is set to that name, whatever the line printed; and one weight
+  // the other three prove wrong by a faded digit is put right from them.
+  const carried = applyKnownCarrier(applyRecovery(extracted, recovery), recovery, observed);
+  const weighed = reconcileWeights(carried.ticket, carried.recovery);
+  // Gross and tare tons are never read; they are the pounds over two
+  // thousand, and follow the pounds wherever the resolver put them.
+  const tons = (pounds: number | null) => (pounds === null ? null : Math.round((pounds / 2000) * 100) / 100);
+  return {
+    ticket: {
+      ...weighed.ticket,
+      gross_tons: tons(weighed.ticket.gross_lb),
+      tare_tons: tons(weighed.ticket.tare_lb),
+    },
+    recovery: weighed.recovery,
+  };
 }
 
 /**

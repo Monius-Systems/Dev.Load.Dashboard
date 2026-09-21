@@ -2,9 +2,10 @@ import { reviewIssues, type TicketRecovery } from './recovery/index.ts';
 import { isUnreadableDate } from './ticket-date.ts';
 import { rateTypeOf, type Ticket } from './types.ts';
 
-// Port of load_ticket_mvp/validate.py.
-export const WEIGHT_TOLERANCE_LB = 20;
-export const TON_TOLERANCE = 0.05;
+// Port of load_ticket_mvp/validate.py. The tolerances live with the weight
+// check in recovery/weights.ts, which this file may not be imported by.
+export { TON_TOLERANCE, WEIGHT_TOLERANCE_LB } from './recovery/weights.ts';
+import { TON_TOLERANCE, WEIGHT_TOLERANCE_LB } from './recovery/weights.ts';
 
 /** The only issue on a ticket that is otherwise ready: it has no rate yet. */
 export const RATE_MISSING_ISSUE = 'Rate is missing';

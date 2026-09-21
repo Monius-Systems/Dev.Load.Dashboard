@@ -199,6 +199,14 @@ export function ticketOutcome(
     /Missing required field: (ticket number|ticket date|net weight)/.test(issue),
   );
   if (missingOwn && !own.length) own.push('ticket_number');
+  // Weights that do not agree with each other, and that the ticket's own
+  // arithmetic could not put right (see weights.ts), are this sheet's
+  // problem and nobody else's: a weight is billed, and one that three other
+  // figures dispute is not approved on anyone's say-so.
+  if (structuralIssues.some((issue) => /Weight arithmetic differs|Net tons do not match/.test(issue))) {
+    if (!own.includes('net_lb')) own.push('net_lb');
+    reasons.push('The weights on this ticket do not agree with each other.');
+  }
 
   if (own.length) {
     reasons.push('Something on this ticket alone could not be settled.');

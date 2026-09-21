@@ -2,6 +2,8 @@ import { normalizeKey, normalizeName } from '../profiles.ts';
 import { ticketDay } from '../ticket-date.ts';
 import { printedNumber } from '../printed-number.ts';
 import { fragmentFits } from './fit.ts';
+import { oneDigitConfused, oneMisreadApart } from './misread.ts';
+import { balanced, WEIGHT_FIELDS, weightFix, type WeightField, type Weights } from './weights.ts';
 import { isNumberField, type Ticket } from '../types.ts';
 import {
   ADVISORY_SOURCES,
@@ -117,20 +119,6 @@ function fits(fragment: string, candidate: string, edge: ClippedEdge | null): bo
 }
 
 /**
- * The pairs of digits a faded or smudged print turns into one another: a 3
- * for a 5 with its top gone, a 1 for a 7, an 8 for a 0 or a 6 with a bar
- * lost. Folding both sides of a pair to one shape says whether two dates
- * differ only by such a digit.
- */
-const CONFUSABLE_DIGITS: Record<string, string> = {
-  '3': '5', '5': '3',
-  '1': '7', '7': '1',
-  '0': '8', '8': '0',
-  '6': '8',
-  '2': '7',
-};
-
-/**
  * Whether a printed date and an ISO day are the same date but for one digit
  * that faded print confuses. The print is put into the day's own shape first
  * — the month, the day and the four-digit year — so "12/13/2025" and
@@ -145,13 +133,7 @@ export function misreadDigitApart(printed: string, iso: string): boolean {
   const a = `${m[1].padStart(2, '0')}${m[2].padStart(2, '0')}${year}`;
   const b = read.replace(/\D/g, '');
   if (a.length !== b.length) return false;
-  let differ = 0;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] === b[i]) continue;
-    differ += 1;
-    if (CONFUSABLE_DIGITS[a[i]] !== b[i] && CONFUSABLE_DIGITS[b[i]] !== a[i]) return false;
-  }
-  return differ === 1;
+  return oneDigitConfused(a, b);
 }
 
 /** Separators are printing too: "2026-09-14" and "2026/09/14" are one day. */
@@ -445,6 +427,26 @@ export function resolveField(
     // corrected to the evidenced day with the print kept beside it. Two
     // digits away, or a digit faded print does not confuse, is still the
     // ticket disagreeing with itself, and still a question.
+    // The same for a weight: three figures on the sheet agree with each
+    // other and say the fourth is 27720, and 27120 was read — a 1 for a 7.
+    // The sheet's own arithmetic is the evidence, and the figure is put
+    // right with the print kept beside it. A figure further off is another
+    // figure, and still a question about this ticket alone.
+    if (cls === 'weight' && disputes.length && typeof value === 'number') {
+      const figures = [...new Set(disputes.map((item) => numberFrom(item.candidate)).filter((n): n is number => n !== null))];
+      if (figures.length === 1 && oneMisreadApart(value, figures[0])) {
+        for (const item of applicable) notes.push(item.note);
+        notes.push(
+          `The printed ${fragment} is one faded digit from ${figures[0]}, which the rest of the ticket's weights make it; read as ${figures[0]}.`,
+        );
+        return finish({
+          status: 'recovered',
+          value: figures[0],
+          source: leadEvidence(disputes).source,
+          confidence: capConfidence(Math.min(DERIVED_CONFIDENCE_CAP, recoveredConfidence(combinedWeight(disputes)))),
+        });
+      }
+    }
     if (cls === 'date' && disputes.length && typeof value === 'string') {
       const days = [...new Set(disputes.map((item) => ticketDay(item.candidate)).filter((d): d is string => d !== null))];
       if (days.length === 1 && misreadDigitApart(fragment, days[0])) {
@@ -946,12 +948,48 @@ export function resolveTicket(
     ...(Object.keys(observed.fields) as (keyof Ticket)[]),
     ...evidence.map((item) => item.field),
   ]);
+  const weighed = weightsJudged(observed, evidence);
   const fields: TicketRecovery['fields'] = {};
   for (const field of FIELD_ORDER) {
     if (!wanted.has(field)) continue;
-    fields[field] = resolveField(field, observed.fields[field], frame, evidence, context);
+    fields[field] = resolveField(field, observed.fields[field], frame, weighed, context);
   }
   return { version: 1, vendor: context.vendor, paper: frame, fields };
+}
+
+/**
+ * The four weights judged together before any is resolved on its own.
+ *
+ * Every derivation on the sheet — gross minus net makes tare, tare plus net
+ * makes gross — is worked from the figures as read, so one figure read a
+ * digit wrong poisons the derivations of the other three, and each of them
+ * was then disputed by a candidate built on the bad reading: one misread
+ * tare made all four weights a question. So the quartet is looked at first.
+ * When the figures agree, or exactly one of them is one faded digit from
+ * what the other three make it, the derivations against the sound figures
+ * are set aside and only the one against the misread figure is kept. When
+ * the sheet cannot say which figure is wrong, everything is left as it is
+ * and the disputes go to a person, as they should.
+ */
+function weightsJudged(observed: ObservedTicket, evidence: readonly Evidence[]): Evidence[] {
+  const whole: Weights = { gross_lb: null, tare_lb: null, net_lb: null, net_tons: null };
+  for (const field of WEIGHT_FIELDS) {
+    const seen = observed.fields[field];
+    if (!seen || seen.partial || seen.clipped_edge !== null) continue;
+    const read = seen.visible ?? seen.proposed;
+    whole[field] = read === null ? null : numberFrom(read);
+  }
+  const fix = weightFix(whole);
+  if (!fix && !balanced(whole)) return [...evidence];
+  return evidence.filter((item) => {
+    if (!(WEIGHT_FIELDS as readonly string[]).includes(item.field)) return true;
+    if (!DERIVATION_SOURCES.has(item.source)) return true;
+    // A sound figure read whole needs no derivation and takes no dispute.
+    if (whole[item.field as WeightField] !== null && item.field !== fix?.field) return false;
+    // The misread figure keeps only the derivation that makes it right.
+    if (fix && item.field === fix.field) return numberFrom(item.candidate) === fix.to;
+    return true;
+  });
 }
 
 /**
