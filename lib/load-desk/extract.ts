@@ -158,7 +158,13 @@ export async function extractPages(
       const { paper } = await rectifyPage(canvas);
       tracker.step(1, 'render', 1);
       tracker.step(1, 'read', 0.1);
-      const read = await readPage(canvas);
+      const stopCreep = tracker.creep(1, 'read', 0.1);
+      let read: PageReading;
+      try {
+        read = await readPage(canvas);
+      } finally {
+        stopCreep();
+      }
       tracker.step(1, 'read', 1);
       tracker.done();
       return [finish(1, read, paper)];
@@ -185,7 +191,14 @@ export async function extractPages(
         await source.render({ canvas, viewport }).promise;
         tracker.step(page, 'render', 1);
         tracker.step(page, 'read', 0.1);
-        pages.push(finish(page, await readPage(canvas)));
+        const stopCreep = tracker.creep(page, 'read', 0.1);
+        let read: PageReading;
+        try {
+          read = await readPage(canvas);
+        } finally {
+          stopCreep();
+        }
+        pages.push(finish(page, read));
         tracker.step(page, 'read', 1);
       } finally {
         canvas.width = canvas.height = 0;

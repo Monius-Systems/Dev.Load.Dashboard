@@ -57,8 +57,37 @@ export function createFileProgress(report: (update: FileProgress) => void) {
     done() {
       emit(1, 'Done');
     },
+    /**
+     * Keeps the bar moving through a wait the other end reports nothing
+     * from — the model reading the page. It creeps from where the step is
+     * toward, but never past, most of the step, slowing as it goes, so a
+     * quick answer lands the bar a little way along and a slow one leaves it
+     * approaching the end rather than stuck at the start and then jumping.
+     * Returns the function that ends it; the caller then reports the real
+     * completion, which is the only thing that reaches the end of the step.
+     */
+    creep(page: number, step: PageStep, from: number, expectedMs = EXPECTED_READ_MS) {
+      const ceiling = 0.95;
+      const started = Date.now();
+      let timer: ReturnType<typeof setInterval> | undefined;
+      const tick = () => {
+        const elapsed = Date.now() - started;
+        // 1 - e^(-t/T): half way to the ceiling at 0.7T, three quarters at 1.4T.
+        const progress = from + (ceiling - from) * (1 - Math.exp(-elapsed / expectedMs));
+        this.step(page, step, Math.min(ceiling, progress));
+      };
+      if (typeof setInterval === 'function') timer = setInterval(tick, CREEP_INTERVAL_MS);
+      return () => {
+        if (timer !== undefined) clearInterval(timer);
+      };
+    },
   };
 }
+
+/** About how long the model takes over one page; the creep is paced to it. */
+export const EXPECTED_READ_MS = 6000;
+/** How often the bar moves while it waits. */
+export const CREEP_INTERVAL_MS = 150;
 
 /** Whole-batch percentage (0-100) while file `index` (0-based) is `fraction` done. */
 export function batchPercent(index: number, total: number, fraction: number) {

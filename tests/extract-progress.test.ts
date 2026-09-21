@@ -63,3 +63,26 @@ void test('batch percent covers every file and stays within 0-100', () => {
   assert.equal(batchPercent(0, 0, 1), 0);
   assert.equal(batchPercent(0, 2, Number.NaN), 0);
 });
+
+void test('the bar keeps moving through the wait for the model, and never past the step', async () => {
+  const seen: number[] = [];
+  const tracker = createFileProgress((update) => seen.push(update.fraction));
+  tracker.step(1, 'read', 0.1);
+  const at = seen.at(-1)!;
+  // Paced to a short "expected" read so the test can watch it move.
+  const stop = tracker.creep(1, 'read', 0.1, 200);
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  stop();
+  const moved = seen.slice(seen.indexOf(at) + 1);
+  assert.ok(moved.length >= 2, 'it moved more than once');
+  for (let i = 1; i < moved.length; i++) assert.ok(moved[i] >= moved[i - 1], 'never backwards');
+  assert.ok(moved.at(-1)! > at, 'it got somewhere');
+  const readShare = 0.15 + 0.85 * 0.95;
+  assert.ok(moved.at(-1)! <= readShare + 1e-9, 'never past most of the step');
+  // Stopped: nothing more arrives, and the real completion still lands at the end.
+  const count = seen.length;
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  assert.equal(seen.length, count);
+  tracker.step(1, 'read', 1);
+  assert.equal(seen.at(-1), 1);
+});
