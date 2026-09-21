@@ -310,6 +310,8 @@ const NO_TRUCK = '__no-truck';
 const NEW_CLIENT = '__new-client';
 /** How many stored pictures are fetched at once when an invoice is opened for review. */
 const PICTURE_LANES = 3;
+/** How many batches Load Desk lists: the most recently added to. */
+const RECENT_BATCHES = 3;
 const NEW_CUSTOMER = '__new-customer';
 /** The panel answer that says a job site is not to be saved onto the customer. */
 const SAVE_ADDRESS = '__save-address';
@@ -3535,10 +3537,17 @@ export default function LoadDesk() {
   // many of its tickets nobody has checked yet. This is the pile the invoicing
   // is done from, so it is ordered by when the work happened rather than by
   // the date printed on the paper (see batchesByRecency).
-  const batchesByDate = batchesByRecency(records).map((group) => ({
+  const allBatches = batchesByRecency(records).map((group) => ({
     ...group,
     waiting: group.items.filter(needsReview).length,
   }));
+  // The pile being worked through, not the ledger: the three batches most
+  // recently added to, and the undated one whenever it has tickets, since
+  // those are waiting on a date. The rest are on Invoices & Tickets.
+  const batchesByDate = allBatches.filter(
+    (batch, index) => index < RECENT_BATCHES || batch.date === null,
+  );
+  const olderBatches = allBatches.length - batchesByDate.length;
 
   const STEPS = ['Ticket', 'Customer and job', 'Weight', 'Invoice'];
   const lastStep = STEPS.length - 1;
@@ -4571,6 +4580,12 @@ export default function LoadDesk() {
               </section>
               ))
             )}
+            {olderBatches > 0 ? (
+              <p className="ld-field-hint">
+                {t('{count} older batches are on Invoices & Tickets.', { count: olderBatches })}{' '}
+                <Link href="/records">{t('All invoices & tickets')}</Link>
+              </p>
+            ) : null}
           </section>
           </div>
         </div>

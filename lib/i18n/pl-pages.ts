@@ -600,6 +600,7 @@ export const PL_PAGES: Record<string, string> = {
   Ledger: 'Rejestr',
   'Saved Tickets': 'Zapisane kwity',
   'All invoices & tickets': 'Wszystkie faktury i kwity',
+  '{count} older batches are on Invoices & Tickets.': 'Starsze partie ({count}) są w Fakturach i kwitach.',
   'Ledger CSV': 'Rejestr CSV',
   'Clear saved tickets': 'Wyczyść zapisane kwity',
   'Loading saved tickets…': 'Wczytywanie zapisanych kwitów…',
