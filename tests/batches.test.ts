@@ -10,6 +10,8 @@ import {
   UNDATED_BATCH,
   needsReview,
   numbersByTicketDate,
+  numbersInDateOrder,
+  seriesStartFor,
   shownInvoiceNumber,
 } from '../lib/load-desk/records.ts';
 import { emptyTicket, type SavedRecord } from '../lib/load-desk/types.ts';
@@ -223,7 +225,9 @@ void test('however many dates are uploaded, the run follows them', () => {
     [onFile, ...uploaded],
     uploaded.map((record) => record.invoice_batch_id!),
   );
-  const byBatch = (a: string[], b: string[]) => a[0].localeCompare(b[0]);
+  // By batch on both sides, so the comparison is about which number each day
+  // got and not about the order the map happened to hand them back in.
+  const byBatch = (a: string[], b: string[]) => a[0]!.localeCompare(b[0]!);
   assert.deepEqual(
     [...wanted].map(([batch, number]) => [batch, number]).sort(byBatch),
     [
@@ -404,4 +408,167 @@ void test('a move never takes a number that is in use', () => {
   );
   assert.equal(move.kind, 'open');
   if (move.kind === 'open') assert.equal(move.invoiceNumber, '10');
+});
+
+void test('a date the calendar has not got waits with the undated', () => {
+  // The dangerous answer off a scan is not a blank, which is obvious, but a
+  // line that comes back looking like a date and is not one: a smudged 21
+  // read as the 31st of February, a month past twelve. Filed on the text it
+  // was written in, it opened a batch of its own that nothing could ever
+  // number — `numbersForWaitingBatches` places batches by the day they name,
+  // and this one names none — so it sat on a draft mark indefinitely, looking
+  // like an invoice that was merely running late. It waits where the blanks
+  // wait instead, and asks the same thing of whoever is reviewing.
+  const jan6 = saved('2026-01-06', '1042');
+  for (const misread of ['2026-02-31', '2026-13-05', '13/02/2026', 'sometime']) {
+    const batch = batchInvoiceFor([jan6], misread);
+    assert.equal(isUndatedBatch(batch.batch_id), true, misread);
+    assert.equal(isPendingInvoiceNumber(batch.invoice_number), true, misread);
+    assert.equal(batchDate(saved(misread, '1043')), 'undated', misread);
+  }
+  // And a second one joins the first rather than piling up batches beside it.
+  const first = saved('2026-02-31', 'DRAFT-batch-undated', {
+    invoice_batch_id: UNDATED_BATCH,
+  });
+  const second = batchInvoiceFor([first], '2026-04-31');
+  assert.equal(second.batch_id, UNDATED_BATCH);
+  assert.equal(second.opened, false);
+});
+
+void test('correcting a misread date takes the ticket out of the holding batch', () => {
+  // The correction is a real day, so the ticket leaves for the invoice of
+  // that day — exactly as it does when the date box was empty. A correction
+  // that is still not a day does not move it: there is nowhere to move it to.
+  const jan6 = saved('2026-01-06', '6');
+  assert.equal(
+    invoiceMoveFor({ batchId: UNDATED_BATCH, date: '2026-01-06' }, [jan6]).kind,
+    'join',
+  );
+  assert.equal(
+    invoiceMoveFor({ batchId: UNDATED_BATCH, date: '2026-02-31' }, [jan6]).kind,
+    'stay',
+  );
+});
+
+void test('one day written two ways is one batch, not two', () => {
+  // Batches are keyed by the day a date names, so a record that reached the
+  // app as M/D/YYYY joins the tickets already filed for that day instead of
+  // opening a second invoice for the same date beside them.
+  const jan6 = saved('2026-01-06', '1042');
+  const joined = batchInvoiceFor([jan6], '1/6/2026');
+  assert.equal(joined.invoice_number, '1042');
+  assert.equal(joined.opened, false);
+  assert.equal(batchDate(saved('1/6/2026', '1043')), '2026-01-06');
+});
+
+// --- the ledger in date order -------------------------------------------
+
+void test('an older ticket uploaded later takes the lower number, and the newer moves along', () => {
+  // Invoice 1 was given to the 1st of January. Then the 31st of December
+  // arrives: it takes 1, and January becomes 2 — the books read in date
+  // order, whatever order the paper arrived in.
+  const january = saved('2026-01-01', '1', { invoice_batch_id: 'batch-2026-01-01' });
+  const december = saved('2025-12-31', 'DRAFT-batch-2025-12-31', { invoice_batch_id: 'batch-2025-12-31' });
+  const byBatchId = (a: [string, string], b: [string, string]) => a[0].localeCompare(b[0]);
+  const wanted = numbersInDateOrder([january, december]);
+  assert.deepEqual([...wanted].sort(byBatchId), [
+    ['batch-2025-12-31', '1'],
+    ['batch-2026-01-01', '2'],
+  ]);
+});
+
+void test('a ledger already in date order is left exactly as it is', () => {
+  const a = saved('2025-12-31', '1', { invoice_batch_id: 'batch-2025-12-31' });
+  const b = saved('2026-01-01', '2', { invoice_batch_id: 'batch-2026-01-01' });
+  const c = saved('2026-01-06', '3', { invoice_batch_id: 'batch-2026-01-06' });
+  assert.equal(numbersInDateOrder([a, b, c]).size, 0);
+});
+
+void test('the same pool of numbers is permuted, prefix and padding kept, and new batches take new numbers', () => {
+  const a = saved('2026-01-06', 'INV-0010', { invoice_batch_id: 'batch-2026-01-06' });
+  const b = saved('2026-01-02', 'INV-0012', { invoice_batch_id: 'batch-2026-01-02' });
+  const c = saved('2026-01-04', 'INV-0011', { invoice_batch_id: 'batch-2026-01-04' });
+  const fresh = saved('2026-01-08', 'DRAFT-batch-2026-01-08', { invoice_batch_id: 'batch-2026-01-08' });
+  const byBatchId = (x: [string, string], y: [string, string]) => x[0].localeCompare(y[0]);
+  const wanted = numbersInDateOrder([a, b, c, fresh]);
+  assert.deepEqual([...wanted].sort(byBatchId), [
+    ['batch-2026-01-02', 'INV-0010'],
+    ['batch-2026-01-06', 'INV-0012'],
+    ['batch-2026-01-08', 'INV-0013'],
+  ]);
+  assert.equal(wanted.has('batch-2026-01-04'), false, 'INV-0011 on the 4th is already in its place');
+});
+
+void test('two invoices on one day keep their order; the undated batch and a hand-typed number are left alone', () => {
+  const first = saved('2026-01-06', '5', { invoice_batch_id: 'batch-a' });
+  const second = saved('2026-01-06', '6', { invoice_batch_id: 'batch-b' });
+  const undated = saved(null, 'DRAFT-batch-undated', { invoice_batch_id: UNDATED_BATCH });
+  const typed = saved('2025-01-01', 'SPECIAL', { invoice_batch_id: 'batch-special' });
+  const wanted = numbersInDateOrder([first, second, undated, typed]);
+  assert.equal(wanted.size, 0);
+});
+
+void test('deleting an invoice closes the gap: 3 becomes 2', () => {
+  const one = saved('2026-01-02', '1', { invoice_batch_id: 'batch-2026-01-02' });
+  const three = saved('2026-01-06', '3', { invoice_batch_id: 'batch-2026-01-06' });
+  const four = saved('2026-01-08', '4', { invoice_batch_id: 'batch-2026-01-08' });
+  // Invoice 2 has been deleted.
+  const wanted = numbersInDateOrder([one, three, four]);
+  const byBatchId = (a: [string, string], b: [string, string]) => a[0].localeCompare(b[0]);
+  assert.deepEqual([...wanted].sort(byBatchId), [
+    ['batch-2026-01-06', '2'],
+    ['batch-2026-01-08', '3'],
+  ]);
+  // A ledger starting at INV-0010 with a gap after it closes up from there.
+  const a = saved('2026-01-02', 'INV-0010', { invoice_batch_id: 'batch-a' });
+  const b = saved('2026-01-04', 'INV-0014', { invoice_batch_id: 'batch-b' });
+  assert.deepEqual([...numbersInDateOrder([a, b])], [['batch-b', 'INV-0011']]);
+  // Nothing numbered yet: the first invoice starts the books.
+  const fresh = saved('2026-01-02', 'DRAFT-batch-x', { invoice_batch_id: 'batch-x' });
+  assert.deepEqual([...numbersInDateOrder([fresh])], [['batch-x', '1']]);
+});
+
+void test('a number typed onto an invoice is where the series starts, and the run keeps it', () => {
+  const dec = saved('2025-12-31', '1', { invoice_batch_id: 'batch-2025-12-31' });
+  const jan = saved('2026-01-02', '2', { invoice_batch_id: 'batch-2026-01-02' });
+  const feb = saved('2026-02-01', '3', { invoice_batch_id: 'batch-2026-02-01' });
+  // 1001 typed onto the oldest invoice: the series starts at 1001.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2025-12-31', '1001'), '1001');
+  // 1003 typed onto the third-oldest: the series starts at 1001 as well.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', '1003'), '1001');
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'INV-0003'), 'INV-0001', 'prefix and padding as typed');
+  // 2 typed onto the third-oldest cannot be a gapless series: the nearest
+  // one, from 1, and the invoice takes its place's number.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', '2'), '1', 'a start below 1 is 1');
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'INV-0002'), 'INV-0001');
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'SPECIAL'), null);
+  // An invoice being filed now is counted in its place: the oldest of the
+  // four, so 2043 typed onto it is where the series starts.
+  assert.equal(
+    seriesStartFor([dec, jan, feb], 'batch-new', '2043', [{ batchId: 'batch-new', date: '2025-12-01' }]),
+    '2043',
+  );
+  assert.equal(
+    seriesStartFor([dec, jan, feb], 'batch-new', '2043', [{ batchId: 'batch-new', date: '2026-03-01' }]),
+    '2040',
+  );
+  // And with the start set, the date-order run keeps what was typed — it
+  // used to put 1001 back to 1, then 3 or 4, the moment the ledger was looked at.
+  const byBatchId = (a: [string, string], b: [string, string]) => a[0].localeCompare(b[0]);
+  assert.deepEqual([...numbersInDateOrder([dec, jan, feb], '1001')].sort(byBatchId), [
+    ['batch-2025-12-31', '1001'],
+    ['batch-2026-01-02', '1002'],
+    ['batch-2026-02-01', '1003'],
+  ]);
+  // A number another invoice holds is not refused: 2 typed onto the oldest
+  // starts the series at 2, and the rest move along behind it.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2025-12-31', '2'), '2');
+  assert.deepEqual([...numbersInDateOrder([dec, jan, feb], '2')].sort(byBatchId), [
+    ['batch-2025-12-31', '2'],
+    ['batch-2026-01-02', '3'],
+    ['batch-2026-02-01', '4'],
+  ]);
+  // No start: the lowest on file, as before.
+  assert.equal(numbersInDateOrder([dec, jan, feb], null).size, 0);
+  assert.equal(numbersInDateOrder([dec, jan, feb], '   ').size, 0);
 });

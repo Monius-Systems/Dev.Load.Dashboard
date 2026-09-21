@@ -36,7 +36,10 @@ DNS.
 - **Data:** saved tickets, invoice numbers, and customer and truck profiles
   live in Postgres tables `load_desk_records`, `load_desk_invoices` and
   `load_desk_profiles`. Ticket scans live in the private storage bucket
-  `load-desk-originals` under `ad-trucking-chicago/<sha256>`.
+  `load-desk-originals` under `ad-trucking-chicago/<sha256>`. How each field
+  was read and settled is stored inside the ticket's own `record` JSON — there
+  is no new table — and only values somebody reviewed are used to complete a
+  later ticket.
 - **Isolation:** row level security lets signed-in users read and write only
   rows and files for workspaces they are a member of. Every API route also
   checks membership on the server. Sign-in cookies are httpOnly and never
@@ -81,6 +84,16 @@ Take a backup first if the project holds other clients' data.
 Keep **Authentication → Sign In / Providers → Allow new users to sign up**
 turned off. Switching it on would let anyone create an account, though they
 still could not open the workspace without a membership row.
+
+### Later migrations
+
+`supabase/migrations/202609210001_misreads.sql` adds one shared table,
+`load_desk_misreads`, holding what the reader gets wrong learned from what
+people type over it — a vendor name, a kind of field and two single
+characters, counted. It has no workspace on purpose: it carries nothing of
+any company's tickets, and every workspace on the deployment benefits from
+it. Apply it with `supabase db push` (or paste it into the SQL editor).
+Until it is applied the app learns nothing and says nothing about it.
 
 ## 2. Give A & D Trucking accounts
 
@@ -283,17 +296,73 @@ membership. If more client dashboards follow, the website can link to a small
 - [ ] A printed invoice (or Save as PDF) comes out as one US Letter landscape
       page for a normal invoice.
 - [ ] On a real phone, on the live address: **Load Desk → Scan ticket** outlines
-      a ticket, captures by itself when held steady, and the straightened photo
-      extracts correctly.
+      a ticket, the person takes the photo, the app refuses a photo where the
+      sheet runs off the top, left or right and asks for a retake, and the
+      straightened photo extracts correctly.
 - [ ] **Account → Language → Polski** translates the app for that person only,
       and a printed invoice is still English.
 
 ## Known limits to tell the client
 
-- OCR is assistive. Compare ticket numbers and weights with the scan before
-  saving; fields it cannot read reliably are left blank and flagged.
+- Scanning is meant to be hands-off: tickets are read, checked against what
+  the workspace knows, filed on their date's invoice and numbered without
+  anyone looking. A ticket the evidence settles is approved on its own. What
+  it cannot settle is asked once under **Needs your input** on Load Desk — a
+  customer nobody has hauled for, a date that could not be read — and one
+  answer covers every ticket it applies to. The project and the job site are
+  never asked: what was read, or what the customer's saved sites complete,
+  stands. A job site is saved onto a customer only when a person saves it
+  there — from review, or by confirming a job under **Needs your input**,
+  where "Don't save it" keeps it off the customer — never because a scan
+  read it. A "New customer" question can be closed with **Don't create a
+  customer**: the tickets are filed as read with no profile made. Customers
+  and their addresses can be removed on the Customers page at any time. Only a ticket with a
+  problem of its own (a
+  cut-off ticket number, a weight that will not balance) opens the full
+  review.
+- Fields the reader cannot see whole are never completed by guessing.
+- A field the printer cut off is completed only when the ticket itself, the
+  vendor's layout, a saved customer profile, or a correction somebody made
+  before in the same context supports one value, and the review screen shows
+  the original print beside it. Reviewed ticket history corroborates but never
+  decides on its own.
+- Anything else is highlighted for confirmation, and ticket numbers, customer
+  numbers, weights and dates are never completed from history.
+- Heidelberg's ticket date is dot-matrix print in the margin and is never
+  taken on the reader's word alone. Three things confirm it: the scale's own
+  stamp (the `25DEC15` form, its year taken from the date box when the two
+  faint year digits disagree), the plant's run of checked tickets numbered
+  either side of it, and the pile it was scanned with — a day's tickets
+  from one plant, numbered in sequence, date each other. A date one digit
+  off that evidence is put right silently, and a month the margin cut off
+  is completed. With none of it — a single ticket scanned on its own — the
+  date is asked for under **Needs your input**. Any vendor whose dates get
+  typed over three times, by anyone using the system, is treated the same
+  way from then on.
+- The job and the job site are never a question. A printed site that is one
+  saved on the customer — the same once case and punctuation are set aside,
+  or cut short, or a letter or two off — is written as saved; otherwise the
+  print stands as read and can be corrected in review.
+- Invoice numbers can be changed on any invoice in review. The typed number
+  is where the series starts, worked back from that invoice's place in date
+  order, and the other invoices move along to make room; a number another
+  invoice held is not refused. Account → **Invoice numbers start at** sets
+  the start directly.
+- A photo where the sheet runs off the top, left or right is refused at
+  capture.
+- Carriers named under `knownCarriers` in `client.config.json` are set
+  outright: a carrier line containing "Z FORCE" becomes Z Force
+  Transportation with nothing to confirm. Add a carrier there to have it
+  filled in the same way.
 - Tickets uploaded together are grouped by their ticket date: one invoice per
   date. More tickets can be added to an invoice while reviewing it.
+- Invoice numbers follow the ticket dates across the whole ledger, with no
+  gaps, whatever order the paper arrives in: uploading older tickets after
+  newer ones moves the newer invoices' numbers along to make room, and
+  deleting an invoice closes the gap behind it (delete 2, and 3 becomes 2).
+  An invoice already printed or sent can therefore change its number
+  afterwards — treat a number as final only once every older ticket is in
+  and nothing before it will be deleted.
 - Load Desk keeps an upload in progress while you look at other pages, and a
   scan carries on reading in the background. Reloading the browser clears the
   queue; a ticket is only kept once it is saved.

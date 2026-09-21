@@ -19,21 +19,24 @@ export async function GET(request: Request, { params }: Context) {
   const { sha } = await params;
   return memberRoute(request, async (client, member) => {
     if (!SHA256.test(sha)) return badRequest('Invalid file reference.');
-    const blob = await downloadOriginal(client, member.workspaceId, sha);
-    if (!blob) {
+    const stored = await downloadOriginal(client, member.workspaceId, sha);
+    if (!stored) {
       return Response.json(
         { error: 'The original is not stored for this ticket.' },
         { status: 404 },
       );
     }
-    return new Response(blob, {
-      headers: {
-        'Content-Type': blob.type || 'application/octet-stream',
-        'Content-Disposition': 'inline',
-        'X-Content-Type-Options': 'nosniff',
-        'Content-Security-Policy': "default-src 'none'; sandbox",
-      },
-    });
+    // Streamed through, never buffered: the bytes go from the bucket to the
+    // browser as they arrive.
+    const headers: Record<string, string> = {
+      'Content-Type': stored.headers.get('Content-Type') || 'application/octet-stream',
+      'Content-Disposition': 'inline',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+    };
+    const length = stored.headers.get('Content-Length');
+    if (length) headers['Content-Length'] = length;
+    return new Response(stored.body, { headers });
   });
 }
 

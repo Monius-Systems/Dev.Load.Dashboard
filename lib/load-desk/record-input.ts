@@ -15,8 +15,18 @@ import type {
   TruckIfta,
   TruckProfile,
 } from './profiles.ts';
+import type {
+  ClippedEdge,
+  EdgeState,
+  EvidenceSource,
+  FieldResolution,
+  FieldStatus,
+  ReviewReason,
+  TicketRecovery,
+} from './recovery/contract.ts';
 import { customerLocationRates, type LocationRate } from './customer-rates.ts';
 import { datedFromTicket } from './invoice-dates.ts';
+import { ticketDay } from './ticket-date.ts';
 
 // Validation for data the browser sends to the server. Everything is checked
 // field by field and bounded, so stored rows always have the shape the app
@@ -127,6 +137,134 @@ export function parseSource(value: unknown): TicketSource | null {
   };
 }
 
+/**
+ * The recovery layer speaks in types only — nothing in recovery/contract.ts
+ * runs — so the names it allows are spelled out again here. This is the edge
+ * where anything at all may arrive, and a list to check a string against is
+ * the whole point of the exercise.
+ */
+const FIELD_STATUSES = ['exact', 'recovered', 'needs_review', 'missing', 'confirmed'];
+const EVIDENCE_SOURCES = [
+  'visible',
+  'model_proposed',
+  'same_ticket',
+  'vendor_rule',
+  'verified_profile',
+  'verified_history',
+  'historical_relationship',
+  'batch_context',
+  'user_correction',
+  'user_confirmed',
+];
+const REVIEW_REASONS = [
+  'partial_numeric',
+  'insufficient_evidence',
+  'ambiguous_candidates',
+  'conflicting_evidence',
+  'camera_crop',
+  'unsupported_proposal',
+  'not_read',
+];
+const CLIPPED_EDGES = ['left', 'right', 'top', 'bottom'];
+const EDGE_STATES = ['inside', 'cut', 'unknown'];
+const PAPER_SIDES = ['left', 'right', 'top', 'bottom'] as const;
+const TICKET_FIELDS = new Set<string>([...TEXT_FIELDS, ...NUMBER_FIELDS]);
+
+/** A ticket has fewer fields than this; a `fields` map larger than it is junk. */
+export const MAX_RECOVERY_FIELDS = 60;
+
+const oneOf = (value: unknown, allowed: readonly string[]) =>
+  typeof value === 'string' && allowed.includes(value);
+
+/**
+ * How a ticket's fields were read and settled, as sent, or null when any part
+ * of it is not what it claims to be.
+ *
+ * This is the audit trail: the print that was seen, what stands, and the
+ * evidence it stands on. It is stored word for word inside the record's jsonb,
+ * so every string is bounded and every name is checked against a list — a
+ * field the app does not have, a status it does not know or a confidence
+ * outside 0 to 1 means the whole thing is refused rather than half-kept.
+ */
+export function parseRecovery(value: unknown): TicketRecovery | null {
+  if (!isObject(value) || value.version !== 1 || !nullableText(value.vendor, 60)) return null;
+  const { paper, fields } = value;
+  if (!isObject(paper) || typeof paper.detected !== 'boolean') return null;
+  if (!PAPER_SIDES.every((side) => oneOf(paper[side], EDGE_STATES))) return null;
+  if (!isObject(fields)) return null;
+  const names = Object.keys(fields);
+  if (names.length > MAX_RECOVERY_FIELDS) return null;
+  const resolved: Partial<Record<keyof Ticket, FieldResolution>> = {};
+  for (const name of names) {
+    if (!TICKET_FIELDS.has(name)) return null;
+    const field = fields[name];
+    if (!isObject(field)) return null;
+    const { confidence, evidence, reason, candidates } = field;
+    const settled = field.value;
+    const confirmed = field.confirmed_by_user;
+    if (
+      !oneOf(field.status, FIELD_STATUSES) ||
+      // As printed, or as a figure: a weight resolves to a number, a name to
+      // text, and a partial reading stays the string it was on the paper.
+      !(
+        settled === null ||
+        text(settled, 500) ||
+        (typeof settled === 'number' && Number.isFinite(settled))
+      ) ||
+      !nullableText(field.visible_text, 500) ||
+      !(field.source === null || oneOf(field.source, EVIDENCE_SOURCES)) ||
+      typeof field.source_clipped !== 'boolean' ||
+      !(field.clipped_edge === null || oneOf(field.clipped_edge, CLIPPED_EDGES)) ||
+      typeof confidence !== 'number' ||
+      !Number.isFinite(confidence) ||
+      confidence < 0 ||
+      confidence > 1 ||
+      !stringList(evidence, 20, 300) ||
+      !(reason === undefined || oneOf(reason, REVIEW_REASONS)) ||
+      !(candidates === undefined || stringList(candidates, 10, 200)) ||
+      !(confirmed === undefined || typeof confirmed === 'boolean')
+    ) {
+      return null;
+    }
+    resolved[name as keyof Ticket] = {
+      status: field.status as FieldStatus,
+      value: settled as string | number | null,
+      visible_text: field.visible_text as string | null,
+      source: field.source as EvidenceSource | null,
+      source_clipped: field.source_clipped,
+      clipped_edge: field.clipped_edge as ClippedEdge | null,
+      confidence,
+      evidence: [...(evidence as string[])],
+      ...(reason === undefined ? {} : { reason: reason as ReviewReason }),
+      ...(candidates === undefined ? {} : { candidates: [...(candidates as string[])] }),
+      ...(confirmed === undefined ? {} : { confirmed_by_user: confirmed }),
+    };
+  }
+  return {
+    version: 1,
+    vendor: value.vendor as string | null,
+    paper: {
+      detected: paper.detected,
+      left: paper.left as EdgeState,
+      right: paper.right as EdgeState,
+      top: paper.top as EdgeState,
+      bottom: paper.bottom as EdgeState,
+    },
+    fields: resolved,
+  };
+}
+
+/**
+ * The recovery record on a ticket being saved or changed, or an error. Absent
+ * (or null, as a round trip through JSON can leave it) is not a failure: most
+ * tickets were saved before any of this existed.
+ */
+function recoveryOf(value: unknown): Parsed<TicketRecovery | undefined> {
+  if (value === undefined || value === null) return { value: undefined };
+  const recovery = parseRecovery(value);
+  return recovery ? { value: recovery } : { error: 'The ticket recovery details are not valid.' };
+}
+
 /** A ticket to save: its fields, invoice, source file and profile links. */
 export function parseNewRecord(value: unknown): Parsed<NewRecord> {
   if (!isObject(value)) return { error: 'Expected a ticket.' };
@@ -147,15 +285,23 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
     !(value.invoice_batch_id as string) ||
     !(value.reviewed_at === undefined ||
       value.reviewed_at === null ||
-      (text(value.reviewed_at, 40) && !Number.isNaN(Date.parse(value.reviewed_at as string))))
+      (text(value.reviewed_at, 40) && !Number.isNaN(Date.parse(value.reviewed_at as string)))) ||
+    !(value.auto_approved_at === undefined ||
+      value.auto_approved_at === null ||
+      (text(value.auto_approved_at, 40) && !Number.isNaN(Date.parse(value.auto_approved_at as string))))
   ) {
     return { error: 'The ticket record is not valid.' };
   }
+  const recovery = recoveryOf(value.recovery);
+  if ('error' in recovery) return recovery;
   return {
     // An invoice is dated by its ticket, wherever the record came from.
     value: datedFromTicket({
       saved_at: value.saved_at as string,
       ticket,
+      // Everything this function does not name is thrown away, so the audit
+      // trail is carried here or it is not stored at all.
+      ...(recovery.value ? { recovery: recovery.value } : {}),
       invoice,
       source,
       original_stored: value.original_stored,
@@ -165,6 +311,7 @@ export function parseNewRecord(value: unknown): Parsed<NewRecord> {
       invoice_batch_id: value.invoice_batch_id as string,
       // Absent means nobody has checked it yet; see SavedRecord.reviewed_at.
       reviewed_at: (value.reviewed_at as string | null | undefined) ?? null,
+      ...(typeof value.auto_approved_at === 'string' ? { auto_approved_at: value.auto_approved_at } : {}),
     }),
   };
 }
@@ -186,6 +333,13 @@ export type RecordEdit = {
    */
   invoice_batch_id?: string;
   /**
+   * How the ticket's fields were read and settled, when the change carries it
+   * — a person accepting a recovered value in review is a change to this as
+   * much as to the ticket. Absent means the edit says nothing about it, and
+   * what the record already holds stands.
+   */
+  recovery?: TicketRecovery;
+  /**
    * A change the app makes on its own — numbering an upload once every page
    * is read — rather than a person's edit. It is neither a review of the ticket
    * nor an edit in its history: `reviewed_at` and `edited_at` are left as they
@@ -193,6 +347,12 @@ export type RecordEdit = {
    * and the batch read "all checked" before anyone had opened it.
    */
   bookkeeping?: true;
+  /**
+   * The app approving the ticket on the evidence, as part of a bookkeeping
+   * edit: the mark is written, and `reviewed_at` is left as it was. Absent
+   * on every other edit.
+   */
+  auto_approved_at?: string;
 };
 
 export const MAX_EDITS = 200;
@@ -229,6 +389,14 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
     if (item.bookkeeping !== undefined && item.bookkeeping !== true) {
       return { error: 'The ticket changes are not valid.' };
     }
+    if (
+      item.auto_approved_at !== undefined &&
+      !(text(item.auto_approved_at, 40) && !Number.isNaN(Date.parse(item.auto_approved_at as string)))
+    ) {
+      return { error: 'The ticket changes are not valid.' };
+    }
+    const recovery = recoveryOf(item.recovery);
+    if ('error' in recovery) return recovery;
     // An invoice is dated by its ticket here too: a change that came in over
     // the API cannot leave one carrying a day of its own.
     edits.push(
@@ -239,8 +407,10 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
         ocr_text: item.ocr_text as string,
         customer_profile_id: (item.customer_profile_id as number | null | undefined) ?? null,
         truck_id: (item.truck_id as number | null | undefined) ?? null,
+        ...(recovery.value ? { recovery: recovery.value } : {}),
         ...(batch !== undefined ? { invoice_batch_id: batch as string } : {}),
         ...(item.bookkeeping === true ? { bookkeeping: true as const } : {}),
+        ...(typeof item.auto_approved_at === 'string' ? { auto_approved_at: item.auto_approved_at } : {}),
       }),
     );
   }
@@ -261,6 +431,10 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
     ...record,
     ...(edit.invoice_batch_id ? { invoice_batch_id: edit.invoice_batch_id } : {}),
     ticket: edit.ticket,
+    // An edit that says nothing about recovery leaves the record's own. A
+    // rate typed on the invoice screen is not a statement about how the
+    // customer's name was read, and it must not erase the trail.
+    ...(edit.recovery !== undefined ? { recovery: edit.recovery } : {}),
     invoice: edit.invoice,
     ocr_text: edit.ocr_text,
     customer_profile_id: edit.customer_profile_id,
@@ -270,6 +444,7 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
     ...(edit.bookkeeping
       ? {}
       : { edited_at: editedAt, reviewed_at: editedAt }),
+    ...(edit.auto_approved_at ? { auto_approved_at: edit.auto_approved_at } : {}),
   };
 }
 
@@ -447,6 +622,20 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
         Number.isInteger(value.default_client_id) &&
         value.default_client_id > 0)
     ) ||
+    !(
+      value.default_truck_id === undefined ||
+      value.default_truck_id === null ||
+      (typeof value.default_truck_id === 'number' &&
+        Number.isInteger(value.default_truck_id) &&
+        value.default_truck_id > 0)
+    ) ||
+    // A series start is a number with digits at the end to count from.
+    !(
+      value.invoice_start === undefined ||
+      value.invoice_start === null ||
+      (text(value.invoice_start, 60) &&
+        ((value.invoice_start as string).trim() === '' || /^(.*?)(\d+)$/.test((value.invoice_start as string).trim())))
+    ) ||
     // Kept as it is found, never set from here: the logo is written by the
     // route that stores the picture. Checked all the same, because anything
     // this function passes through is stored.
@@ -469,6 +658,12 @@ export function parseCompany(value: unknown): Parsed<NewCompany> {
       ...(displayName ? { display_name: displayName } : {}),
       ...(typeof value.default_client_id === 'number'
         ? { default_client_id: value.default_client_id }
+        : {}),
+      ...(typeof value.default_truck_id === 'number'
+        ? { default_truck_id: value.default_truck_id }
+        : {}),
+      ...(typeof value.invoice_start === 'string' && value.invoice_start.trim()
+        ? { invoice_start: value.invoice_start.trim() }
         : {}),
       // Without this, saving the company name would drop the logo: everything
       // this function does not name is thrown away.
@@ -538,12 +733,15 @@ export function parseClient(value: unknown): Parsed<NewClient> {
 export const invoiceKeyOf = (invoiceNumber: string) =>
   invoiceNumber.trim().toLowerCase();
 
-/** A usable ticket date for the database column, or null. */
-export const ticketDateColumn = (ticket: Ticket) =>
-  ticket.ticket_date && ISO_DATE.test(ticket.ticket_date) &&
-  !Number.isNaN(Date.parse(`${ticket.ticket_date}T00:00:00Z`))
-    ? ticket.ticket_date
-    : null;
+/**
+ * A usable ticket date for the database column, or null.
+ *
+ * The same reading the app files by, so the column and the batch can never
+ * disagree about whether a ticket has a date: what the reader made of an
+ * unreadable line stays on the ticket for a reviewer to compare against the
+ * picture, and the column that reports by day holds nothing.
+ */
+export const ticketDateColumn = (ticket: Ticket) => ticketDay(ticket.ticket_date);
 
 /** Positive integer id from a route segment, or null. */
 export function routeId(value: string): number | null {

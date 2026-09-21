@@ -22,6 +22,7 @@ import {
 
 type NewProfile = NewCustomer | NewTruck | NewCompany | NewClient;
 import type { SavedRecord } from '@/lib/load-desk/types';
+import { authSettings } from '@/lib/server/auth';
 
 // Supabase storage for a client workspace. Every function is given the
 // workspace of the person making the request — there is no default and no
@@ -393,13 +394,40 @@ export async function uploadOriginal(
   if (error && !alreadyStored) throw unavailable('store the original file');
 }
 
+/**
+ * A stored original as a stream from the bucket, or null when it is not
+ * there. The response is the storage service's own, body unread: the route
+ * hands the stream on, and the file never sits in the worker's memory.
+ *
+ * The client library's `download()` buffers the whole object as a Blob, and
+ * a review opening an invoice fetches every ticket's photograph at once —
+ * eight scans of several megabytes each, all buffered in one isolate, is
+ * how a worker runs out of memory and answers everything, the page
+ * included, with "exceeded resource limits". The bucket's own endpoint is
+ * fetched instead, with the member's token, so the bucket's policies still
+ * decide what they may read.
+ */
 export async function downloadOriginal(
   client: SupabaseClient,
   workspace: string,
   sha256: string,
-): Promise<Blob | null> {
-  const { data, error } = await client.storage
-    .from(ORIGINALS_BUCKET)
-    .download(objectPath(workspace, sha256));
-  return error ? null : data;
+): Promise<Response | null> {
+  const { data } = await client.auth.getSession();
+  const token = data.session?.access_token;
+  const settings = authSettings();
+  if (!token || !settings.url || !settings.key) return null;
+  const path = objectPath(workspace, sha256)
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+  const upstream = await fetch(
+    `${settings.url.replace(/\/$/, '')}/storage/v1/object/authenticated/${ORIGINALS_BUCKET}/${path}`,
+    { headers: { Authorization: `Bearer ${token}`, apikey: settings.key } },
+  );
+  if (!upstream.ok || !upstream.body) {
+    // Not read: a body left unread is a connection left open.
+    await upstream.body?.cancel();
+    return null;
+  }
+  return upstream;
 }

@@ -3,5 +3,11 @@
   "clientId": "ad-trucking-chicago",
   "companyName": "A & D Trucking of Chicago",
   "workspaceName": "Load Desk",
-  "accentColor": "#375DFB"
+  "accentColor": "#375DFB",
+  "knownCarriers": [
+    {
+      "match": "Z FORCE",
+      "name": "Z Force Transportation"
+    }
+  ]
 }

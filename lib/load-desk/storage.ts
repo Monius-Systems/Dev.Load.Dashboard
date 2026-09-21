@@ -2,7 +2,17 @@ import { watchForChanges } from './live.ts';
 import { apiJson, dataMode, type DataMode } from './data-mode';
 import { datedFromTicket, staleInvoiceDates } from './invoice-dates';
 import { applyRecordEdit, type RecordEdit } from './record-input';
-import { findInvoiceClash, recordBatch } from './records';
+import {
+  findInvoiceClash,
+  invoicePlacement,
+  isPendingInvoiceNumber,
+  numbersInDateOrder,
+  pendingInvoiceNumber,
+  recordBatch,
+  strandedDated,
+} from './records';
+import { ticketDay } from './ticket-date.ts';
+import { getProfilesSnapshot } from './profiles.ts';
 import type { SavedRecord } from './types';
 
 // Saved tickets. Signed-in members read and write the workspace database
@@ -306,6 +316,91 @@ export async function updateSavedRecords(
 }
 
 /**
+ * The ledger read in date order (see `numbersInDateOrder`): where the numbers
+ * on file do not follow the dates, or leave a gap, they are moved so that
+ * they do. Returns the records that changed.
+ *
+ * Here in the store rather than on a page, because the things that put a
+ * ledger out of order happen on more than one page: an upload of older
+ * tickets on Load Desk, a deletion on Invoices & Tickets. It used to run only
+ * on Load Desk, and deleting invoice 2 on the Invoices page left invoice 3
+ * where it was until Load Desk was next opened.
+ *
+ * In two writes, because a number is claimed by one batch at a time and two
+ * batches swapping numbers in one go would each be refused the other's: first
+ * every batch that is moving is put on a draft mark of its own, which
+ * releases its number; then each takes the number the date order gives it.
+ * Never run twice at once; a caller that finds it running gets nothing back
+ * and the run already going does the work.
+ */
+let reordering = false;
+export async function reorderInvoicesByDate(): Promise<SavedRecord[]> {
+  if (reordering || !snapshot.ready) return [];
+  const stranded = strandedDated(snapshot.records);
+  const wanted = numbersInDateOrder(snapshot.records, getProfilesSnapshot().company?.invoice_start);
+  if (!wanted.size && !stranded.length) return [];
+  reordering = true;
+  try {
+    // First, tickets that have a date and are still on the undated batch go
+    // onto their date's invoice — a group answer used to date them and
+    // leave them there. Their numbers are then part of the run below.
+    if (stranded.length) {
+      const moved: SavedRecord[] = [];
+      for (const record of stranded) {
+        const placed = invoicePlacement(record, ticketDay(record.ticket.ticket_date)!, snapshot.records);
+        if (!placed.batchId) continue;
+        const result = await updateSavedRecords([
+          {
+            id: record.id,
+            ticket: record.ticket,
+            invoice: placed.invoice,
+            ocr_text: record.ocr_text,
+            customer_profile_id: record.customer_profile_id ?? null,
+            truck_id: record.truck_id ?? null,
+            ...(record.recovery ? { recovery: record.recovery } : {}),
+            invoice_batch_id: placed.batchId,
+            bookkeeping: true,
+          },
+        ]);
+        if ('error' in result) return moved;
+        moved.push(...result.records);
+      }
+      // Numbered from the ledger as it is now, on the next pass.
+      const rest = numbersInDateOrder(snapshot.records, getProfilesSnapshot().company?.invoice_start);
+      if (!rest.size) return moved;
+      reordering = false;
+      return [...moved, ...(await reorderInvoicesByDate())];
+    }
+    const edit = (record: SavedRecord, number: string): RecordEdit => ({
+      id: record.id,
+      ticket: record.ticket,
+      invoice: { ...record.invoice, invoice_number: number },
+      ocr_text: record.ocr_text,
+      customer_profile_id: record.customer_profile_id ?? null,
+      truck_id: record.truck_id ?? null,
+      ...(record.recovery ? { recovery: record.recovery } : {}),
+      bookkeeping: true,
+    });
+    const moving = snapshot.records.filter((record) => {
+      const number = wanted.get(recordBatch(record));
+      return number !== undefined && number !== record.invoice.invoice_number;
+    });
+    const parked = moving
+      .filter((record) => !isPendingInvoiceNumber(record.invoice.invoice_number))
+      .map((record) => edit(record, pendingInvoiceNumber(`reorder-${recordBatch(record)}`)));
+    if (parked.length) {
+      const result = await updateSavedRecords(parked);
+      if ('error' in result) return [];
+    }
+    const placed = moving.map((record) => edit(record, wanted.get(recordBatch(record))!));
+    const result = await updateSavedRecords(placed);
+    return 'error' in result ? [] : result.records;
+  } finally {
+    reordering = false;
+  }
+}
+
+/**
  * Deletes a saved ticket, and its scan unless another saved ticket (another
  * page of the same PDF) still uses it. Returns an error message.
  */
@@ -323,11 +418,15 @@ export async function deleteSavedRecord(
       ...snapshot,
       records: snapshot.records.filter((item) => item.id !== record.id),
     });
+    // The gap the deletion may have left is closed now, from wherever the
+    // deletion was made.
+    void reorderInvoicesByDate();
     return null;
   }
   if (snapshot.mode !== 'local') return 'Your session has ended. Sign in again.';
   const error = writeLocalRecords(records.filter((item) => item.id !== record.id));
   if (error) return error;
+  void reorderInvoicesByDate();
   const shared = records.some(
     (other) => other.id !== record.id && other.source.sha256 === record.source.sha256,
   );

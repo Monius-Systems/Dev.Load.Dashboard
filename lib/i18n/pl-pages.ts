@@ -39,6 +39,7 @@ export const PL_PAGES: Record<string, string> = {
   Rated: 'Ze stawką',
   Valid: 'Poprawny',
   'Needs review': 'Do sprawdzenia',
+  'To confirm': 'Do potwierdzenia',
   Status: 'Status',
   'Net tons': 'Tony netto',
   'Line total': 'Wartość pozycji',
@@ -174,6 +175,9 @@ export const PL_PAGES: Record<string, string> = {
   '{amount} vs last month': '{amount} względem zeszłego miesiąca',
   '{invoices} waiting for a rate': 'Czeka na stawkę: {invoices}',
   '{tickets} to double-check': 'Do sprawdzenia: {tickets}',
+  '{invoices} with fields to confirm': 'Z polami do potwierdzenia: {invoices}',
+  'A field the printer cut off, waiting to be checked against the original.':
+    'Pole ucięte przez drukarkę, czeka na sprawdzenie z oryginałem.',
   'A field OCR could not read, or weights that do not balance.':
     'Pole, którego OCR nie odczytał, lub wagi, które się nie zgadzają.',
   '{customers} without a profile': 'Bez profilu: {customers}',
@@ -471,6 +475,10 @@ export const PL_PAGES: Record<string, string> = {
     'Ten plik jest już zapisany jako rekord {id} (kwit {ticket}). Nic nie dodano.',
   'Invoice number {number} is already used by another upload. Choose another.':
     'Numer faktury {number} jest już użyty przy innym przesłaniu. Wybierz inny.',
+  'Invoice numbers now run from {start}; the other invoices moved along.':
+    'Numery faktur biegną teraz od {start}; pozostałe faktury przesunięto.',
+  'Invoice numbers now run from {start} in date order; this invoice is {number}.':
+    'Numery faktur biegną teraz od {start} w kolejności dat; ta faktura ma numer {number}.',
   'Saved {label}. Now reviewing ticket {next}.': 'Zapisano {label}. Teraz sprawdzasz kwit {next}.',
   // Reviewing runs on from one ticket to the next without going back to a list.
   'All tickets reviewed ({tickets}).': 'Sprawdzono wszystkie kwity ({tickets}).',

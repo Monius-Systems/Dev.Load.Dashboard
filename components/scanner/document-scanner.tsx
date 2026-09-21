@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Image from 'next/image';
-import { Check, RotateCcw, X } from 'lucide-react';
+import { Check, RotateCcw, ScanLine, X } from 'lucide-react';
 import { enhanceDocument, type DocumentFilter } from '@/lib/scanner/enhance';
+import { detectPaperFrame } from '@/lib/scanner/rectify';
+import { UNKNOWN_FRAME, type PaperFrame } from '@/lib/load-desk/recovery/contract';
 import styles from './document-scanner.module.css';
 
 type Result = { original: Blob; photo: Blob; url: string };
@@ -16,6 +18,15 @@ const canvas = (width: number, height: number) => Object.assign(document.createE
  * reader at around 2100 x 2750.
  */
 const PHOTO_MAX = 2600;
+/**
+ * How long the framing check may hold Use Photo back before the photograph is
+ * simply accepted. The detector is OpenCV, ten megabytes of it, fetched the
+ * first time a scan needs it; on a slow connection that is the whole budget on
+ * its own. Nobody standing over a ticket is waiting for the scanner to think,
+ * and an unanswered question has never been a reason to refuse a photograph
+ * here — past this the frame is unknown, and unknown blocks nothing.
+ */
+const FRAMING_BUDGET_MS = 4000;
 const blobFrom = (surface: HTMLCanvasElement) => new Promise<Blob>((resolve, reject) => surface.toBlob(b => b ? resolve(b) : reject(new Error('Could not save photo')), 'image/jpeg', 0.97));
 
 /** The page with one filter applied: the blob that gets stored, and a URL to show. */
@@ -39,6 +50,9 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
   const [ready, setReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  /** Where the sheet's edges stood in the photograph, once it has been looked at. */
+  const [paper, setPaper] = useState<PaperFrame | null>(null);
+  const [checking, setChecking] = useState(false);
   const [aspect, setAspect] = useState(3 / 4);
   const close = useRef(onClose);
   useEffect(() => { close.current = onClose; }, [onClose]);
@@ -67,6 +81,35 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
       const surface = canvas(Math.round(v.videoWidth * scale), Math.round(v.videoHeight * scale));
       surface.getContext('2d')!.drawImage(v, 0, 0, surface.width, surface.height);
       return surface;
+    }
+    /**
+     * Whether the sheet ran off the picture that was just taken.
+     *
+     * The same detector the uploader uses, on the same photograph, before the
+     * person walks away from the ticket. It answers about the paper, not the
+     * print: a ticket whose top or sides are off the frame has lost the part
+     * that is billed, and the only fix is another photograph — which is free
+     * while they are still standing there and impossible an hour later.
+     *
+     * Every other answer lets the photograph through. Nothing found, no
+     * worker, a detector that did not come back inside the budget: the scanner
+     * has always failed open and there is no reason for this to be the first
+     * thing in it that refuses a picture it cannot explain.
+     */
+    async function checkFraming(source: HTMLCanvasElement) {
+      setChecking(true);
+      try {
+        const seen = await Promise.race([
+          detectPaperFrame(source),
+          new Promise<PaperFrame>(resolve =>
+            setTimeout(() => resolve(UNKNOWN_FRAME), FRAMING_BUDGET_MS)),
+        ]);
+        if (!disposed) setPaper(seen);
+      } catch {
+        if (!disposed) setPaper(UNKNOWN_FRAME);
+      } finally {
+        if (!disposed) setChecking(false);
+      }
     }
     async function capture() {
       if (busy || disposed || !stream || document.hidden) return;
@@ -102,6 +145,11 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
         // throw away every capture that was just taken.
         if (disposed) { URL.revokeObjectURL(shown.url); return; }
         setResult({ original, photo: shown.blob, url: shown.url });
+        // The picture is on the screen either way; what is still being settled
+        // is whether it is worth reading. Held off the awaited path above so
+        // the shutter is finished with and the review screen is up while the
+        // detector is still looking.
+        void checkFraming(source);
       } catch (e) {
         // The camera is still running, so this is something to try again rather
         // than a fault to back out of: the shutter stays where it is.
@@ -150,6 +198,15 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
   const hint = error || (capturing ? 'Capturing…' : notice);
   const tone = error || notice ? 'error' : undefined;
 
+  // The bottom of a ticket is allowed to run off the picture: everything that
+  // is billed is printed in the top half, and one held close enough to read
+  // leaves the warranty out of shot. The top and the sides are not — losing
+  // either loses the thing the photograph was taken for. Nothing detected says
+  // nothing, and stops nothing.
+  const cropped =
+    paper !== null &&
+    (paper.top === 'cut' || paper.left === 'cut' || paper.right === 'cut');
+
   return createPortal(
     <dialog ref={dialog} className={styles.scanner} aria-label="Scan load ticket" onCancel={event => { event.preventDefault(); close.current(); }}>
       <div className={styles.stage}>
@@ -170,10 +227,14 @@ export default function DocumentScanner({ onClose, onUse }: { onClose: () => voi
 
       <footer className={styles.footer}>
         {result ? <>
-          <p className={styles.status} data-tone="good"><Check size={15} />Ready to use</p>
+          {cropped
+            ? <p className={styles.status} data-tone="error" aria-live="polite"><RotateCcw size={15} />Move the ticket fully into frame and retake</p>
+            : checking
+              ? <p className={styles.status} aria-live="polite"><ScanLine size={15} />Checking framing…</p>
+              : <p className={styles.status} data-tone="good"><Check size={15} />Ready to use</p>}
           <div className={styles.actions}>
-            <button type="button" className={styles.secondary} onClick={() => { setResult(null); setSession(s => s + 1); }}>Retake</button>
-            <button type="button" className={styles.primary} onClick={() => { onUse(new File([result.photo], `ticket-${Date.now()}.${result.photo.type === 'image/png' ? 'png' : 'jpg'}`, { type: result.photo.type })); }}>Use Photo</button>
+            <button type="button" className={styles.secondary} onClick={() => { setResult(null); setPaper(null); setChecking(false); setSession(s => s + 1); }}>Retake</button>
+            <button type="button" className={styles.primary} disabled={checking || cropped} onClick={() => { onUse(new File([result.photo], `ticket-${Date.now()}.${result.photo.type === 'image/png' ? 'png' : 'jpg'}`, { type: result.photo.type })); }}>Use Photo</button>
           </div>
         </> : <>
           {hint ? <output className={styles.hint} data-tone={tone} aria-live="polite"><RotateCcw size={15} />{hint}</output> : null}

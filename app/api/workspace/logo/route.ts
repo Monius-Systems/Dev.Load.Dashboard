@@ -40,6 +40,10 @@ async function setLogoVersion(
     ...(company?.default_client_id != null
       ? { default_client_id: company.default_client_id }
       : {}),
+    ...(company?.default_truck_id != null
+      ? { default_truck_id: company.default_truck_id }
+      : {}),
+    ...(company?.invoice_start ? { invoice_start: company.invoice_start } : {}),
     ...(version ? { logo_version: version } : {}),
     name: company?.name ?? '',
     address_lines: (company?.address_lines ?? ['', '']) as [string, string],

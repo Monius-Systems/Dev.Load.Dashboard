@@ -67,6 +67,42 @@ void test('a ticket without a date is held apart, after every dated one', () => 
   ]);
 });
 
+void test('a date that is not a day is grouped with the ones that are missing', () => {
+  // The upload is split into one invoice per ticket date, and a group has to
+  // be a day for anything downstream to number it or put it in order. A
+  // misread that was allowed to be its own group became an invoice nothing
+  // could ever number. It waits with the blanks, where somebody reads the
+  // date off the paper.
+  const groups = groupByTicketDate(
+    [
+      { page: 1, date: '2026-02-31' },
+      { page: 2, date: '2026-09-13' },
+      { page: 3, date: null },
+      { page: 4, date: '13/02/2026' },
+      { page: 5, date: 'sometime' },
+    ],
+    dateOf,
+  );
+  assert.deepEqual(pages(groups), [
+    ['2026-09-13', [2]],
+    [null, [1, 3, 4, 5]],
+  ]);
+});
+
+void test('a group is the day a date names, not the text it is written in', () => {
+  // The same day photographed twice and read back in two shapes is one
+  // invoice, not two beside each other for the same date.
+  const groups = groupByTicketDate(
+    [
+      { page: 1, date: '9/12/2026' },
+      { page: 2, date: '2026-09-12' },
+      { page: 3, date: '9/12/26' },
+    ],
+    dateOf,
+  );
+  assert.deepEqual(pages(groups), [['2026-09-12', [1, 2, 3]]]);
+});
+
 void test('an upload without any dates is one group', () => {
   const groups = groupByTicketDate(
     [

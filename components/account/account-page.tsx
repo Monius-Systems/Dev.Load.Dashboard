@@ -64,8 +64,11 @@ import {
   saveCompanyDisplayName,
   saveCompanyLogo,
   saveDefaultClient,
+  saveDefaultTruck,
+  saveInvoiceStart,
   subscribeProfiles,
   type ClientProfile,
+  type TruckProfile,
   type CompanyProfile,
 } from '@/lib/load-desk/profiles';
 import { shellConfig } from '@/lib/shell-config';
@@ -773,6 +776,7 @@ function InvoiceAddressPanel({ canEdit }: { canEdit: boolean }) {
       key={profiles.company?.updated_at ?? 'default'}
       company={profiles.company}
       clients={profiles.clients}
+      trucks={profiles.trucks}
       canEdit={canEdit}
       storeError={profiles.error}
     />
@@ -782,11 +786,13 @@ function InvoiceAddressPanel({ canEdit }: { canEdit: boolean }) {
 function InvoiceAddressForm({
   company,
   clients,
+  trucks,
   canEdit,
   storeError,
 }: {
   company: CompanyProfile | null;
   clients: ClientProfile[];
+  trucks: TruckProfile[];
   canEdit: boolean;
   storeError: string | null;
 }) {
@@ -796,6 +802,31 @@ function InvoiceAddressForm({
   const chosenDefault = company?.default_client_id ?? null;
   const [savingDefault, setSavingDefault] = useState(false);
   const [defaultError, setDefaultError] = useState<string | null>(null);
+  // The truck scans are put down to unless another is chosen; same again.
+  const chosenTruck = company?.default_truck_id ?? null;
+  const activeTrucks = trucks.filter((truck) => truck.active);
+  // Where the invoice series starts; saved when the box is left.
+  const [invoiceStart, setInvoiceStart] = useState(company?.invoice_start ?? '');
+  async function commitInvoiceStart() {
+    const clean = invoiceStart.trim();
+    if (savingDefault || clean === (company?.invoice_start ?? '')) return;
+    if (clean && !/\d$/.test(clean)) {
+      setDefaultError('An invoice number ends in digits to count from, e.g. 1001 or INV-0100.');
+      return;
+    }
+    setSavingDefault(true);
+    setDefaultError(null);
+    const message = await saveInvoiceStart(clean);
+    setSavingDefault(false);
+    if (message) return setDefaultError(message);
+    toast.add({
+      title: clean ? t('Invoice numbers start at {number}', { number: clean }) : t('Invoice numbering start cleared'),
+      description: clean
+        ? t('The oldest invoice takes {number} and the rest count on from it.', { number: clean })
+        : t('The series starts at the lowest number on file.'),
+      type: 'success',
+    });
+  }
   const savedName = sellerName(company);
   const [savedStreet = '', savedCity = ''] = sellerAddressLines(company);
   const [name, setName] = useState(savedName);
@@ -931,6 +962,49 @@ function InvoiceAddressForm({
           {t('New invoices start billed to this client. You can change it on any invoice.')}
         </small>
       </div>
+      <div className="ld-field ac-default-client">
+        <label htmlFor={`${fieldId}-invoice-start`}>{t('Invoice numbers start at')}</label>
+        <Input
+          id={`${fieldId}-invoice-start`}
+          aria-describedby={`${fieldId}-invoice-start-hint`}
+          value={invoiceStart}
+          disabled={!canEdit || savingDefault}
+          placeholder={t('e.g. 1001')}
+          onChange={(event) => setInvoiceStart(event.target.value)}
+          onBlur={() => void commitInvoiceStart()}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              void commitInvoiceStart();
+            }
+          }}
+        />
+        <small id={`${fieldId}-invoice-start-hint`} className="ld-field-hint">
+          {t('The oldest invoice takes this number and the rest count on from it, in date order. Typing a number onto an invoice in review sets it too.')}
+        </small>
+      </div>
+      <div className="ld-field ac-default-client">
+        <label htmlFor={`${fieldId}-default-truck`}>{t('Default truck')}</label>
+        <SelectField
+          id={`${fieldId}-default-truck`}
+          aria-describedby={`${fieldId}-default-truck-hint`}
+          value={chosenTruck === null ? '' : String(chosenTruck)}
+          disabled={!canEdit || savingDefault}
+          onValueChange={(value) => void chooseTruck(value)}
+          options={[
+            { value: '', label: t('No default truck') },
+            ...activeTrucks.map((truck) => ({
+              value: String(truck.id),
+              label: `${truck.truck_number}${truck.nickname ? ` · ${truck.nickname}` : ''}${truck.driver ? ` · ${truck.driver}` : ''}`,
+            })),
+          ]}
+        />
+        <small id={`${fieldId}-default-truck-hint`} className="ld-field-hint">
+          {activeTrucks.length
+            ? t('Scanned tickets are put down to this truck unless another is chosen on Load Desk.')
+            : t('Add a truck in Truck Fleet to choose one here.')}
+        </small>
+      </div>
       {defaultError ? (
         <p className="ld-status" data-tone="error" role="alert">
           {t(defaultError)}
@@ -938,6 +1012,24 @@ function InvoiceAddressForm({
       ) : null}
     </section>
   );
+
+  async function chooseTruck(value: string) {
+    const id = value ? Number(value) : null;
+    if (savingDefault || id === chosenTruck) return;
+    setSavingDefault(true);
+    setDefaultError(null);
+    const message = await saveDefaultTruck(id);
+    setSavingDefault(false);
+    if (message) return setDefaultError(message);
+    const truck = trucks.find((item) => item.id === id);
+    toast.add({
+      title: t('Default truck saved'),
+      description: truck
+        ? t('Scanned tickets are put down to truck {number} unless another is chosen.', { number: truck.truck_number })
+        : t('Scans start with no truck.'),
+      type: 'success',
+    });
+  }
 
   async function chooseDefault(value: string) {
     const id = value ? Number(value) : null;

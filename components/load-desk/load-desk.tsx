@@ -4,6 +4,7 @@ import {
   useEffect,
   useEffectEvent,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -75,6 +76,7 @@ import {
   customerLocationRates,
   rateFor,
   defaultClient,
+  defaultTruck,
   getProfilesSnapshot,
   getServerProfilesSnapshot,
   matchCustomer,
@@ -82,13 +84,43 @@ import {
   subscribeProfiles,
   normalizeAddress,
   normalizeName,
+  saveInvoiceStart,
   saveProfile,
   truckLabel,
   type ClientProfile,
   type CustomerProfile,
   type TruckProfile,
 } from '@/lib/load-desk/profiles';
-import type { RecordEdit } from '@/lib/load-desk/record-input';
+import { MAX_EDITS, type RecordEdit } from '@/lib/load-desk/record-input';
+import {
+  blocksSave,
+  unresolvedCritical,
+  SILENT_FIELDS,
+  type FieldResolution,
+  type ReviewReason,
+  type TicketRecovery,
+} from '@/lib/load-desk/recovery';
+import {
+  applyGroupAnswer,
+  dateEdit,
+  groupExceptions,
+  membersOf,
+  type ExceptionGroup,
+  type ExceptionType,
+} from '@/lib/load-desk/recovery/exceptions';
+import { knowledgeOf, ticketOutcome } from '@/lib/load-desk/recovery/outcome';
+import { dateMisread, figureMisread } from '@/lib/load-desk/recovery/learned';
+import { loadLearnedMisreads, noteMisread } from '@/lib/load-desk/learned-misreads';
+import {
+  acceptableValue,
+  cameraCropFields,
+  canLeaveEmpty,
+  confirmValue,
+  noteSameOrderFill,
+  recoverTicket,
+  rerecoverSaved,
+  unresolvedMessage,
+} from '@/lib/load-desk/recovery/queue';
 import {
   batchInvoiceFor,
   findInvoiceClash,
@@ -103,14 +135,19 @@ import {
   nextReviewStop,
   numbersByTicketDate,
   numbersForWaitingBatches,
+  numbersInDateOrder,
   recordBatch,
+  sameTicketOnFile,
+  seriesStartFor,
   isPendingInvoiceNumber,
   isUndatedBatch,
+  isUnreadableDate,
   pendingInvoiceNumber,
   shownInvoiceNumber,
   UNDATED_BATCH,
   stepReviewStop,
   ticketDateValue,
+  ticketDay,
   type InvoiceMove,
   type ReviewStop,
 } from '@/lib/load-desk/records';
@@ -132,6 +169,7 @@ import {
   loadStoredOriginal,
   saveRecord,
   subscribeRecords,
+  reorderInvoicesByDate,
   updateSavedRecords,
 } from '@/lib/load-desk/storage';
 import {
@@ -267,8 +305,16 @@ const clientBillTo = (client: ClientProfile): BillTo => ({
 
 /** Bill to client choices besides the client profiles themselves. */
 const NO_CLIENT = '';
+/** "No truck profile" chosen on purpose, as distinct from nothing chosen yet. */
+const NO_TRUCK = '__no-truck';
 const NEW_CLIENT = '__new-client';
+/** How many stored pictures are fetched at once when an invoice is opened for review. */
+const PICTURE_LANES = 3;
+/** How many batches Load Desk lists: the most recently added to. */
+const RECENT_BATCHES = 3;
 const NEW_CUSTOMER = '__new-customer';
+/** The panel answer that says a job site is not to be saved onto the customer. */
+const SAVE_ADDRESS = '__save-address';
 
 type NewClientDraft = {
   name: string;
@@ -288,6 +334,41 @@ type NewCustomerDraft = {
   saving: boolean;
 };
 
+/** What each kind of open question is called on the screen. */
+const EXCEPTION_TITLES: Record<ExceptionType, string> = {
+  NEW_CUSTOMER: 'New customer',
+  NEW_LOCATION: 'New job site',
+  NEW_PROJECT: 'Project name needed',
+  NEW_CUSTOMER_PROJECT_COMBINATION: 'New job for this customer',
+  AMBIGUOUS_LOCATION: 'Which job site?',
+  AMBIGUOUS_CUSTOMER: 'Which customer?',
+  CLIPPED_TEXT_RECOVERABLE: 'Print cut off',
+  CONFLICTING_GROUP_DATA: 'Readings disagree',
+  INDIVIDUAL_CRITICAL_FIELD: 'This ticket needs a look',
+};
+
+/** What a field the group asks about is called beside its box. */
+const ASK_LABELS: Partial<Record<keyof Ticket, string>> = {
+  ticket_number: 'Ticket / BOL',
+  ticket_date: 'Date',
+  gross_lb: 'Gross pounds',
+  tare_lb: 'Tare pounds',
+  net_lb: 'Net pounds',
+  net_tons: 'Net tons',
+  customer_name: 'Customer',
+  customer_id: 'Customer ID',
+  project_name: 'Project',
+  project_address: 'Job site / destination',
+  plant_name: 'Plant',
+  plant_address: 'Plant address',
+  product_code: 'Product code',
+  product_description: 'Product',
+  carrier_name: 'Carrier',
+  vehicle_id: 'Vehicle',
+  order_number: 'Order number',
+  po_number: 'PO',
+};
+
 /**
  * An invoice is dated by its ticket. Always: whatever date is read off the
  * ticket, or typed onto it afterwards, is the date of the invoice it goes on,
@@ -296,12 +377,14 @@ type NewCustomerDraft = {
  * is now filed into its batch the moment it is read — before anyone has looked
  * at it — and what was filed then carried the day it was photographed.
  *
- * The only invoice that is not dated this way is one whose ticket has no date
- * on it at all: there is nothing to go by, so the draft's own date stands until
- * the ticket's date is filled in, and filling it in moves the invoice.
+ * The only invoice that is not dated this way is one whose ticket has no day
+ * anyone can read — nothing printed where the date should be, or a date the
+ * scan made a nonsense of. There is nothing to go by, so the draft's own date
+ * stands until the ticket's date is entered, and entering it moves the
+ * invoice.
  */
 function invoiceDated(item: QueueItem): QueueItem {
-  const date = item.ticket.ticket_date?.trim();
+  const date = ticketDay(item.ticket.ticket_date);
   if (!date || date === item.invoice.invoice_date) return item;
   return { ...item, invoice: { ...item.invoice, invoice_date: date } };
 }
@@ -320,6 +403,15 @@ function defaultInvoice(): InvoiceDraft {
 type ProfileContext = {
   customers: CustomerProfile[];
   truck: TruckProfile | null;
+  /**
+   * Who a new invoice is billed to: the default client under Account, or the
+   * client the last invoice went to. It has to be here, on the item as it is
+   * built, because a ticket is filed the moment it is read — before the
+   * upload's grouping, which used to be the only place the client was put on.
+   * A record filed with an empty bill-to is a record somebody has to stop
+   * and pick a client for, on every ticket, whatever default they had set.
+   */
+  billTo: BillTo | null;
 };
 
 /** Links a queue item to a customer profile and fills its rate and rate type. */
@@ -380,19 +472,57 @@ async function buildQueueItem(
   }
   let ticket = emptyTicket();
   let noteProblem = false;
+  let recovery: TicketRecovery | undefined;
   if (extracted?.extracted) {
     // Read by the model behind /api/extract: its thirteen fields become this
     // ticket directly. Everything it was not asked for stays blank and is
     // filled in during review, as an unreadable field always has been.
     ticket = ticketFromExtraction(extracted.extracted);
+    if (extracted.observed) {
+      // The same read, with the damage still in it. What the reader saw whole
+      // is already on the ticket above; this is where a field it saw only
+      // part of gets its hearing — against the vendor's own layout, the
+      // workspace's records and the rest of this upload — instead of arriving
+      // as a blank nobody can account for.
+      //
+      // The customer is matched on the exact-only ticket, because the
+      // evidence the workspace offers is scoped to whose ticket this is and
+      // a name the app completed itself would scope it to a guess. The
+      // profile is matched again below, off the recovered ticket, so a name
+      // that was recovered still finds its customer.
+      const resolved = recoverTicket({
+        observed: extracted.observed,
+        paper: extracted.paper,
+        extracted: ticket,
+        records: getRecordsSnapshot().records,
+        profiles: getProfilesSnapshot(),
+        customer: matchCustomer(profiles.customers, ticket),
+      });
+      ticket = resolved.ticket;
+      recovery = resolved.recovery;
+    }
     note = 'Read from the ticket image. Check the fields against the original before saving.';
     const disagreement = weightDisagreement(extracted.extracted);
+    const waiting = recovery ? unresolvedCritical(recovery) : [];
+    const cropped = recovery ? cameraCropFields(recovery) : [];
     if (disagreement) {
       note = disagreement;
       noteProblem = true;
-    } else if (!ticket.ticket_number) {
+    } else if (!ticket.ticket_number && !waiting.length) {
       note = 'No ticket number could be read from this page. Check the original, or enter the fields by hand.';
       noteProblem = true;
+    }
+    // The photograph is the one cause the person holding the phone can fix,
+    // so it is said last and said as a problem. A field waiting on the
+    // original is not a failure — the ticket was read, and somebody has to
+    // look at one box of it — so it says what to do without the warning.
+    if (cropped.length) {
+      note =
+        'The sheet ran off the photograph, so part of this ticket was never in the picture. Take the picture again with the whole ticket inside the frame.';
+      noteProblem = true;
+    } else if (waiting.length && !disagreement) {
+      note = `${waiting.length} ${waiting.length === 1 ? 'field needs' : 'fields need'} confirmation against the original before this ticket can be invoiced.`;
+      noteProblem = false;
     }
   } else if (ocrText) {
     const parsed = parseTicket(ocrText);
@@ -435,7 +565,15 @@ async function buildQueueItem(
     note,
     note_problem: noteProblem,
     ticket,
-    invoice: defaultInvoice(),
+    // Absent for anything the reader did not observe — a text file, the
+    // sample, a scan reopened from the records — and the review screen then
+    // shows exactly what it always showed.
+    ...(extracted?.observed ? { observed: extracted.observed } : {}),
+    ...(recovery ? { recovery } : {}),
+    invoice: {
+      ...defaultInvoice(),
+      ...(profiles.billTo ? { bill_to: { ...profiles.billTo } } : {}),
+    },
     preview_status: 'ready',
     saved_record_id: null,
     customer_profile_id: null,
@@ -477,11 +615,31 @@ async function fileInBatch(
   records: SavedRecord[],
 ): Promise<{ item: QueueItem; error: string | null; opened: string | null }> {
   const item = invoiceDated(original);
+  // The same sheet photographed again is not a new ticket. It is left in the
+  // queue unsaved, saying which record it already is, rather than filed on
+  // the invoice a second time.
+  const already = sameTicketOnFile(records, item.ticket);
+  if (already) {
+    return {
+      item: {
+        ...item,
+        note: `This ticket is already saved as record ${already.id} (ticket ${already.ticket.ticket_number}). A second photograph of it was not filed again.`,
+        note_problem: true,
+      },
+      error: `already saved as record ${already.id}`,
+      opened: null,
+    };
+  }
   const batch = batchInvoiceFor(records, item.ticket.ticket_date);
   const result = await saveRecord(
     {
       saved_at: new Date().toISOString(),
       ticket: item.ticket,
+      // Filed with the record of how it was read. A ticket nobody has checked
+      // yet is exactly the one whose recovered fields have to survive the
+      // reload, or whoever picks the batch up later sees the values with
+      // nothing to say where they came from.
+      ...(item.recovery ? { recovery: item.recovery } : {}),
       invoice: { ...item.invoice, invoice_number: batch.invoice_number },
       source: item.source,
       ocr_text: item.ocr_text,
@@ -546,17 +704,58 @@ const editKey = (edit: Omit<RecordEdit, 'id'>) =>
     edit.ocr_text,
     edit.customer_profile_id,
     edit.truck_id,
+    // Accepting a candidate for a field that already carried it changes no
+    // value on the ticket and is still the whole point of the review: it is
+    // the difference between a figure the app worked out and a figure
+    // somebody stands behind. Unsaved until it is saved, like anything else.
+    edit.recovery ?? null,
   ]);
 
 /** A saved ticket whose fields differ from what is saved. */
 const hasChanges = (item: QueueItem) =>
   item.baseline !== null && editKey(item) !== item.baseline;
 
+/**
+ * Which fields the same-order fill put a value into.
+ *
+ * Read off the two tickets rather than off the labels `fillFromSameOrder`
+ * reports, because the labels are English for a sentence in the note and the
+ * recovery record is keyed by field. Taking the difference also keeps this
+ * honest if the fill ever learns a new field: nothing here has to be told.
+ */
+const sameOrderFilled = (before: Ticket, after: Ticket): (keyof Ticket)[] =>
+  (Object.keys(after) as (keyof Ticket)[]).filter(
+    (field) => before[field] === null && after[field] !== null,
+  );
+
+/**
+ * The ticket of this upload the fill took those values from.
+ *
+ * The fill works field by field and takes each from the first ticket of the
+ * same order that has it, so in principle two pages could have contributed;
+ * the one named here is the first that carries what was filled in, which is
+ * that ticket in every real upload and a fair thing to point a reviewer at
+ * in the rest. When none can be identified the note says "another ticket"
+ * rather than naming the wrong one.
+ */
+function sameOrderSource(added: QueueItem[], item: QueueItem, filled: Ticket): Ticket {
+  const order = item.ticket.order_number?.trim();
+  const fields = sameOrderFilled(item.ticket, filled);
+  const source = added.find(
+    (other) =>
+      other !== item &&
+      other.ticket.order_number?.trim() === order &&
+      fields.some((field) => other.ticket[field] === filled[field]),
+  );
+  return source?.ticket ?? { ...filled, ticket_number: null };
+}
+
 function editOf(source: QueueItem, movedTo?: string): RecordEdit {
   const item = invoiceDated(source);
   return {
     id: item.saved_record_id!,
     ticket: item.ticket,
+    ...(item.recovery ? { recovery: item.recovery } : {}),
     invoice: {
       ...item.invoice,
       invoice_number: item.invoice.invoice_number.trim(),
@@ -573,6 +772,22 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
   const savedOn = new Date(record.edited_at ?? record.saved_at).toLocaleDateString(
     'en-US',
   );
+  // The fields still waiting on a person, looked at again under today's
+  // rules and today's memory (see `rerecoverSaved`): a ticket filed with a
+  // verdict the reader has since been corrected on opens with the corrected
+  // one, as an unsaved change, rather than with an issue nobody can act on.
+  const profiles = getProfilesSnapshot();
+  const reconsidered = record.recovery
+    ? rerecoverSaved({
+        ticket: record.ticket,
+        recovery: record.recovery,
+        records: getRecordsSnapshot().records,
+        profiles,
+        customer:
+          profiles.customers.find((known) => known.id === record.customer_profile_id) ??
+          matchCustomer(profiles.customers, record.ticket),
+      })
+    : { ticket: record.ticket, recovery: undefined };
   const item: QueueItem = {
     id: makeId(),
     source: record.source,
@@ -581,7 +796,12 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
     preview_status: 'loading',
     ocr_text: record.ocr_text,
     note: `${record.edited_at ? 'Last edited' : 'Saved'} ${savedOn}. Change any field, then save the changes.`,
-    ticket: record.ticket,
+    ticket: reconsidered.ticket,
+    // Its stored record of how it was read, and nothing else: the
+    // observation belonged to the read and was never saved, so a reopened
+    // ticket shows what was decided about each field without pretending the
+    // paper is in front of it again.
+    ...(reconsidered.recovery ? { recovery: reconsidered.recovery } : {}),
     invoice: record.invoice,
     saved_record_id: record.id,
     customer_profile_id: record.customer_profile_id ?? null,
@@ -590,10 +810,16 @@ function itemFromRecord(record: SavedRecord, batchId: string): QueueItem {
     baseline: null,
     from_saved: true,
   };
-  // The baseline is what is stored, and the date is corrected after it: a
-  // record filed before the rule was enforced opens with the ticket's date and
-  // says so as an unsaved change, rather than keeping the wrong one quietly.
-  return invoiceDated({ ...item, baseline: editKey(item) });
+  // The baseline is what is stored, and the date and the reconsidered fields
+  // are corrected after it: a record filed before a rule was enforced opens
+  // with the corrected value and says so as an unsaved change, rather than
+  // keeping the wrong one quietly.
+  const stored: QueueItem = {
+    ...item,
+    ticket: record.ticket,
+    ...(record.recovery ? { recovery: record.recovery } : {}),
+  };
+  return invoiceDated({ ...item, baseline: editKey(stored) });
 }
 
 function weightCheck(ticket: Ticket, t: Translator['t']) {
@@ -688,6 +914,7 @@ export default function LoadDesk() {
     getServerProfilesSnapshot,
   );
   const { customers, trucks, clients } = profileStore;
+
   const fieldId = useId();
   // The queue, the files waiting and the extraction live outside React, so
   // opening another page and coming back does not throw the work away, and an
@@ -706,10 +933,396 @@ export default function LoadDesk() {
     truckChoice,
     addingTo,
   } = desk;
+
+  /**
+   * What the workspace knows, and what of the filed tickets it does not.
+   *
+   * Worked out from the records and profiles the page already holds — in the
+   * browser, never on the server — and only over the tickets nobody and
+   * nothing has settled, which is a short list. A ticket the evidence
+   * settles is approved below without a look; the rest are sorted into the
+   * questions they raise, one per job, and asked once.
+   */
+  const knowledge = useMemo(
+    () => knowledgeOf(records, { customers, trucks, clients }),
+    [records, customers, trucks, clients],
+  );
+  const openMembers = useMemo(
+    () =>
+      membersOf(records.filter(needsReview), knowledge, (record) =>
+        validateTicket(record.ticket, record.recovery),
+      ),
+    [records, knowledge],
+  );
+  const exceptions = useMemo(() => groupExceptions(openMembers), [openMembers]);
+  const groupsAsked = exceptions.filter((group) => group.type !== 'INDIVIDUAL_CRITICAL_FIELD');
+  const ticketsAsked = exceptions.filter((group) => group.type === 'INDIVIDUAL_CRITICAL_FIELD');
+  /**
+   * What is left to do, in three words each, for the line under the scan on
+   * a phone. Worked out from the open questions as they stand, so it goes
+   * quiet the moment the last one is answered.
+   */
+  const liveReview = [
+    exceptions.some((group) => group.needsDate) ? t('date unclear') : '',
+    openMembers.some((member) => member.recovery && cameraCropFields(member.recovery).length)
+      ? t('retake the photo')
+      : '',
+    groupsAsked.some((group) => group.type === 'NEW_CUSTOMER') ? t('new customer') : '',
+    ticketsAsked.some((group) => !group.needsDate) ? t('needs a look') : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  // What the deployment has learned of the reader's misreads, once.
+  useEffect(() => {
+    void loadLearnedMisreads();
+  }, []);
+
+  // Said to the session, so the top bar on every other page can say it.
+  useEffect(() => {
+    setDeskField('needsInput', { groups: groupsAsked.length, tickets: ticketsAsked.length });
+  }, [groupsAsked.length, ticketsAsked.length]);
+
+  /** What a person has typed against each open question, by group. */
+  const [groupAnswers, setGroupAnswers] = useState<Record<string, Record<string, string>>>({});
+  const [groupBusy, setGroupBusy] = useState<string | null>(null);
+  const [groupError, setGroupError] = useState<Record<string, string>>({});
+  const exceptionsPanel = useRef<HTMLElement>(null);
+  const answerFor = (group: ExceptionGroup, field: string) =>
+    groupAnswers[group.key]?.[field] ??
+    (field === 'customer_profile'
+      ? group.customerProfileId !== null
+        ? String(group.customerProfileId)
+        : NEW_CUSTOMER
+      : (group.detected[field as keyof Ticket] ?? ''));
+  const setAnswer = (group: ExceptionGroup, field: string, value: string) =>
+    setGroupAnswers((current) => ({
+      ...current,
+      [group.key]: { ...current[group.key], [field]: value },
+    }));
+
+  /**
+   * The date a ticket lost, typed once in the panel. Saved as the app's own
+   * bookkeeping so the ticket comes back through classification dated —
+   * to pass, or to join its job's question — rather than being marked
+   * checked with the rest of it still unsettled.
+   */
+  async function saveDate(group: ExceptionGroup) {
+    if (groupBusy) return;
+    const record = records.find((item) => item.id === group.ticketIds[0]);
+    const typed = answerFor(group, 'ticket_date');
+    if (!record || !ticketDay(typed)) {
+      setGroupError((current) => ({ ...current, [group.key]: t('Enter the date as it is printed on the ticket.') }));
+      return;
+    }
+    setGroupBusy(group.key);
+    setGroupError((current) => ({ ...current, [group.key]: '' }));
+    try {
+      const result = await updateSavedRecords([dateEdit(record, ticketDay(typed)!, records)]);
+      if ('error' in result) throw new Error(result.error);
+      refreshQueueFrom(result.records);
+      void noteMisread(dateMisread(record.recovery, ticketDay(typed)!));
+      setGroupAnswers((current) => {
+        const next = { ...current };
+        delete next[group.key];
+        return next;
+      });
+    } catch (error) {
+      setGroupError((current) => ({ ...current, [group.key]: errorMessage(error) }));
+    } finally {
+      setGroupBusy(null);
+    }
+  }
+
+  /**
+   * One answer for a whole job.
+   *
+   * The customer is settled first — an existing profile, or a new one made
+   * from what the tickets printed — then the job site is saved onto that
+   * profile, so the next scan from the same job asks nothing. Then every
+   * ticket of the group takes the answer, in one save that marks them all
+   * checked. The rest of the scan was never waiting on this.
+   */
+  async function confirmGroup(group: ExceptionGroup) {
+    if (groupBusy) return;
+    setGroupBusy(group.key);
+    setGroupError((current) => ({ ...current, [group.key]: '' }));
+    try {
+      const now = new Date().toISOString();
+      let customer: CustomerProfile | null =
+        customers.find((known) => known.id === group.customerProfileId) ?? null;
+      const asksCustomer = group.asks.includes('customer_name') || !customer;
+      let customerName = customer?.name ?? group.customer ?? '';
+      if (asksCustomer) {
+        const chosen = answerFor(group, 'customer_profile');
+        if (chosen && chosen !== NEW_CUSTOMER) {
+          customer = customers.find((known) => String(known.id) === chosen) ?? null;
+          customerName = customer?.name ?? customerName;
+        } else {
+          const typed = (answerFor(group, 'customer_name') || group.customer || '').replace(/\s+/g, ' ').trim();
+          if (!typed) throw new Error(t('Enter the customer name.'));
+          const printedId = group.detected.customer_id?.trim();
+          // No job sites yet: those are saved by a person, from review, once
+          // one has been read right.
+          const profile = {
+            name: typed,
+            ticket_customer_ids: printedId ? [printedId] : [],
+            ticket_names:
+              group.customer && normalizeName(group.customer) !== normalizeName(typed)
+                ? [group.customer]
+                : [],
+            addresses: [] as string[],
+            location_rates: [],
+            flat_rate: null,
+            rate_type: 'flat' as const,
+            fuel_charge: null,
+            fuel_type: 'flat' as const,
+            notes: '',
+            created_at: now,
+          };
+          const error = await saveProfile('customer', profile, null);
+          if (error) throw new Error(t(error));
+          customer =
+            getProfilesSnapshot().customers.find(
+              (known) => known.created_at === now && known.name === typed,
+            ) ?? null;
+          if (!customer) throw new Error(t('The customer was saved but could not be found. Reload and try again.'));
+          customerName = customer.name;
+        }
+      }
+      const address = normalizeAddress(
+        answerFor(group, 'project_address') || group.detected.project_address || '',
+      );
+      const project = (answerFor(group, 'project_name') || group.detected.project_name || '').trim();
+      // Learned: the job site goes onto the customer, and the next scan from
+      // it asks nothing — unless the person said not to keep it, which is
+      // their call: a site read a letter wrong, or a one-off delivery, is not
+      // one to offer on every later ticket.
+      const keepAddress = answerFor(group, SAVE_ADDRESS) !== 'no';
+      if (customer && address && keepAddress && !customerAddresses(customer).some((known) => normalizeName(known) === normalizeName(address))) {
+        const error = await saveProfile(
+          'customer',
+          {
+            name: customer.name,
+            ticket_customer_ids: customer.ticket_customer_ids,
+            ticket_names: customer.ticket_names,
+            addresses: addCustomerAddress(customer, address),
+            location_rates: customerLocationRates(customer),
+            flat_rate: customer.flat_rate,
+            rate_type: customer.rate_type ?? 'flat',
+            fuel_charge: customer.fuel_charge,
+            fuel_type: customer.fuel_type ?? 'flat',
+            notes: customer.notes,
+            created_at: customer.created_at,
+          },
+          customer.id,
+        );
+        if (error) throw new Error(t(error));
+        customer = getProfilesSnapshot().customers.find((known) => known.id === customer!.id) ?? customer;
+      }
+      const values: Partial<Record<keyof Ticket, string | null>> = {};
+      for (const ask of group.asks) {
+        if (ask === 'customer_name') values.customer_name = customerName || null;
+        else if (ask === 'project_address') values.project_address = address || null;
+        else if (ask === 'project_name') values.project_name = project || null;
+        else values[ask] = (answerFor(group, ask) || group.detected[ask] || '').trim() || null;
+      }
+      const edits = applyGroupAnswer(
+        records,
+        group,
+        { values, customerProfileId: customer?.id ?? null, customer },
+        now,
+      );
+      const result = await updateSavedRecords(edits);
+      if ('error' in result) throw new Error(result.error);
+      refreshQueueFrom(result.records);
+      setGroupAnswers((current) => {
+        const next = { ...current };
+        delete next[group.key];
+        return next;
+      });
+      toast.add({
+        title: t('Applied to {tickets}', { tickets: plural(group.ticketIds.length, 'ticket') }),
+        description: customerName
+          ? t('{customer} · {tickets} checked and on their invoices.', {
+              customer: customerName,
+              tickets: plural(group.ticketIds.length, 'ticket'),
+            })
+          : t('{tickets} checked and on their invoices.', { tickets: plural(group.ticketIds.length, 'ticket') }),
+        type: 'success',
+      });
+    } catch (error) {
+      setGroupError((current) => ({ ...current, [group.key]: errorMessage(error) }));
+    } finally {
+      setGroupBusy(null);
+    }
+  }
+  /**
+   * The question closed without a profile: the tickets are filed as read,
+   * checked, and no customer is created and nothing is saved onto one. The
+   * suggestion to create a customer is only that, and a name the reader got
+   * wrong, or a customer hauled for once, is not one to keep. A customer can
+   * still be chosen for these tickets in review.
+   */
+  async function fileWithoutProfile(group: ExceptionGroup) {
+    if (groupBusy) return;
+    setGroupBusy(group.key);
+    setGroupError((current) => ({ ...current, [group.key]: '' }));
+    try {
+      const edits = applyGroupAnswer(
+        records,
+        group,
+        { values: {}, customerProfileId: null, customer: null },
+        new Date().toISOString(),
+      );
+      const result = await updateSavedRecords(edits);
+      if ('error' in result) throw new Error(result.error);
+      refreshQueueFrom(result.records);
+      setGroupAnswers((current) => {
+        const next = { ...current };
+        delete next[group.key];
+        return next;
+      });
+      toast.add({
+        title: t('Filed {tickets} as read', { tickets: plural(group.ticketIds.length, 'ticket') }),
+        description: t('No customer profile was created. Choose one for them in review if they are to be rated.'),
+        type: 'success',
+      });
+    } catch (error) {
+      setGroupError((current) => ({ ...current, [group.key]: errorMessage(error) }));
+    } finally {
+      setGroupBusy(null);
+    }
+  }
   type Field<K extends keyof DeskSession> =
     | DeskSession[K]
     | ((current: DeskSession[K]) => DeskSession[K]);
   const setQueue = (value: Field<'queue'>) => setDeskField('queue', value);
+
+  /**
+   * The review's copies of saved tickets, brought up to date with what was
+   * saved: an answer given in the panel, a date typed there, a number moved
+   * into date order. A copy somebody is in the middle of editing is left
+   * alone, so nothing typed is lost; the rest take the record as it stands,
+   * and stop asking for what has been answered.
+   */
+  const refreshQueueFrom = (updated: SavedRecord[]) => {
+    if (!updated.length) return;
+    const byId = new Map(updated.map((record) => [record.id, record]));
+    setQueue((current) =>
+      current.map((item) => {
+        const record = item.saved_record_id === null ? undefined : byId.get(item.saved_record_id);
+        if (!record || hasChanges(item)) return item;
+        const next: QueueItem = {
+          ...item,
+          ticket: record.ticket,
+          invoice: record.invoice,
+          batch_id: recordBatch(record),
+          ...(record.recovery ? { recovery: record.recovery } : {}),
+        };
+        return { ...next, baseline: editKey(next) };
+      }),
+    );
+  };
+
+  /**
+   * Approving on the evidence: a filed ticket every field of which was read
+   * whole or recovered above the bar, from a customer and a job site on
+   * file, is marked approved and leaves the "to check" list — the app's own
+   * bookkeeping, so `reviewed_at` stays null and the record says which it
+   * was. Each ticket is sent once; a write that fails is tried again on the
+   * next pass.
+   *
+   * An approval carries the record as it stands, so it must not cross
+   * another write to the same record: it is held back, record by record,
+   * for the tickets the running upload is filing and numbering
+   * (`filing`), for a ticket on a draft mark still waiting for its number,
+   * for a ticket somebody is editing or saving in review, and for the whole
+   * ledger while its numbers are out of date order and about to move. It
+   * used to wait for the whole upload and every save to finish instead, and
+   * a date typed under "Needs your input" while the next ticket was being
+   * read left "1 to check" standing until the scan was done.
+   */
+  const approving = useRef(new Set<number>());
+  /** The records the running upload has filed and is still numbering. */
+  const filing = useRef(new Set<number>());
+  /**
+   * True from the first page of an upload to the last number written. The
+   * progress bar and the busy state clear when the reading ends, and the
+   * numbering runs after that; an approval written in between carried the
+   * record's draft mark and could land after the number, leaving an invoice
+   * on "Waiting for the rest of this upload" for good.
+   */
+  const [settling, setSettling] = useState(false);
+  useEffect(() => {
+    if (!store.ready) return;
+    if (numbersInDateOrder(records, profileStore.company?.invoice_start).size) return;
+    const activeId = queue[activeIndex]?.id;
+    const editing = new Set(
+      queue
+        .filter(
+          (item) =>
+            item.saved_record_id !== null && (hasChanges(item) || (busy && item.id === activeId)),
+        )
+        .map((item) => item.saved_record_id),
+    );
+    const byId = new Map(records.map((record) => [record.id, record]));
+    const fresh = openMembers.filter((member) => {
+      const record = byId.get(member.id);
+      return (
+        member.report.outcome === 'auto_approved' &&
+        !approving.current.has(member.id) &&
+        !filing.current.has(member.id) &&
+        !editing.has(member.id) &&
+        record !== undefined &&
+        !isPendingInvoiceNumber(record.invoice.invoice_number)
+      );
+    });
+    if (!fresh.length) return;
+    const batch = fresh.slice(0, MAX_EDITS);
+    for (const member of batch) approving.current.add(member.id);
+    const at = new Date().toISOString();
+    const edits: RecordEdit[] = batch.flatMap((member) => {
+      const record = byId.get(member.id);
+      if (!record) return [];
+      return [
+        {
+          id: record.id,
+          ticket: record.ticket,
+          invoice: record.invoice,
+          ocr_text: record.ocr_text,
+          customer_profile_id: record.customer_profile_id ?? null,
+          truck_id: record.truck_id ?? null,
+          ...(record.recovery ? { recovery: record.recovery } : {}),
+          bookkeeping: true,
+          auto_approved_at: at,
+        },
+      ];
+    });
+    void updateSavedRecords(edits).then(async (result) => {
+      if ('error' in result) {
+        for (const member of batch) approving.current.delete(member.id);
+        return;
+      }
+      refreshQueueFrom(result.records);
+      // Nothing is learned from an approval on its own. A job site goes onto
+      // a customer when a person saves it there — the button under the
+      // address in review — and not because a scan read it: a site read a
+      // letter wrong and saved would be matched to every later ticket.
+    });
+  }, [openMembers, records, queue, activeIndex, busy, store.ready, profileStore.company?.invoice_start]);
+
+  // Whenever the ledger is quiet, it is asked to read in date order; and the
+  // review's copies follow the records, so a number moved from another page
+  // is the number shown here.
+  useEffect(() => {
+    if (!store.ready || extraction !== null || busy || settling) return;
+    refreshQueueFrom(records);
+    if (!numbersInDateOrder(records, profileStore.company?.invoice_start).size) return;
+    void reorderInvoicesByDate().then(refreshQueueFrom);
+  }, [records, store.ready, extraction, busy, settling, profileStore.company?.invoice_start]);
+
+
   const setActiveIndex = (value: Field<'activeIndex'>) => setDeskField('activeIndex', value);
   const setPending = (value: Field<'pending'>) => setDeskField('pending', value);
   const setBusy = (value: Field<'busy'>) => setDeskField('busy', value);
@@ -761,7 +1374,7 @@ export default function LoadDesk() {
 
   const active = queue[activeIndex] ?? null;
   const ticket = active?.ticket ?? null;
-  const issues = ticket ? validateTicket(ticket) : [];
+  const issues = ticket ? validateTicket(ticket, active?.recovery) : [];
   const activeSaved = active?.saved_record_id != null;
   /**
    * A ticket filed by "Review later" is saved before anyone has looked at it,
@@ -777,7 +1390,7 @@ export default function LoadDesk() {
     (item) => item.saved_record_id !== null,
   ).length;
   const reviewCount = records.filter(
-    (record) => validateTicket(record.ticket).length > 0,
+    (record) => validateTicket(record.ticket, record.recovery).length > 0,
   ).length;
   const netTons = records.reduce(
     (sum, record) => sum + (record.ticket.net_lb ?? 0) / 2000,
@@ -791,7 +1404,17 @@ export default function LoadDesk() {
       ),
     );
 
-  const setField = (name: TextField | NumberField, raw: string) =>
+  /**
+   * A field as a person leaves it. `how` is what they did to get there:
+   * typing is editing, and a candidate accepted with one click — or a field
+   * they chose to leave empty — is a decision taken rather than a value
+   * typed. Both settle the field; only the record tells them apart.
+   */
+  const setField = (
+    name: TextField | NumberField,
+    raw: string,
+    how: 'accepted' | 'edited' = 'edited',
+  ) =>
     setQueue((current) => {
       const target = current[activeIndex];
       if (!target) return current;
@@ -818,6 +1441,13 @@ export default function LoadDesk() {
       return current.map((item, index) => {
         if (index !== activeIndex) return item;
         let next = { ...item, ticket: { ...item.ticket, [name]: value } };
+        // Typing in a box the recovery layer had something to say about is a
+        // person settling that field, whatever they type and however many
+        // times they change their mind: the record keeps the decision, not
+        // the keystrokes, and the last one is the one that stands.
+        if (item.recovery?.fields[name]) {
+          next = { ...next, recovery: confirmValue(item.recovery, name, value, how) };
+        }
         if (moveInvoiceDate) {
           next = { ...next, invoice: { ...next.invoice, invoice_date: value as string } };
         }
@@ -1050,7 +1680,22 @@ export default function LoadDesk() {
     entries: Entry[],
     kind: SourceKind,
     target: QueueItem | null = null,
-    open = true,
+    open = false,
+  ) {
+    setSettling(true);
+    try {
+      await addToQueueSettling(entries, kind, target, open);
+    } finally {
+      filing.current.clear();
+      setSettling(false);
+    }
+  }
+
+  async function addToQueueSettling(
+    entries: Entry[],
+    kind: SourceKind,
+    target: QueueItem | null,
+    open: boolean,
   ) {
     const start = queue.length;
     const added: QueueItem[] = [];
@@ -1077,7 +1722,11 @@ export default function LoadDesk() {
           file: entry.name,
           percent: batchPercent(index, entries.length, fraction),
           label,
-          quiet: !open,
+          // Always shown: the bar is how the scan says it is reading, then
+          // resolving, then building invoices, and what it came to is the
+          // line under it. It used to hide when the review was not going to
+          // open, which is now every scan.
+          quiet: false,
         });
       show(0, 'Starting');
       noteTicket(session, `file-${index}`, 'extracting');
@@ -1107,6 +1756,7 @@ export default function LoadDesk() {
             });
             // Kept before anyone is asked to look at it.
             const filed = await fileInBatch(built, getRecordsSnapshot().records);
+            if (filed.item.saved_record_id !== null) filing.current.add(filed.item.saved_record_id);
             if (filed.error) failures.push(`${entry.name}: ${t(filed.error)}`);
             if (filed.opened) openedBatches.add(filed.opened);
             added.push(filed.item);
@@ -1119,6 +1769,19 @@ export default function LoadDesk() {
         }
       } catch (error) {
         failures.push(`${entry.name}: ${t(errorMessage(error))}`);
+        // The photograph is not lost. A page the reader could not be reached
+        // for goes back to the list waiting to be processed, so one tap sends
+        // it again; the picture is the thing a driver cannot take twice once
+        // the paper has gone with the truck.
+        if (kind === 'upload' && entry.blob instanceof File) {
+          const file = entry.blob;
+          setPending((current) =>
+            current.some((waiting) => fileKey(waiting) === fileKey(file)) ? current : [...current, file],
+          );
+        } else if (kind === 'upload') {
+          const file = new File([entry.blob], entry.name, { type: entry.blob.type });
+          setPending((current) => [...current, file]);
+        }
         // Terminal either way. A file nothing could be read from must not hold
         // the upload open, or one unreadable scan would leave every other ticket
         // of the morning waiting for a number that never came.
@@ -1158,6 +1821,69 @@ export default function LoadDesk() {
       }
       return;
     }
+    // The upload read whole. Each page was resolved on its own as it came out
+    // of the reader, because it is filed the moment it is read and what is
+    // filed must be what was decided; now that the rest of the upload exists,
+    // a page that lost its left edge can be heard against the sister page
+    // that did not. Batch context is only ever evidence — it is weighed with
+    // everything else and cannot outvote print — so a second upload of two
+    // unrelated jobs comes back exactly as it went in.
+    if (added.some((item) => item.observed)) {
+      const snapshot = getRecordsSnapshot().records;
+      const known = getProfilesSnapshot();
+      const reheard = new Set<number>();
+      // Heard again until nothing changes, three rounds at most: a page the
+      // pile dates in one round is a whole-dated neighbour for the next, and
+      // a pile of faint dates settles itself a page at a time.
+      for (let round = 0; round < 3; round++) {
+        const others = added.map((item) => ({ ticket: item.ticket, observed: item.observed }));
+        let changed = false;
+        for (const [index, item] of added.entries()) {
+          if (!item.observed) continue;
+          const resolved = recoverTicket({
+            observed: item.observed,
+            paper: item.recovery?.paper,
+            extracted: item.ticket,
+            records: snapshot,
+            profiles: known,
+            customer:
+              known.customers.find((customer) => customer.id === item.customer_profile_id) ??
+              null,
+            others,
+          });
+          if (
+            JSON.stringify(resolved.ticket) === JSON.stringify(item.ticket) &&
+            JSON.stringify(resolved.recovery) === JSON.stringify(item.recovery)
+          ) {
+            continue;
+          }
+          added[index] = { ...item, ticket: resolved.ticket, recovery: resolved.recovery };
+          reheard.add(index);
+          changed = true;
+        }
+        if (!changed) break;
+      }
+      // What the pile settled is written to the records the pages were filed
+      // as, so it is what is stored and what is numbered from — a date the
+      // pile supplied puts the page on that day's invoice. It used to stay on
+      // the screen only: the record kept the first hearing, the copy on the
+      // screen read as edited, and the approval waited on an edit nobody
+      // had made.
+      const filedNow = [...reheard].filter((index) => added[index].saved_record_id !== null);
+      if (filedNow.length) {
+        const result = await updateSavedRecords(
+          filedNow.map((index) => ({ ...editOf(added[index]), bookkeeping: true })),
+        );
+        if ('error' in result) {
+          failures.push(result.error);
+        } else {
+          for (const index of filedNow) {
+            added[index] = { ...added[index], baseline: editKey(editOf(added[index])) };
+          }
+        }
+      }
+    }
+    setExtraction((current) => current && { ...current, percent: 100, label: 'Resolving ticket data' });
     // One job's scans often miss a field another page read: fill blanks from
     // tickets in this upload with the same order number.
     for (const [index, result] of fillFromSameOrder(
@@ -1169,6 +1895,19 @@ export default function LoadDesk() {
         ...item,
         ticket: result.ticket,
         note: `${item.note} Filled the ${result.filled.join(', ')} from another ticket with order ${result.ticket.order_number}.`,
+        // What the fill did, on the fields themselves. It has always happened
+        // quietly behind one sentence of the note; a value that was not on
+        // this paper says where it came from like every other one.
+        ...(item.recovery
+          ? {
+              recovery: noteSameOrderFill(
+                item.recovery,
+                sameOrderFilled(item.ticket, result.ticket),
+                sameOrderSource(added, item, result.ticket),
+                result.ticket,
+              ),
+            }
+          : {}),
       };
       added[index] =
         item.customer_profile_id === null
@@ -1218,9 +1957,21 @@ export default function LoadDesk() {
       if (extracted(session).length) {
         setUploadStatus({ message: t('Finalizing invoice numbers…'), tone: 'info' });
       }
+      setExtraction((current) => current && { ...current, percent: 100, label: 'Building invoices' });
       const ordered = await finalizeInvoiceNumbers(session, wasFiled, openedBatches);
-      const filed = ordered.items;
+      let filed = ordered.items;
       if (ordered.error) failures.push(ordered.error);
+      // And the whole ledger in date order after it: an upload of older
+      // tickets moves the newer invoices along to make room.
+      const reordered = await reorderInvoicesByDate();
+      if (reordered.length) {
+        const byId = new Map(reordered.map((record) => [record.id, record]));
+        filed = filed.map((item) => {
+          const record = item.saved_record_id === null ? undefined : byId.get(item.saved_record_id);
+          return record ? { ...item, invoice: record.invoice, batch_id: recordBatch(record) } : item;
+        });
+        refreshQueueFrom(reordered);
+      }
       // One invoice per ticket date, dated that day, oldest first. Invoice
       // numbers continue in order after the latest saved or queued invoice —
       // read after the renumbering above, so they follow it — and a workspace
@@ -1251,13 +2002,19 @@ export default function LoadDesk() {
       grouped = [...onTarget, ...filed, ...grouped];
       // Said plainly, and first: a ticket nobody can date is a ticket nobody
       // can invoice, and it is waiting rather than billed on a guessed day.
+      // Blank and unreadable are one pile here because they need the same
+      // thing done to them — the date read off the paper — but the wording
+      // covers both, so somebody looking at a ticket with a date on it is not
+      // told no date was found on it.
       const undated = grouped.filter((item) => isUndatedBatch(item.batch_id)).length;
+      /** The long form of what is wrong, for a screen with room for it. */
+      const explained: string[] = [];
       if (undated) {
         const notice = t(
-          'No date was detected on {tickets}, now waiting in “Date not found”. Enter the date to put each on an invoice.',
+          'No usable date was read from {tickets}, now waiting in “Date not found”, on no invoice. Enter the date to put each on one.',
           { tickets: plural(undated, 'ticket') },
         );
-        failures.unshift(notice);
+        explained.push(notice);
         toast.add({
           title: t('Date not found on {tickets}', { tickets: plural(undated, 'ticket') }),
           description: notice,
@@ -1270,26 +2027,105 @@ export default function LoadDesk() {
             .filter((item) => !isUndatedBatch(item.batch_id))
             .map((item) => item.invoice.invoice_number.trim().toLowerCase()),
         ).size;
-      const summary = !open
-        ? t('{tickets} filed to check later. Open the batch below when you are ready.', {
-            tickets: plural(added.length, 'ticket'),
-          })
-        : invoices > 1
-          ? t('{tickets} ready for review on {invoices}, one per ticket date.', {
-              tickets: plural(added.length, 'ticket'),
-              invoices: plural(invoices, 'invoice'),
+      // What this scan came to, by what the evidence settled: tickets the
+      // app approved on its own, questions about a job to ask once, and
+      // tickets with something of their own to look at. Worked out over the
+      // records as they stand now, profiles included, so a customer the
+      // scan itself just taught is already known by the time it is counted.
+      setExtraction((current) => current && { ...current, percent: 100, label: 'Matching jobs' });
+      const known = knowledgeOf(getRecordsSnapshot().records, getProfilesSnapshot());
+      const outcomes = groupExceptions(
+        grouped.map((item, index) => ({
+          id: item.saved_record_id ?? -(index + 1),
+          ticket: item.ticket,
+          recovery: item.recovery,
+          report: ticketOutcome(item.ticket, item.recovery, known, validateTicket(item.ticket, item.recovery)),
+        })),
+      );
+      const askedGroups = outcomes.filter((group) => group.type !== 'INDIVIDUAL_CRITICAL_FIELD').length;
+      const askedTickets = outcomes.filter((group) => group.type === 'INDIVIDUAL_CRITICAL_FIELD').length;
+      const settled = grouped.length - outcomes.reduce((sum, group) => sum + group.ticketIds.length, 0);
+      const summary = [
+        t('✓ {tickets} processed', { tickets: plural(added.length, 'ticket') }),
+        invoices ? t('✓ {invoices} created', { invoices: plural(invoices, 'invoice') }) : '',
+        settled < added.length
+          ? [
+              askedGroups ? t('{groups} need your input', { groups: plural(askedGroups, 'group') }) : '',
+              askedTickets ? t('{tickets} need a look', { tickets: plural(askedTickets, 'ticket') }) : '',
+            ]
+              .filter(Boolean)
+              .join(', ')
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      // Counted here rather than left to be discovered one ticket at a time:
+      // the pages are filed the moment they are read, and somebody who
+      // photographed a stack of them beside a truck has put the phone away by
+      // now. A sheet that ran off the picture is worth going back for while
+      // the paper is still in the cab.
+      const toConfirm = grouped.filter(
+        (item) => item.recovery && blocksSave(item.recovery),
+      ).length;
+      const retake = grouped.filter(
+        (item) => item.recovery && cameraCropFields(item.recovery).length > 0,
+      ).length;
+      // What to say, and how much of it. A desk has the room for the whole
+      // account; a phone held beside a truck wants the count and, if there
+      // is anything to do, what it is in three words — "Please review: date
+      // unclear" — and the panel below says the rest.
+      const reasons = [
+        undated ? t('date unclear') : '',
+        retake ? t('retake the photo') : '',
+        toConfirm && !undated && !retake ? t('fields cut off') : '',
+        askedGroups ? t('new job') : '',
+      ].filter(Boolean);
+      // On a phone what is stored is the count; what is left to do is said
+      // live beside it (see `liveReview`), so that once the date is typed the
+      // line stops asking for it.
+      void reasons;
+      const short = [
+        t('✓ {tickets} processed', { tickets: plural(added.length, 'ticket') }),
+        invoices ? t('✓ {invoices} created', { invoices: plural(invoices, 'invoice') }) : '',
+        ...failures,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      const long = [
+        summary,
+        toConfirm
+          ? t('{tickets} have fields to confirm against the original.', {
+              tickets: plural(toConfirm, 'ticket'),
             })
-          : t('{tickets} ready for review.', { tickets: plural(added.length, 'ticket') });
+          : '',
+        retake
+          ? t(
+              '{tickets} were photographed with the sheet running off the picture — retake them.',
+              { tickets: plural(retake, 'ticket') },
+            )
+          : '',
+        ...explained,
+        ...failures,
+      ]
+        .filter(Boolean)
+        .join(' · ');
       setUploadStatus({
-        message: [summary, ...failures].join(' · '),
-        tone: failures.length ? 'error' : 'info',
+        message: isPhone ? short : long,
+        tone: failures.length || undated ? 'error' : 'info',
       });
     }
     setQueue((current) => [...current, ...grouped]);
     setSaveStatus(null);
-    // Filed either way — they are in their date's batch already, marked as
-    // nobody having checked them. This is only whether to ask about them now.
-    if (!open) return;
+    // Filed either way — they are in their date's batch already. The evidence
+    // approves what it can (see the approval effect), and what it cannot is
+    // asked about in the panel above the batches; the review screen opens
+    // only when somebody asked for it.
+    if (!open) {
+      if (!target && !isPhone) {
+        exceptionsPanel.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+      return;
+    }
     setActiveIndex(start);
     scrollToReview();
   }
@@ -1310,7 +2146,7 @@ export default function LoadDesk() {
     setAddingTo(null);
   }
 
-  async function extractPending(open = true) {
+  async function extractPending(open = false) {
     if (busy || !pending.length) return;
     setBusy(true);
     const entries = pending.map((file) => ({ blob: file, name: file.name }));
@@ -1542,9 +2378,66 @@ export default function LoadDesk() {
     };
   }
 
+  /**
+   * Which part of the review a field is in — the phone's step, and the
+   * section a desk has to open to see it.
+   */
+  const sectionOfField = (field: TextField | NumberField): number =>
+    TICKET_FIELDS.some((def) => def.name === field)
+      ? 0
+      : JOB_FIELDS.some((def) => def.name === field)
+        ? 1
+        : 2;
+
+  /**
+   * A reviewed save with a field still nobody has settled: refused, said in
+   * one sentence, and the section holding the first of them opened so the
+   * refusal points at something rather than being an argument with a button.
+   *
+   * Only the reviewed saves. Filing a photograph the moment it is taken is
+   * untouched — a ticket nobody has looked at yet is allowed to have fields
+   * nobody has looked at yet, which is the whole idea of it.
+   */
+  function blockedByReview(item: QueueItem): boolean {
+    if (!item.recovery || !blocksSave(item.recovery)) return false;
+    const message = unresolvedMessage(item.recovery);
+    if (message) setSaveStatus({ message: t(message), tone: 'error' });
+    const first = unresolvedCritical(item.recovery)[0];
+    if (first !== undefined) {
+      const section = sectionOfField(first as TextField | NumberField);
+      setStep(section);
+      reviewPanel.current
+        ?.querySelectorAll<HTMLDetailsElement>(`.ld-section[data-step="${section}"]`)
+        .forEach((details) => {
+          details.open = true;
+        });
+    }
+    return true;
+  }
+
+  /**
+   * What a reviewed ticket teaches the deployment: a date, a number or a
+   * weight a person typed over, one character from what the reader read.
+   * Only the pair of characters leaves here (see recovery/learned.ts).
+   */
+  const learnFromReviewed = (item: QueueItem) => {
+    const recovery = item.recovery;
+    if (!recovery) return;
+    if (recovery.fields.ticket_date?.confirmed_by_user && typeof item.ticket.ticket_date === 'string') {
+      void noteMisread(dateMisread(recovery, item.ticket.ticket_date));
+    }
+    for (const field of ['ticket_number', 'gross_lb', 'tare_lb', 'net_lb', 'net_tons'] as const) {
+      const value = item.ticket[field];
+      if (recovery.fields[field]?.confirmed_by_user && value !== null && value !== undefined) {
+        void noteMisread(figureMisread(recovery, field, value));
+      }
+    }
+  };
+
   async function saveActive(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!active || busy) return;
+    if (blockedByReview(active)) return;
     if (activeSaved) {
       await saveChanges();
       return;
@@ -1560,11 +2453,12 @@ export default function LoadDesk() {
       });
       return;
     }
-    const duplicate = records.find(
-      (record) =>
-        record.source.sha256 === active.source.sha256 &&
-        (record.source.page ?? 1) === (active.source.page ?? 1),
-    );
+    const duplicate =
+      records.find(
+        (record) =>
+          record.source.sha256 === active.source.sha256 &&
+          (record.source.page ?? 1) === (active.source.page ?? 1),
+      ) ?? sameTicketOnFile(records, active.ticket);
     if (duplicate) {
       updateActive((item) => ({ ...item, saved_record_id: duplicate.id }));
       setSaveStatus({
@@ -1579,14 +2473,22 @@ export default function LoadDesk() {
     // On the invoice of its date, which may not be the one it was queued on
     // if the date was corrected in review.
     const { item: placed, move } = placedByDate(active);
-    const invoiceNumber = placed.invoice.invoice_number.trim();
+    let invoiceNumber = placed.invoice.invoice_number.trim();
     // recordBatch also covers tickets saved before uploads were recorded, so a
-    // ticket added to one of their invoices is not refused.
-    if (
-      findInvoiceClash(records, [
-        { id: null, invoiceNumber, batchId: placed.batch_id },
-      ])
-    ) {
+    // ticket added to one of their invoices is not refused. A number another
+    // invoice has is not refused either, when it is one to count from: it is
+    // where the series starts, worked back from this invoice's place in date
+    // order, and the ledger moves along to make room (see `saveChanges`).
+    const clash = findInvoiceClash(records, [
+      { id: null, invoiceNumber, batchId: placed.batch_id },
+    ]);
+    const start =
+      clash && move.kind === 'stay' && !isPendingInvoiceNumber(invoiceNumber)
+        ? seriesStartFor(records, placed.batch_id, invoiceNumber, [
+            { batchId: placed.batch_id, date: placed.ticket.ticket_date },
+          ])
+        : null;
+    if (clash && start === null) {
       setSaveStatus({
         message: t(
           'Invoice number {number} is already used by another upload. Choose another.',
@@ -1598,6 +2500,19 @@ export default function LoadDesk() {
     }
 
     setBusy(true);
+    if (start !== null) {
+      if (start !== (profileStore.company?.invoice_start ?? null)) {
+        const problem = await saveInvoiceStart(start);
+        if (problem) {
+          setBusy(false);
+          setSaveStatus({ message: problem, tone: 'error' });
+          return;
+        }
+      }
+      // Filed on a draft mark, the typed number being another invoice's
+      // until the run moves it on; the run then gives this one its number.
+      invoiceNumber = pendingInvoiceNumber(`typed-${placed.batch_id}`);
+    }
     // Saved tickets on this invoice with changes are saved first, so the
     // invoice details stay the same on every ticket.
     const changedSiblings = queue.filter(
@@ -1615,6 +2530,10 @@ export default function LoadDesk() {
       {
         saved_at: new Date().toISOString(),
         ticket: placed.ticket,
+        // Saved with the ticket, and by now it says who settled what: a
+        // figure on the invoice can be traced back to the paper, and where
+        // the paper did not have it, to the person who did.
+        ...(placed.recovery ? { recovery: placed.recovery } : {}),
         invoice: { ...placed.invoice, invoice_number: invoiceNumber },
         source: placed.source,
         ocr_text: placed.ocr_text,
@@ -1629,12 +2548,24 @@ export default function LoadDesk() {
       },
       active.original,
     );
-    setBusy(false);
     if ('error' in result) {
+      setBusy(false);
       setSaveStatus({ message: result.error, tone: 'error' });
       return;
     }
-    const { record } = result;
+    let { record } = result;
+    let reordered: SavedRecord[] = [];
+    if (start !== null) {
+      // The ledger in date order from the new start, this invoice in it.
+      reordered = await reorderInvoicesByDate();
+      const mine = reordered.find((item) => item.id === record.id);
+      if (mine) {
+        record = mine;
+        invoiceNumber = mine.invoice.invoice_number.trim();
+      }
+    }
+    setBusy(false);
+    learnFromReviewed(placed);
     const originalStored = record.original_stored;
 
     const label = record.ticket.ticket_number ?? active.source.file_name;
@@ -1654,6 +2585,8 @@ export default function LoadDesk() {
     setQueue((current) =>
       current.map((item) => (item.id === active.id ? markSaved(item) : item)),
     );
+    // The invoices that moved along, as they are now.
+    refreshQueueFrom(reordered);
     // A first invoice number sets the order for uploads still waiting for one.
     setQueue(numberWaitingBatches);
     // Straight on to the next ticket waiting to be checked, by what is stored
@@ -1677,6 +2610,9 @@ export default function LoadDesk() {
       title: t('Saved ticket {label}', { label }),
       description: [
         movedNote(move, placed),
+        start !== null
+          ? t('Invoice numbers now run from {start}; the other invoices moved along.', { start })
+          : '',
         lineTotal(record.ticket) === null
           ? t('Invoice {number} is a draft until its rate is complete.', { number: invoiceNumber })
           : t('Invoice {number} created.', { number: invoiceNumber }),
@@ -1701,6 +2637,7 @@ export default function LoadDesk() {
     );
     const result = await updateSavedRecords(edits);
     if ('error' in result) return result.error;
+    for (const item of items) learnFromReviewed(item);
     const sent = new Map(items.map((item, index) => [item.id, [item, edits[index]] as const]));
     setQueue((current) =>
       current.map((item) => {
@@ -1713,12 +2650,11 @@ export default function LoadDesk() {
         const placed = edit.invoice_batch_id
           ? { ...item, batch_id: edit.invoice_batch_id, invoice: saved.invoice }
           : item;
+        // The number as saved — not what was typed, when the typed number
+        // was too low for the invoice's place in the series.
         return {
           ...placed,
-          invoice:
-            placed.invoice.invoice_number.trim() === number
-              ? { ...placed.invoice, invoice_number: number }
-              : placed.invoice,
+          invoice: { ...placed.invoice, invoice_number: number },
           baseline: editKey(edit),
         };
       }),
@@ -1786,6 +2722,7 @@ export default function LoadDesk() {
   /** Saves the changes on this invoice's saved tickets together. */
   async function saveChanges() {
     if (!active) return;
+    if (blockedByReview(active)) return;
     const changed = queue.filter(
       (item) => item.batch_id === active.batch_id && hasChanges(item),
     );
@@ -1799,26 +2736,63 @@ export default function LoadDesk() {
     // The active ticket goes to the invoice of its date, which is not this one
     // if its date was corrected. The others stay where they are.
     const { item: placed, move } = placedByDate(active);
-    const toSave = withActive.map((item) => (item.id === active.id ? placed : item));
-    const clash = findInvoiceClash(
-      records,
-      toSave.map((item) => ({
-        id: item.saved_record_id,
-        invoiceNumber: item.invoice.invoice_number,
-        batchId: item.batch_id,
-      })),
-    );
-    if (clash) {
-      setSaveStatus({
-        message: t(
-          'Invoice number {number} is already used by another upload. Choose another.',
-          { number: clash },
-        ),
-        tone: 'error',
-      });
-      return;
+    let toSave = withActive.map((item) => (item.id === active.id ? placed : item));
+    // A number typed onto an invoice is where the series starts, worked back
+    // from this invoice's place in date order: typed onto the first invoice
+    // it is the number itself. The rest of the ledger follows — every other
+    // invoice takes the number its place gives it from there — so a number
+    // another invoice has now is not refused, it is moved on. Set before the
+    // save, and the ledger renumbered before it too, so the number this
+    // invoice is saved with is the one the run gives it.
+    const stored = records.find((record) => record.id === active.saved_record_id);
+    const typedNumber = active.invoice.invoice_number.trim();
+    const typed =
+      move.kind === 'stay' &&
+      stored !== undefined &&
+      typedNumber !== stored.invoice.invoice_number.trim() &&
+      !isPendingInvoiceNumber(typedNumber);
+    const start = typed ? seriesStartFor(records, placed.batch_id, typedNumber) : null;
+    if (start === null) {
+      const clash = findInvoiceClash(
+        records,
+        toSave.map((item) => ({
+          id: item.saved_record_id,
+          invoiceNumber: item.invoice.invoice_number,
+          batchId: item.batch_id,
+        })),
+      );
+      if (clash) {
+        setSaveStatus({
+          message: t(
+            'Invoice number {number} is already used by another upload. Choose another.',
+            { number: clash },
+          ),
+          tone: 'error',
+        });
+        return;
+      }
     }
     setBusy(true);
+    let renumbered: string | null = null;
+    if (start !== null) {
+      if (start !== (profileStore.company?.invoice_start ?? null)) {
+        const problem = await saveInvoiceStart(start);
+        if (problem) {
+          setBusy(false);
+          setSaveStatus({ message: problem, tone: 'error' });
+          return;
+        }
+      }
+      refreshQueueFrom(await reorderInvoicesByDate());
+      // The number the run gave this invoice: what was typed, unless what
+      // was typed was too low for its place.
+      renumbered =
+        getRecordsSnapshot()
+          .records.find((record) => recordBatch(record) === placed.batch_id)
+          ?.invoice.invoice_number.trim() ?? typedNumber;
+      const number = renumbered;
+      toSave = toSave.map((item) => ({ ...item, invoice: { ...item.invoice, invoice_number: number } }));
+    }
     const error = await persistChanges(
       toSave,
       move.kind === 'stay' ? null : { id: active.id, batchId: placed.batch_id },
@@ -1828,12 +2802,21 @@ export default function LoadDesk() {
       setSaveStatus({ message: error, tone: 'error' });
       return;
     }
-    const invoiceNumber = placed.invoice.invoice_number.trim();
+    const invoiceNumber = renumbered ?? placed.invoice.invoice_number.trim();
     const label = active.ticket.ticket_number ?? active.source.file_name;
     const moved = movedNote(move, placed);
     const message = moved
       ? moved
-      : !changed.length
+      : renumbered !== null && renumbered !== typedNumber
+        ? t('Invoice numbers now run from {start} in date order; this invoice is {number}.', {
+            start: start ?? '',
+            number: renumbered,
+          })
+        : renumbered !== null
+          ? t('Invoice numbers now run from {start}; the other invoices moved along.', {
+              start: start ?? '',
+            })
+          : !changed.length
         ? t('Checked. Nothing needed changing.')
         : toSave.length > 1
           ? t('Saved changes to {tickets} on invoice {number}.', {
@@ -1931,12 +2914,52 @@ export default function LoadDesk() {
     return -1;
   };
 
+  /**
+   * The ticket's picture, over the page, for a saved ticket: on a phone,
+   * what somebody asked for a missing date wants is the photograph to read
+   * it off, not thirty boxes. The ticket is put on the review as usual but
+   * not scrolled to, and the picture opens as soon as it has loaded.
+   */
+  function openTicketPicture(record: SavedRecord) {
+    // Nothing to do with the review: the picture is loaded on its own and
+    // shown over whatever page this is, and closing it leaves the page as
+    // it was. Putting the ticket on the review to show its picture opened
+    // the review under it, and closing the picture left the review open.
+    const shown = itemFromRecord(record, recordBatch(record));
+    setPictureOf({ ...shown, preview_status: 'loading' });
+    void loadStoredOriginal(record).then((blob) => {
+      if (!blob) {
+        toast.add({ title: t('The original is not stored for this ticket.'), type: 'error' });
+      }
+      setPictureOf((current) => {
+        if (!current || current.saved_record_id !== record.id) return current;
+        if (!blob) return null;
+        return {
+          ...current,
+          original: blob,
+          preview_url:
+            URL.createObjectURL(blob) + (record.source.page ? `#page=${record.source.page}` : ''),
+          preview_status: 'ready',
+        };
+      });
+    });
+  }
+
+  /** The photograph opened from the panel, over the page; null when none is. */
+  const [pictureOf, setPictureOf] = useState<QueueItem | null>(null);
+  const closePicture = () => {
+    setPictureOf((current) => {
+      if (current?.preview_url) URL.revokeObjectURL(current.preview_url.split('#')[0]);
+      return null;
+    });
+  };
+
   /** Reopens a saved ticket, with the other saved tickets on its invoice, to edit. */
-  function editSaved(record: SavedRecord) {
+  function editSaved(record: SavedRecord, scroll = true) {
     const open = queue.findIndex((item) => item.saved_record_id === record.id);
     if (open >= 0) {
       setActiveIndex(open);
-      scrollToReview();
+      if (scroll) scrollToReview();
       return;
     }
     const batchId = recordBatch(record);
@@ -1949,10 +2972,12 @@ export default function LoadDesk() {
       queue.length + Math.max(0, lines.findIndex((line) => line.id === record.id)),
     );
     setSaveStatus(null);
-    scrollToReview();
-    for (const [index, line] of lines.entries()) {
-      const itemId = added[index].id;
-      void loadStoredOriginal(line).then((blob) =>
+    if (scroll) scrollToReview();
+    // The pictures, a few at a time rather than all at once: each one is a
+    // request the server has to carry while it lasts, and an invoice of a
+    // dozen tickets fetched together is a dozen at once.
+    const showPicture = (line: SavedRecord, itemId: string) =>
+      loadStoredOriginal(line).then((blob) => {
         setQueue((current) =>
           current.map((item) => {
             if (item.id !== itemId) return item;
@@ -1966,9 +2991,15 @@ export default function LoadDesk() {
               preview_status: 'ready',
             };
           }),
-        ),
-      );
-    }
+        );
+      });
+    const pending = lines.map((line, index) => [line, added[index].id] as const);
+    const lane = async () => {
+      for (let next = pending.shift(); next; next = pending.shift()) {
+        await showPicture(next[0], next[1]);
+      }
+    };
+    for (let lanes = 0; lanes < PICTURE_LANES; lanes++) void lane();
   }
 
   function clearQueue() {
@@ -2018,6 +3049,180 @@ export default function LoadDesk() {
       ];
     });
 
+  /**
+   * A field nobody has settled: what the resolver decided, or what a person
+   * decided afterwards, put in words for somebody holding the paper.
+   *
+   * The wording says what to do, not what the layer calls it. "Ambiguous
+   * candidates" is a state of the evidence; "more than one on file fits" is
+   * the thing a reviewer can act on with the ticket in front of them.
+   */
+  function reviewReason(resolution: FieldResolution): string {
+    const reason: ReviewReason | undefined = resolution.reason;
+    if (reason === 'camera_crop') {
+      return t('The sheet ran off the photograph on this side. Retake the picture.');
+    }
+    if (reason === 'partial_numeric') {
+      return t('Part of this was cut off the print, and a number is never completed by guessing.');
+    }
+    if (reason === 'ambiguous_candidates') {
+      return t('More than one value on file fits what printed.');
+    }
+    if (reason === 'conflicting_evidence') {
+      return t('Two sources disagree about this field.');
+    }
+    if (reason === 'unsupported_proposal') {
+      return t('The reader suggested a completion nothing on file supports.');
+    }
+    if (reason === 'not_read') {
+      return t('What printed here could not be read as a value.');
+    }
+    if (reason === 'insufficient_evidence') {
+      return t('Part of the print is missing and nothing on file completes it.');
+    }
+    return t('Nothing of this field is on the paper — the print ran off the sheet.');
+  }
+
+  /** Whether a field is still waiting for somebody to settle it. */
+  const unsettledField = (resolution: FieldResolution) =>
+    resolution.status === 'needs_review' ||
+    resolution.reason === 'camera_crop' ||
+    (resolution.status === 'missing' && resolution.source_clipped);
+
+  /**
+   * What the recovery layer has to say about one field, under its box.
+   *
+   * Nothing at all for a field read whole off the paper, which is nearly
+   * every field of nearly every ticket: a ticket that came through clean
+   * looks exactly as it did before any of this existed. A field that was
+   * completed says so quietly and keeps its working folded away; only a
+   * field waiting on a person is allowed to be loud, and even then the box
+   * itself stays an ordinary box somebody can type in.
+   */
+  const recoveryUnder = (def: FieldDef): ReactNode => {
+    const resolution = active?.recovery?.fields[def.name];
+    if (!resolution || resolution.status === 'exact') return null;
+    if (resolution.status === 'confirmed') {
+      return (
+        <small className="ld-field-hint ld-recovered">
+          {resolution.value === null
+            ? t('Left empty by reviewer')
+            : t('Confirmed by reviewer')}
+        </small>
+      );
+    }
+    if (resolution.status === 'recovered') {
+      return (
+        <div className="ld-recovered">
+          <small className="ld-field-hint">
+            {resolution.source === 'batch_context'
+              ? t('Filled from another ticket with the same order number')
+              : resolution.visible_text && ['verified_profile', 'verified_history', 'user_correction'].includes(resolution.source ?? '')
+                ? t('From what is on file — the ticket shows “{print}”', { print: resolution.visible_text })
+                : resolution.visible_text
+                  ? t('Recovered from partial print — the ticket shows “{print}”', {
+                      print: resolution.visible_text,
+                    })
+                  : t('Not printed whole here — worked out from the rest of the ticket')}
+          </small>
+          {resolution.evidence.length ? (
+            <details className="ld-why">
+              <summary>{t('Why')}</summary>
+              <ul>
+                {resolution.evidence.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
+        </div>
+      );
+    }
+    if (!unsettledField(resolution)) return null;
+    // The job and the site are never a question (SILENT_FIELDS): what was
+    // read stands, and this only says so, quietly, with what is on file a
+    // tap away for anyone who wants to change it.
+    if (SILENT_FIELDS.has(def.name)) {
+      const options = resolution.candidates ?? [];
+      return (
+        <div className="ld-recovered">
+          <small className="ld-field-hint">
+            {resolution.visible_text
+              ? t('Read from a cut-off line — the ticket shows “{print}”', { print: resolution.visible_text })
+              : t('Not read whole on this ticket')}
+          </small>
+          {options.length ? (
+            <span className="ld-confirm-actions">
+              {options.map((candidate) => (
+                <Button key={candidate} type="button" variant="secondary" size="xs" onClick={() => setField(def.name, candidate, 'accepted')}>
+                  <span className="ui-literal">{candidate}</span>
+                </Button>
+              ))}
+            </span>
+          ) : null}
+        </div>
+      );
+    }
+    // A camera crop is not a question about the value, it is a question
+    // about the photograph: offering candidates for print that was never in
+    // the picture is exactly the guessing this layer exists to refuse.
+    const crop = resolution.reason === 'camera_crop';
+    const candidates = crop ? [] : (resolution.candidates ?? []);
+    return (
+      <div className="ld-near-match" data-tone={crop ? 'bad' : 'warning'}>
+        <span>{reviewReason(resolution)}</span>
+        {resolution.visible_text ? (
+          <span>
+            {t('The original shows “{print}”', { print: resolution.visible_text })}
+          </span>
+        ) : null}
+        {candidates.length || (!crop && canLeaveEmpty(def.name)) ? (
+          <span className="ld-confirm-actions">
+            {candidates.map((candidate) => (
+              <Button
+                key={candidate}
+                type="button"
+                variant="secondary"
+                size="xs"
+                onClick={() => {
+                  // The candidate is the print; the box wants the value.
+                  const value = acceptableValue(def.name, candidate);
+                  if (value === null) {
+                    setSaveStatus({ message: t('That value is not a number.'), tone: 'error' });
+                    return;
+                  }
+                  setField(def.name, value, 'accepted');
+                }}
+              >
+                {t('Accept “{value}”', { value: candidate })}
+              </Button>
+            ))}
+            {!crop && canLeaveEmpty(def.name) ? (
+              <Button
+                type="button"
+                variant="link"
+                size="xs"
+                onClick={() => setField(def.name, '', 'accepted')}
+              >
+                {t('Leave empty')}
+              </Button>
+            ) : null}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
+
+  /** The state the box itself shows, or nothing for a field read whole. */
+  const recoveryMark = (def: FieldDef): string | undefined => {
+    const resolution = active?.recovery?.fields[def.name];
+    if (!resolution || resolution.status === 'exact') return undefined;
+    if (SILENT_FIELDS.has(def.name) && unsettledField(resolution)) return 'recovered';
+    if (resolution.status === 'confirmed') return 'confirmed';
+    if (resolution.status === 'recovered') return 'recovered';
+    return unsettledField(resolution) ? 'needs-review' : undefined;
+  };
+
   const renderField = (def: FieldDef, under?: ReactNode) => {
     if (!ticket) return null;
     const value = ticket[def.name];
@@ -2033,25 +3238,37 @@ export default function LoadDesk() {
         ) : null}
       </>
     );
+    // What the recovery layer has to say goes above whatever the field
+    // already carried — the address picker under the destination — because
+    // it is about the value in the box rather than another way to fill it.
+    const recovery = recoveryUnder(def);
+    const below =
+      recovery && under ? (
+        <>
+          {recovery}
+          {under}
+        </>
+      ) : (recovery ?? under);
     const box = (
       <Input
-        id={under ? `${fieldId}-${def.name}` : undefined}
+        id={below ? `${fieldId}-${def.name}` : undefined}
         name={def.name}
         type={def.type ?? (numeric ? 'number' : 'text')}
         min={numeric ? 0 : undefined}
         step={def.step}
         required={def.required}
+        data-recovery={recoveryMark(def)}
         value={value === null ? '' : String(value)}
         onChange={(event) => setField(def.name, event.target.value)}
       />
     );
     // A label may only wrap the one control it names, so a field with buttons
     // under it names its box with htmlFor instead.
-    return under ? (
+    return below ? (
       <div key={def.name} className="ld-field" data-span={def.span}>
         <label htmlFor={`${fieldId}-${def.name}`}>{caption}</label>
         {box}
-        {under}
+        {below}
       </div>
     ) : (
       <label key={def.name} className="ld-field" data-span={def.span}>
@@ -2103,9 +3320,20 @@ export default function LoadDesk() {
   );
 
   const activeTrucks = trucks.filter((truck) => truck.active);
+  // The truck chosen for this session, or the workspace's default truck when
+  // none has been: an owner-driver's scans are all their own truck's, and
+  // picking it on every visit was the one thing left to do before scanning.
+  // Choosing "No truck profile" is a choice, and is kept for the session.
   const uploadTruck =
-    activeTrucks.find((truck) => String(truck.id) === truckChoice) ?? null;
-  const profileContext: ProfileContext = { customers, truck: uploadTruck };
+    truckChoice === NO_TRUCK
+      ? null
+      : (activeTrucks.find((truck) => String(truck.id) === truckChoice) ??
+        defaultTruck(activeTrucks, profileStore.company));
+  const profileContext: ProfileContext = {
+    customers,
+    truck: uploadTruck,
+    billTo: recentClientBillTo(),
+  };
   const activeCustomer = active
     ? (customers.find((item) => item.id === active.customer_profile_id) ?? null)
     : null;
@@ -2344,10 +3572,16 @@ export default function LoadDesk() {
   // many of its tickets nobody has checked yet. This is the pile the invoicing
   // is done from, so it is ordered by when the work happened rather than by
   // the date printed on the paper (see batchesByRecency).
-  const batchesByDate = batchesByRecency(records).map((group) => ({
+  const allBatches = batchesByRecency(records).map((group) => ({
     ...group,
     waiting: group.items.filter(needsReview).length,
   }));
+  // The pile being worked through, not the ledger: the three batches most
+  // recently added to, and the undated one whenever it has tickets, since
+  // those are waiting on a date. The rest are on Invoices & Tickets.
+  const batchesByDate = allBatches.filter(
+    (batch, index) => index < RECENT_BATCHES || batch.date === null,
+  );
 
   const STEPS = ['Ticket', 'Customer and job', 'Weight', 'Invoice'];
   const lastStep = STEPS.length - 1;
@@ -2389,6 +3623,24 @@ export default function LoadDesk() {
     ? [ticket.customer_name, ticket.project_name].filter(Boolean).join(' · ')
     : '';
   const tons = ticket ? invoiceTons(ticket) : '';
+  /**
+   * How many fields of a section are still waiting for a person. Shown on
+   * the closed section's own line, because on a phone — and on a desk with
+   * the sections folded — the only thing on the screen is that line, and a
+   * ticket that cannot be saved must say where the reason for it is.
+   */
+  const toConfirmIn = (...groups: FieldDef[][]) =>
+    groups.flat().filter((def) => {
+      const resolution = active?.recovery?.fields[def.name];
+      return resolution ? unsettledField(resolution) : false;
+    }).length;
+  const withConfirm = (detail: string, count: number) =>
+    count
+      ? [detail, t('{count} to confirm', { count })].filter(Boolean).join(' · ')
+      : detail;
+  const ticketConfirm = toConfirmIn(TICKET_FIELDS);
+  const jobConfirm = toConfirmIn(JOB_FIELDS);
+  const weightConfirm = toConfirmIn(WEIGHT_FIELDS, HAULING_FIELDS);
   const weightDetail = ticket
     ? [
         ticket.net_lb === null ? null : pounds(ticket.net_lb),
@@ -2533,7 +3785,7 @@ export default function LoadDesk() {
    * places.
    */
   const missingInformation = (item: QueueItem) =>
-    validateTicket(item.ticket).length > 0;
+    validateTicket(item.ticket, item.recovery).length > 0;
 
   const queueRow =
     active && ticket ? (
@@ -2958,7 +4210,7 @@ export default function LoadDesk() {
                 aria-describedby={`${fieldId}-upload-truck-hint`}
                 value={uploadTruck ? String(uploadTruck.id) : ''}
                 disabled={busy}
-                onValueChange={setTruckChoice}
+                onValueChange={(value) => setTruckChoice(value === '' ? NO_TRUCK : value)}
                 options={[
                   { value: '', label: t('No truck profile') },
                   ...activeTrucks.map((truck) => ({
@@ -2980,27 +4232,28 @@ export default function LoadDesk() {
               </small>
             </div>
             <div className="ld-actions">
+              {/* Read, checked, filed and invoiced: nothing opens unless
+                  something is left to ask, and what is left is asked once
+                  per job in the panel below. Beside a truck that is the whole
+                  job; at a desk the second button opens the review as well,
+                  for a look at every ticket. */}
               <Button
                 onClick={() => void extractPending()}
                 disabled={busy || !pending.length}
               >
-                {t('Extract tickets')}
+                {t('Process tickets')}
                 <ChevronRight data-icon="inline-end" />
               </Button>
-              {/* Beside a truck there is another ticket to photograph, not
-                  thirty boxes to check. This reads the picture and files it in
-                  its date's batch without asking anything; the batch below
-                  says how many are waiting, and opens them when there is time. */}
-              {isPhone ? (
+              {isPhone ? null : (
                 <Button
                   variant="secondary"
-                  onClick={() => void extractPending(false)}
+                  onClick={() => void extractPending(true)}
                   disabled={busy || !pending.length}
                 >
                   <Clock data-icon="inline-start" />
-                  {t('Review later')}
+                  {t('Process and review')}
                 </Button>
-              ) : null}
+              )}
             </div>
             {addingTo ? null : extractionProgress}
             <p
@@ -3009,8 +4262,220 @@ export default function LoadDesk() {
               aria-live="polite"
             >
               {uploadStatus?.message}
+              {isPhone && liveReview && uploadStatus?.message.startsWith('✓')
+                ? ` · ${t('Please review')}: ${liveReview}`
+                : ''}
             </p>
           </section>
+
+          {/* The questions the scans left, one per job. A ticket the evidence
+              settled is not here; it is on its invoice already. What is here
+              is answered once and applied to every ticket it covers, and the
+              review screen is only for a ticket with a question of its own. */}
+          {/* The right-hand column: what is left to answer, and under it the
+              batches. One column, so the batches sit under the questions on a
+              desk rather than being pushed under the upload by them. */}
+          <div className="ld-side">
+          {exceptions.length ? (
+            <section className="ld-panel ld-exceptions" aria-labelledby="ld-input-title" ref={exceptionsPanel}>
+              <div className="ld-panel-head">
+                <div>
+                  <p className="ld-step">{t('Answer once')}</p>
+                  <h2 id="ld-input-title">{t('Needs your input')}</h2>
+                </div>
+              </div>
+              <ul className="ld-exception-list">
+                {exceptions.map((group) => {
+                  const individual = group.type === 'INDIVIDUAL_CRITICAL_FIELD';
+                  const record = individual ? records.find((item) => item.id === group.ticketIds[0]) : null;
+                  const asksCustomer = group.asks.includes('customer_name') || group.customerProfileId === null;
+                  const chosenCustomer = answerFor(group, 'customer_profile');
+                  const error = groupError[group.key];
+                  return (
+                    <li key={group.key} className="ld-exception" data-kind={individual ? 'ticket' : 'group'}>
+                      <div className="ld-exception-head">
+                        <strong>{t(EXCEPTION_TITLES[group.type])}</strong>
+                        <span>
+                          {individual
+                            ? [record?.ticket.ticket_number ? t('Ticket {number}', { number: record.ticket.ticket_number }) : t('Unnumbered ticket'), record?.ticket.ticket_date ? date(record.ticket.ticket_date) : null]
+                                .filter(Boolean)
+                                .join(' · ')
+                            : [group.customer ?? t('Customer not read'), t('{tickets}', { tickets: plural(group.ticketIds.length, 'ticket') })].join(' · ')}
+                        </span>
+                      </div>
+                      {individual ? (
+                        <>
+                          <p className="ld-exception-why">
+                            {group.needsDate
+                              ? t('No date could be read. Enter it from the ticket; it then goes on that day’s invoice.')
+                              : group.asks.length
+                                ? t('Not settled: {fields}.', {
+                                    fields: group.asks.map((field) => t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))).join(', '),
+                                  })
+                                : t(group.reasons[0] ?? 'This ticket has not been looked at.')}
+                          </p>
+                          {group.needsDate ? (
+                            <div className="ld-fields ld-exception-fields">
+                              <div className="ld-field" data-span={2}>
+                                <label htmlFor={`${fieldId}-${group.key}-date`}>{t('Date')}</label>
+                                <Input
+                                  id={`${fieldId}-${group.key}-date`}
+                                  type="date"
+                                  value={groupAnswers[group.key]?.ticket_date ?? ''}
+                                  onChange={(event) => setAnswer(group, 'ticket_date', event.target.value)}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                          {error ? <p className="ld-status" data-tone="error">{error}</p> : null}
+                          <div className="ld-confirm-actions">
+                            {group.needsDate ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={groupBusy !== null}
+                                onClick={() => void saveDate(group)}
+                              >
+                                {groupBusy === group.key ? t('Saving…') : t('Save date')}
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant={group.needsDate ? 'secondary' : 'default'}
+                              onClick={() => record && (isPhone ? openTicketPicture(record) : editSaved(record))}
+                            >
+                              {isPhone ? t('Open ticket') : t('Open in review')}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          {group.reasons[0] ? <p className="ld-exception-why">{t(group.reasons[0])}</p> : null}
+                          {Object.keys(group.detected).length ? (
+                            <dl className="ld-exception-detected">
+                              {(Object.entries(group.detected) as [keyof Ticket, string][]).map(([field, value]) => (
+                                <div key={field}>
+                                  <dt>{t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))}</dt>
+                                  <dd className="ui-literal">{value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : null}
+                          <p className="ld-field-hint">
+                            {t('{agree} of {tickets} read this whole.', {
+                              agree: Math.round(group.confidence * group.ticketIds.length),
+                              tickets: plural(group.ticketIds.length, 'ticket'),
+                            })}
+                          </p>
+                          <div className="ld-fields ld-exception-fields">
+                            {asksCustomer ? (
+                              <div className="ld-field" data-span={2}>
+                                <label htmlFor={`${fieldId}-${group.key}-customer`}>{t('Customer')}</label>
+                                <SelectField
+                                  id={`${fieldId}-${group.key}-customer`}
+                                  value={chosenCustomer}
+                                  onValueChange={(value) => setAnswer(group, 'customer_profile', value)}
+                                  options={[
+                                    ...customers.map((customer) => ({ value: String(customer.id), label: customer.name })),
+                                    {
+                                      value: NEW_CUSTOMER,
+                                      label: group.customer
+                                        ? t('+ New customer: {name}', { name: group.customer })
+                                        : t('+ New customer'),
+                                    },
+                                  ]}
+                                />
+                                {chosenCustomer === NEW_CUSTOMER ? (
+                                  <Input
+                                    aria-label={t('Customer name')}
+                                    value={answerFor(group, 'customer_name') || group.customer || ''}
+                                    onChange={(event) => setAnswer(group, 'customer_name', event.target.value)}
+                                  />
+                                ) : null}
+                              </div>
+                            ) : null}
+                            {group.asks
+                              .filter((field) => field !== 'customer_name')
+                              .map((field) => (
+                                <div key={field} className="ld-field" data-span={2}>
+                                  <label htmlFor={`${fieldId}-${group.key}-${field}`}>
+                                    {t(ASK_LABELS[field] ?? field.replace(/_/g, ' '))}
+                                  </label>
+                                  <Input
+                                    id={`${fieldId}-${group.key}-${field}`}
+                                    value={answerFor(group, field)}
+                                    onChange={(event) => setAnswer(group, field, event.target.value)}
+                                  />
+                                  {group.candidates[field]?.length ? (
+                                    <span className="ld-confirm-actions">
+                                      {group.candidates[field]!.map((candidate) => (
+                                        <Button
+                                          key={candidate}
+                                          type="button"
+                                          variant="secondary"
+                                          size="xs"
+                                          onClick={() => setAnswer(group, field, candidate)}
+                                        >
+                                          <span className="ui-literal">{candidate}</span>
+                                        </Button>
+                                      ))}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              ))}
+                          </div>
+                          {(answerFor(group, 'project_address') || group.detected.project_address) ? (
+                            <p className="ld-field-hint">
+                              {answerFor(group, SAVE_ADDRESS) === 'no'
+                                ? t('The job site will not be saved to the customer.')
+                                : t('The job site will be saved to the customer, to pick on the next ticket.')}{' '}
+                              <Button
+                                type="button"
+                                variant="link"
+                                size="xs"
+                                onClick={() =>
+                                  setAnswer(group, SAVE_ADDRESS, answerFor(group, SAVE_ADDRESS) === 'no' ? 'yes' : 'no')
+                                }
+                              >
+                                {answerFor(group, SAVE_ADDRESS) === 'no' ? t('Save it after all') : t('Don’t save it')}
+                              </Button>
+                            </p>
+                          ) : null}
+                          {error ? (
+                            <p className="ld-status" data-tone="error">{error}</p>
+                          ) : null}
+                          <div className="ld-confirm-actions">
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={groupBusy !== null}
+                              onClick={() => void confirmGroup(group)}
+                            >
+                              {groupBusy === group.key
+                                ? t('Saving…')
+                                : t('Confirm for all {tickets}', { tickets: plural(group.ticketIds.length, 'ticket') })}
+                            </Button>
+                            {asksCustomer && chosenCustomer === NEW_CUSTOMER ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={groupBusy !== null}
+                                onClick={() => void fileWithoutProfile(group)}
+                              >
+                                {t('Don’t create a customer')}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
 
           <section className="ld-panel" aria-labelledby="ld-saved-title">
             <div className="ld-panel-head">
@@ -3083,7 +4548,7 @@ export default function LoadDesk() {
                     const first = group.records[0]!;
                     const waiting = group.records.filter(needsReview).length;
                     const incomplete = group.records.some(
-                      (record) => validateTicket(record.ticket).length > 0,
+                      (record) => validateTicket(record.ticket, record.recovery).length > 0,
                     );
                     const number = shownInvoiceNumber(group.invoice.invoice_number);
                     const customers = [
@@ -3150,6 +4615,7 @@ export default function LoadDesk() {
               ))
             )}
           </section>
+          </div>
         </div>
 
         {active && ticket && check ? (
@@ -3177,7 +4643,11 @@ export default function LoadDesk() {
                     nothing at all. */}
                 {active.note_problem ? (
                   <div className="ld-notice" data-tone="warning" aria-live="polite">
-                    <strong>{t('This ticket was not read')}</strong>
+                    <strong>
+                      {active.recovery && cameraCropFields(active.recovery).length
+                        ? t('Part of this ticket was not in the picture')
+                        : t('This ticket was not read')}
+                    </strong>
                     <p>{t(active.note)}</p>
                     <details className="ld-scan-text">
                       <summary>{t('What the scan read')}</summary>
@@ -3207,15 +4677,29 @@ export default function LoadDesk() {
                   data-phone-step={isPhone ? atStep : undefined}
                 >
                   <details className="ld-section ld-collapsible" data-step="0" open={isPhone || undefined}>
-                    {sectionSummary('Ticket', ticketDetail)}
+                    {sectionSummary(
+                      'Ticket',
+                      withConfirm(ticketDetail, ticketConfirm),
+                      ticketConfirm ? 'bad' : undefined,
+                    )}
                     <div className="ld-fields">
-                      {/* No date came off the scan, so this ticket is on no
-                          invoice. The date is what puts it on one. */}
-                      {isUndatedBatch(active.batch_id) && !active.ticket.ticket_date?.trim() ? (
+                      {/* No day came off the scan, so this ticket is on no
+                          invoice. The date is what puts it on one. Two ways
+                          to get here and they read differently to whoever is
+                          looking: an empty date box, and a box holding what
+                          the reader made of a line it could not manage. The
+                          second is worth quoting back, because the thing to
+                          do is compare it with the picture. */}
+                      {isUndatedBatch(active.batch_id) && !ticketDay(active.ticket.ticket_date) ? (
                         <p className="ld-weight" data-tone="bad" role="alert">
-                          {t(
-                            'No date was detected on this ticket. Read it off the original and enter it below; the ticket then goes on that day’s invoice.',
-                          )}
+                          {isUnreadableDate(active.ticket.ticket_date)
+                            ? t(
+                                'The date read off this ticket, “{date}”, is not a day on the calendar. Check it against the original and correct it below; the ticket then goes on that day’s invoice.',
+                                { date: active.ticket.ticket_date!.trim() },
+                              )
+                            : t(
+                                'No date was detected on this ticket. Read it off the original and enter it below; the ticket then goes on that day’s invoice.',
+                              )}
                         </p>
                       ) : null}
                       {renderFields(TICKET_FIELDS)}
@@ -3223,7 +4707,11 @@ export default function LoadDesk() {
                   </details>
 
                   <details className="ld-section ld-collapsible" data-step="1" open={isPhone || undefined}>
-                    {sectionSummary('Customer and Job', jobDetail)}
+                    {sectionSummary(
+                      'Customer and Job',
+                      withConfirm(jobDetail, jobConfirm),
+                      jobConfirm ? 'bad' : undefined,
+                    )}
                     <div className="ld-fields">
                       {renderFields(JOB_FIELDS, (def) =>
                         def.name === 'project_address' ? addressPicker : undefined,
@@ -3234,8 +4722,8 @@ export default function LoadDesk() {
                   <details className="ld-section ld-collapsible" data-step="2" open={isPhone || undefined}>
                     {sectionSummary(
                       'Weight and Hauling',
-                      weightDetail,
-                      check.tone === 'bad' ? 'bad' : undefined,
+                      withConfirm(weightDetail, weightConfirm),
+                      check.tone === 'bad' || weightConfirm ? 'bad' : undefined,
                     )}
                     <div className="ld-fields">
                       {renderFields(WEIGHT_FIELDS)}
@@ -3307,8 +4795,8 @@ export default function LoadDesk() {
                           phone draws for type="date". */}
                       {invoiceField(
                         t('Invoice date'),
-                        active.ticket.ticket_date
-                          ? date(active.ticket.ticket_date)
+                        ticketDay(active.ticket.ticket_date)
+                          ? date(active.ticket.ticket_date!)
                           : date(active.invoice.invoice_date),
                         () => {},
                         {
@@ -3844,6 +5332,9 @@ export default function LoadDesk() {
 
       {viewingTicket && active ? (
         <TicketViewer item={active} onClose={() => setViewingTicket(false)} />
+      ) : null}
+      {pictureOf && pictureOf.preview_status === 'ready' ? (
+        <TicketViewer item={pictureOf} onClose={closePicture} />
       ) : null}
 
       <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />

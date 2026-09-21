@@ -1,6 +1,11 @@
+import { normalizeName } from './customer-rates.ts';
 import { csvCell, lineTotal } from './format.ts';
+import { unresolvedCritical } from './recovery/index.ts';
+import { ticketDateValue, ticketDay } from './ticket-date.ts';
 import { validateTicket } from './validate.ts';
-import type { InvoiceDraft, SavedRecord } from './types.ts';
+import type { InvoiceDraft, SavedRecord, Ticket } from './types.ts';
+
+export { isUnreadableDate, ticketDateValue, ticketDay } from './ticket-date.ts';
 
 // Invoices are not stored separately: saved tickets that carry the same
 // invoice number are the lines of one invoice.
@@ -14,45 +19,6 @@ export const byTicketDate = (a: SavedRecord, b: SavedRecord) =>
   a.id - b.id;
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
-
-const ISO_DATE = /^(\d{4})-(\d{1,2})-(\d{1,2})$/;
-const SLASHED_DATE = /^(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})$/;
-
-/**
- * The day a ticket date names, as a number to order days by.
- *
- * Dates are put in order as days, never as the text they are written in.
- * "1/6/2026" sorts before "12/19/2025" as a string, which is how January's
- * tickets came to be invoiced ahead of December's. Both the ISO dates the app
- * stores and the M/D/YYYY a ticket is written in are read here, so a date that
- * reached a record in another shape still falls in the right place.
- *
- * Null for a blank date, and for a day the calendar does not have — a misread
- * has no position in a run of days, so it is treated as an undated ticket.
- */
-export function ticketDateValue(value: string | null | undefined): number | null {
-  const text = value?.trim();
-  if (!text) return null;
-  const iso = ISO_DATE.exec(text);
-  const slashed = iso ? null : SLASHED_DATE.exec(text);
-  if (!iso && !slashed) return null;
-  const [year, month, day] = iso
-    ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
-    : [
-        Number(slashed![3].length === 2 ? `20${slashed![3]}` : slashed![3]),
-        Number(slashed![1]),
-        Number(slashed![2]),
-      ];
-  const date = new Date(Date.UTC(year, month - 1, day));
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return null;
-  }
-  return date.getTime();
-}
 
 /** Oldest day first. A ticket with no day to place goes after every dated one. */
 const byDay = (a: number | null, b: number | null) => {
@@ -73,6 +39,15 @@ export const recordTons = (record: SavedRecord) =>
  * then billed on that day's invoice, at that day's number, without anyone
  * being told the date had been guessed. A ticket with no date is a ticket that
  * is not ready to invoice; it waits for the date to be read off the paper.
+ *
+ * A date the scan made a mess of — a day the calendar has not got, a month
+ * past twelve — joins them there rather than opening a group of its own. It
+ * is no more a day to bill than a blank is, and a group it cannot be ordered
+ * by is a group nothing can number: one of those sat on a draft mark
+ * indefinitely, looking like an invoice that was merely late.
+ *
+ * Grouping is by the day a date names, not the text it is written in, so the
+ * same day written two ways is one group and one invoice.
  */
 export function groupByTicketDate<T>(
   items: T[],
@@ -80,7 +55,7 @@ export function groupByTicketDate<T>(
 ): { date: string | null; items: T[] }[] {
   const groups = new Map<string | null, T[]>();
   for (const item of items) {
-    const date = dateOf(item)?.trim() || null;
+    const date = ticketDay(dateOf(item));
     groups.set(date, [...(groups.get(date) ?? []), item]);
   }
   return [...groups]
@@ -279,6 +254,122 @@ export function numbersByTicketDate(
   );
 }
 
+/**
+ * Every dated invoice's number, so that the numbers run in date order across
+ * the whole ledger: the oldest date takes the lowest number on file, the next
+ * date the next, and a batch not numbered yet takes a new number past the
+ * highest. Returned as the batches whose number would change, keyed by batch.
+ *
+ * Invoices used to keep their numbers for life, and an upload of older
+ * tickets after a newer one left the books climbing in numbers while
+ * jumping back in dates: invoice 1 for the 1st of January, then invoice 2
+ * for the 31st of December. The ledger is asked to read in date order
+ * instead, and where it does not the numbers are moved — a number is a
+ * position in the books, and the books are in date order, with no gaps:
+ * from the number the series starts at (`start`, set under Account or by
+ * typing a number onto an invoice), else the lowest on file, one after
+ * another, so an invoice deleted from the middle closes up behind it. Two batches on one day keep their
+ * order between them. Numbers with no digits to order by are left alone,
+ * with their batches; the undated batch is not an invoice and takes none.
+ */
+export function numbersInDateOrder(
+  records: SavedRecord[],
+  start: string | null | undefined = null,
+): Map<string, string> {
+  type Batch = { batchId: string; day: number; number: string | null; digits: number; arrived: number };
+  const batches = new Map<string, Batch>();
+  for (const record of [...records].sort((a, b) => a.id - b.id)) {
+    const batchId = recordBatch(record);
+    if (isUndatedBatch(batchId)) continue;
+    const day = ticketDateValue(record.ticket.ticket_date);
+    if (day === null) continue;
+    if (batches.has(batchId)) continue;
+    const number = record.invoice.invoice_number.trim();
+    const pending = isPendingInvoiceNumber(number);
+    const match = pending ? null : NUMBERED.exec(number);
+    // A hand-typed number with no digits is somebody's own scheme; its batch
+    // is not moved and its number is not in the pool.
+    if (!pending && !match) continue;
+    batches.set(batchId, {
+      batchId,
+      day,
+      number: pending ? null : number,
+      digits: match ? Number(match[2]) : Number.POSITIVE_INFINITY,
+      arrived: batches.size,
+    });
+  }
+  const list = [...batches.values()];
+  if (!list.length) return new Map();
+  const pool = list
+    .filter((batch) => batch.number !== null)
+    .sort((a, b) => a.digits - b.digits || a.arrived - b.arrived)
+    .map((batch) => batch.number!);
+  // One straight run from the lowest number on file — its prefix and
+  // padding kept — one per dated invoice, oldest date first. A run, not the
+  // pool as it was: an invoice deleted from the middle used to leave its
+  // number as a gap for good, and the books read 1, 3, 4. The run closes it,
+  // and 3 becomes 2. A ledger with no number yet starts at the first.
+  // Where the run starts: the number the series was told to start at, or
+  // failing that the lowest on file, or failing that the first.
+  const first = start?.trim() && NUMBERED.test(start.trim()) ? start.trim() : (pool[0] ?? FIRST_INVOICE_NUMBER);
+  const numbers: string[] = [];
+  while (numbers.length < list.length) {
+    numbers.push(numbers.length ? openingInvoiceNumber(numbers) : first);
+  }
+  const inOrder = [...list].sort((a, b) => a.day - b.day || a.digits - b.digits || a.arrived - b.arrived);
+  const changes = new Map<string, string>();
+  inOrder.forEach((batch, index) => {
+    const wanted = numbers[index];
+    if (wanted !== batch.number) changes.set(batch.batchId, wanted);
+  });
+  return changes;
+}
+
+/**
+ * The number the series has to start at for `batchId` to carry `typed`
+ * once the ledger is in date order, or null when the typed number is not
+ * one to count from.
+ *
+ * A person typing 1001 onto the third-oldest invoice means the series runs
+ * 999, 1000, 1001: the start is the typed number less the invoice's place
+ * in date order, with the prefix and padding as typed. Typed onto the
+ * oldest invoice, the start is the number itself — which is the common
+ * case, the first invoice being given its number. A number too low for the
+ * invoice's place (2 typed onto the fifth-oldest) cannot be that invoice's
+ * in a series without a gap: the series starts at 1, the nearest there is,
+ * and the invoice takes the number its place gives it. `unsaved` are
+ * invoices being filed now and not on the ledger yet, counted in their
+ * places.
+ */
+export function seriesStartFor(
+  records: SavedRecord[],
+  batchId: string,
+  typed: string,
+  unsaved: { batchId: string; date: string | null }[] = [],
+): string | null {
+  const number = typed.trim();
+  const match = NUMBERED.exec(number);
+  if (!match) return null;
+  const dated = new Map(
+    [...records]
+      .sort((a, b) => a.id - b.id)
+      .filter((record) => !isUndatedBatch(recordBatch(record)) && ticketDateValue(record.ticket.ticket_date) !== null)
+      .map((record) => [recordBatch(record), ticketDateValue(record.ticket.ticket_date)!] as const),
+  );
+  for (const batch of unsaved) {
+    const day = ticketDateValue(batch.date);
+    if (day !== null && !isUndatedBatch(batch.batchId) && !dated.has(batch.batchId)) dated.set(batch.batchId, day);
+  }
+  const order = [...dated]
+    .map(([id, day], arrived) => ({ id, day, arrived }))
+    .sort((a, b) => a.day - b.day || a.arrived - b.arrived)
+    .map((batch) => batch.id);
+  const place = order.indexOf(batchId);
+  if (place < 0) return null;
+  const digits = Math.max(1, Number(match[2]) - place);
+  return `${match[1]}${String(digits).padStart(match[2].length, '0')}`;
+}
+
 /** Every saved ticket on an invoice, in print order. */
 export function invoiceLines(
   records: SavedRecord[],
@@ -298,6 +389,15 @@ export type InvoiceGroup = {
   /** Sum of line totals for lines that have a rate. */
   total: number;
   needsRate: boolean;
+  /**
+   * Any ticket on the invoice carrying a field nobody has checked against the
+   * original yet. Kept beside `needsRate` because the two say the same kind of
+   * thing about an invoice — it is not ready to go out — and a screen that
+   * showed one without the other would let a half-read weight print as a
+   * finished line. A ticket saved before the recovery layer existed has no
+   * record and so contributes nothing.
+   */
+  needsConfirmation: boolean;
   firstTicketDate: string | null;
   lastTicketDate: string | null;
 };
@@ -326,6 +426,11 @@ export function invoiceGroups(records: SavedRecord[]): InvoiceGroup[] {
           totals.reduce<number>((sum, value) => sum + (value ?? 0), 0),
         ),
         needsRate: totals.some((value) => value === null),
+        needsConfirmation: lines.some(
+          (record) =>
+            record.recovery !== undefined &&
+            unresolvedCritical(record.recovery).length > 0,
+        ),
         firstTicketDate: dates[0] ?? null,
         lastTicketDate: dates.at(-1) ?? null,
       };
@@ -411,8 +516,35 @@ export function joinsInvoiceFor(
   return !invoice || invoice === ticket;
 }
 
+/**
+ * The saved ticket this one is a second photograph of, or null.
+ *
+ * A file is refused twice by its fingerprint, but the same sheet photographed
+ * again is a new file, and it was saved again — on the invoice a second time,
+ * billed twice. A plant's ticket number is the ticket, so a number already
+ * on file from the same plant is the same ticket. Six digits at least, so a
+ * short number two suppliers might both print is not mistaken for a repeat;
+ * the plant compared where both name one.
+ */
+export function sameTicketOnFile(
+  records: SavedRecord[],
+  ticket: Pick<Ticket, 'ticket_number' | 'plant_name'>,
+): SavedRecord | null {
+  const number = (ticket.ticket_number ?? '').replace(/\D/g, '');
+  if (number.length < 6) return null;
+  const plant = normalizeName(ticket.plant_name ?? '');
+  return (
+    records.find((record) => {
+      if ((record.ticket.ticket_number ?? '').replace(/\D/g, '') !== number) return false;
+      const other = normalizeName(record.ticket.plant_name ?? '');
+      return !plant || !other || plant === other;
+    }) ?? null
+  );
+}
+
 /** Photographed and read, but nobody has checked it against the picture yet. */
-export const needsReview = (record: SavedRecord) => !record.reviewed_at;
+export const needsReview = (record: SavedRecord) =>
+  !record.reviewed_at && !record.auto_approved_at;
 
 /**
  * One ticket of a review, as the navigation sees it.
@@ -530,14 +662,19 @@ export function stepReviewStop(
   return invoiceStopsOf(stops, before).at(-1) ?? null;
 }
 
-/** The date a ticket is filed under; undated scans have a batch of their own. */
+/**
+ * The date a ticket is filed under; scans with no day read off them — blank or
+ * unreadable alike — have a batch of their own.
+ */
 export const batchDate = (record: Pick<SavedRecord, 'ticket'>) =>
-  record.ticket.ticket_date?.trim() || 'undated';
+  ticketDay(record.ticket.ticket_date) ?? 'undated';
 
 /**
- * The batch every ticket with no date read off it waits in. It is not an
- * invoice and never takes a number: a ticket cannot be billed for a day nobody
- * knows. Entering the date in review moves the ticket to that day's invoice.
+ * The batch every ticket with no date read off it waits in — nothing printed
+ * where the date should be, and equally a date the scan could not make a day
+ * of. It is not an invoice and never takes a number: a ticket cannot be billed
+ * for a day nobody knows, and a day read wrong is a day nobody knows.
+ * Entering the date in review moves the ticket to that day's invoice.
  */
 export const UNDATED_BATCH = 'batch-undated';
 export const isUndatedBatch = (batchId: string) => batchId === UNDATED_BATCH;
@@ -557,10 +694,10 @@ export function batchInvoiceFor(
   records: SavedRecord[],
   ticketDate: string | null,
 ): { invoice_number: string; batch_id: string; opened: boolean } {
-  const date = ticketDate?.trim() || 'undated';
-  // No date read: into the holding batch, on no invoice. Always the mark,
-  // never a number an earlier undated ticket may have been given under the
-  // old rule, so nothing undated is ever billed.
+  const date = ticketDay(ticketDate) ?? 'undated';
+  // No day read off it: into the holding batch, on no invoice. Always the
+  // mark, never a number an earlier undated ticket may have been given under
+  // the old rule, so nothing undated is ever billed.
   if (date === 'undated') {
     return {
       invoice_number: pendingInvoiceNumber(UNDATED_BATCH),
@@ -635,7 +772,7 @@ export function invoiceMoveFor(
   // The holding batch for undated tickets is not an invoice: a ticket given
   // its date leaves it whether or not anything is left behind, onto an
   // invoice of its own.
-  if (!leftBehind && !(isUndatedBatch(ticket.batchId) && ticket.date?.trim())) {
+  if (!leftBehind && !(isUndatedBatch(ticket.batchId) && ticketDay(ticket.date))) {
     return { kind: 'stay' };
   }
   const numbers = [...others]
@@ -647,8 +784,54 @@ export function invoiceMoveFor(
   return { kind: 'open', batchId: target.batch_id, invoiceNumber };
 }
 
+/**
+ * The invoice a saved ticket takes once its date is `date`: the details and
+ * the batch, worked out from `invoiceMoveFor` against every other saved
+ * ticket. `batchId` is null when the ticket stays where it is. Every path
+ * that gives a ticket its date goes through here — the date box in the
+ * panel, a job confirmed for a group of tickets, the ledger's own repair —
+ * because a ticket dated and left on the undated batch is a ticket nobody
+ * can bill: the group answer used to set the date and leave the ticket
+ * there, checked, on "Date not found" for good.
+ */
+export function invoicePlacement(
+  record: SavedRecord,
+  date: string,
+  records: SavedRecord[],
+): { invoice: InvoiceDraft; batchId: string | null } {
+  const others = records.filter((other) => other.id !== record.id);
+  const move = invoiceMoveFor({ batchId: recordBatch(record), date }, others, []);
+  if (move.kind === 'join') {
+    return {
+      invoice: { ...move.invoice, bill_to: { ...move.invoice.bill_to }, invoice_date: date },
+      batchId: move.batchId,
+    };
+  }
+  if (move.kind === 'open') {
+    return {
+      invoice: { ...record.invoice, invoice_number: move.invoiceNumber, invoice_date: date },
+      batchId: move.batchId,
+    };
+  }
+  return { invoice: { ...record.invoice, invoice_date: date }, batchId: null };
+}
+
+/**
+ * Saved tickets that have a date and are still on the undated batch. They
+ * belong on their date's invoice, and the ledger puts them there (see
+ * `reorderInvoicesByDate`): however they came to be dated, a ticket with a
+ * day is not one waiting for its day.
+ */
+export const strandedDated = (records: SavedRecord[]): SavedRecord[] =>
+  records.filter(
+    (record) => isUndatedBatch(recordBatch(record)) && ticketDay(record.ticket.ticket_date) !== null,
+  );
+
 export const ticketStatus = (record: SavedRecord) =>
-  validateTicket(record.ticket).length ? 'needs_review' : 'valid';
+  // With the recovery record, so a ticket whose fields are still waiting on a
+  // person reads the same here — in the list, the filter and the count — as it
+  // does on the review screen that will not let it be saved.
+  validateTicket(record.ticket, record.recovery).length ? 'needs_review' : 'valid';
 
 /** Every search word must appear in the ticket, invoice, truck or bill-to. */
 export function recordMatches(record: SavedRecord, query: string): boolean {
@@ -692,6 +875,7 @@ const INVOICE_COLUMNS: [string, (group: InvoiceGroup) => string | number | null]
   ['net_tons', (g) => g.tons],
   ['total', (g) => g.total],
   ['status', (g) => (g.needsRate ? 'draft' : 'rated')],
+  ['needs_confirmation', (g) => (g.needsConfirmation ? 'true' : 'false')],
 ];
 
 export function invoicesCsv(groups: InvoiceGroup[]): string {

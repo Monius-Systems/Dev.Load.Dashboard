@@ -152,3 +152,50 @@ void test('a job site with a street number still reads as before', () => {
     '31480 EDISON RD, NEW CARLISLE, IN 46552 US',
   );
 });
+
+void test('a scan that misreads the date leaves the ticket undated', () => {
+  // The day used to be checked against 1–31 and nothing else, so a smudged
+  // 21 read as "2/31" came out of the parser as "2026-02-31" — a filled-in
+  // date field that the filing could not place, and a batch nothing could
+  // ever number. Nothing is guessed from it: the field is left empty, the
+  // ticket waits in the batch for tickets with no date, and review asks for
+  // the date off the original.
+  const scan = (printed: string) =>
+    parseTicket(
+      `${printed}\nHeidelberg Materials\nTicket: 1\nCustomer: 123456 K FIVE\nNet Weight: 1,000 LB`,
+    ).ticket;
+  assert.equal(scan('2/31/2026').ticket_date, null, 'February has no 31st');
+  assert.equal(scan('2/29/2025').ticket_date, null, '2025 is not a leap year');
+  assert.equal(scan('4/31/2026').ticket_date, null, 'April has 30 days');
+  assert.equal(scan('2/29/2024').ticket_date, '2024-02-29', 'but 2024 is a leap year');
+  assert.equal(scan('4/1/2025').ticket_date, '2025-04-01');
+  // And a reviewer looking at the empty box is told it was the scan, not the
+  // paper, that came up short.
+  assert.ok(
+    validateTicket(scan('2/31/2026')).some((issue) =>
+      issue.includes('Missing required field: ticket date'),
+    ),
+  );
+});
+
+void test('a date that is not a day is called out in review', () => {
+  // A date can reach a saved ticket from somewhere other than the parser —
+  // an import, a record filed before the check existed. The box is not empty,
+  // so "missing" would not be said and nothing would be said at all; the
+  // ticket would sit in the undated batch with no explanation on it.
+  const { ticket } = parseTicket(
+    'Heidelberg Materials\nTicket: 1\nCustomer: 123456 K FIVE\nNet Weight: 1,000 LB',
+  );
+  const issues = validateTicket({ ...ticket, ticket_date: '2026-02-31' });
+  assert.ok(
+    issues.some((issue) => issue.includes('could not be read as a day')),
+    'says what is in the box and asks for the original',
+  );
+  assert.ok(issues.some((issue) => issue.includes('2026-02-31')));
+  assert.ok(
+    !validateTicket({ ...ticket, ticket_date: '2026-02-28' }).some((issue) =>
+      issue.includes('could not be read as a day'),
+    ),
+    'a real day is not complained about',
+  );
+});

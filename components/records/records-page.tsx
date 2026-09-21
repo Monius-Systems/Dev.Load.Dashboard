@@ -416,10 +416,21 @@ export default function RecordsPage() {
       <strong>{money(group.total)}</strong>
     );
 
+  // Rated and to-confirm are two different questions about one invoice — has
+  // it a price, and has a person checked what it says against the paper — so
+  // a priced invoice with an unconfirmed weight shows both chips rather than
+  // reading "Rated" and nothing else.
   const invoiceStatus = (group: InvoiceGroup) => (
-    <span className="ld-chip" data-tone={group.needsRate ? 'warning' : 'good'}>
-      {group.needsRate ? t('Draft') : t('Rated')}
-    </span>
+    <>
+      <span className="ld-chip" data-tone={group.needsRate ? 'warning' : 'good'}>
+        {group.needsRate ? t('Draft') : t('Rated')}
+      </span>
+      {group.needsConfirmation ? (
+        <span className="ld-chip" data-tone="warning">
+          {t('To confirm')}
+        </span>
+      ) : null}
+    </>
   );
 
   const recordStatus = (record: SavedRecord) => {

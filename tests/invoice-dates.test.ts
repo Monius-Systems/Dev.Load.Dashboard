@@ -58,8 +58,22 @@ void test('a ticket with no date of its own leaves the invoice date alone', () =
   const blank = saved('1001', '2026-09-15', '   ');
   assert.equal(datedFromTicket(blank).invoice.invoice_date, '2026-09-15');
 
-  const nonsense = saved('1001', '2026-09-15', '09/02/2026');
-  assert.equal(datedFromTicket(nonsense).invoice.invoice_date, '2026-09-15');
+  // A day the calendar has not got is a misread, not a date. The ticket is
+  // waiting in the undated batch on no invoice; dating a draft "2026-02-31"
+  // would be putting a day that never happened on a bill.
+  const misread = saved('1001', '2026-09-15', '2026-02-31');
+  assert.equal(datedFromTicket(misread).invoice.invoice_date, '2026-09-15');
+  assert.equal(datedFromTicket(saved('1001', '2026-09-15', '13/02/2026')).invoice.invoice_date, '2026-09-15');
+  assert.equal(datedFromTicket(saved('1001', '2026-09-15', 'sometime')).invoice.invoice_date, '2026-09-15');
+});
+
+void test('a date written some other way still dates the invoice', () => {
+  // The app files and orders by the day a date names, not the text it is
+  // written in, so a record that came in as M/D/YYYY batches under the 2nd.
+  // Its invoice used to keep whatever date it arrived with, which left the
+  // bill saying one day and the batch holding it saying another.
+  const slashed = saved('1001', '2026-09-15', '09/02/2026');
+  assert.equal(datedFromTicket(slashed).invoice.invoice_date, '2026-09-02');
 });
 
 void test('invoices filed with the day they were photographed are repaired', () => {

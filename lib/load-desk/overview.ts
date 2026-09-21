@@ -126,7 +126,12 @@ export function monthlyLoads(
  */
 export const ticketsNeedingReview = (records: SavedRecord[]) =>
   records.filter((record) =>
-    validateTicket(record.ticket).some((issue) => !RATING_ISSUES.has(issue)),
+    // With the recovery record: a field still waiting to be checked against
+    // the original is a problem with the ticket, not with its rate, so it
+    // belongs in this count rather than among the drafts.
+    validateTicket(record.ticket, record.recovery).some(
+      (issue) => !RATING_ISSUES.has(issue),
+    ),
   );
 
 /** Distinct customers on saved tickets that match no customer profile. */

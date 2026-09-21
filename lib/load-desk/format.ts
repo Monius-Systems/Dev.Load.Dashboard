@@ -1,4 +1,5 @@
 import { business } from './business.ts';
+import { unresolvedCritical } from './recovery/index.ts';
 import { validateTicket } from './validate.ts';
 import {
   fuelTypeOf,
@@ -209,6 +210,13 @@ export async function sha256Hex(blob: Blob): Promise<string> {
   ).join('');
 }
 
+/**
+ * The fields of a ticket nobody has confirmed against the original yet, for
+ * the export; empty for a ticket that never went through the reader.
+ */
+const recoveryStatus = (record: SavedRecord): string =>
+  record.recovery ? unresolvedCritical(record.recovery).join(', ') : '';
+
 const LEDGER_COLUMNS: [string, (record: SavedRecord) => string | number | null][] = [
   ['record_id', (r) => r.id],
   ['ticket_date', (r) => r.ticket.ticket_date],
@@ -239,13 +247,18 @@ const LEDGER_COLUMNS: [string, (record: SavedRecord) => string | number | null][
   ['line_total', (r) => lineTotal(r.ticket)],
   [
     'validation_status',
-    (r) => (validateTicket(r.ticket).length ? 'needs_review' : 'valid'),
+    (r) => (validateTicket(r.ticket, r.recovery).length ? 'needs_review' : 'valid'),
   ],
-  ['validation_issues', (r) => validateTicket(r.ticket).join('; ')],
+  ['validation_issues', (r) => validateTicket(r.ticket, r.recovery).join('; ')],
   ['source_file', (r) => r.source.file_name],
   ['source_sha256', (r) => r.source.sha256],
   ['invoice_number', (r) => r.invoice.invoice_number],
   ['invoice_date', (r) => r.invoice.invoice_date],
+  // Last, so every column a spreadsheet already refers to by position stays
+  // where it was. `unresolvedCritical` rather than a second list of what
+  // counts as unsettled: the export, the invoice chip and the save button
+  // should never be able to disagree about which fields are still open.
+  ['recovery_status', recoveryStatus],
 ];
 
 export function csvCell(value: string | number | null): string {

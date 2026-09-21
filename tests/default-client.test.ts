@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { defaultClient, type ClientProfile, type CompanyProfile } from '../lib/load-desk/profiles.ts';
+import { defaultClient, defaultTruck, type ClientProfile, type CompanyProfile } from '../lib/load-desk/profiles.ts';
 import { parseCompany } from '../lib/load-desk/record-input.ts';
 
 const client = (id: number, name: string): ClientProfile => ({
@@ -60,4 +60,29 @@ void test('a default client that is not a real id is refused', () => {
     const parsed = parseCompany(sent({ default_client_id: bad }));
     assert.ok('error' in parsed, `refused: ${JSON.stringify(bad)}`);
   }
+});
+
+void test('the default truck is kept on the company and ignored once the truck is gone or retired', () => {
+  const trucks = [
+    { id: 3, truck_number: '3211', nickname: '', driver: 'Mike', license_plate: '', notes: '', active: true, created_at: '' },
+    { id: 4, truck_number: 'ZF0321', nickname: '', driver: '', license_plate: '', notes: '', active: false, created_at: '' },
+  ];
+  const company = { id: 1, name: 'A & D', address_lines: ['', ''] as [string, string], updated_at: '', default_truck_id: 3 };
+  assert.equal(defaultTruck(trucks, company)?.id, 3);
+  assert.equal(defaultTruck(trucks, { ...company, default_truck_id: 4 }), null, 'a retired truck is no default');
+  assert.equal(defaultTruck(trucks, { ...company, default_truck_id: 9 }), null, 'a deleted truck is no default');
+  assert.equal(defaultTruck(trucks, { ...company, default_truck_id: undefined }), null);
+  // The server keeps it, and refuses nonsense.
+  const parsed = parseCompany({ name: 'A & D', address_lines: ['1 Main St', 'Chicago, IL'], updated_at: '2026-09-21T00:00:00.000Z', default_truck_id: 3 });
+  assert.ok('value' in parsed && parsed.value.default_truck_id === 3);
+  assert.ok('error' in parseCompany({ name: 'A & D', address_lines: ['1 Main St', 'Chicago, IL'], updated_at: '2026-09-21T00:00:00.000Z', default_truck_id: 'three' }));
+});
+
+void test('the invoice series start is kept on the company and has to end in digits', () => {
+  const base = { name: 'A & D', address_lines: ['1 Main St', 'Chicago, IL'], updated_at: '2026-09-21T00:00:00.000Z' };
+  const ok = parseCompany({ ...base, invoice_start: ' INV-0100 ' });
+  assert.ok('value' in ok && ok.value.invoice_start === 'INV-0100');
+  assert.ok('error' in parseCompany({ ...base, invoice_start: 'SPECIAL' }), 'nothing to count from');
+  const none = parseCompany({ ...base, invoice_start: '' });
+  assert.ok('value' in none && none.value.invoice_start === undefined, 'blank clears it');
 });
