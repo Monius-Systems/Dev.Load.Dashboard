@@ -1,5 +1,4 @@
 import { Buffer } from 'node:buffer';
-import OpenAI from 'openai';
 import { authClient, localPreview, noStore, sameOrigin, workspaceUser } from '@/lib/server/auth';
 import { OPENAI_KEY_NAME, openaiKey } from '@/lib/server/openai-key';
 import { recordAiUsage } from '@/lib/server/ai-usage';
@@ -54,41 +53,84 @@ async function readImage(request: Request) {
   return `data:${type};base64,${Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength).toString('base64')}`;
 }
 
-/** Asks the model to read the ticket, once, as structured JSON. */
-async function extract(client: OpenAI, imageUrl: string) {
+/** What the Responses API answers with, as much of it as is read here. */
+type ModelAnswer = {
+  output?: { type?: string; content?: { type?: string; text?: string }[] }[];
+  usage?: { input_tokens?: number; output_tokens?: number };
+  error?: { message?: string };
+};
+
+/** A model call that failed, with the status the API gave. */
+class ModelError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+/**
+ * Asks the model to read the ticket, once, as structured JSON.
+ *
+ * A plain fetch to the Responses API rather than the OpenAI client library.
+ * The library is a large module that stays resident in the worker once the
+ * first ticket has loaded it, and everything this route needs of it is one
+ * POST with a JSON body: the less the worker holds between requests, the
+ * more room every request has.
+ */
+async function extract(apiKey: string, imageUrl: string): Promise<ModelAnswer> {
   const request = {
     model: EXTRACTION_MODEL,
     instructions: EXTRACTION_INSTRUCTIONS,
     input: [
       {
-        role: 'user' as const,
+        role: 'user',
         content: [
-          { type: 'input_text' as const, text: 'Read this load ticket.' },
-          { type: 'input_image' as const, image_url: imageUrl, detail: 'high' as const },
+          { type: 'input_text', text: 'Read this load ticket.' },
+          { type: 'input_image', image_url: imageUrl, detail: 'high' },
         ],
       },
     ],
     text: {
       format: {
-        type: 'json_schema' as const,
+        type: 'json_schema',
         name: 'load_ticket',
         strict: true,
         schema: EXTRACTION_SCHEMA,
       },
     },
   };
+  const send = async (body: object): Promise<ModelAnswer> => {
+    const response = await fetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const answer = (await response.json().catch(() => ({}))) as ModelAnswer;
+    if (!response.ok) {
+      throw new ModelError(answer.error?.message ?? `The model answered ${response.status}.`, response.status);
+    }
+    return answer;
+  };
   try {
-    return await client.responses.create(
-      sendsTemperature ? { ...request, temperature: 0 } : request,
-    );
+    return await send(sendsTemperature ? { ...request, temperature: 0 } : request);
   } catch (error) {
     // Only the one retry, and only for the one parameter.
     const message = error instanceof Error ? error.message : '';
     if (!sendsTemperature || !/temperature/i.test(message)) throw error;
     sendsTemperature = false;
-    return client.responses.create(request);
+    return send(request);
   }
 }
+
+/** The text the model produced, across its output items. */
+const outputText = (answer: ModelAnswer): string =>
+  (answer.output ?? [])
+    .flatMap((item) => (item.type === 'message' ? (item.content ?? []) : []))
+    .filter((part) => part.type === 'output_text')
+    .map((part) => part.text ?? '')
+    .join('');
 
 /**
  * Reads one ticket image. The answer is what the reader saw, field by field,
@@ -132,7 +174,7 @@ async function read(request: Request, userId: string | null, workspaceId: string
     return failure(error instanceof Error ? error.message : 'Post a ticket image.', 400);
   }
   try {
-    const response = await extract(new OpenAI({ apiKey }), imageUrl);
+    const response = await extract(apiKey, imageUrl);
     recordAiUsage({
       userId,
       workspaceId,
@@ -142,7 +184,7 @@ async function read(request: Request, userId: string | null, workspaceId: string
       outputTokens: response.usage?.output_tokens ?? null,
       at: new Date().toISOString(),
     });
-    const answer = response.output_text;
+    const answer = outputText(response);
     if (!answer) return failure('The reader returned nothing for this ticket.', 502);
     // Both shapes go back: `observed` is the reading with its damage intact,
     // for the recovery layer, and `extracted` is the same reading with only
@@ -158,7 +200,8 @@ async function read(request: Request, userId: string | null, workspaceId: string
     // ids and account detail that belong in the log, not on a ticket.
     console.error('ticket extraction failed', error);
     const status =
-      error instanceof Error && /\b(401|403|invalid[_ ]api[_ ]key)\b/i.test(error.message)
+      (error instanceof ModelError && (error.status === 401 || error.status === 403)) ||
+      (error instanceof Error && /invalid[_ ]api[_ ]key/i.test(error.message))
         ? 503
         : 502;
     return failure(

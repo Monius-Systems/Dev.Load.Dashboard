@@ -308,6 +308,8 @@ const NO_CLIENT = '';
 /** "No truck profile" chosen on purpose, as distinct from nothing chosen yet. */
 const NO_TRUCK = '__no-truck';
 const NEW_CLIENT = '__new-client';
+/** How many stored pictures are fetched at once when an invoice is opened for review. */
+const PICTURE_LANES = 3;
 const NEW_CUSTOMER = '__new-customer';
 /** The panel answer that says a job site is not to be saved onto the customer. */
 const SAVE_ADDRESS = '__save-address';
@@ -2934,9 +2936,11 @@ export default function LoadDesk() {
     );
     setSaveStatus(null);
     if (scroll) scrollToReview();
-    for (const [index, line] of lines.entries()) {
-      const itemId = added[index].id;
-      void loadStoredOriginal(line).then((blob) => {
+    // The pictures, a few at a time rather than all at once: each one is a
+    // request the server has to carry while it lasts, and an invoice of a
+    // dozen tickets fetched together is a dozen at once.
+    const showPicture = (line: SavedRecord, itemId: string) =>
+      loadStoredOriginal(line).then((blob) => {
         setQueue((current) =>
           current.map((item) => {
             if (item.id !== itemId) return item;
@@ -2952,7 +2956,13 @@ export default function LoadDesk() {
           }),
         );
       });
-    }
+    const pending = lines.map((line, index) => [line, added[index].id] as const);
+    const lane = async () => {
+      for (let next = pending.shift(); next; next = pending.shift()) {
+        await showPicture(next[0], next[1]);
+      }
+    };
+    for (let lanes = 0; lanes < PICTURE_LANES; lanes++) void lane();
   }
 
   function clearQueue() {
