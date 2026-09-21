@@ -85,7 +85,9 @@ void test('the fifteen fields the app already works in are all still observed', 
   assert.equal(OBSERVED_FIELDS.vehicle, 'vehicle_id');
   assert.equal(OBSERVED_FIELDS.plant_number, 'plant_code');
   assert.equal(OBSERVED_FIELDS.reference_ticket, 'dispatch_number');
-  assert.equal(OBSERVED_FIELDS.driver, 'weighmaster');
+  // The name beside the weights is not asked for: nothing is billed on it.
+  assert.equal('driver' in OBSERVED_FIELDS, false);
+  assert.equal(Object.values(OBSERVED_FIELDS).includes('weighmaster' as never), false);
 });
 
 void test('the whole ticket is asked about once, not field by field', () => {
@@ -252,7 +254,6 @@ const observation = (patch: Record<string, unknown> = {}) => ({
   net_tons: seen('22.31'),
   carrier: seen('Z FORCE TRANSPORT'),
   vehicle: seen('4417'),
-  driver: seen('J. HALE'),
   timestamps: ['26JAN06 09:14', '01/06/26 09:14:52'],
   branding: 'HEIDELBERG MATERIALS',
   paper_edges: { left: true, right: true, top: true, bottom: false },

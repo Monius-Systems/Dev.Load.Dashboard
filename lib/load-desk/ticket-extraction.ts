@@ -77,10 +77,10 @@ export const EXTRACTION_FIELDS = [
  * Keeping the two apart in one table is what lets the observation be keyed by
  * the app's names without the prompt having to know them.
  *
- * The five past the original fifteen are the ones the vendor rules need to
- * cross-check a damaged field against the rest of the paper. `driver` has no
- * field of its own on a Ticket; `weighmaster` is the nearest thing, and is
- * where the ledger has always kept the name printed beside the weights.
+ * The four past the original fifteen are the ones the vendor rules need to
+ * cross-check a damaged field against the rest of the paper. The name printed
+ * beside the weights is not asked for: nothing is billed on it, and it was
+ * one more box the reader could get wrong.
  */
 export const OBSERVED_FIELDS = {
   company: 'plant_name',
@@ -102,7 +102,6 @@ export const OBSERVED_FIELDS = {
   net_tons: 'net_tons',
   carrier: 'carrier_name',
   vehicle: 'vehicle_id',
-  driver: 'weighmaster',
 } as const satisfies Record<string, keyof Ticket>;
 
 /** The answer keys of Pass 1, as the model is asked for them. */
@@ -131,7 +130,6 @@ const FIELD_NOTES: Record<ObservedFieldName, string> = {
   net_tons: 'the net tons, as printed',
   carrier: 'the trucking or transport company',
   vehicle: 'the truck, tractor or vehicle number',
-  driver: 'the driver or weighmaster named on the ticket',
 };
 
 /**
