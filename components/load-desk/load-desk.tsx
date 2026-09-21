@@ -309,6 +309,8 @@ const NO_CLIENT = '';
 const NO_TRUCK = '__no-truck';
 const NEW_CLIENT = '__new-client';
 const NEW_CUSTOMER = '__new-customer';
+/** The panel answer that says a job site is not to be saved onto the customer. */
+const SAVE_ADDRESS = '__save-address';
 
 type NewClientDraft = {
   name: string;
@@ -1089,8 +1091,11 @@ export default function LoadDesk() {
       );
       const project = (answerFor(group, 'project_name') || group.detected.project_name || '').trim();
       // Learned: the job site goes onto the customer, and the next scan from
-      // it asks nothing.
-      if (customer && address && !customerAddresses(customer).some((known) => normalizeName(known) === normalizeName(address))) {
+      // it asks nothing — unless the person said not to keep it, which is
+      // their call: a site read a letter wrong, or a one-off delivery, is not
+      // one to offer on every later ticket.
+      const keepAddress = answerFor(group, SAVE_ADDRESS) !== 'no';
+      if (customer && address && keepAddress && !customerAddresses(customer).some((known) => normalizeName(known) === normalizeName(address))) {
         const error = await saveProfile(
           'customer',
           {
@@ -1140,6 +1145,43 @@ export default function LoadDesk() {
               tickets: plural(group.ticketIds.length, 'ticket'),
             })
           : t('{tickets} checked and on their invoices.', { tickets: plural(group.ticketIds.length, 'ticket') }),
+        type: 'success',
+      });
+    } catch (error) {
+      setGroupError((current) => ({ ...current, [group.key]: errorMessage(error) }));
+    } finally {
+      setGroupBusy(null);
+    }
+  }
+  /**
+   * The question closed without a profile: the tickets are filed as read,
+   * checked, and no customer is created and nothing is saved onto one. The
+   * suggestion to create a customer is only that, and a name the reader got
+   * wrong, or a customer hauled for once, is not one to keep. A customer can
+   * still be chosen for these tickets in review.
+   */
+  async function fileWithoutProfile(group: ExceptionGroup) {
+    if (groupBusy) return;
+    setGroupBusy(group.key);
+    setGroupError((current) => ({ ...current, [group.key]: '' }));
+    try {
+      const edits = applyGroupAnswer(
+        records,
+        group,
+        { values: {}, customerProfileId: null, customer: null },
+        new Date().toISOString(),
+      );
+      const result = await updateSavedRecords(edits);
+      if ('error' in result) throw new Error(result.error);
+      refreshQueueFrom(result.records);
+      setGroupAnswers((current) => {
+        const next = { ...current };
+        delete next[group.key];
+        return next;
+      });
+      toast.add({
+        title: t('Filed {tickets} as read', { tickets: plural(group.ticketIds.length, 'ticket') }),
+        description: t('No customer profile was created. Choose one for them in review if they are to be rated.'),
         type: 'success',
       });
     } catch (error) {
@@ -4330,6 +4372,23 @@ export default function LoadDesk() {
                                 </div>
                               ))}
                           </div>
+                          {(answerFor(group, 'project_address') || group.detected.project_address) ? (
+                            <p className="ld-field-hint">
+                              {answerFor(group, SAVE_ADDRESS) === 'no'
+                                ? t('The job site will not be saved to the customer.')
+                                : t('The job site will be saved to the customer, to pick on the next ticket.')}{' '}
+                              <Button
+                                type="button"
+                                variant="link"
+                                size="xs"
+                                onClick={() =>
+                                  setAnswer(group, SAVE_ADDRESS, answerFor(group, SAVE_ADDRESS) === 'no' ? 'yes' : 'no')
+                                }
+                              >
+                                {answerFor(group, SAVE_ADDRESS) === 'no' ? t('Save it after all') : t('Don’t save it')}
+                              </Button>
+                            </p>
+                          ) : null}
                           {error ? (
                             <p className="ld-status" data-tone="error">{error}</p>
                           ) : null}
@@ -4344,6 +4403,17 @@ export default function LoadDesk() {
                                 ? t('Saving…')
                                 : t('Confirm for all {tickets}', { tickets: plural(group.ticketIds.length, 'ticket') })}
                             </Button>
+                            {asksCustomer && chosenCustomer === NEW_CUSTOMER ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={groupBusy !== null}
+                                onClick={() => void fileWithoutProfile(group)}
+                              >
+                                {t('Don’t create a customer')}
+                              </Button>
+                            ) : null}
                           </div>
                         </>
                       )}

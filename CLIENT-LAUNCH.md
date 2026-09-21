@@ -302,7 +302,11 @@ membership. If more client dashboards follow, the website can link to a small
   answer covers every ticket it applies to. The project and the job site are
   never asked: what was read, or what the customer's saved sites complete,
   stands. A job site is saved onto a customer only when a person saves it
-  there from review — never because a scan read it. Only a ticket with a
+  there — from review, or by confirming a job under **Needs your input**,
+  where "Don't save it" keeps it off the customer — never because a scan
+  read it. A "New customer" question can be closed with **Don't create a
+  customer**: the tickets are filed as read with no profile made. Customers
+  and their addresses can be removed on the Customers page at any time. Only a ticket with a
   problem of its own (a
   cut-off ticket number, a weight that will not balance) opens the full
   review.
