@@ -4,7 +4,7 @@ import type { RecordEdit } from '../record-input.ts';
 import type { SavedRecord, Ticket } from '../types.ts';
 import type { TicketRecovery } from './contract.ts';
 import { businessContext, ticketOutcome, type Knowledge, type OutcomeReport } from './outcome.ts';
-import { invoicePlacement, recordBatch } from '../records.ts';
+import { invoicePlacement } from '../records.ts';
 import { ticketDay } from '../ticket-date.ts';
 import { confirmField } from './resolve.ts';
 
