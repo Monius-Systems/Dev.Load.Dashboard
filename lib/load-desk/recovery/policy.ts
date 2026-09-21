@@ -129,6 +129,11 @@ export const RECOVERABLE_FROM_CONTEXT: ReadonlySet<keyof Ticket> = TEXT_CLASS;
 export const SILENT_FIELDS: ReadonlySet<keyof Ticket> = new Set<keyof Ticket>([
   'project_name',
   'project_address',
+  // The dispatch or reference number is printed across a box rule on these
+  // tickets and is read wrong or half as often as not. Nothing is billed on
+  // it and nothing is filed by it; a number the reader could not make out
+  // is left blank, and never a question.
+  'dispatch_number',
 ]);
 
 type Strength = Evidence['strength'];

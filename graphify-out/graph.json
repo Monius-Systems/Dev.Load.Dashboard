@@ -3199,7 +3199,7 @@
       "file_type": "code",
       "norm_label": "strength",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L134"
+      "source_location": "L139"
     },
     {
       "id": "lib_load_desk_recovery_resolve_draft",
@@ -29010,7 +29010,7 @@
       "file_type": "code",
       "norm_label": "combinedweight()",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L244"
+      "source_location": "L249"
     },
     {
       "id": "lib_load_desk_recovery_policy_evidenceweight",
@@ -29022,7 +29022,7 @@
       "file_type": "code",
       "norm_label": "evidenceweight()",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L173"
+      "source_location": "L178"
     },
     {
       "id": "lib_load_desk_recovery_policy_reachesthreshold",
@@ -29034,7 +29034,7 @@
       "file_type": "code",
       "norm_label": "reachesthreshold()",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L231"
+      "source_location": "L236"
     },
     {
       "id": "lib_load_desk_recovery_policy_recoveredconfidence",
@@ -29046,7 +29046,7 @@
       "file_type": "code",
       "norm_label": "recoveredconfidence()",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L260"
+      "source_location": "L265"
     },
     {
       "id": "lib_load_desk_recovery_resolve_applyrecovery",
@@ -82820,7 +82820,7 @@
       "file_type": "code",
       "norm_label": "advisory_sources",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L218"
+      "source_location": "L223"
     },
     {
       "id": "lib_load_desk_recovery_policy_critical_fields",
@@ -82842,7 +82842,7 @@
       "file_type": "code",
       "norm_label": "derivation_sources",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L212"
+      "source_location": "L217"
     },
     {
       "id": "lib_load_desk_recovery_policy_derived_confidence_cap",
@@ -82853,7 +82853,7 @@
       "file_type": "code",
       "norm_label": "derived_confidence_cap",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L268"
+      "source_location": "L273"
     },
     {
       "id": "lib_load_desk_recovery_policy_evidence_weights",
@@ -82864,7 +82864,7 @@
       "file_type": "code",
       "norm_label": "evidence_weights",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L156"
+      "source_location": "L161"
     },
     {
       "id": "lib_load_desk_recovery_policy_field_order",
@@ -82897,7 +82897,7 @@
       "file_type": "code",
       "norm_label": "independent_sources_required",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L188"
+      "source_location": "L193"
     },
     {
       "id": "lib_load_desk_recovery_policy_min_selecting_fragment",
@@ -82908,7 +82908,7 @@
       "file_type": "code",
       "norm_label": "min_selecting_fragment",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L286"
+      "source_location": "L291"
     },
     {
       "id": "lib_load_desk_recovery_policy_recover_threshold",
@@ -82919,7 +82919,7 @@
       "file_type": "code",
       "norm_label": "recover_threshold",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L182"
+      "source_location": "L187"
     },
     {
       "id": "lib_load_desk_recovery_policy_recoverable_from_context",
@@ -82963,7 +82963,7 @@
       "file_type": "code",
       "norm_label": "unverified_frame_confidence_cap",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L276"
+      "source_location": "L281"
     },
     {
       "id": "lib_load_desk_recovery_policy_verified_sources",
@@ -82974,7 +82974,7 @@
       "file_type": "code",
       "norm_label": "verified_sources",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L196"
+      "source_location": "L201"
     },
     {
       "id": "lib_load_desk_recovery_policy_weight_class",
@@ -103963,7 +103963,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L247",
+      "source_location": "L252",
       "weight": 1.0
     },
     {
@@ -103975,7 +103975,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L233",
+      "source_location": "L238",
       "weight": 1.0
     },
     {
@@ -238518,7 +238518,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L134",
+      "source_location": "L139",
       "weight": 1.0
     },
     {
@@ -238529,7 +238529,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L156",
+      "source_location": "L161",
       "weight": 1.0
     },
     {
@@ -238540,7 +238540,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L173",
+      "source_location": "L178",
       "weight": 1.0
     },
     {
@@ -238551,7 +238551,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L182",
+      "source_location": "L187",
       "weight": 1.0
     },
     {
@@ -238562,7 +238562,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L188",
+      "source_location": "L193",
       "weight": 1.0
     },
     {
@@ -238573,7 +238573,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L196",
+      "source_location": "L201",
       "weight": 1.0
     },
     {
@@ -238584,7 +238584,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L212",
+      "source_location": "L217",
       "weight": 1.0
     },
     {
@@ -238595,7 +238595,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L218",
+      "source_location": "L223",
       "weight": 1.0
     },
     {
@@ -238606,7 +238606,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L231",
+      "source_location": "L236",
       "weight": 1.0
     },
     {
@@ -238617,7 +238617,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L244",
+      "source_location": "L249",
       "weight": 1.0
     },
     {
@@ -238628,18 +238628,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L260",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_load_desk_recovery_policy",
-      "target": "lib_load_desk_recovery_policy_derived_confidence_cap",
-      "relation": "contains",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L268",
+      "source_location": "L265",
       "weight": 1.0
     },
     {
@@ -238655,13 +238644,24 @@
     },
     {
       "source": "lib_load_desk_recovery_policy",
+      "target": "lib_load_desk_recovery_policy_derived_confidence_cap",
+      "relation": "contains",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/load-desk/recovery/policy.ts",
+      "source_location": "L273",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_load_desk_recovery_policy",
       "target": "lib_load_desk_recovery_policy_unverified_frame_confidence_cap",
       "relation": "contains",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L276",
+      "source_location": "L281",
       "weight": 1.0
     },
     {
@@ -238672,7 +238672,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/load-desk/recovery/policy.ts",
-      "source_location": "L286",
+      "source_location": "L291",
       "weight": 1.0
     },
     {
@@ -310167,5 +310167,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "1823a29688a9f91fdadbf72ea5d40cc2b3adc764"
+  "built_at_commit": "5f906f37ead84bbfae6c4458aec4c590a1e2c200"
 }

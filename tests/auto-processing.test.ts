@@ -336,3 +336,16 @@ void test('the dates are asked first and inline, and dating a ticket sends it ba
   const after = sort([...unclearProject, dated], [five]);
   assert.deepEqual(after.groups, [], 'dated, it passes with the rest');
 });
+
+void test('a dispatch number the reader could not make out is never a question', () => {
+  const records = [
+    read({}, { dispatch_number: waiting('5582', { reason: 'partial_numeric', clipped_edge: 'right' }) }),
+    read({}, { dispatch_number: waiting('', { reason: 'not_read', clipped_edge: null }) }),
+  ];
+  const { members, groups } = sort(records, [five]);
+  assert.ok(members.every((m) => m.report.outcome === 'auto_approved'));
+  assert.deepEqual(groups, []);
+  for (const record of records) {
+    assert.ok(!validateTicket(record.ticket, record.recovery).some((issue) => /dispatch/i.test(issue)));
+  }
+});
