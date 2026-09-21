@@ -2361,14 +2361,22 @@ export default function LoadDesk() {
     // On the invoice of its date, which may not be the one it was queued on
     // if the date was corrected in review.
     const { item: placed, move } = placedByDate(active);
-    const invoiceNumber = placed.invoice.invoice_number.trim();
+    let invoiceNumber = placed.invoice.invoice_number.trim();
     // recordBatch also covers tickets saved before uploads were recorded, so a
-    // ticket added to one of their invoices is not refused.
-    if (
-      findInvoiceClash(records, [
-        { id: null, invoiceNumber, batchId: placed.batch_id },
-      ])
-    ) {
+    // ticket added to one of their invoices is not refused. A number another
+    // invoice has is not refused either, when it is one to count from: it is
+    // where the series starts, worked back from this invoice's place in date
+    // order, and the ledger moves along to make room (see `saveChanges`).
+    const clash = findInvoiceClash(records, [
+      { id: null, invoiceNumber, batchId: placed.batch_id },
+    ]);
+    const start =
+      clash && move.kind === 'stay' && !isPendingInvoiceNumber(invoiceNumber)
+        ? seriesStartFor(records, placed.batch_id, invoiceNumber, [
+            { batchId: placed.batch_id, date: placed.ticket.ticket_date },
+          ])
+        : null;
+    if (clash && start === null) {
       setSaveStatus({
         message: t(
           'Invoice number {number} is already used by another upload. Choose another.',
@@ -2380,6 +2388,19 @@ export default function LoadDesk() {
     }
 
     setBusy(true);
+    if (start !== null) {
+      if (start !== (profileStore.company?.invoice_start ?? null)) {
+        const problem = await saveInvoiceStart(start);
+        if (problem) {
+          setBusy(false);
+          setSaveStatus({ message: problem, tone: 'error' });
+          return;
+        }
+      }
+      // Filed on a draft mark, the typed number being another invoice's
+      // until the run moves it on; the run then gives this one its number.
+      invoiceNumber = pendingInvoiceNumber(`typed-${placed.batch_id}`);
+    }
     // Saved tickets on this invoice with changes are saved first, so the
     // invoice details stay the same on every ticket.
     const changedSiblings = queue.filter(
@@ -2415,12 +2436,23 @@ export default function LoadDesk() {
       },
       active.original,
     );
-    setBusy(false);
     if ('error' in result) {
+      setBusy(false);
       setSaveStatus({ message: result.error, tone: 'error' });
       return;
     }
-    const { record } = result;
+    let { record } = result;
+    let reordered: SavedRecord[] = [];
+    if (start !== null) {
+      // The ledger in date order from the new start, this invoice in it.
+      reordered = await reorderInvoicesByDate();
+      const mine = reordered.find((item) => item.id === record.id);
+      if (mine) {
+        record = mine;
+        invoiceNumber = mine.invoice.invoice_number.trim();
+      }
+    }
+    setBusy(false);
     learnFromReviewed(placed);
     const originalStored = record.original_stored;
 
@@ -2441,6 +2473,8 @@ export default function LoadDesk() {
     setQueue((current) =>
       current.map((item) => (item.id === active.id ? markSaved(item) : item)),
     );
+    // The invoices that moved along, as they are now.
+    refreshQueueFrom(reordered);
     // A first invoice number sets the order for uploads still waiting for one.
     setQueue(numberWaitingBatches);
     // Straight on to the next ticket waiting to be checked, by what is stored
@@ -2464,6 +2498,9 @@ export default function LoadDesk() {
       title: t('Saved ticket {label}', { label }),
       description: [
         movedNote(move, placed),
+        start !== null
+          ? t('Invoice numbers now run from {start}; the other invoices moved along.', { start })
+          : '',
         lineTotal(record.ticket) === null
           ? t('Invoice {number} is a draft until its rate is complete.', { number: invoiceNumber })
           : t('Invoice {number} created.', { number: invoiceNumber }),
@@ -2501,12 +2538,11 @@ export default function LoadDesk() {
         const placed = edit.invoice_batch_id
           ? { ...item, batch_id: edit.invoice_batch_id, invoice: saved.invoice }
           : item;
+        // The number as saved — not what was typed, when the typed number
+        // was too low for the invoice's place in the series.
         return {
           ...placed,
-          invoice:
-            placed.invoice.invoice_number.trim() === number
-              ? { ...placed.invoice, invoice_number: number }
-              : placed.invoice,
+          invoice: { ...placed.invoice, invoice_number: number },
           baseline: editKey(edit),
         };
       }),
@@ -2588,40 +2624,46 @@ export default function LoadDesk() {
     // The active ticket goes to the invoice of its date, which is not this one
     // if its date was corrected. The others stay where they are.
     const { item: placed, move } = placedByDate(active);
-    const toSave = withActive.map((item) => (item.id === active.id ? placed : item));
-    const clash = findInvoiceClash(
-      records,
-      toSave.map((item) => ({
-        id: item.saved_record_id,
-        invoiceNumber: item.invoice.invoice_number,
-        batchId: item.batch_id,
-      })),
-    );
-    if (clash) {
-      setSaveStatus({
-        message: t(
-          'Invoice number {number} is already used by another upload. Choose another.',
-          { number: clash },
-        ),
-        tone: 'error',
-      });
-      return;
-    }
-    setBusy(true);
+    let toSave = withActive.map((item) => (item.id === active.id ? placed : item));
     // A number typed onto an invoice is where the series starts, worked back
     // from this invoice's place in date order: typed onto the first invoice
-    // it is the number itself. Set before the save, so the date-order pass
-    // that follows keeps the number rather than putting it back.
+    // it is the number itself. The rest of the ledger follows — every other
+    // invoice takes the number its place gives it from there — so a number
+    // another invoice has now is not refused, it is moved on. Set before the
+    // save, and the ledger renumbered before it too, so the number this
+    // invoice is saved with is the one the run gives it.
     const stored = records.find((record) => record.id === active.saved_record_id);
-    const typedNumber = placed.invoice.invoice_number.trim();
-    if (
-      stored &&
-      typedNumber &&
+    const typedNumber = active.invoice.invoice_number.trim();
+    const typed =
+      move.kind === 'stay' &&
+      stored !== undefined &&
       typedNumber !== stored.invoice.invoice_number.trim() &&
-      !isPendingInvoiceNumber(typedNumber)
-    ) {
-      const start = seriesStartFor(records, placed.batch_id, typedNumber);
-      if (start && start !== (profileStore.company?.invoice_start ?? null)) {
+      !isPendingInvoiceNumber(typedNumber);
+    const start = typed ? seriesStartFor(records, placed.batch_id, typedNumber) : null;
+    if (start === null) {
+      const clash = findInvoiceClash(
+        records,
+        toSave.map((item) => ({
+          id: item.saved_record_id,
+          invoiceNumber: item.invoice.invoice_number,
+          batchId: item.batch_id,
+        })),
+      );
+      if (clash) {
+        setSaveStatus({
+          message: t(
+            'Invoice number {number} is already used by another upload. Choose another.',
+            { number: clash },
+          ),
+          tone: 'error',
+        });
+        return;
+      }
+    }
+    setBusy(true);
+    let renumbered: string | null = null;
+    if (start !== null) {
+      if (start !== (profileStore.company?.invoice_start ?? null)) {
         const problem = await saveInvoiceStart(start);
         if (problem) {
           setBusy(false);
@@ -2629,6 +2671,15 @@ export default function LoadDesk() {
           return;
         }
       }
+      refreshQueueFrom(await reorderInvoicesByDate());
+      // The number the run gave this invoice: what was typed, unless what
+      // was typed was too low for its place.
+      renumbered =
+        getRecordsSnapshot()
+          .records.find((record) => recordBatch(record) === placed.batch_id)
+          ?.invoice.invoice_number.trim() ?? typedNumber;
+      const number = renumbered;
+      toSave = toSave.map((item) => ({ ...item, invoice: { ...item.invoice, invoice_number: number } }));
     }
     const error = await persistChanges(
       toSave,
@@ -2639,12 +2690,21 @@ export default function LoadDesk() {
       setSaveStatus({ message: error, tone: 'error' });
       return;
     }
-    const invoiceNumber = placed.invoice.invoice_number.trim();
+    const invoiceNumber = renumbered ?? placed.invoice.invoice_number.trim();
     const label = active.ticket.ticket_number ?? active.source.file_name;
     const moved = movedNote(move, placed);
     const message = moved
       ? moved
-      : !changed.length
+      : renumbered !== null && renumbered !== typedNumber
+        ? t('Invoice numbers now run from {start} in date order; this invoice is {number}.', {
+            start: start ?? '',
+            number: renumbered,
+          })
+        : renumbered !== null
+          ? t('Invoice numbers now run from {start}; the other invoices moved along.', {
+              start: start ?? '',
+            })
+          : !changed.length
         ? t('Checked. Nothing needed changing.')
         : toSave.length > 1
           ? t('Saved changes to {tickets} on invoice {number}.', {

@@ -334,30 +334,39 @@ export function numbersInDateOrder(
  * 999, 1000, 1001: the start is the typed number less the invoice's place
  * in date order, with the prefix and padding as typed. Typed onto the
  * oldest invoice, the start is the number itself — which is the common
- * case, the first invoice being given its number. A start that would fall
- * below 1 is not a series, and nothing is set.
+ * case, the first invoice being given its number. A number too low for the
+ * invoice's place (2 typed onto the fifth-oldest) cannot be that invoice's
+ * in a series without a gap: the series starts at 1, the nearest there is,
+ * and the invoice takes the number its place gives it. `unsaved` are
+ * invoices being filed now and not on the ledger yet, counted in their
+ * places.
  */
 export function seriesStartFor(
   records: SavedRecord[],
   batchId: string,
   typed: string,
+  unsaved: { batchId: string; date: string | null }[] = [],
 ): string | null {
   const number = typed.trim();
   const match = NUMBERED.exec(number);
   if (!match) return null;
-  const order = [...new Map(
+  const dated = new Map(
     [...records]
       .sort((a, b) => a.id - b.id)
       .filter((record) => !isUndatedBatch(recordBatch(record)) && ticketDateValue(record.ticket.ticket_date) !== null)
       .map((record) => [recordBatch(record), ticketDateValue(record.ticket.ticket_date)!] as const),
-  )]
+  );
+  for (const batch of unsaved) {
+    const day = ticketDateValue(batch.date);
+    if (day !== null && !isUndatedBatch(batch.batchId) && !dated.has(batch.batchId)) dated.set(batch.batchId, day);
+  }
+  const order = [...dated]
     .map(([id, day], arrived) => ({ id, day, arrived }))
     .sort((a, b) => a.day - b.day || a.arrived - b.arrived)
     .map((batch) => batch.id);
   const place = order.indexOf(batchId);
   if (place < 0) return null;
-  const digits = Number(match[2]) - place;
-  if (digits < 1) return null;
+  const digits = Math.max(1, Number(match[2]) - place);
   return `${match[1]}${String(digits).padStart(match[2].length, '0')}`;
 }
 

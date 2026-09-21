@@ -537,8 +537,21 @@ void test('a number typed onto an invoice is where the series starts, and the ru
   // 1003 typed onto the third-oldest: the series starts at 1001 as well.
   assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', '1003'), '1001');
   assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'INV-0003'), 'INV-0001', 'prefix and padding as typed');
-  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', '2'), null, 'a start below 1 is not a series');
+  // 2 typed onto the third-oldest cannot be a gapless series: the nearest
+  // one, from 1, and the invoice takes its place's number.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', '2'), '1', 'a start below 1 is 1');
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'INV-0002'), 'INV-0001');
   assert.equal(seriesStartFor([dec, jan, feb], 'batch-2026-02-01', 'SPECIAL'), null);
+  // An invoice being filed now is counted in its place: the oldest of the
+  // four, so 2043 typed onto it is where the series starts.
+  assert.equal(
+    seriesStartFor([dec, jan, feb], 'batch-new', '2043', [{ batchId: 'batch-new', date: '2025-12-01' }]),
+    '2043',
+  );
+  assert.equal(
+    seriesStartFor([dec, jan, feb], 'batch-new', '2043', [{ batchId: 'batch-new', date: '2026-03-01' }]),
+    '2040',
+  );
   // And with the start set, the date-order run keeps what was typed — it
   // used to put 1001 back to 1, then 3 or 4, the moment the ledger was looked at.
   const byBatchId = (a: [string, string], b: [string, string]) => a[0].localeCompare(b[0]);
@@ -546,6 +559,14 @@ void test('a number typed onto an invoice is where the series starts, and the ru
     ['batch-2025-12-31', '1001'],
     ['batch-2026-01-02', '1002'],
     ['batch-2026-02-01', '1003'],
+  ]);
+  // A number another invoice holds is not refused: 2 typed onto the oldest
+  // starts the series at 2, and the rest move along behind it.
+  assert.equal(seriesStartFor([dec, jan, feb], 'batch-2025-12-31', '2'), '2');
+  assert.deepEqual([...numbersInDateOrder([dec, jan, feb], '2')].sort(byBatchId), [
+    ['batch-2025-12-31', '2'],
+    ['batch-2026-01-02', '3'],
+    ['batch-2026-02-01', '4'],
   ]);
   // No start: the lowest on file, as before.
   assert.equal(numbersInDateOrder([dec, jan, feb], null).size, 0);

@@ -475,6 +475,10 @@ export const PL_PAGES: Record<string, string> = {
     'Ten plik jest już zapisany jako rekord {id} (kwit {ticket}). Nic nie dodano.',
   'Invoice number {number} is already used by another upload. Choose another.':
     'Numer faktury {number} jest już użyty przy innym przesłaniu. Wybierz inny.',
+  'Invoice numbers now run from {start}; the other invoices moved along.':
+    'Numery faktur biegną teraz od {start}; pozostałe faktury przesunięto.',
+  'Invoice numbers now run from {start} in date order; this invoice is {number}.':
+    'Numery faktur biegną teraz od {start} w kolejności dat; ta faktura ma numer {number}.',
   'Saved {label}. Now reviewing ticket {next}.': 'Zapisano {label}. Teraz sprawdzasz kwit {next}.',
   // Reviewing runs on from one ticket to the next without going back to a list.
   'All tickets reviewed ({tickets}).': 'Sprawdzono wszystkie kwity ({tickets}).',
