@@ -340,3 +340,12 @@ void test('a dispatch number the reader could not make out is never a question',
     assert.ok(!validateTicket(record.ticket, record.recovery).some((issue) => /dispatch/i.test(issue)));
   }
 });
+
+void test('a ticket whose date was never read at all is a date question, asked inline', () => {
+  const none = read({ ticket_date: null }, { ticket_date: { status: 'missing', value: null, visible_text: null, source: null, source_clipped: false, clipped_edge: null, confidence: 0, evidence: [] } });
+  const { groups } = sort([none], [five]);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].type, 'INDIVIDUAL_CRITICAL_FIELD');
+  assert.equal(groups[0].needsDate, true, 'the panel offers the date box, not only the review');
+  assert.deepEqual(groups[0].asks, ['ticket_date']);
+});

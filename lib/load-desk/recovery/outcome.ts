@@ -193,12 +193,19 @@ export function ticketOutcome(
       (TICKET_OWN_FIELDS.has(name) ? own : business).push(name);
     }
   }
-  // What the ticket is missing outright — a number, a weight — that the
-  // validator already says. Those are this sheet's own.
-  const missingOwn = structuralIssues.some((issue) =>
-    /Missing required field: (ticket number|ticket date|net weight)/.test(issue),
-  );
-  if (missingOwn && !own.length) own.push('ticket_number');
+  // What the ticket is missing outright — a number, a date, a weight — that
+  // the validator already says. Those are this sheet's own, and each is named
+  // as the field it is: a missing date used to be filed under the ticket
+  // number, and the panel, looking for a date question, offered a ticket
+  // with no date read at all nothing but the full review.
+  const MISSING: [RegExp, keyof Ticket][] = [
+    [/Missing required field: ticket number/, 'ticket_number'],
+    [/Missing required field: ticket date/, 'ticket_date'],
+    [/Missing required field: net weight/, 'net_lb'],
+  ];
+  for (const [pattern, field] of MISSING) {
+    if (structuralIssues.some((issue) => pattern.test(issue)) && !own.includes(field)) own.push(field);
+  }
   // Weights that do not agree with each other, and that the ticket's own
   // arithmetic could not put right (see weights.ts), are this sheet's
   // problem and nobody else's: a weight is billed, and one that three other
