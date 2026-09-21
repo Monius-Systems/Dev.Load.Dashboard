@@ -1,4 +1,5 @@
 import type { ClientProfile, CustomerProfile, TruckProfile } from '../profiles.ts';
+import { normalizeName } from '../customer-rates.ts';
 import { printedNumber } from '../printed-number.ts';
 import { isNumberField, type SavedRecord, type Ticket } from '../types.ts';
 import {
@@ -99,7 +100,8 @@ export function recoverTicket(input: RecoverInput): {
   // outright is set to that name, whatever the line printed; and one weight
   // the other three prove wrong by a faded digit is put right from them.
   const carried = applyKnownCarrier(applyRecovery(extracted, recovery), recovery, observed);
-  const weighed = reconcileWeights(carried.ticket, carried.recovery);
+  const named = applyCustomerSpelling(carried.ticket, carried.recovery, customer);
+  const weighed = reconcileWeights(named.ticket, named.recovery);
   // Gross and tare tons are never read; they are the pounds over two
   // thousand, and follow the pounds wherever the resolver put them.
   const tons = (pounds: number | null) => (pounds === null ? null : Math.round((pounds / 2000) * 100) / 100);
@@ -375,4 +377,49 @@ export function acceptableValue(field: keyof Ticket, candidate: string): string 
   if (!isNumberField(field)) return text;
   const value = printedNumber(text);
   return value === null ? null : String(value);
+}
+
+/**
+ * The customer's name as it is saved, on a ticket that has been matched to
+ * them. The print is kept on the record.
+ *
+ * A ticket printed "VITECH COMPANY INC" was matched to WITECH COMPANY INC
+ * — a letter off, one customer close, which is what the matching allows —
+ * and then carried "VITECH" onto the review and the invoice, with a note
+ * offering to remember the misspelling. The match is the app knowing who
+ * this is; the name it writes should be the one on file. Only a ticket
+ * matched to exactly one customer is renamed, which is the only kind the
+ * matching hands over.
+ */
+function applyCustomerSpelling(
+  ticket: Ticket,
+  recovery: TicketRecovery,
+  customer: CustomerProfile | null,
+): { ticket: Ticket; recovery: TicketRecovery } {
+  const printed = ticket.customer_name?.trim();
+  if (!customer || !printed) return { ticket, recovery };
+  if (normalizeName(printed) === normalizeName(customer.name)) return { ticket, recovery };
+  const previous = recovery.fields.customer_name;
+  return {
+    ticket: { ...ticket, customer_name: customer.name },
+    recovery: {
+      ...recovery,
+      fields: {
+        ...recovery.fields,
+        customer_name: {
+          status: 'recovered',
+          value: customer.name,
+          visible_text: previous?.visible_text ?? printed,
+          source: 'verified_profile',
+          source_clipped: previous?.source_clipped ?? false,
+          clipped_edge: previous?.clipped_edge ?? null,
+          confidence: 0.95,
+          evidence: [
+            ...(previous?.evidence ?? []),
+            `Matched to ${customer.name} on file; the ticket prints "${printed}".`,
+          ],
+        },
+      },
+    },
+  };
 }

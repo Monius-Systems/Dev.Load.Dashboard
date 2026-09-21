@@ -2913,11 +2913,13 @@ export default function LoadDesk() {
           <small className="ld-field-hint">
             {resolution.source === 'batch_context'
               ? t('Filled from another ticket with the same order number')
-              : resolution.visible_text
-                ? t('Recovered from partial print — the ticket shows “{print}”', {
-                    print: resolution.visible_text,
-                  })
-                : t('Not printed whole here — worked out from the rest of the ticket')}
+              : resolution.visible_text && ['verified_profile', 'verified_history', 'user_correction'].includes(resolution.source ?? '')
+                ? t('From what is on file — the ticket shows “{print}”', { print: resolution.visible_text })
+                : resolution.visible_text
+                  ? t('Recovered from partial print — the ticket shows “{print}”', {
+                      print: resolution.visible_text,
+                    })
+                  : t('Not printed whole here — worked out from the rest of the ticket')}
           </small>
           {resolution.evidence.length ? (
             <details className="ld-why">

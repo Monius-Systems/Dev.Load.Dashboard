@@ -464,3 +464,36 @@ void test('a field a person confirmed is never reconsidered, and nothing changes
   assert.equal(again.recovery, recovery, 'the same object comes back when nothing changed');
   assert.equal(again.ticket, ticket);
 });
+
+void test('a customer matched a letter off is written as the name on file', () => {
+  const witech: CustomerProfile = {
+    id: 5, name: 'WITECH COMPANY INC', ticket_customer_ids: ['60311596'], ticket_names: [], addresses: [],
+    flat_rate: null, fuel_charge: null, notes: '', created_at: '',
+  };
+  const observed: ObservedTicket = {
+    fields: {
+      customer_id: { visible: '60311596', proposed: null, clipped_edge: null, partial: false },
+      customer_name: { visible: 'VITECH COMPANY INC', proposed: null, clipped_edge: null, partial: false },
+    },
+    timestamps: [], branding: 'Heidelberg Materials', paper_edges: null,
+  };
+  const extracted: Ticket = { ...emptyTicket(), customer_id: '60311596', customer_name: 'VITECH COMPANY INC' };
+  // The page matches the customer (by number here, or a letter off by name) and hands them in.
+  const { ticket, recovery } = recoverTicket({
+    observed, paper: UNKNOWN_FRAME, extracted, records: [], profiles: { customers: [witech], trucks: [], clients: [] }, customer: witech,
+  });
+  assert.equal(ticket.customer_name, 'WITECH COMPANY INC');
+  assert.equal(recovery.fields.customer_name?.status, 'recovered');
+  assert.equal(recovery.fields.customer_name?.visible_text, 'VITECH COMPANY INC', 'the print is kept');
+  assert.equal(recovery.fields.customer_name?.source, 'verified_profile');
+  assert.equal(blocksSave(recovery), false);
+  // The same name, spelled as on file: nothing to do.
+  const same = recoverTicket({
+    observed: { ...observed, fields: { ...observed.fields, customer_name: { visible: 'Witech Company Inc', proposed: null, clipped_edge: null, partial: false } } },
+    paper: UNKNOWN_FRAME, extracted: { ...extracted, customer_name: 'Witech Company Inc' }, records: [], profiles: { customers: [witech], trucks: [], clients: [] }, customer: witech,
+  });
+  assert.equal(same.recovery.fields.customer_name?.status, 'exact');
+  // No customer matched: the print stands, and it is the customer question.
+  const nobody = recoverTicket({ observed, paper: UNKNOWN_FRAME, extracted, records: [], profiles: { customers: [witech], trucks: [], clients: [] }, customer: null });
+  assert.equal(nobody.ticket.customer_name, 'VITECH COMPANY INC');
+});
