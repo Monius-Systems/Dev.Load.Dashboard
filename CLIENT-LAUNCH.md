@@ -209,8 +209,9 @@ project and never overwrites the website.
    the browser. Without it both pages say routing is not configured and
    everything else still works. The database tables they need are in
    `supabase/migrations/202609190001_ifta_mileage.sql`,
-   `supabase/migrations/202609200001_mileage_stop_order.sql` and
-   `supabase/migrations/202609230001_mileage_calc_token.sql`; apply all three
+   `supabase/migrations/202609200001_mileage_stop_order.sql`,
+   `supabase/migrations/202609230001_mileage_calc_token.sql` and
+   `supabase/migrations/202609240001_mileage_route_choice.sql`; apply all four
    with `supabase db push`.
 
    `MAP_TILE_URL` is where the map under a day's route on **Mileage** comes

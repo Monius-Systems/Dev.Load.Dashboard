@@ -354,3 +354,111 @@
     flex-wrap: wrap;
   }
 }
+
+/* ------------------------------------------------- the way the truck goes */
+/* A day of shuttle work is a handful of runs driven over and over, so the
+   route view says which runs they are and lets each one be settled on the
+   roads the driver actually takes. The rows read like the stops above them. */
+.rc {
+  display: grid;
+  gap: var(--ui-space-2);
+}
+.rc-runs {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rc-run {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-3);
+  padding: 8px 10px;
+  border-radius: var(--ui-radius-sm);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+.rc-run-where {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-size: var(--type-sm);
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+.rc-run-where small {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--type-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-3);
+}
+.rc-note {
+  line-height: var(--type-leading-normal);
+}
+
+/* The ways one run may be driven, each drawn and priced in miles. */
+.rc-ways {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--ui-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rc-way {
+  display: grid;
+  align-content: start;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+}
+/* The way in use is the one the day's miles come from, so it is marked on the
+   card and not only in the sentence under it. */
+.rc-way[data-in-use] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-faint);
+}
+ /* The preview is the drawing and nothing else: the day's own map carries
+    the heading, the legend and the hand-off to Google Maps. */
+.rc-way .rm[data-compact] .rm-head,
+.rc-way .rm .rm-legs,
+.rc-way .rm .rm-legend,
+.rc-way .rm .rm-caption,
+.rc-way .rm .rm-unresolved {
+  display: none;
+}
+.rc-way .rm-canvas {
+  border-radius: var(--ui-radius-sm);
+}
+.rc-way-figures {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px var(--ui-space-2);
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
+}
+.rc-way-figures strong {
+  font-size: var(--type-base);
+  font-weight: var(--type-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text);
+}
+.rc-way-now {
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-accent);
+}
+.rc-way-pick {
+  justify-self: stretch;
+}
+
+@media (max-width: 560px) {
+  .rc-run > [data-slot='button'] {
+    width: 100%;
+  }
+}

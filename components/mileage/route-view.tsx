@@ -5,6 +5,7 @@ import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DayStatus, longDate, type DayHeadline } from '@/components/mileage/day-card';
 import NeedsHelp from '@/components/mileage/needs-help';
+import RouteChoice from '@/components/mileage/route-choice';
 import RouteMap from '@/components/mileage/route-map';
 import type { Translator } from '@/lib/i18n/translate';
 import {
@@ -62,6 +63,7 @@ export default function RouteView({
   onUpdateDay,
   onOrderConfirmed,
   onLocationFixed,
+  onRouteChosen,
 }: {
   day: TruckDay;
   truck: TruckProfile;
@@ -81,6 +83,7 @@ export default function RouteView({
   onUpdateDay: () => void;
   onOrderConfirmed: () => void;
   onLocationFixed: (placeKey: string) => void;
+  onRouteChosen: () => void;
 }) {
   const { t } = tr;
   const [details, setDetails] = useState(false);
@@ -250,6 +253,19 @@ export default function RouteView({
             );
           })}
         </ol>
+      ) : null}
+
+      {legs.length ? (
+        <RouteChoice
+          truckId={truck.id}
+          date={day.date}
+          legs={legs}
+          busy={busy}
+          phone={phone}
+          mapCredit={mapCredit}
+          tr={tr}
+          onChosen={onRouteChosen}
+        />
       ) : null}
 
       {legs.length ? (

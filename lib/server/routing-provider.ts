@@ -57,6 +57,17 @@ export interface RoutingProvider {
     destination: LatLon,
     profile: TruckRoutingProfile,
   ): Promise<RouteResult>;
+  /**
+   * Several ways to drive the same run, the provider's own answer first, for
+   * a person to choose between. Never used by the calculation, which takes
+   * the provider's answer as it always has.
+   */
+  truckRouteOptions(
+    origin: LatLon,
+    destination: LatLon,
+    profile: TruckRoutingProfile,
+    count: number,
+  ): Promise<RouteResult[]>;
 }
 
 /**

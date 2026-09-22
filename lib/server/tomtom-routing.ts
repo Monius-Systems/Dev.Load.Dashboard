@@ -2,8 +2,10 @@ import { normalizeName } from '@/lib/load-desk/customer-rates';
 import {
   ProviderError,
   type GeocodeResult,
+  type LatLon,
   type RouteResult,
   type RoutingProvider,
+  type TruckRoutingProfile,
 } from '@/lib/server/routing-provider';
 
 // TomTom, behind the routing-provider interface. The only file that knows the
@@ -17,6 +19,8 @@ import {
 // carries a URL, since the URL carries the key.
 
 const ROUTING = 'https://api.tomtom.com/routing/1/calculateRoute';
+/** The most ways to drive one run the router is ever asked for at once. */
+const MAX_ALTERNATIVES = 3;
 const GEOCODE = 'https://api.tomtom.com/search/2/search';
 const VERSION = 'routing/1;search/2-fuzzy2';
 const TIMEOUT_MS = 10_000;
@@ -141,57 +145,95 @@ async function fetchJson(url: URL, what: string): Promise<unknown> {
   return body;
 }
 
+/**
+ * One call to the router: its own answer, and — where `alternatives` asks for
+ * them — other ways to drive the same run. Every answer is read field by
+ * field; an alternative without a distance is dropped rather than guessed at,
+ * and two that come back the same length are one way, not two.
+ */
+async function truckRoutes(
+  apiKey: string,
+  origin: LatLon,
+  destination: LatLon,
+  profile: TruckRoutingProfile,
+  alternatives: number,
+): Promise<RouteResult[]> {
+  const url = new URL(
+    `${ROUTING}/${origin.lat},${origin.lon}:${destination.lat},${destination.lon}/json`,
+  );
+  const params = url.searchParams;
+  params.set('key', apiKey);
+  params.set('travelMode', 'truck');
+  params.set('routeType', 'fastest');
+  params.set('traffic', 'false');
+  params.set('routeRepresentation', 'encodedPolyline');
+  params.set('computeTravelTimeFor', 'none');
+  params.set('vehicleCommercial', profile.commercial ? 'true' : 'false');
+  if (alternatives > 0) {
+    params.set('maxAlternatives', String(Math.min(alternatives, MAX_ALTERNATIVES)));
+    params.set('alternativeType', 'anyRoute');
+  }
+  const dimensions: [string, string | null][] = [
+    ['vehicleHeight', positive(profile.heightM, 2)],
+    ['vehicleWidth', positive(profile.widthM, 2)],
+    ['vehicleLength', positive(profile.lengthM, 2)],
+    ['vehicleWeight', positive(Math.round(profile.weightKg), 0)],
+    ['vehicleAxleWeight', positive(Math.round(profile.axleWeightKg), 0)],
+    ['vehicleNumberOfAxles', positive(Math.round(profile.axles), 0)],
+  ];
+  for (const [name, value] of dimensions) if (value !== null) params.set(name, value);
+
+  const body = await fetchJson(url, 'routing');
+  const formatVersion =
+    isObject(body) && typeof body.formatVersion === 'string' ? body.formatVersion : null;
+  const answers = isObject(body) && Array.isArray(body.routes) ? body.routes : [];
+  const results: RouteResult[] = [];
+  const seen = new Set<string>();
+  for (const answer of answers) {
+    const route = isObject(answer) ? answer : null;
+    const summary = route && isObject(route.summary) ? route.summary : null;
+    const meters = summary ? finite(summary.lengthInMeters) : null;
+    const seconds = summary ? finite(summary.travelTimeInSeconds) : null;
+    if (meters === null || seconds === null || meters < 0 || seconds < 0) continue;
+    const legs = route && Array.isArray(route.legs) ? route.legs : [];
+    const leg = isObject(legs[0]) ? legs[0] : null;
+    const geometry = leg && typeof leg.encodedPolyline === 'string' ? leg.encodedPolyline : null;
+    const precision = leg ? finite(leg.encodedPolylinePrecision) : null;
+    const miles = round2(meters / METERS_PER_MILE);
+    const key = `${miles}|${Math.round(seconds)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    results.push({
+      miles,
+      seconds: Math.round(seconds),
+      geometry,
+      geometryPrecision: geometry && (precision === 5 || precision === 7) ? precision : null,
+      providerMeta: { lengthInMeters: meters, travelTimeInSeconds: seconds, formatVersion },
+    });
+  }
+  if (!results.length) {
+    throw new ProviderError('The routing service answered without a distance.', 'transient');
+  }
+  return results;
+}
+
 export function tomtomProvider(apiKey: string): RoutingProvider {
   return {
     name: 'tomtom',
     version: VERSION,
 
     async calculateTruckRoute(origin, destination, profile): Promise<RouteResult> {
-      const url = new URL(
-        `${ROUTING}/${origin.lat},${origin.lon}:${destination.lat},${destination.lon}/json`,
-      );
-      const params = url.searchParams;
-      params.set('key', apiKey);
-      params.set('travelMode', 'truck');
-      params.set('routeType', 'fastest');
-      params.set('traffic', 'false');
-      params.set('routeRepresentation', 'encodedPolyline');
-      params.set('computeTravelTimeFor', 'none');
-      params.set('vehicleCommercial', profile.commercial ? 'true' : 'false');
-      const dimensions: [string, string | null][] = [
-        ['vehicleHeight', positive(profile.heightM, 2)],
-        ['vehicleWidth', positive(profile.widthM, 2)],
-        ['vehicleLength', positive(profile.lengthM, 2)],
-        ['vehicleWeight', positive(Math.round(profile.weightKg), 0)],
-        ['vehicleAxleWeight', positive(Math.round(profile.axleWeightKg), 0)],
-        ['vehicleNumberOfAxles', positive(Math.round(profile.axles), 0)],
-      ];
-      for (const [name, value] of dimensions) if (value !== null) params.set(name, value);
+      const [first] = await truckRoutes(apiKey, origin, destination, profile, 0);
+      return first;
+    },
 
-      const body = await fetchJson(url, 'routing');
-      const routes = isObject(body) && Array.isArray(body.routes) ? body.routes : [];
-      const route = isObject(routes[0]) ? routes[0] : null;
-      const summary = route && isObject(route.summary) ? route.summary : null;
-      const meters = summary ? finite(summary.lengthInMeters) : null;
-      const seconds = summary ? finite(summary.travelTimeInSeconds) : null;
-      if (meters === null || seconds === null || meters < 0 || seconds < 0) {
-        throw new ProviderError('The routing service answered without a distance.', 'transient');
-      }
-      const legs = route && Array.isArray(route.legs) ? route.legs : [];
-      const leg = isObject(legs[0]) ? legs[0] : null;
-      const geometry = leg && typeof leg.encodedPolyline === 'string' ? leg.encodedPolyline : null;
-      const precision = leg ? finite(leg.encodedPolylinePrecision) : null;
-      return {
-        miles: round2(meters / METERS_PER_MILE),
-        seconds: Math.round(seconds),
-        geometry,
-        geometryPrecision: geometry && (precision === 5 || precision === 7) ? precision : null,
-        providerMeta: {
-          lengthInMeters: meters,
-          travelTimeInSeconds: seconds,
-          formatVersion: isObject(body) && typeof body.formatVersion === 'string' ? body.formatVersion : null,
-        },
-      };
+    /**
+     * Ways to drive the same run, the router's own answer first. Only ever
+     * for a person to look at and pick from: the calculation itself takes the
+     * first one, exactly as it always has.
+     */
+    async truckRouteOptions(origin, destination, profile, count): Promise<RouteResult[]> {
+      return truckRoutes(apiKey, origin, destination, profile, count);
     },
 
     async geocode(query, bias, options = {}): Promise<GeocodeResult> {

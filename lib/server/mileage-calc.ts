@@ -44,6 +44,8 @@ import { ProviderError, type RouteResult, type RoutingProvider } from '@/lib/ser
 // totals. The rules that matter:
 //
 // - A failure never touches the last good figures (writeDayState only).
+// - A run somebody settled by hand stands: its stored figures are used even
+//   when the day is forced, and only a new choice replaces them.
 // - Nothing is guessed: a place the provider is not sure of is a review item
 //   with the provider's suggestion offered, and the day waits.
 // - One provider call per unique leg and place, cached for every later day.
@@ -292,7 +294,13 @@ export async function recalculateDay(
     const keys = plan.legs
       .filter((leg) => leg.kind !== 'same_place')
       .map((leg) => routeKey(at(leg.from), at(leg.to), profileKey));
-    const routes = force ? new Map<string, RouteRow>() : await getRoutes(client, workspace, [...new Set(keys)]);
+    const cached = await getRoutes(client, workspace, [...new Set(keys)]);
+    // "Update mileage" asks the provider again for every leg — except one a
+    // person settled themselves. A chosen run is their answer, not a cached
+    // copy of somebody else's, and nothing here overwrites it.
+    const routes: Map<string, RouteRow> = force
+      ? new Map([...cached].filter(([, route]) => route.chosen))
+      : cached;
     const legs: MileageLeg[] = [];
     for (const leg of plan.legs) {
       const from = at(leg.from);

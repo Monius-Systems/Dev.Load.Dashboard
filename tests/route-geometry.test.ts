@@ -255,23 +255,26 @@ void test('fitBounds centres a single point and refuses an empty day', () => {
   assert.equal(fitBounds([{ lat: Number.NaN, lon: 0 }], 600, 300, 20), null);
 });
 
-void test('fitTiles fits the day at a whole-number zoom, north up', () => {
+void test('fitTiles fills the canvas with the day, north up', () => {
   const view = fitTiles([YARD, PICKUP, DELIVERY], 640, 400, 32);
   assert.ok(view);
-  assert.ok(Number.isInteger(view.zoom));
+  assert.ok(Number.isInteger(view.zoom), 'pictures come at whole-number zooms');
   assert.ok(view.zoom > 0 && view.zoom <= 17);
   for (const point of [YARD, PICKUP, DELIVERY]) {
     const { x, y } = view.project(point);
     assert.ok(x >= 32 - 1e-6 && x <= 640 - 32 + 1e-6, `x ${x} inside`);
     assert.ok(y >= 32 - 1e-6 && y <= 400 - 32 + 1e-6, `y ${y} inside`);
   }
-  // One zoom further and the day would not have fitted, which is what makes
-  // this the largest one: the span doubles with every step.
-  const span = {
-    x: view.project(DELIVERY).x - view.project(PICKUP).x,
-    y: view.project(YARD).y - view.project(PICKUP).y,
-  };
-  assert.ok(Math.abs(span.x) * 2 > 640 - 64 || Math.abs(span.y) * 2 > 400 - 64);
+  // Fitted, not merely contained: the day touches the padding on one axis,
+  // which is what the stretched pictures are for.
+  const wide = Math.max(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).x)) -
+    Math.min(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).x));
+  const tall = Math.max(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).y)) -
+    Math.min(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).y));
+  assert.ok(
+    Math.abs(wide - (640 - 64)) < 0.5 || Math.abs(tall - (400 - 64)) < 0.5,
+    `day ${wide.toFixed(1)}x${tall.toFixed(1)} in 576x336`,
+  );
   assert.ok(view.project({ lat: 42.1, lon: -87.2 }).y < view.project({ lat: 41.5, lon: -87.2 }).y);
   assert.ok(view.project({ lat: 41.8, lon: -87.2 }).x > view.project({ lat: 41.8, lon: -87.9 }).x);
 });
@@ -283,10 +286,12 @@ void test('fitTiles covers the canvas with tiles of that zoom', () => {
   assert.ok(view.tiles.length >= 6, `${view.tiles.length} tiles for 640x400`);
   assert.equal(new Set(view.tiles.map((tile) => tile.key)).size, view.tiles.length);
   // Every tile is one the source can serve, and together they leave no gap.
+  const size = view.tiles[0].size;
+  assert.ok(size >= 256 && size < 256 * 2 + 2, `tiles drawn at ${size}px`);
   const left = Math.min(...view.tiles.map((tile) => tile.left));
   const top = Math.min(...view.tiles.map((tile) => tile.top));
-  const right = Math.max(...view.tiles.map((tile) => tile.left)) + 256;
-  const bottom = Math.max(...view.tiles.map((tile) => tile.top)) + 256;
+  const right = Math.max(...view.tiles.map((tile) => tile.left)) + size;
+  const bottom = Math.max(...view.tiles.map((tile) => tile.top)) + size;
   assert.ok(left <= 0 && top <= 0 && right >= 640 && bottom >= 400);
   for (const tile of view.tiles) {
     assert.equal(tile.z, view.zoom);

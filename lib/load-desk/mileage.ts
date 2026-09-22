@@ -19,6 +19,8 @@ export const CALC_VERSION = 1;
 export const MAX_DAYS_PER_REQUEST = 25;
 /** Tickets one truck-day may carry before it is sent for review instead. */
 export const MAX_TICKETS_PER_DAY = 60;
+/** A day's legs: two per ticket, and the two that start and end at the yard. */
+export const MAX_LEGS_PER_DAY = MAX_TICKETS_PER_DAY * 2 + 2;
 /** The widest span GET /api/mileage answers. */
 export const MAX_RANGE_DAYS = 400;
 /** A day still marked calculating after this long is taken over. */
@@ -1100,6 +1102,77 @@ export function parseStopOrderBody(
   }
   return { value: { truck_id: truckId, date, ticket_ids: [...ticketIds] as number[] } };
 }
+
+/** A run of the day: one pair of places, and the legs that drive it. */
+export type DayRun = {
+  /** The first leg that drives it, which names it to the server. */
+  seq: number;
+  route_id: number;
+  from: MileagePlace;
+  to: MileagePlace;
+  miles: number;
+  /** Legs of this day that are this same run. */
+  uses: number;
+};
+
+/**
+ * The distinct runs of a day, in the order they first happen.
+ *
+ * A day of shuttle work is thirty legs and four runs: out to the quarry, the
+ * quarry to the job, the job back to the quarry, and home at the end. A run
+ * is one cached route, so everything that is true of it — the miles, and the
+ * way a person chose to drive it — is true of every leg that drives it.
+ */
+export function runsOfDay(legs: MileageLeg[]): DayRun[] {
+  const runs = new Map<number, DayRun>();
+  for (const leg of [...legs].sort((a, b) => a.seq - b.seq)) {
+    if (leg.route_id === null || leg.kind === 'same_place') continue;
+    const run = runs.get(leg.route_id);
+    if (run) run.uses += 1;
+    else {
+      runs.set(leg.route_id, {
+        seq: leg.seq,
+        route_id: leg.route_id,
+        from: leg.from,
+        to: leg.to,
+        miles: leg.miles,
+        uses: 1,
+      });
+    }
+  }
+  return [...runs.values()];
+}
+
+/**
+ * { truck_id, date, seq } — one leg of a stored day, and with `option` the
+ * way to drive it that a person picked.
+ *
+ * A browser says which leg and which of the ways already offered for it. It
+ * never says how long a route is, where it goes or what line it draws: those
+ * are the provider's answers, held on the server, and a page that could send
+ * them could dictate what a quarter's IFTA filing says.
+ */
+export function parseRouteChoiceBody(
+  body: unknown,
+  { needsOption = false } = {},
+): Parsed<{ truck_id: number; date: string; seq: number; option: number | null }> {
+  if (!isObject(body)) return { error: 'The request is not valid.' };
+  const { truck_id: truckId, date, seq, option } = body;
+  if (typeof truckId !== 'number' || !Number.isSafeInteger(truckId) || truckId <= 0 || !isIsoDate(date)) {
+    return { error: 'The day needs a truck and a date.' };
+  }
+  if (typeof seq !== 'number' || !Number.isSafeInteger(seq) || seq <= 0 || seq > MAX_LEGS_PER_DAY) {
+    return { error: 'That part of the day is not valid.' };
+  }
+  if (!needsOption) return { value: { truck_id: truckId, date, seq, option: null } };
+  if (typeof option !== 'number' || !Number.isSafeInteger(option) || option < 0 || option >= MAX_ROUTE_OPTIONS) {
+    return { error: 'Choose one of the ways offered.' };
+  }
+  return { value: { truck_id: truckId, date, seq, option } };
+}
+
+/** The most ways to drive one run a person is ever offered. */
+export const MAX_ROUTE_OPTIONS = 6;
 
 export const PLACE_KEY = /^[A-Z0-9 ]{1,200}$/;
 

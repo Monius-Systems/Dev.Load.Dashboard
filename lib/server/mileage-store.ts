@@ -497,7 +497,37 @@ export async function upsertPlace(
 
 // ----------------------------------------------------------------- routes
 
-export type RouteRow = { id: number; route_key: string; miles: number; seconds: number };
+export type RouteRow = {
+  id: number;
+  route_key: string;
+  miles: number;
+  seconds: number;
+  /** A person settled this run: the figures are theirs, not the router's. */
+  chosen: boolean;
+};
+
+/** One way of driving a run, as the router offered it. */
+export type RouteOption = {
+  miles: number;
+  seconds: number;
+  geometry: string | null;
+  precision: 5 | 7 | null;
+};
+
+const readOption = (value: unknown): RouteOption | null => {
+  if (!value || typeof value !== 'object') return null;
+  const row = value as Record<string, unknown>;
+  const miles = Number(row.miles);
+  const seconds = Number(row.seconds);
+  if (!Number.isFinite(miles) || !Number.isFinite(seconds) || miles < 0 || seconds < 0) return null;
+  const precision = Number(row.precision);
+  return {
+    miles,
+    seconds,
+    geometry: typeof row.geometry === 'string' && row.geometry ? row.geometry : null,
+    precision: precision === 5 || precision === 7 ? precision : null,
+  };
+};
 
 export async function getRoutes(
   client: SupabaseClient,
@@ -507,7 +537,7 @@ export async function getRoutes(
   if (!keys.length) return new Map();
   const { data, error } = await client
     .from('load_desk_routes')
-    .select('id, route_key, miles, seconds')
+    .select('id, route_key, miles, seconds, chosen_index')
     .eq('workspace_id', workspace)
     .in('route_key', keys);
   if (error) throw unavailable('load routes');
@@ -519,6 +549,7 @@ export async function getRoutes(
         route_key: String(row.route_key),
         miles: Number(row.miles),
         seconds: Number(row.seconds),
+        chosen: row.chosen_index !== null && row.chosen_index !== undefined,
       },
     ]),
   );
@@ -589,7 +620,7 @@ export async function putRoute(
       },
       { onConflict: 'workspace_id,route_key' },
     )
-    .select('id, route_key, miles, seconds')
+    .select('id, route_key, miles, seconds, chosen_index')
     .single();
   if (error || !data) throw unavailable('save the route');
   return {
@@ -597,5 +628,106 @@ export async function putRoute(
     route_key: String(data.route_key),
     miles: Number(data.miles),
     seconds: Number(data.seconds),
+    chosen: data.chosen_index !== null && data.chosen_index !== undefined,
   };
+}
+
+/**
+ * The ways this run may be driven, as they were last offered, and which one
+ * is in use. A choice names one of these by position, so no distance and no
+ * line is ever taken from a browser.
+ */
+export async function getRouteOptions(
+  client: SupabaseClient,
+  workspace: string,
+  key: string,
+): Promise<{ id: number; options: RouteOption[]; chosen: number | null } | null> {
+  const { data, error } = await client
+    .from('load_desk_routes')
+    .select('id, options, chosen_index')
+    .eq('workspace_id', workspace)
+    .eq('route_key', key)
+    .maybeSingle();
+  if (error) throw unavailable('load the ways to drive this run');
+  if (!data) return null;
+  const options = (Array.isArray(data.options) ? data.options : [])
+    .map(readOption)
+    .filter((option): option is RouteOption => option !== null);
+  const chosen = data.chosen_index === null || data.chosen_index === undefined ? null : Number(data.chosen_index);
+  return { id: Number(data.id), options, chosen };
+}
+
+/** Stores the ways the router has just offered for a run. */
+export async function putRouteOptions(
+  client: SupabaseClient,
+  workspace: string,
+  key: string,
+  options: RouteOption[],
+): Promise<void> {
+  const { error } = await client
+    .from('load_desk_routes')
+    .update({ options, options_at: new Date().toISOString() })
+    .eq('workspace_id', workspace)
+    .eq('route_key', key);
+  if (error) throw unavailable('save the ways to drive this run');
+}
+
+/**
+ * Settles a run on one of the ways last offered for it. The chosen figures
+ * are copied onto the route itself, so every leg that reads this run — the
+ * ninth load of the day, and the same run on any other day — is worth what
+ * the person chose, and nothing that reads a route has to know a choice was
+ * made.
+ */
+export async function chooseRouteOption(
+  client: SupabaseClient,
+  workspace: string,
+  key: string,
+  index: number,
+): Promise<{ id: number; miles: number; seconds: number } | null> {
+  const stored = await getRouteOptions(client, workspace, key);
+  if (!stored) return null;
+  const option = stored.options[index];
+  if (!option) return null;
+  const { data, error } = await client
+    .from('load_desk_routes')
+    .update({
+      miles: option.miles,
+      seconds: option.seconds,
+      geometry: option.geometry,
+      geometry_precision: option.precision,
+      chosen_index: index,
+      chosen_at: new Date().toISOString(),
+      calculated_at: new Date().toISOString(),
+    })
+    .eq('workspace_id', workspace)
+    .eq('route_key', key)
+    .select('id, miles, seconds')
+    .single();
+  if (error || !data) throw unavailable('save the way to drive this run');
+  return { id: Number(data.id), miles: Number(data.miles), seconds: Number(data.seconds) };
+}
+
+/**
+ * Marks every stored day that used this run as no longer answering its own
+ * inputs, which is exactly what it is once the run is worth different miles.
+ * The figures are left alone — a day keeps its last good answer until a new
+ * one replaces it — and each day is worked out again the next time Mileage
+ * asks for it, from the cache, without troubling the provider.
+ *
+ * Returns how many days that was.
+ */
+export async function markDaysStaleForRoute(
+  client: SupabaseClient,
+  workspace: string,
+  routeId: number,
+): Promise<number> {
+  const { data, error } = await client
+    .from('load_desk_daily_mileage')
+    .update({ input_hash: '' })
+    .eq('workspace_id', workspace)
+    .filter('legs', 'cs', JSON.stringify([{ route_id: routeId }]))
+    .select('id');
+  if (error) throw unavailable('mark the days this run belongs to');
+  return data?.length ?? 0;
 }

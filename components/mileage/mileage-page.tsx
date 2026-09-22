@@ -396,6 +396,7 @@ export default function MileagePage() {
               onTryAgain={() => void update([open.day])}
               onUpdateDay={() => void update([open.day])}
               onOrderConfirmed={() => void loadDayDetail(open.day.truck_id, open.day.date)}
+              onRouteChosen={() => void settleDays(toSettle)}
               onLocationFixed={(place) => void locationFixed(place)}
             />
           ) : null}

@@ -5,6 +5,7 @@ import {
   needsRecalculation,
   retryable,
   type MileageDay,
+  type MileagePlace,
   type RouteGeometry,
   type TruckDay,
 } from './mileage.ts';
@@ -285,6 +286,89 @@ export async function confirmStopOrder(
     if (!result.ok) return result.error;
     publish({ ...snapshot, days: merge([result.data.day]) });
     return null;
+  } finally {
+    const pending = new Set(snapshot.pending);
+    pending.delete(key);
+    publish({ ...snapshot, pending });
+  }
+}
+
+/** One way of driving a run, as the server offered it. */
+export type RouteWay = {
+  index: number;
+  miles: number;
+  seconds: number;
+  geometry: RouteGeometry | null;
+};
+
+/** The ways one run may be driven, and how much of the day rides on it. */
+export type RouteWays = {
+  from: MileagePlace;
+  to: MileagePlace;
+  /** Legs of this day that are this same run. */
+  uses: number;
+  /** Which way is in use, where somebody has already settled it. */
+  in_use: number | null;
+  options: RouteWay[];
+};
+
+/**
+ * The ways one run of a day may be driven. The leg is named by its place in
+ * the day; everything about the route itself comes back from the server.
+ */
+export async function loadRouteWays(
+  truckId: number,
+  date: string,
+  seq: number,
+): Promise<{ ways: RouteWays } | { error: string }> {
+  if (snapshot.mode !== 'remote') {
+    return { error: 'Your session has ended. Sign in again to choose a route.' };
+  }
+  const result = await apiJson<RouteWays>('/api/mileage/routes', {
+    method: 'POST',
+    body: JSON.stringify({ truck_id: truckId, date, seq }),
+  });
+  return result.ok ? { ways: result.data } : { error: result.error };
+}
+
+/**
+ * Settles how that run is driven, by the position of one of the ways offered.
+ * The day is worked out again on the server; every other day that used the
+ * run is marked for working out again, so the range is loaded afresh and the
+ * page settles them as it shows them.
+ *
+ * Returns how many stored days the choice reaches, or the error message.
+ */
+export async function chooseRouteWay(
+  truckId: number,
+  date: string,
+  seq: number,
+  option: number,
+): Promise<{ days: number } | { error: string }> {
+  if (snapshot.mode !== 'remote') {
+    return { error: 'Your session has ended. Sign in again to choose a route.' };
+  }
+  const key = dayKey(truckId, date);
+  resetAttempts([key]);
+  publish({ ...snapshot, pending: new Set([...snapshot.pending, key]) });
+  try {
+    const result = await apiJson<{ day: MileageDay | null; days: number }>(
+      '/api/mileage/routes/choose',
+      {
+        method: 'POST',
+        body: JSON.stringify({ truck_id: truckId, date, seq, option }),
+      },
+    );
+    if (!result.ok) return { error: result.error };
+    if (result.data.day) publish({ ...snapshot, days: merge([result.data.day]) });
+    // The other days now say they no longer answer their own inputs, which
+    // this page only learns by reading them again.
+    if (snapshot.range) {
+      loadedRanges.clear();
+      await loadDays(snapshot.range);
+    }
+    await loadDayDetail(truckId, date);
+    return { days: result.data.days };
   } finally {
     const pending = new Set(snapshot.pending);
     pending.delete(key);

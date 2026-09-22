@@ -29,6 +29,8 @@ import {
   routeKey,
   routeLabels,
   routingProfileHash,
+  parseRouteChoiceBody,
+  runsOfDay,
   settingsChanged,
   stopOrderApplies,
   stopOrderBasis,
@@ -38,6 +40,7 @@ import {
   truckDays,
   truckIfta,
   type MileageDay,
+  type MileageLeg,
   type StopOrder,
 } from '../lib/load-desk/mileage.ts';
 import { parseTruck } from '../lib/load-desk/record-input.ts';
@@ -676,6 +679,92 @@ void test('editing what a load was worth, or checking a ticket off, does not mov
     trucks,
   ).days;
   assert.deepEqual(emptied.map((d) => d.key), ['7|2026-09-19'], 'the day they all left is gone');
+});
+
+// --------------------------------------------------- the runs of a day
+
+/** A day of shuttle work: out, back and forth nine times, then home. */
+const shuttleDay = () => {
+  const place = (label: string, key: string, lat: number, lon: number) => ({
+    label,
+    place_key: key,
+    lat,
+    lon,
+    name: label,
+  });
+  const yard = place('Home yard', 'YARD', 41.5, -87.9);
+  const quarry = place('Heidelberg Materials', 'QUARRY', 41.57, -87.62);
+  const job = place('Wicker Memorial Park', 'JOB', 41.59, -87.5);
+  const legs: MileageLeg[] = [
+    { seq: 1, kind: 'yard_to_pickup', ticket_id: 1, from: yard, to: quarry, miles: 17.1, seconds: 1500, route_id: 6, cached: false },
+  ];
+  let seq = 2;
+  for (let load = 0; load < 9; load += 1) {
+    legs.push({ seq: seq++, kind: 'pickup_to_delivery', ticket_id: load + 1, from: quarry, to: job, miles: 13.4, seconds: 1560, route_id: 14, cached: true });
+    if (load < 8) {
+      legs.push({ seq: seq++, kind: 'delivery_to_pickup', ticket_id: load + 2, from: job, to: quarry, miles: 15.2, seconds: 1620, route_id: 15, cached: true });
+    }
+  }
+  legs.push({ seq, kind: 'delivery_to_yard', ticket_id: 9, from: job, to: yard, miles: 31.2, seconds: 2700, route_id: 16, cached: false });
+  return legs;
+};
+
+void test('a day of shuttle work is four runs, however many loads it carries', () => {
+  const runs = runsOfDay(shuttleDay());
+  assert.deepEqual(
+    runs.map((run) => [run.from.name, run.to.name, run.uses, run.miles]),
+    [
+      ['Home yard', 'Heidelberg Materials', 1, 17.1],
+      ['Heidelberg Materials', 'Wicker Memorial Park', 9, 13.4],
+      ['Wicker Memorial Park', 'Heidelberg Materials', 8, 15.2],
+      // The way home from the last job is a run like any other.
+      ['Wicker Memorial Park', 'Home yard', 1, 31.2],
+    ],
+  );
+  // Each run is named to the server by the first leg that drives it, so the
+  // server can read the two places off the stored day rather than be told.
+  assert.deepEqual(runs.map((run) => run.seq), [1, 2, 3, 19]);
+  assert.deepEqual(runs.map((run) => run.route_id), [6, 14, 15, 16]);
+});
+
+void test('a run needs a route: a stop the truck never left is not one', () => {
+  const stayed: MileageLeg[] = shuttleDay().map((leg, at) =>
+    at === 2 ? { ...leg, kind: 'same_place', miles: 0, route_id: 14 } : leg,
+  );
+  assert.equal(runsOfDay(stayed).length, 4, 'staying put adds no run');
+  const unrouted = shuttleDay().map((leg) => ({ ...leg, route_id: null }));
+  assert.deepEqual(runsOfDay(unrouted), []);
+  assert.deepEqual(runsOfDay([]), []);
+});
+
+void test('a route choice names a leg and one of the ways offered, never a figure', () => {
+  const body = { truck_id: 3, date: '2026-09-15', seq: 2, option: 1, miles: 4, geometry: 'abc' };
+  const asked = parseRouteChoiceBody(body, { needsOption: true });
+  assert.deepEqual(asked, { value: { truck_id: 3, date: '2026-09-15', seq: 2, option: 1 } });
+  // Looking at the ways does not need one chosen yet.
+  assert.deepEqual(parseRouteChoiceBody({ truck_id: 3, date: '2026-09-15', seq: 2 }), {
+    value: { truck_id: 3, date: '2026-09-15', seq: 2, option: null },
+  });
+  for (const bad of [
+    { truck_id: 0, date: '2026-09-15', seq: 1 },
+    { truck_id: 3, date: 'Tuesday', seq: 1 },
+    { truck_id: 3, date: '2026-09-15', seq: 0 },
+    { truck_id: 3, date: '2026-09-15', seq: 1.5 },
+    { truck_id: 3, date: '2026-09-15', seq: 10_000 },
+  ]) {
+    assert.ok('error' in parseRouteChoiceBody(bad), `took ${JSON.stringify(bad)}`);
+  }
+  for (const bad of [
+    { truck_id: 3, date: '2026-09-15', seq: 1 },
+    { truck_id: 3, date: '2026-09-15', seq: 1, option: -1 },
+    { truck_id: 3, date: '2026-09-15', seq: 1, option: 99 },
+    { truck_id: 3, date: '2026-09-15', seq: 1, option: '0' },
+  ]) {
+    assert.ok(
+      'error' in parseRouteChoiceBody(bad, { needsOption: true }),
+      `took ${JSON.stringify(bad)}`,
+    );
+  }
 });
 
 void test('a leg reads back the address and the name the day was stored with, or neither', () => {

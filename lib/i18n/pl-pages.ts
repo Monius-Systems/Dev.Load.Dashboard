@@ -824,6 +824,34 @@ export const PL_PAGES: Record<string, string> = {
   'Calculating today’s route…': 'Obliczanie trasy tego dnia…',
   'Last updated {date}': 'Ostatnia aktualizacja {date}',
 
+  // Which way the truck goes between two places, settled once for every load
+  // that drives it.
+  'Routes this day uses': 'Trasy tego dnia',
+  'Change route': 'Zmień trasę',
+  'Change the route from {from} to {to}': 'Zmień trasę z {from} do {to}',
+  '{n} times today': '{n} razy tego dnia',
+  'A route you choose is used for every trip between those two places, today and on the days ahead.':
+    'Wybrana trasa jest używana dla każdego przejazdu między tymi miejscami, dziś i w kolejne dni.',
+  'It drives this {n} times on this day.': 'Ciężarówka pokonuje ją tego dnia {n} razy.',
+  'Pick the roads the truck really takes.': 'Wybierz drogi, którymi naprawdę jedzie ciężarówka.',
+  'Looking up the routes…': 'Szukamy możliwych tras…',
+  'Route {n}': 'Trasa {n}',
+  'Fewest miles': 'Najmniej mil',
+  Quickest: 'Najszybsza',
+  'In use now': 'Używana teraz',
+  'Use this route': 'Użyj tej trasy',
+  'Route saved': 'Trasa zapisana',
+  'Used on {n} days that drive this run.': 'Używana w {n} dniach z tym przejazdem.',
+  'Used for every trip between these two places.':
+    'Używana dla każdego przejazdu między tymi miejscami.',
+  'The miles are the route’s own, off the map. Choosing one changes what this run is worth on every day the truck drives it.':
+    'Mile pochodzą z samej trasy na mapie. Wybór trasy zmienia jej wartość w każdym dniu, w którym występuje.',
+  'That part of the day is not routed.': 'Ta część dnia nie ma wyznaczonej trasy.',
+  'That way is no longer offered. Look at the ways again.':
+    'Ta trasa nie jest już dostępna. Sprawdź trasy ponownie.',
+  'Your session has ended. Sign in again to choose a route.':
+    'Sesja wygasła. Zaloguj się ponownie, aby wybrać trasę.',
+
   // The day's route, in the order it was driven.
   'Back to all trucks': 'Wróć do wszystkich ciężarówek',
   'Truck {number} · {date}': 'Ciężarówka {number} · {date}',

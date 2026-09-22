@@ -219,11 +219,10 @@ void test('a day already worked out from the same tickets is handed back untouch
 void test('the provider is asked once per leg, and only force goes round the cache', () => {
   const calc = source('lib/server/mileage-calc.ts');
   assert.equal(calc.match(/getRoutes\(/g)?.length, 1, 'one place reads the route cache');
-  assert.match(
-    calc,
-    /const routes = force \? new Map<string, RouteRow>\(\) : await getRoutes\(client, workspace, \[\.\.\.new Set\(keys\)\]\)/,
-    'a forced recalculation is the only path that skips the cache',
-  );
+  // A forced recalculation is the only path that goes round the cache, and a
+  // run a person settled is the one thing it does not go round.
+  assert.match(calc, /const routes: Map<string, RouteRow> = force/);
+  assert.match(calc, /\[\.\.\.cached\]\.filter\(\(\[, route\]\) => route\.chosen\)/);
   assert.equal(calc.match(/provider\.calculateTruckRoute\(/g)?.length, 1, 'one place asks for a route');
   assert.match(calc, /if \(!route\) \{[\s\S]*?provider\.calculateTruckRoute\(/, 'a cached leg is never asked about');
   assert.equal(calc.match(/provider\.geocode\(/g)?.length, 1, 'one place asks where an address is');
@@ -312,6 +311,34 @@ void test('the map is fetched by the server, and its source is credited', () => 
   }
 });
 
+void test('a chosen route is the run’s own, and a browser only names one', () => {
+  // The ways offered are the server's, stored on the run itself; the choice
+  // is a position in them. Nothing a page sends becomes a distance.
+  const offer = source('app/api/mileage/routes/route.ts');
+  assert.match(offer, /provider\.truckRouteOptions\(/);
+  assert.match(offer, /putRouteOptions\(/);
+  const choose = source('app/api/mileage/routes/choose/route.ts');
+  assert.match(choose, /chooseRouteOption\(client, member\.workspaceId, key, option/);
+  for (const field of ['miles', 'seconds', 'geometry', 'polyline']) {
+    assert.ok(!new RegExp(`sent\\.${field}\\b`).test(choose), `the choice reads ${field} from the request`);
+    assert.ok(!new RegExp(`sent\\.${field}\\b`).test(offer), `the offer reads ${field} from the request`);
+  }
+  // The two places a run joins are read from the day the server stored, so a
+  // page cannot ask about, or settle, a route of its own invention.
+  for (const text of [offer, choose]) {
+    assert.match(text, /worked\??\.legs\.find\(\(leg\) => leg\.seq === seq\)/);
+    assert.match(text, /routeKey\(\s*run\.from,\s*run\.to,/);
+  }
+
+  // The store copies the chosen way onto the run, which is what makes it
+  // true of every leg that drives it, on this day and any other.
+  const store = source('lib/server/mileage-store.ts');
+  assert.match(store, /chosen_index: index/);
+  assert.match(store, /miles: option\.miles/);
+  // And days worked out with the old figures are marked, never rewritten.
+  assert.match(store, /update\(\{ input_hash: '' \}\)/);
+});
+
 // ------------------------------------------------------------- the routes
 
 void test('the mileage routes take a day, never a figure', () => {
@@ -319,7 +346,11 @@ void test('the mileage routes take a day, never a figure', () => {
   // the server. A browser may say which day to work out, which stops were
   // hauled in which order, and what address a place is at — nothing else, or
   // a page could dictate what a quarter's IFTA filing says.
-  const asked = new Set(['truck_id', 'date', 'days', 'force', 'ticket_ids', 'place_key', 'address']);
+  const asked = new Set([
+    'truck_id', 'date', 'days', 'force', 'ticket_ids', 'place_key', 'address',
+    // A leg of a stored day, and one of the ways the server offered for it.
+    'seq', 'option',
+  ]);
   const forbidden = ['miles', 'lat', 'lon', 'geometry', 'total_miles', 'total_seconds', 'est_gallons', 'legs', 'status'];
   const routes = walk('app/api/mileage')
     .filter((path) => path.endsWith('route.ts'))

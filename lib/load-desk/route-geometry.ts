@@ -336,10 +336,19 @@ export function fitBounds(
   };
 }
 
-/** A map tile is this many pixels square, at every zoom. */
+/** A map tile is this many pixels square, as the source draws it. */
 export const TILE_SIZE = 256;
 
-export type MapTile = { key: string; z: number; x: number; y: number; left: number; top: number };
+export type MapTile = {
+  key: string;
+  z: number;
+  x: number;
+  y: number;
+  left: number;
+  top: number;
+  /** Drawn at this size, which is TILE_SIZE except between two zooms. */
+  size: number;
+};
 
 export type TileView = {
   /** The whole-number zoom the pictures are fetched at. */
@@ -352,14 +361,16 @@ export type TileView = {
 /**
  * The same fit as `fitBounds`, on a map made of tiles.
  *
- * Tiles only exist at whole-number zooms, so the zoom is the largest one at
- * which every point still fits inside the padding, and the canvas is then
- * centred on the middle of the route. Both this and `fitBounds` are Web
- * Mercator, which is what the pictures are drawn in, so the roads land on
- * their own streets.
+ * Pictures exist only at whole-number zooms, but a route rarely fits one
+ * exactly: taking the smaller zoom can leave the day drawn at half the size
+ * of the canvas it is in. So the pictures of the zoom below are drawn a
+ * little larger — never more than twice — and the route is projected at that
+ * same scale, which is how the day comes out filling its canvas. Both this
+ * and `fitBounds` are Web Mercator, the projection the pictures are drawn in,
+ * so the roads land on their own streets.
  *
- * Null when there is nothing to fit. A single point is centred at a zoom close
- * enough to read the street it is on.
+ * Null when there is nothing to fit. A single point is centred at a zoom
+ * close enough to read the street it is on.
  */
 export function fitTiles(
   points: LatLon[],
@@ -387,22 +398,22 @@ export function fitTiles(
     spanX > 0 ? innerWidth / spanX : Infinity,
     spanY > 0 ? innerHeight / spanY : Infinity,
   );
-  const zoom = Math.max(
-    0,
-    Math.min(maxZoom, room === Infinity ? maxZoom : Math.floor(Math.log2(room))),
-  );
-  const scale = 2 ** zoom;
+  // The scale the day wants, and the zoom whose pictures are stretched to it.
+  const wanted = Math.min(room === Infinity ? 2 ** maxZoom : room, 2 ** maxZoom);
+  const zoom = Math.max(0, Math.min(maxZoom, Math.floor(Math.log2(wanted))));
+  const scale = Math.max(wanted, 2 ** zoom);
+  const size = TILE_SIZE * (scale / 2 ** zoom);
   const centreX = ((Math.min(...xs) + Math.max(...xs)) / 2) * scale;
   const centreY = ((Math.min(...ys) + Math.max(...ys)) / 2) * scale;
   const originX = centreX - width / 2;
   const originY = centreY - height / 2;
 
-  const across = scale;
+  const across = 2 ** zoom;
   const tiles: MapTile[] = [];
-  const firstColumn = Math.floor(originX / TILE_SIZE);
-  const lastColumn = Math.floor((originX + width - 1) / TILE_SIZE);
-  const firstRow = Math.floor(originY / TILE_SIZE);
-  const lastRow = Math.floor((originY + height - 1) / TILE_SIZE);
+  const firstColumn = Math.floor(originX / size);
+  const lastColumn = Math.floor((originX + width - 1) / size);
+  const firstRow = Math.floor(originY / size);
+  const lastRow = Math.floor((originY + height - 1) / size);
   for (let row = firstRow; row <= lastRow; row += 1) {
     // Above the north pole or below the south there is no picture; the canvas
     // shows its own background there.
@@ -415,8 +426,11 @@ export function fitTiles(
         z: zoom,
         x: wrapped,
         y: row,
-        left: Math.round(column * TILE_SIZE - originX),
-        top: Math.round(row * TILE_SIZE - originY),
+        left: Math.round(column * size - originX),
+        top: Math.round(row * size - originY),
+        // A whole pixel over, so two neighbours never leave a hairline gap
+        // between them when the scale is not a round number.
+        size: Math.ceil(size) + 1,
       });
     }
   }

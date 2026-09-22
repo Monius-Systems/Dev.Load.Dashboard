@@ -74,8 +74,6 @@
 }
 .rm-tile {
   position: absolute;
-  width: 256px;
-  height: 256px;
   max-width: none;
   user-select: none;
 }

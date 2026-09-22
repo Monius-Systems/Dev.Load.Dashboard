@@ -12,7 +12,6 @@ import {
   sequenceLabels,
   START,
   START_FINISH,
-  TILE_SIZE,
   visitLabel,
   visitTag,
   type RouteGeometry,
@@ -239,12 +238,12 @@ export default function RouteMap({
                 className="rm-tile"
                 src={`${TILES}/${tile.z}/${tile.x}/${tile.y}.png`}
                 alt=""
-                width={TILE_SIZE}
-                height={TILE_SIZE}
+                width={tile.size}
+                height={tile.size}
                 loading="eager"
                 decoding="async"
                 draggable={false}
-                style={{ left: tile.left, top: tile.top }}
+                style={{ left: tile.left, top: tile.top, width: tile.size, height: tile.size }}
                 onLoad={() => setDrawn((count) => count + 1)}
                 onError={() => setRefused((count) => count + 1)}
               />
