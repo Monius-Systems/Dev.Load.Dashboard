@@ -105,6 +105,14 @@ manager's call when to run it, not something to push from a working copy.
 Until it is applied the Rates page cannot load its rows and says the rates
 could not be loaded; nothing else on the dashboard is affected.
 
+`supabase/migrations/202609230001_mileage_calc_token.sql` adds one column,
+`calc_token`, to `load_desk_daily_mileage`. A day is claimed with a fresh
+token before it is worked out, and a result is written only by the calculation
+whose token the row still carries, so two overlapping calculations of the same
+day cannot leave an older answer behind. It changes no other table and no
+policy. Apply it with `supabase db push`. Until it is applied a day that is
+calculated twice at once can end up showing whichever answer finished last.
+
 ## 2. Give A & D Trucking accounts
 
 `matthewmoniuszko@icloud.com` already has access, for testing. A & D's own
@@ -199,9 +207,10 @@ project and never overwrites the website.
    workspace, read only on the server (`lib/server/tomtom-key.ts`), never in
    the browser. Without it both pages say routing is not configured and
    everything else still works. The database tables they need are in
-   `supabase/migrations/202609190001_ifta_mileage.sql` and
-   `supabase/migrations/202609200001_mileage_stop_order.sql`; apply both with
-   `supabase db push`.
+   `supabase/migrations/202609190001_ifta_mileage.sql`,
+   `supabase/migrations/202609200001_mileage_stop_order.sql` and
+   `supabase/migrations/202609230001_mileage_calc_token.sql`; apply all three
+   with `supabase db push`.
 
 3. Point `dashboard.moniussystems.com` at the project, as the host's custom-domain
    setup asks. The website keeps `moniussystems.com`. They have to be separate
@@ -471,12 +480,22 @@ membership. If more client dashboards follow, the website can link to a small
   is no way to switch between them yet.
 - Supported ticket layouts: Heidelberg Materials and Ontario Trap Rock.
 - Mileage and IFTA are two views of the same figures. **Mileage** is the
-  working page: a day at a time, with the route drawn on a map, the legs it is
-  made of, and everything a day needs put right — an address the map cannot
-  place, a recalculation, and the order the loads were hauled in when the
-  tickets do not say. **IFTA** only reports: a quarter at a time, totals, how
-  many days are ready to file on, and a link back to Mileage for each day that
-  is not. Nothing is corrected on the IFTA page.
+  working page: one card per truck and day, each saying how many loads, how
+  far it drove, the estimated fuel, and where the day stands in plain words —
+  *Ready*, *Updating…*, *Needs your help*, *Couldn't update* or *Settings
+  changed*, each with its own mark so nothing is said by colour alone. **View
+  route** opens the day: the miles, the loads, the estimated fuel, the route
+  drawn on a map, the stops by name in the order they were driven, and the
+  per-leg figures behind **Show details**. A day that needs a person says so
+  in the same words and offers the one thing to press — **Fix order** when the
+  tickets do not say which load was first, **Choose location** when the map
+  cannot place an address, **Set yard** or **Set MPG** when a truck is missing
+  either, **Open ticket** when an address is not on the ticket at all, and
+  **Try again** when the routing service did not answer. **Update mileage**
+  asks for the day again after settings change. **IFTA** only reports: a
+  quarter at a time, totals, how many days are ready to file on, and a link
+  back to Mileage for each day that is not. Nothing is corrected on the IFTA
+  page.
 - The mileage itself is an estimate: Yard → pickup → delivery per ticket →
   Yard, on roads open to the truck's configured size and weight as far as
   TomTom's data allows (its truck routing is marked beta). Fuel is route miles

@@ -1,6 +1,12 @@
 'use client';
 
-import { useId, useState, type SyntheticEvent } from 'react';
+import {
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type SyntheticEvent,
+} from 'react';
 import { Pencil, Plus, Route, Trash2, Truck } from 'lucide-react';
 import {
   AlertDialog,
@@ -146,6 +152,16 @@ function iftaFromDraft(draft: Draft): { value: TruckIfta } | { error: string } {
   };
 }
 
+// The address is the one thing on this page the page does not own: Mileage
+// links to /fleet?edit=… for the truck whose yard or MPG has to be entered.
+// Read as any other outside source is, so that opening the link opens the
+// truck's form without a render setting state.
+const subscribeSearch = (listener: () => void) => {
+  window.addEventListener('popstate', listener);
+  return () => window.removeEventListener('popstate', listener);
+};
+const getSearch = () => window.location.search;
+const getServerSearch = () => '';
 
 export default function FleetPage() {
   const { records, ready: recordsReady } = useRecords();
@@ -154,11 +170,23 @@ export default function FleetPage() {
   const sellerName = sellerDisplayName(profiles.company) || t('your company');
   const { trucks } = profiles;
   const [now] = useState(() => new Date());
-  const [draft, setDraft] = useState<Draft | null>(null);
+  /** The form as typed; null once a person closes it, undefined until then. */
+  const [typed, setTyped] = useState<Draft | null | undefined>(undefined);
   const [formError, setFormError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<TruckProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const fieldId = useId();
+  const search = useSyncExternalStore(subscribeSearch, getSearch, getServerSearch);
+
+  // The truck a link asks for, as soon as the profiles are loaded, and until
+  // a person opens or closes a form themselves. The dialog is theirs from
+  // then on: a profile saved, or the same link followed again, leaves it shut.
+  const asked = useMemo(() => {
+    const id = Number(new URLSearchParams(search).get('edit'));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }, [search]);
+  const linked = asked === null ? undefined : trucks.find((truck) => truck.id === asked);
+  const draft = typed === undefined ? (linked ? draftFrom(linked) : null) : typed;
 
   const byTruck = new Map<number | null, SavedRecord[]>();
   for (const record of records) {
@@ -193,10 +221,13 @@ export default function FleetPage() {
 
   const edit = (next: Draft) => {
     setFormError(null);
-    setDraft(next);
+    setTyped(next);
   };
   const setDraftField = (patch: Partial<Draft>) =>
-    setDraft((current) => (current ? { ...current, ...patch } : current));
+    setTyped((current) => {
+      const base = current ?? draft;
+      return base ? { ...base, ...patch } : base;
+    });
 
   async function save(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -242,7 +273,7 @@ export default function FleetPage() {
       setFormError(error);
       return;
     }
-    setDraft(null);
+    setTyped(null);
     toast.add({
       title: existing
         ? t('Updated truck #{number}', { number: truckNumber })
@@ -469,7 +500,7 @@ export default function FleetPage() {
       <Dialog
         open={draft !== null}
         onOpenChange={(open) => {
-          if (!open) setDraft(null);
+          if (!open) setTyped(null);
         }}
       >
         <DialogContent className="sm:max-w-xl">

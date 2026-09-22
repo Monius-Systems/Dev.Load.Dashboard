@@ -8,6 +8,7 @@ import './records/records.css';
 import './account/account.css';
 import './mileage/mileage.css';
 import './mileage/route-map.css';
+import './mileage/fixes.css';
 import './rates/rates.css';
 import './ifta/ifta.css';
 

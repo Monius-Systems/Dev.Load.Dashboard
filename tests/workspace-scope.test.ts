@@ -95,7 +95,12 @@ void test('one client’s yard and the routing key stay out of the app', () => {
   for (const path of [
     'components/ifta/ifta-page.tsx',
     'components/mileage/mileage-page.tsx',
+    'components/mileage/day-card.tsx',
+    'components/mileage/route-view.tsx',
     'components/mileage/route-map.tsx',
+    'components/mileage/needs-help.tsx',
+    'components/mileage/fix-order.tsx',
+    'components/mileage/fix-location.tsx',
     'components/profiles/fleet-page.tsx',
     'lib/load-desk/mileage.ts',
   ]) {

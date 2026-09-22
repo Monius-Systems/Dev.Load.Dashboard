@@ -1,0 +1,220 @@
+/* ============================================================= Route fixes */
+/* What a day needs a person for, and the one control that puts each thing
+   right. Every rule here is for reading it across a desk: sentences at 18px,
+   nothing to press smaller than a thumb, words beside every icon, and a
+   column that stays readable on a monitor instead of running the width of
+   the screen. The panel is `fix-`; the page it sits in is `mileage-`. */
+
+.fix-panel {
+  display: grid;
+  gap: var(--ui-space-4);
+  max-width: 640px;
+  min-width: 0;
+  padding: var(--ui-space-5);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.fix-panel-title {
+  margin: 0;
+  font-size: var(--type-lg);
+  font-weight: var(--type-semibold);
+  letter-spacing: var(--type-tracking-display);
+  color: var(--ui-text);
+}
+.fix-problems {
+  display: grid;
+  gap: var(--ui-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* One thing wrong, said in full, with its own fix under it. */
+.fix-problem {
+  display: grid;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-separator);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+}
+.fix-says {
+  margin: 0;
+  font-size: var(--type-lg);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text);
+}
+/* The words the ticket was printed with, kept apart from ours. */
+.fix-quote {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--type-md);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-2);
+  overflow-wrap: anywhere;
+}
+.fix-hint {
+  margin: 0;
+  font-size: var(--type-md);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-2);
+}
+.fix-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-3);
+}
+
+/* Anything to press: a thumb's worth of height, the words at 16px and the
+   icon beside them. Buttons and links both, since half of these are links. */
+.fix-button {
+  min-height: 44px;
+  padding-inline: var(--ui-space-4);
+  border-radius: var(--ui-radius-md);
+  font-size: var(--type-md);
+  gap: var(--ui-space-2);
+}
+.fix-button svg:not([class*='size-']) {
+  width: 18px;
+  height: 18px;
+}
+.fix-button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+.fix-problem > .fix-button,
+.fix-problem > a.fix-button {
+  justify-self: start;
+}
+
+/* ------------------------------------------------------------ order editor */
+/* The loads of the day, one card each, moved until they match what happened. */
+.fix-order {
+  display: grid;
+  gap: var(--ui-space-3);
+  min-width: 0;
+}
+.fix-order-title {
+  margin: 0;
+  font-size: var(--type-md);
+  font-weight: var(--type-semibold);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text);
+}
+.fix-loads {
+  display: grid;
+  gap: var(--ui-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fix-load {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
+  min-width: 0;
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+}
+.fix-load-text {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.fix-load-route {
+  margin: 0;
+  font-size: var(--type-lg);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+.fix-load-num {
+  font-weight: var(--type-semibold);
+  color: var(--ui-text-2);
+}
+.fix-load-meta {
+  margin: 2px 0 0;
+  font-size: var(--type-md);
+  color: var(--ui-text-2);
+}
+.fix-move {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+/* Dragging is an extra on a touchscreen, and only on this handle, so a
+   finger anywhere else on the card still scrolls the page. A mouse and a
+   keyboard use the two buttons, which do the whole job on their own. */
+.fix-grip {
+  display: none;
+  color: var(--ui-text-3);
+}
+@media (hover: none) {
+  .fix-grip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 44px;
+    touch-action: none;
+    cursor: grab;
+  }
+  .fix-grip svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ------------------------------------------------------------- the location */
+/* Where a stop is, typed once for every ticket printed with that text. */
+.fix-dialog .fix-field {
+  display: grid;
+  gap: var(--ui-space-2);
+  font-size: var(--type-md);
+}
+.fix-dialog .fix-field > span {
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.fix-dialog .fix-field > small {
+  font-size: var(--type-md);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-2);
+}
+.fix-input {
+  min-height: 44px;
+  font-size: var(--type-md);
+}
+.fix-error {
+  margin: 0;
+  font-size: var(--type-md);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-danger);
+}
+
+/* ------------------------------------------------------------------- phone */
+/* 320px with 16px of gutter: the panel gives up its inset before its type,
+   and everything to press takes the full width so it cannot be missed. */
+@media (max-width: 560px) {
+  .fix-panel {
+    max-width: none;
+    padding: var(--ui-space-4);
+  }
+  .fix-problem {
+    padding: var(--ui-space-3);
+  }
+  .fix-problem > .fix-button,
+  .fix-problem > a.fix-button,
+  .fix-actions > .fix-button {
+    flex: 1 1 100%;
+    width: 100%;
+    justify-self: stretch;
+  }
+  .fix-move > .fix-button {
+    flex: 1 1 calc(50% - var(--ui-space-2));
+  }
+}

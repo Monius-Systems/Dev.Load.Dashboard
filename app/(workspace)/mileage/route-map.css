@@ -17,18 +17,39 @@
   margin-bottom: var(--ui-space-2);
 }
 .rm-open {
-  font-size: var(--type-xs);
-  color: var(--ui-text-3);
-  text-decoration: none;
+  font-size: var(--type-sm);
+  color: var(--ui-accent-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
   transition: color var(--ui-duration) var(--ui-ease);
 }
 .rm-open:hover {
-  color: var(--ui-accent-ink);
+  color: var(--ui-accent);
 }
 .rm-open:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 3px;
   border-radius: var(--ui-radius-sm);
+}
+/* On a phone the hand-off is a button the whole width of the card, because a
+   thumb cannot reliably find a line of underlined text. */
+.rm[data-compact] .rm-head {
+  display: grid;
+}
+.rm[data-compact] .rm-open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: var(--ui-space-2);
+  padding: 0 var(--ui-space-3);
+  border: 1px solid var(--ui-accent-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-accent-soft);
+  font-size: var(--type-base);
+  font-weight: var(--type-medium);
+  text-decoration: none;
 }
 
 /* The canvas. No tiles: a dot grid so the drawing has somewhere to sit. */
@@ -49,18 +70,21 @@
 }
 .rm-dot {
   fill: currentColor;
-  opacity: 0.22;
+  opacity: 0.12;
 }
 .rm-empty {
+  max-width: 34ch;
   padding: var(--ui-space-6);
-  font-size: var(--type-sm);
-  color: var(--ui-text-3);
+  font-size: var(--type-base);
+  line-height: var(--type-leading-normal);
+  text-align: center;
+  color: var(--ui-text-2);
 }
 
 /* Legs. Loaded miles carry the accent; empty miles stay quiet. */
 .rm-leg .rm-line {
   fill: none;
-  stroke-width: 2.4;
+  stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
   transition:
@@ -71,22 +95,24 @@
   stroke: var(--ui-accent);
 }
 .rm-leg[data-tone='empty'] .rm-line {
-  stroke: var(--ui-text-3);
-  stroke-width: 1.8;
-  opacity: 0.75;
+  stroke: var(--ui-text-2);
+  stroke-width: 2;
+  opacity: 0.9;
 }
+/* No geometry for this leg: a dashed straight line, which is a placeholder
+   and never a road the truck could have driven. */
 .rm-leg[data-missing] .rm-line {
   stroke: var(--ui-warning);
-  stroke-width: 1.6;
-  stroke-dasharray: 3 5;
-  opacity: 0.8;
+  stroke-width: 2;
+  stroke-dasharray: 4 6;
+  opacity: 0.9;
 }
 .rm-arrow {
   fill: var(--ui-accent);
   opacity: 0.85;
 }
 .rm-leg[data-tone='empty'] .rm-arrow {
-  fill: var(--ui-text-3);
+  fill: var(--ui-text-2);
 }
 .rm-leg[data-missing] .rm-arrow {
   fill: var(--ui-warning);
@@ -95,7 +121,7 @@
 .rm-hit {
   fill: none;
   stroke: transparent;
-  stroke-width: 16;
+  stroke-width: 24;
   stroke-linecap: round;
   cursor: pointer;
 }
@@ -104,45 +130,68 @@
   opacity: 0.28;
 }
 .rm-leg[data-selected] .rm-line {
-  stroke-width: 3.4;
+  stroke-width: 4.5;
 }
 .rm-leg[data-selected][data-tone='empty'] .rm-line {
-  stroke-width: 2.6;
+  stroke-width: 3.2;
   opacity: 1;
 }
 
-/* Stops: a soft disc with the marker text, the stacked visits beside it. */
+/* Stops. A marker is a pill so 'Start' and a number sit at the same text size;
+   at a number's width the pill is a disc. A pickup is a filled disc, a delivery
+   a white disc inside a thick ring — different in greyscale as well as in
+   colour, and the number says the order either way. */
 .rm-disc {
+  fill: var(--ui-surface);
+  stroke: var(--ui-border-strong);
+  stroke-width: 1.5;
+}
+.rm-stop[data-kind='pickup'] .rm-disc {
+  fill: var(--ui-accent);
+  stroke: var(--ui-accent-ink);
+}
+.rm-stop[data-kind='pickup'] .rm-disc-text {
+  fill: var(--primary-foreground);
+}
+.rm-stop[data-kind='delivery'] .rm-disc {
+  fill: var(--ui-surface);
+  stroke: var(--ui-accent);
+  stroke-width: 3;
+}
+/* The yard reads as words, on the quiet accent so it is neither of the two. */
+.rm-stop[data-kind='yard'] .rm-disc,
+.rm-stop[data-word] .rm-disc {
+  fill: var(--ui-accent-soft);
+  stroke: var(--ui-accent-border);
+  stroke-width: 2;
+}
+.rm-disc-text {
+  font-size: var(--type-xs);
+  font-weight: var(--type-semibold);
+  fill: var(--ui-text);
+}
+.rm[data-compact] .rm-disc-text {
+  font-size: var(--type-sm);
+}
+/* The second visit of a place, beside the marker rather than inside it. */
+.rm-tag {
   fill: var(--ui-surface);
   stroke: var(--ui-border-strong);
   stroke-width: 1.2;
 }
-.rm-stop[data-kind='yard'] .rm-disc {
-  fill: var(--ui-accent-soft);
-  stroke: var(--ui-accent-border);
-}
-.rm-stop[data-kind='pickup'] .rm-disc {
-  stroke: var(--ui-accent);
-}
-.rm-disc-text {
-  font-size: var(--type-2xs);
-  font-weight: var(--type-semibold);
-  letter-spacing: -0.02em;
-  fill: var(--ui-text);
-}
-.rm-stack {
-  font-size: var(--type-2xs);
+.rm-tag-text {
+  font-size: var(--type-xs);
   font-weight: var(--type-medium);
-  letter-spacing: var(--type-tracking-caps);
-  fill: var(--ui-text-3);
+  font-variant-numeric: tabular-nums;
+  fill: var(--ui-text-2);
 }
 
 /* The caption, tinted where the day is only part-drawn. */
 .rm-caption {
   margin-top: var(--ui-space-2);
-  font-size: var(--type-xs);
+  font-size: var(--type-base);
   line-height: var(--type-leading-normal);
-  color: var(--ui-text-3);
+  color: var(--ui-text-2);
 }
 .rm-caption[data-tone='warning'] {
   padding: 6px var(--ui-space-3);
@@ -161,41 +210,42 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--type-xs);
+  font-size: var(--type-sm);
   color: var(--ui-text-2);
   overflow-wrap: anywhere;
 }
 
-/* What the strokes mean. */
+/* What the strokes mean, in whole words. Each row is tall enough to be a tap
+   target, so the legend never becomes a row of tiny print. */
 .rm-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--ui-space-3);
-  margin: var(--ui-space-3) 0 0;
+  gap: 0 var(--ui-space-4);
+  margin: var(--ui-space-2) 0 0;
   padding: 0;
   list-style: none;
 }
 .rm-key {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: var(--type-2xs);
-  font-weight: var(--type-medium);
-  letter-spacing: var(--type-tracking-caps);
-  text-transform: uppercase;
-  color: var(--ui-text-3);
+  gap: var(--ui-space-2);
+  min-height: 40px;
+  font-size: var(--type-sm);
+  color: var(--ui-text-2);
 }
 .rm-key::before {
   content: '';
-  width: 14px;
+  width: 22px;
   height: 0;
-  border-top: 2px solid var(--ui-accent);
+  border-top: 3px solid var(--ui-accent);
   border-radius: 2px;
 }
 .rm-key[data-tone='empty']::before {
-  border-top-color: var(--ui-text-3);
+  border-top-width: 2px;
+  border-top-color: var(--ui-text-2);
 }
 .rm-key[data-tone='missing']::before {
+  border-top-width: 2px;
   border-top-style: dashed;
   border-top-color: var(--ui-warning);
 }
@@ -210,15 +260,16 @@
 }
 .rm-leg-row {
   display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: var(--ui-space-2);
   width: 100%;
+  min-height: 40px;
   padding: 7px var(--ui-space-2);
   border: 0;
   border-radius: var(--ui-radius-sm);
   background: none;
-  font-size: var(--type-xs);
+  font-size: var(--type-sm);
   color: var(--ui-text-2);
   text-align: left;
   transition: background var(--ui-duration) var(--ui-ease);
@@ -238,12 +289,12 @@ button.rm-leg-row:focus-visible {
   color: var(--ui-text);
 }
 .rm-leg-mark {
-  height: 2px;
+  height: 3px;
   border-radius: 2px;
   background: var(--ui-accent);
 }
 .rm-leg-mark[data-tone='empty'] {
-  background: var(--ui-text-3);
+  background: var(--ui-text-2);
 }
 .rm-leg-where {
   overflow: hidden;
@@ -260,18 +311,20 @@ button.rm-leg-row:focus-visible {
   color: var(--ui-text);
 }
 .rm-leg-miles small {
-  font-size: var(--type-2xs);
+  font-size: var(--type-xs);
   color: var(--ui-text-3);
 }
 
-/* Phone: the canvas keeps its shape, the rows give up the place names last. */
+/* Phone: the canvas grows taller in the component, the rows give up the place
+   names last, and nothing shrinks below a size that can be read. */
 @media (max-width: 460px) {
   .rm-head {
-    flex-wrap: wrap;
+    display: grid;
   }
   .rm-leg-row {
-    grid-template-columns: 14px minmax(0, 1fr) auto;
-    padding: 6px 4px;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    min-height: 44px;
+    padding: 8px 4px;
   }
   .rm-leg-where {
     white-space: normal;

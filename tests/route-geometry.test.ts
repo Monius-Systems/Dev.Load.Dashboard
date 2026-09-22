@@ -6,7 +6,11 @@ import {
   fitBounds,
   googleMapsDirectionsUrl,
   legsWithStops,
+  sequenceLabels,
   stopsFromLegs,
+  visitLabel,
+  visitTag,
+  type RouteStop,
 } from '../lib/load-desk/route-geometry.ts';
 
 // Google's documented example, the one every decoder is checked against.
@@ -99,6 +103,16 @@ void test('stopsFromLegs keeps one stop per place and stacks the labels', () => 
   assert.equal(stops[1].label, 'Thornton');
 });
 
+void test('stopsFromLegs carries the name and the address where a place has them', () => {
+  const named = { ...PICKUP, name: 'Thornton Quarry', address: '2001 Ridge Rd, Thornton IL' };
+  const stops = stopsFromLegs([leg(1, 'yard_to_pickup', 1, YARD, named)]);
+  assert.equal(stops[1].name, 'Thornton Quarry');
+  assert.equal(stops[1].address, '2001 Ridge Rd, Thornton IL');
+  // A place without them is left clean rather than given empty strings.
+  assert.equal('name' in stops[0], false);
+  assert.equal('address' in stops[0], false);
+});
+
 void test('stopsFromLegs leaves out stops with no coordinates', () => {
   const unplaced = { label: 'Nowhere', place_key: 'nowhere', lat: Number.NaN, lon: Number.NaN };
   const stops = stopsFromLegs([leg(1, 'yard_to_pickup', 1, YARD, unplaced)]);
@@ -122,6 +136,93 @@ void test('legsWithStops pairs every leg with its two stops', () => {
   assert.deepEqual(
     paired.map((entry) => entry.leg.seq),
     [1, 2, 3, 4, 5],
+  );
+});
+
+// --------------------------------------------------------- marker sequence
+
+void test('sequenceLabels reads the demo day as Start, 1·3, 2·4 and Finish', () => {
+  const stops = stopsFromLegs(DAY);
+  assert.deepEqual(sequenceLabels(stops), [
+    // The yard is where the day began and where it ended, one disc, both words.
+    { index: 0, primary: 'Start', secondary: 'Finish' },
+    { index: 1, primary: '1', secondary: '3' },
+    { index: 2, primary: '2', secondary: '4' },
+  ]);
+});
+
+void test('sequenceLabels numbers a one-way day and names both ends', () => {
+  const oneWay = stopsFromLegs([
+    leg(1, 'yard_to_pickup', 1, YARD, PICKUP),
+    leg(2, 'pickup_to_delivery', 1, PICKUP, DELIVERY),
+  ]);
+  assert.deepEqual(sequenceLabels(oneWay), [
+    { index: 0, primary: 'Start', secondary: null },
+    { index: 1, primary: '1', secondary: null },
+    { index: 2, primary: 'Finish', secondary: null },
+  ]);
+});
+
+void test('sequenceLabels says Start/Finish where the day is one visit', () => {
+  const alone: RouteStop = {
+    index: 0,
+    kind: 'yard',
+    label: 'Yard',
+    short: 'Y',
+    lat: 41.6,
+    lon: -87.6,
+    ticket_id: null,
+    place_key: 'yard',
+    seqs: [1],
+  };
+  assert.deepEqual(sequenceLabels([alone]), [
+    { index: 0, primary: 'Start/Finish', secondary: null },
+  ]);
+  assert.deepEqual(sequenceLabels([]), []);
+});
+
+void test('visitLabel names only the two visits a leg connects', () => {
+  const stops = stopsFromLegs(DAY);
+  // A leg leaves visit n and arrives at visit n + 1; a place visited nine
+  // times never recites all nine on one row.
+  assert.deepEqual(
+    DAY.map((entry) => `${visitLabel(stops, entry.seq)} → ${visitLabel(stops, entry.seq + 1)}`),
+    ['Start → 1', '1 → 2', '2 → 3', '3 → 4', '4 → Finish'],
+  );
+  assert.equal(visitLabel(stops, 99), '');
+  assert.equal(visitLabel([], 1), '');
+});
+
+// A shuttle: out to the plant once, then round and round between the plant
+// and one site, home at the end. The two middle places pile up visits.
+const shuttle = (loads: number): MileageLeg[] => {
+  const legs: MileageLeg[] = [leg(1, 'yard_to_pickup', 1, YARD, PICKUP)];
+  for (let load = 1; load <= loads; load += 1) {
+    legs.push(leg(legs.length + 1, 'pickup_to_delivery', load, PICKUP, DELIVERY));
+    if (load < loads) legs.push(leg(legs.length + 1, 'delivery_to_pickup', load + 1, DELIVERY, PICKUP));
+  }
+  legs.push(leg(legs.length + 1, 'delivery_to_yard', loads, DELIVERY, YARD));
+  return legs;
+};
+
+void test('visitTag names a second visit and counts anything longer', () => {
+  const stops = stopsFromLegs(DAY);
+  // Twice at one plant: the tag is the other visit, in full.
+  assert.equal(visitTag(stops, stops[1]), '3');
+  // Twice at the yard: the other visit is the end of the day.
+  assert.equal(visitTag(stops, stops[0]), 'Finish');
+  // Stood at once: nothing to add.
+  assert.equal(visitTag(stops, stopsFromLegs([leg(1, 'yard_to_pickup', 1, YARD, PICKUP)])[1]), null);
+
+  // Twelve loads through one plant: a count, not eleven numbers.
+  const busy = stopsFromLegs(shuttle(12));
+  assert.equal(busy[1].seqs.length, 12);
+  assert.equal(visitTag(busy, busy[1]), '×12');
+  assert.equal(visitTag(busy, busy[2]), '×12');
+  // The disc itself still reads the first visit.
+  assert.deepEqual(
+    sequenceLabels(busy).map((mark) => mark.primary),
+    ['Start', '1', '2'],
   );
 });
 

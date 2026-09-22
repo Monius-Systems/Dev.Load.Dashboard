@@ -715,32 +715,9 @@ export const PL_PAGES: Record<string, string> = {
   MILEAGE: 'PRZEBIEG',
   Mileage: 'Przebieg',
   'IFTA reporting': 'Raportowanie IFTA',
-  'Selected day': 'Wybrany dzień',
-  'Truck #{number} · {date}': 'Ciężarówka nr {number} · {date}',
-  'Drive time': 'Czas jazdy',
-  'Pick a day to see its route, its legs and anything it needs.':
-    'Wybierz dzień, aby zobaczyć jego trasę, odcinki i to, czego wymaga.',
-  'Open truck {number} on {date}': 'Otwórz ciężarówkę {number} z dnia {date}',
-  'Route needs review': 'Trasa wymaga sprawdzenia',
   Yard: 'Baza',
   'No pickup address': 'Brak adresu załadunku',
   'No delivery address': 'Brak adresu dostawy',
-  'Stop order': 'Kolejność przystanków',
-  'The stops in the order the estimate used. Move a load until it matches the day, then confirm it.':
-    'Przystanki w kolejności użytej do obliczeń. Przesuwaj ładunek, aż będzie zgodna z dniem, a potem ją potwierdź.',
-  'Confirm order': 'Potwierdź kolejność',
-  'Change order': 'Zmień kolejność',
-  'Order confirmed': 'Kolejność potwierdzona',
-  'Could not confirm the order': 'Nie udało się potwierdzić kolejności',
-  'The day has been worked out in the order you set.':
-    'Dzień został obliczony w ustawionej przez Ciebie kolejności.',
-  'Move ticket {number} earlier': 'Przesuń kwit {number} wcześniej',
-  'Move ticket {number} later': 'Przesuń kwit {number} później',
-  'The order of the loads is uncertain. Put them in the order they were hauled, or enter Time out on each ticket.':
-    'Kolejność ładunków jest niepewna. Ustaw ładunki w kolejności przewozu albo wpisz godzinę wyjazdu na każdym kwicie.',
-  'Estimated road miles and fuel per truck and day, from saved tickets.':
-    'Szacowane mile i paliwo na ciężarówkę i dzień, z zapisanych kwitów.',
-  'Trucks with a yard': 'Ciężarówki z bazą',
   'Days to review': 'Dni do sprawdzenia',
   'Mileage is worked out on the server and is not available in the local preview.':
     'Przebieg jest liczony na serwerze i nie jest dostępny w podglądzie lokalnym.',
@@ -751,46 +728,26 @@ export const PL_PAGES: Record<string, string> = {
   'Open Truck Fleet': 'Otwórz Flotę ciężarówek',
   'This Week': 'Ten tydzień',
   'This Month': 'Ten miesiąc',
-  'Current Quarter': 'Bieżący kwartał',
   'This quarter': 'Ten kwartał',
   'Last quarter': 'Poprzedni kwartał',
   mi: 'mi',
-  'Est. fuel {gal} gal · {loads} loads · {trucks} trucks':
-    'Szac. paliwo {gal} gal · ładunki: {loads} · ciężarówki: {trucks}',
   '{n} to review': 'Do sprawdzenia: {n}',
   'Estimated Fuel Used = route miles ÷ average MPG. Not purchased fuel.':
     'Szacowane zużycie paliwa = mile trasy ÷ średnie MPG. To nie jest zakupione paliwo.',
-  'Per truck and day': 'Na ciężarówkę i dzień',
-  'Daily mileage': 'Dzienny przebieg',
-  'Recalculate period': 'Przelicz okres',
   'Loading mileage…': 'Wczytywanie przebiegu…',
-  'No tickets with a truck and a date in this period.':
-    'Brak kwitów z ciężarówką i datą w tym okresie.',
   Route: 'Trasa',
   'Est. miles': 'Szac. mile',
-  'Avg MPG': 'Śr. MPG',
   'Est. fuel used': 'Szac. zużycie paliwa',
   Details: 'Szczegóły',
   Miles: 'Mile',
   MPG: 'MPG',
   Fuel: 'Paliwo',
   Time: 'Czas',
-  'From → To': 'Skąd → Dokąd',
-  'From the route cache': 'Z pamięci podręcznej tras',
-  'Calculating…': 'Obliczanie…',
   'Updating…': 'Aktualizowanie…',
-  'Out of date': 'Nieaktualne',
   Current: 'Aktualne',
   Failed: 'Nieudane',
   'Settings changed': 'Zmieniono ustawienia',
-  'Could not settle this day; try Recalculate.':
-    'Nie udało się rozliczyć tego dnia; spróbuj Przelicz.',
-  'Last calculated {date}.': 'Ostatnio obliczono {date}.',
-  'Figures from the last successful calculation ({date}).':
-    'Wartości z ostatniego udanego obliczenia ({date}).',
   'No yard address on this truck.': 'Ta ciężarówka nie ma adresu bazy.',
-  'Could not place “{query}”. Did you mean {suggestion}?':
-    'Nie udało się zlokalizować „{query}”. Czy chodziło o {suggestion}?',
   'Could not place “{query}”.': 'Nie udało się zlokalizować „{query}”.',
   'Ticket {number} has no pickup address.': 'Kwit {number} nie ma adresu załadunku.',
   'Ticket {number} has no delivery address.': 'Kwit {number} nie ma adresu dostawy.',
@@ -799,29 +756,13 @@ export const PL_PAGES: Record<string, string> = {
     'Za dużo kwitów jednego dnia, aby wyznaczyć trasę ({count}).',
   'No average MPG on this truck, so fuel cannot be estimated.':
     'Ta ciężarówka nie ma średniego MPG, więc nie można oszacować paliwa.',
-  'Set location': 'Ustaw lokalizację',
   'Open ticket': 'Otwórz kwit',
   Retry: 'Ponów',
   Recalculate: 'Przelicz',
-  'Recalculate from provider': 'Przelicz u dostawcy map',
-  'Could not recalculate': 'Nie udało się przeliczyć',
   'Location saved': 'Zapisano lokalizację',
-  'Days using this address are being recalculated.':
-    'Dni z tym adresem są przeliczane.',
-  'Type the full street address once; every ticket printed with this text will use it.':
-    'Wpisz pełny adres raz; każdy kwit z tym tekstem będzie go używał.',
-  'As printed on tickets': 'Tak jak na kwitach',
   'Street address': 'Adres',
-  'Number and street, city, state and ZIP': 'Numer i ulica, miasto, stan i kod',
   'Save location': 'Zapisz lokalizację',
-  'Not included': 'Nieuwzględnione',
-  '{tickets} without a truck or a date': 'Bez ciężarówki lub daty: {tickets}',
   'Ticket {number}': 'Kwit {number}',
-  'Truck #{number} has no profile': 'Ciężarówka nr {number} nie ma profilu',
-  'No truck on the ticket': 'Brak ciężarówki na kwicie',
-  'No usable ticket date': 'Brak poprawnej daty kwitu',
-  'Routes follow roads open to each truck’s configured profile as far as TomTom data allows. They are estimates, not legal guidance, and are not yet split by state.':
-    'Trasy prowadzą drogami dostępnymi dla skonfigurowanego profilu ciężarówki, na ile pozwalają dane TomTom. To szacunki, nie porada prawna, i nie są jeszcze dzielone na stany.',
   'That address was not found. Check the street, city and state.':
     'Nie znaleziono tego adresu. Sprawdź ulicę, miasto i stan.',
   'That address is not precise enough. Add the street, city and state, or use a nearby address or business name.':
@@ -835,21 +776,130 @@ export const PL_PAGES: Record<string, string> = {
   // Mileage: the route map
   'Route map': 'Mapa trasy',
   'Open in Google Maps': 'Otwórz w Mapach Google',
-  'The day’s route, {stops} stops and {legs} legs':
-    'Trasa dnia: przystanki {stops}, odcinki {legs}',
-  'No route to draw yet.': 'Nie ma jeszcze trasy do narysowania.',
-  'Some stops could not be placed, so the route is only part of the day.':
-    'Nie udało się zlokalizować części przystanków, więc trasa pokazuje tylko część dnia.',
-  'One leg has no road to follow and is drawn straight.':
-    'Jeden odcinek nie ma drogi do pokazania i jest narysowany w linii prostej.',
-  '{count} legs have no road to follow and are drawn straight.':
-    'Odcinki bez drogi do pokazania: {count}. Są narysowane w linii prostej.',
-  'Routed roads, {miles} mi over {count} legs.':
-    'Drogi z trasy: {miles} mi na {count} odcinkach.',
   'Not on the map': 'Poza mapą',
   Loaded: 'Z ładunkiem',
   Empty: 'Bez ładunku',
-  'Straight line': 'Linia prosta',
+
+  // Mileage (simple)
+  'visited {n} times': 'odwiedzono {n} razy',
+  // The page a dispatcher reads: the cards, the route one of them opens, and
+  // the plain words for whatever a day needs a person for.
+  'See where each truck drove and how many miles it traveled.':
+    'Zobacz, gdzie jeździła każda ciężarówka i ile mil przejechała.',
+  'Miles Today': 'Mile dzisiaj',
+  'Miles This Week': 'Mile w tym tygodniu',
+  'Miles This Month': 'Mile w tym miesiącu',
+  'Estimated Fuel Used': 'Szacowane zużycie paliwa',
+  'Estimated Fuel Used is miles ÷ average MPG. It is not fuel purchased.':
+    'Szacowane zużycie paliwa to mile ÷ średnie MPG. To nie jest paliwo zakupione.',
+  'Mileage is worked out on the server and isn’t available in this preview.':
+    'Przebieg jest liczony na serwerze i nie jest dostępny w tym podglądzie.',
+  'Mileage can’t be calculated on this site yet. Ask Monius to finish the setup.':
+    'Przebiegu nie da się jeszcze liczyć na tej stronie. Poproś Monius o dokończenie konfiguracji.',
+  'Truck {number} needs a home yard before mileage can be calculated.':
+    'Ciężarówka {number} potrzebuje adresu bazy, aby obliczyć przebieg.',
+  'Set yard': 'Ustaw bazę',
+  'No mileage yet {when}. Mileage appears automatically after tickets are added.':
+    'Brak przebiegu {when}. Przebieg pojawia się automatycznie po dodaniu kwitów.',
+  '{tickets} aren’t counted because they have no truck or date.':
+    '{tickets} nie są liczone, bo brakuje w nich ciężarówki lub daty.',
+  'Open Records': 'Otwórz Faktury i kwity',
+  'Routes follow roads open to each truck’s size and weight, as far as TomTom’s map allows. Miles are estimates.':
+    'Trasy prowadzą drogami dostępnymi dla rozmiaru i masy każdej ciężarówki, na ile pozwala mapa TomTom. Mile są szacunkowe.',
+  'Could not update the mileage': 'Nie udało się zaktualizować przebiegu',
+
+  // A card, and the one line that says where a day stands.
+  'Truck {number}': 'Ciężarówka {number}',
+  miles: 'mil',
+  'Estimated fuel: {gal} gal': 'Szacowane paliwo: {gal} gal',
+  'View route': 'Pokaż trasę',
+  'View route for truck {number} on {date}': 'Pokaż trasę ciężarówki {number} z dnia {date}',
+  'Needs your help': 'Wymaga Twojej pomocy',
+  'Couldn’t update': 'Nie udało się zaktualizować',
+  'Calculating today’s route…': 'Obliczanie trasy tego dnia…',
+  'Last updated {date}': 'Ostatnia aktualizacja {date}',
+
+  // The day's route, in the order it was driven.
+  'Back to all trucks': 'Wróć do wszystkich ciężarówek',
+  'Truck {number} · {date}': 'Ciężarówka {number} · {date}',
+  'Estimated fuel': 'Szacowane paliwo',
+  'Average MPG {mpg}': 'Średnie MPG {mpg}',
+  'Home yard': 'Baza',
+  Start: 'Start',
+  Finish: 'Koniec',
+  'Show details': 'Pokaż szczegóły',
+  'Hide details': 'Ukryj szczegóły',
+  '{miles} miles': '{miles} mil',
+  '{hours} hr {minutes} min': '{hours} godz {minutes} min',
+  '{minutes} min': '{minutes} min',
+  'Update mileage': 'Zaktualizuj przebieg',
+
+  // The drawing of the roads.
+  'Start/Finish': 'Start/Koniec',
+  'Route with {stops} stops, from {start} to {finish}':
+    'Trasa z {stops} przystankami, od {start} do {finish}',
+  'The route will appear here once mileage is calculated.':
+    'Trasa pojawi się tutaj po obliczeniu przebiegu.',
+  'Some stops couldn’t be placed yet.': 'Nie udało się jeszcze zlokalizować części przystanków.',
+  'We couldn’t draw part of this route.': 'Nie udało się narysować części tej trasy.',
+  '{miles} miles over {legs} legs': '{miles} mil na {legs} odcinkach',
+  '{count} of {legs} legs have no road to follow.':
+    '{count} z {legs} odcinków nie ma drogi do pokazania.',
+  'Carrying a load': 'Z ładunkiem',
+  'Route not drawn': 'Trasa nienarysowana',
+
+  // What a day needs a person for, and the one thing to press in each case.
+  'Try again': 'Spróbuj ponownie',
+  'We couldn’t find this location.': 'Nie udało się znaleźć tej lokalizacji.',
+  'Ticket says: {query}': 'Na kwicie: {query}',
+  'Possible location: {suggestion}': 'Możliwa lokalizacja: {suggestion}',
+  'Use this location': 'Użyj tej lokalizacji',
+  'Choose another': 'Wybierz inną',
+  'Choose location': 'Wybierz lokalizację',
+  'Could not save the location': 'Nie udało się zapisać lokalizacji',
+  'We’re not sure which load happened first.': 'Nie wiemy, który ładunek był pierwszy.',
+  'Fix order': 'Popraw kolejność',
+  'We couldn’t calculate this part of the route: {from} to {to}.':
+    'Nie udało się obliczyć tej części trasy: {from} do {to}.',
+  'We couldn’t calculate part of this route.': 'Nie udało się obliczyć części tej trasy.',
+  'This day has too many tickets to calculate ({n}). Split it or check the dates.':
+    'Ten dzień ma za dużo kwitów do obliczenia ({n}). Podziel go albo sprawdź daty.',
+  'Open tickets': 'Otwórz kwity',
+  'Truck {number} has no average MPG, so fuel can’t be estimated.':
+    'Ciężarówka {number} nie ma średniego MPG, więc nie można oszacować paliwa.',
+  'Set MPG': 'Ustaw MPG',
+  'We couldn’t update mileage right now.': 'Nie udało się teraz zaktualizować przebiegu.',
+  'Showing the last good result from {date}.': 'Pokazujemy ostatni poprawny wynik z {date}.',
+  'Truck settings have changed since this day was calculated.':
+    'Ustawienia ciężarówki zmieniły się od obliczenia tego dnia.',
+  'Update this day': 'Zaktualizuj ten dzień',
+
+  // The order of the loads, put right by hand.
+  'Put these loads in the order they happened:':
+    'Ustaw ładunki w kolejności, w jakiej zostały przewiezione:',
+  'Move up': 'W górę',
+  'Move down': 'W dół',
+  'Move ticket {number} up': 'Przesuń kwit {number} w górę',
+  'Move ticket {number} down': 'Przesuń kwit {number} w dół',
+  'This order will be remembered unless the tickets change.':
+    'Ta kolejność zostanie zapamiętana, dopóki kwity się nie zmienią.',
+  'Save this order': 'Zapisz tę kolejność',
+  'Order saved': 'Zapisano kolejność',
+  'Could not save the order': 'Nie udało się zapisać kolejności',
+
+  // Where a location is, asked once.
+  'Where is this?': 'Gdzie to jest?',
+  'Type the full address: number and street, city, state.':
+    'Wpisz pełny adres: numer i ulica, miasto, stan.',
+
+  // What the server can say back, shown as it is.
+  'Invalid request.': 'Nieprawidłowe żądanie.',
+  'Mileage routing is not configured on this deployment.':
+    'Wyznaczanie tras nie jest skonfigurowane w tym wdrożeniu.',
+  'Unknown truck.': 'Nieznana ciężarówka.',
+  'No tickets on that day.': 'Brak kwitów w tym dniu.',
+  'The stops do not match this day’s tickets.':
+    'Przystanki nie zgadzają się z kwitami tego dnia.',
 
   // IFTA
   'FUEL-TAX REPORTING': 'RAPORTOWANIE PODATKU PALIWOWEGO',

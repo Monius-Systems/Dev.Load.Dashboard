@@ -48,9 +48,9 @@
     "semantic_hash": "35dd1d97bd20babc292f5d862019ad68"
   },
   "app/(workspace)/layout.tsx": {
-    "mtime": 1790035627.3174276,
-    "seen": 1790036048.0971851,
-    "ast_hash": "70b915953ddad4879ad8bff978b32517",
+    "mtime": 1790048783.6527736,
+    "seen": 1790049927.640341,
+    "ast_hash": "4b8fe66191f74f0f869f2ecef89f104a",
     "semantic_hash": ""
   },
   "app/(workspace)/load-desk/page.tsx": {
@@ -240,9 +240,9 @@
     "semantic_hash": ""
   },
   "components/profiles/fleet-page.tsx": {
-    "mtime": 1789794504.506828,
-    "seen": 1790032960.608177,
-    "ast_hash": "58972faf99b7f36d2b8ecfad452a3856",
+    "mtime": 1790048783.6523354,
+    "seen": 1790049927.640407,
+    "ast_hash": "21280b163e17827e58052f23bc8331df",
     "semantic_hash": ""
   },
   "components/profiles/profile-ui.tsx": {
@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1790037757.784312,
-    "seen": 1790039644.195956,
-    "ast_hash": "38d4a50b14b027d471ad5dc2a798063f",
+    "mtime": 1790050378.4382205,
+    "seen": 1790050499.683775,
+    "ast_hash": "51cd25bd048e2df93a232f66476212a3",
     "semantic_hash": ""
   },
   "lib/i18n/pl.ts": {
@@ -768,50 +768,50 @@
     "semantic_hash": ""
   },
   "public/ocr/pdf.worker.min.mjs": {
-    "mtime": 1790043894.0098658,
-    "seen": 1790043914.502521,
+    "mtime": 1790050421.199737,
+    "seen": 1790050499.683865,
     "ast_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e",
     "semantic_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e"
   },
   "public/ocr/tesseract-core-lstm.wasm.js": {
-    "mtime": 1790043894.0280278,
-    "seen": 1790043914.5025222,
+    "mtime": 1790050421.2159896,
+    "seen": 1790050499.683866,
     "ast_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3",
     "semantic_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3"
   },
   "public/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": {
-    "mtime": 1790043894.0490367,
-    "seen": 1790043914.502524,
+    "mtime": 1790050421.2333946,
+    "seen": 1790050499.683866,
     "ast_hash": "f267f4efd6219843707c73b3a9a70604",
     "semantic_hash": "f267f4efd6219843707c73b3a9a70604"
   },
   "public/ocr/tesseract-core-relaxedsimd.wasm.js": {
-    "mtime": 1790043894.070302,
-    "seen": 1790043914.502524,
+    "mtime": 1790050421.2522252,
+    "seen": 1790050499.683867,
     "ast_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb",
     "semantic_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb"
   },
   "public/ocr/tesseract-core-simd-lstm.wasm.js": {
-    "mtime": 1790043894.0875006,
-    "seen": 1790043914.5025249,
+    "mtime": 1790050421.273953,
+    "seen": 1790050499.683868,
     "ast_hash": "2bd630487581a49b7d7cce1bfe42314c",
     "semantic_hash": "2bd630487581a49b7d7cce1bfe42314c"
   },
   "public/ocr/tesseract-core-simd.wasm.js": {
-    "mtime": 1790043894.1142795,
-    "seen": 1790043914.502526,
+    "mtime": 1790050421.2960765,
+    "seen": 1790050499.683869,
     "ast_hash": "3fb1f6589c0569134cc593e0155acec4",
     "semantic_hash": "3fb1f6589c0569134cc593e0155acec4"
   },
   "public/ocr/tesseract-core.wasm.js": {
-    "mtime": 1790043894.140426,
-    "seen": 1790043914.502526,
+    "mtime": 1790050421.3184094,
+    "seen": 1790050499.6838698,
     "ast_hash": "7ec67b8a67ab4d41b74dd8df49db9224",
     "semantic_hash": "7ec67b8a67ab4d41b74dd8df49db9224"
   },
   "public/ocr/worker.min.js": {
-    "mtime": 1790043894.0111496,
-    "seen": 1790043914.502527,
+    "mtime": 1790050421.201449,
+    "seen": 1790050499.6838698,
     "ast_hash": "b1ab464237e687b323da236fff45ba05",
     "semantic_hash": "b1ab464237e687b323da236fff45ba05"
   },
@@ -1008,9 +1008,9 @@
     "semantic_hash": "f31ad78eb495273be454af9f716ac49e"
   },
   "tests/workspace-scope.test.ts": {
-    "mtime": 1790038072.4223402,
-    "seen": 1790039644.196112,
-    "ast_hash": "57eeae4494636fb4aca8ec8059872188",
+    "mtime": 1790048801.6849418,
+    "seen": 1790049927.6406221,
+    "ast_hash": "2fae32a185037b908f09e4500a71e24f",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -1290,9 +1290,9 @@
     "semantic_hash": ""
   },
   "CLIENT-LAUNCH.md": {
-    "mtime": 1790038244.918462,
-    "seen": 1790039644.196136,
-    "ast_hash": "172284254833eeb97c94851b8fbe6959",
+    "mtime": 1790049122.3997498,
+    "seen": 1790049927.640645,
+    "ast_hash": "6ccf1ac82159f01e1dbef5cbf9068fa7",
     "semantic_hash": ""
   },
   "tests/README.md": {
@@ -1692,9 +1692,9 @@
     "semantic_hash": ""
   },
   "app/(workspace)/mileage/page.tsx": {
-    "mtime": 1789850956.789064,
-    "seen": 1790032960.608136,
-    "ast_hash": "0eb3b9199d222fbf55bcd1136355b7df",
+    "mtime": 1790047584.1527507,
+    "seen": 1790047603.976305,
+    "ast_hash": "d751b12f2c1e81f58ceb244393f7f8d7",
     "semantic_hash": ""
   },
   "app/api/mileage/day/route.ts": {
@@ -1734,15 +1734,15 @@
     "semantic_hash": ""
   },
   "components/mileage/mileage-page.tsx": {
-    "mtime": 1789853474.328584,
-    "seen": 1790032960.6081731,
-    "ast_hash": "1cffeb781fe35be37dce405e7efaa403",
+    "mtime": 1790047648.0818644,
+    "seen": 1790047699.569052,
+    "ast_hash": "94a3abd1766e053cfdeb8c0bc82302dd",
     "semantic_hash": ""
   },
   "components/mileage/route-map.tsx": {
-    "mtime": 1789853477.1148922,
-    "seen": 1790032960.6081731,
-    "ast_hash": "4000cdf08df50a617320f1997e8cae17",
+    "mtime": 1790050325.4736152,
+    "seen": 1790050371.1859798,
+    "ast_hash": "1f72331013d24c93aa3fa1b39a63415f",
     "semantic_hash": ""
   },
   "lib/load-desk/mileage-days.ts": {
@@ -1752,27 +1752,27 @@
     "semantic_hash": ""
   },
   "lib/load-desk/mileage.ts": {
-    "mtime": 1789850413.9438026,
-    "seen": 1790032960.608236,
-    "ast_hash": "205e680f3259c1530cd28f89a36a6127",
+    "mtime": 1790047636.5070882,
+    "seen": 1790047699.56913,
+    "ast_hash": "3ff589e13c32baedb05dd630384a5c2b",
     "semantic_hash": ""
   },
   "lib/load-desk/route-geometry.ts": {
-    "mtime": 1789852336.0330958,
-    "seen": 1790032960.608256,
-    "ast_hash": "e955e00cb4a8a51cda82d51d063860ce",
+    "mtime": 1790050325.473377,
+    "seen": 1790050371.186075,
+    "ast_hash": "e155dd2ad0703e98460fd2fa71dd8773",
     "semantic_hash": ""
   },
   "lib/server/mileage-calc.ts": {
-    "mtime": 1789850455.8183134,
-    "seen": 1790032960.608275,
-    "ast_hash": "c694457dfea912e732aad1ad1e1df20d",
+    "mtime": 1790047899.3394759,
+    "seen": 1790047915.1893451,
+    "ast_hash": "4ff0800f4db74ac632601122fff8d165",
     "semantic_hash": ""
   },
   "lib/server/mileage-store.ts": {
-    "mtime": 1789850441.1562283,
-    "seen": 1790032960.608276,
-    "ast_hash": "7c0e8f67344aa8827201cd39a78871bf",
+    "mtime": 1790047432.1078906,
+    "seen": 1790047603.9764822,
+    "ast_hash": "4068905c01b25f5df1545f1f52c09802",
     "semantic_hash": ""
   },
   "lib/server/routing-provider.ts": {
@@ -1806,15 +1806,15 @@
     "semantic_hash": ""
   },
   "tests/mileage.test.ts": {
-    "mtime": 1789850550.300376,
-    "seen": 1790032960.608324,
-    "ast_hash": "2c23099e9f31473b84d94cac5c767a7b",
+    "mtime": 1790047680.4909954,
+    "seen": 1790047699.569248,
+    "ast_hash": "ba8614b2ba34fbb65a888a6c3aaeab3e",
     "semantic_hash": ""
   },
   "tests/route-geometry.test.ts": {
-    "mtime": 1789851370.6615481,
-    "seen": 1790032960.60834,
-    "ast_hash": "d83619cd868f6ec5b74f1ed5191f46d6",
+    "mtime": 1790050340.4987717,
+    "seen": 1790050371.1861749,
+    "ast_hash": "9b7f72d205e6eb410872b3d556f44df7",
     "semantic_hash": ""
   },
   "app/(workspace)/rates/page.tsx": {
@@ -1983,6 +1983,48 @@
     "mtime": 1790038035.2481046,
     "seen": 1790039644.196088,
     "ast_hash": "315052889d5e21098e5d0e24b5369ae8",
+    "semantic_hash": ""
+  },
+  "components/mileage/day-card.tsx": {
+    "mtime": 1790047416.4394543,
+    "seen": 1790047603.976358,
+    "ast_hash": "418a0bbaace56120accf87597c598cde",
+    "semantic_hash": ""
+  },
+  "components/mileage/fix-location.tsx": {
+    "mtime": 1790047783.6271534,
+    "seen": 1790047915.189229,
+    "ast_hash": "85ac2faf2faa66693d2f7287d877f4d0",
+    "semantic_hash": ""
+  },
+  "components/mileage/fix-order.tsx": {
+    "mtime": 1790047811.9627075,
+    "seen": 1790047915.1892312,
+    "ast_hash": "f9d236902466c028ef219a8ba8a8bd15",
+    "semantic_hash": ""
+  },
+  "components/mileage/needs-help.tsx": {
+    "mtime": 1790047878.5792446,
+    "seen": 1790047915.1892328,
+    "ast_hash": "4385e62de05766b48404e82bf2106b92",
+    "semantic_hash": ""
+  },
+  "components/mileage/route-view.tsx": {
+    "mtime": 1790050303.9687536,
+    "seen": 1790050371.185981,
+    "ast_hash": "2921f93473945259b56a8a288dbfdde6",
+    "semantic_hash": ""
+  },
+  "supabase/migrations/202609230001_mileage_calc_token.sql": {
+    "mtime": 1790047368.5670261,
+    "seen": 1790047603.976515,
+    "ast_hash": "fe3121c39e0a363bc7d30f746818c198",
+    "semantic_hash": ""
+  },
+  "tests/mileage-calc.test.ts": {
+    "mtime": 1790047921.634999,
+    "seen": 1790047952.1738088,
+    "ast_hash": "d47de363b75f41b6186103b334316d73",
     "semantic_hash": ""
   }
 }

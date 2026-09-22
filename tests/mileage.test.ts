@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import {
   buildPlan,
   DEFAULT_TRUCK_IFTA,
+  dayHeadline,
+  dayProblems,
   dayView,
   estimatedGallons,
   formatNumber,
@@ -514,6 +516,197 @@ void test('a stored day reads back the order a person confirmed, or nothing', ()
   assert.equal(readMileageDay({ stop_order: { ticket_ids: ['1'], basis: 'abc', confirmed_at: 'x' } }).stop_order, null);
   assert.equal(readMileageDay({ stop_order: { ticket_ids: [1], basis: 'abc' } }).stop_order, null);
   assert.equal(readMileageDay({ order_basis: 'guessed' }).order_basis, null);
+});
+
+// ------------------------------------------------------------- problems
+
+const storedDay = (patch: Record<string, unknown>, hash = 'abc') =>
+  readMileageDay({
+    id: 1,
+    truck_id: 7,
+    truck_number: 'ZF0321',
+    service_date: '2026-09-18',
+    status: 'current',
+    input_hash: hash,
+    result_input_hash: hash,
+    ...patch,
+  });
+
+/** A day with figures on it, worked out with the truck's current settings. */
+const withResult = (patch: Record<string, unknown> = {}, hash = 'abc') =>
+  storedDay(
+    {
+      total_miles: '55.20',
+      est_gallons: '10.615',
+      legs: [{ seq: 1, kind: 'yard_to_pickup', ticket_id: 1, from: { label: 'Yard', place_key: 'A', lat: 0, lon: 0 }, to: { label: 'Thornton', place_key: 'B', lat: 0, lon: 0 }, miles: 55.2, seconds: 3600, route_id: 1, cached: false }],
+      profile_snapshot: truckIfta(truck()),
+      calculated_at: '2026-09-19T15:00:00.000Z',
+      ...patch,
+    },
+    hash,
+  );
+
+void test('a day says what is wrong with it in the words a dispatcher would use', () => {
+  const records = demoDay();
+  const expected = truckDays(records, [truck()]).days[0];
+  const review = storedDay(
+    {
+      status: 'needs_review',
+      review_reasons: [
+        { code: 'place_unresolved', ticket_id: records[0].id, place_key: 'THORNTON', query: 'THORNTON', suggestion: 'Thornton, IL' },
+        { code: 'order_ambiguous', ticket_ids: [records[1].id, records[0].id], detail: 'Ordered as saved.' },
+        { code: 'mpg_missing' },
+        // A code this version does not know, and a reason about a ticket that
+        // has since left the day: neither is anything to ask a person about.
+        { code: 'invented_later' },
+        { code: 'missing_pickup_address', ticket_id: 4242 },
+      ],
+    },
+    expected.input_hash,
+  );
+  const problems = dayProblems(review, expected, truck());
+  assert.deepEqual(
+    problems.map((problem) => problem.kind),
+    ['unknown_place', 'uncertain_order', 'missing_mpg'],
+  );
+  assert.deepEqual(problems[0], {
+    kind: 'unknown_place',
+    ticket_id: records[0].id,
+    place_key: 'THORNTON',
+    query: 'THORNTON',
+    suggestion: 'Thornton, IL',
+  });
+  assert.deepEqual(problems[1].ticket_ids, [records[1].id, records[0].id], 'the order that was assumed');
+  assert.equal(problems[1].detail, 'Ordered as saved.');
+  assert.equal(dayHeadline(review, expected, truck()), 'needs_help');
+
+  // The rest of the codes, each mapped to one plain-language kind.
+  const codes = ['yard_missing', 'missing_delivery_address', 'no_route', 'too_many_tickets'];
+  const others = dayProblems(
+    storedDay({ status: 'needs_review', review_reasons: codes.map((code) => ({ code, detail: 'why' })) }, expected.input_hash),
+    expected,
+    truck(),
+  );
+  assert.deepEqual(
+    others.map((problem) => problem.kind),
+    ['missing_yard', 'missing_delivery', 'no_route', 'too_many_tickets'],
+  );
+  assert.equal(others[2].detail, 'why', 'the leg that could not be routed says so');
+});
+
+void test('a day that failed or never came back keeps its last good figures and says so', () => {
+  const records = demoDay();
+  const expected = truckDays(records, [truck()]).days[0];
+  const failed = withResult({ status: 'failed', error: 'Calculation failed while routing: try again.' }, expected.input_hash);
+  const problems = dayProblems(failed, expected, truck());
+  assert.deepEqual(problems.map((problem) => problem.kind), ['could_not_update']);
+  assert.equal(problems[0].last_success_at, '2026-09-19T15:00:00.000Z');
+  assert.match(problems[0].detail ?? '', /routing/);
+  assert.equal(dayHeadline(failed, expected, truck()), 'could_not_update');
+
+  // A day still marked calculating long after it was claimed: the page says
+  // so, and the figures it shows are the last good ones.
+  const stuck = withResult({ status: 'calculating', calc_started_at: '2020-01-01T00:00:00Z' }, expected.input_hash);
+  const stuckProblems = dayProblems(stuck, expected, truck(), { stuck: true });
+  assert.deepEqual(stuckProblems.map((problem) => problem.kind), ['could_not_update']);
+  assert.equal(stuckProblems[0].last_success_at, '2026-09-19T15:00:00.000Z');
+  assert.equal(dayHeadline(stuck, expected, truck(), { stuck: true }), 'could_not_update');
+  assert.equal(dayHeadline(stuck, expected, truck()), 'updating', 'until it is given up on');
+  assert.deepEqual(dayProblems(undefined, expected, truck()), [], 'a day never worked out has no problems yet');
+  assert.equal(dayHeadline(undefined, expected, truck()), 'updating');
+});
+
+void test('a day worked out with settings the truck no longer has says only that', () => {
+  const records = demoDay();
+  const expected = truckDays(records, [truck()]).days[0];
+  const day = withResult({}, expected.input_hash);
+  const thirstier = truck({ ifta: { ...truckIfta(truck()), mpg: 6 } });
+  const problems = dayProblems(day, expected, thirstier);
+  assert.deepEqual(problems.map((problem) => problem.kind), ['settings_changed']);
+  assert.equal(problems[0].last_success_at, '2026-09-19T15:00:00.000Z');
+  assert.equal(dayHeadline(day, expected, thirstier), 'settings_changed');
+  assert.equal(dayHeadline(day, expected, truck()), 'ready');
+  // Nothing worked out yet is nothing to compare: the day is being updated.
+  const noFigures = storedDay({ status: 'current', profile_snapshot: truckIfta(truck()) }, expected.input_hash);
+  assert.deepEqual(dayProblems(noFigures, expected, thirstier), []);
+  assert.equal(dayHeadline(noFigures, expected, thirstier), 'ready');
+  // Tickets edited since: the day is on its way, whatever it shows now.
+  assert.equal(dayHeadline(withResult({}, 'older'), expected, truck()), 'updating');
+  // A day that both needs help and was worked out with old settings asks for
+  // the help: that is the one thing a person can act on.
+  const both = withResult(
+    { status: 'needs_review', review_reasons: [{ code: 'mpg_missing' }] },
+    expected.input_hash,
+  );
+  assert.equal(dayHeadline(both, expected, thirstier), 'needs_help');
+});
+
+void test('editing what a load was worth, or checking a ticket off, does not move the truck', () => {
+  const base = demoDay();
+  const before = inputHash(base, 7);
+  const invoiced = base.map((r) => ({
+    ...r,
+    invoice: { ...r.invoice, invoice_number: 'INV-99', invoice_date: '2026-09-30', bill_to: { ...r.invoice.bill_to, name: 'Somebody else' } },
+  }));
+  assert.equal(inputHash(invoiced, 7), before, 'an invoice is not a route');
+  const rated = base.map((r) => ({
+    ...r,
+    ticket: { ...r.ticket, rate: 9.25, rate_type: 'per_ton', fuel_charge: 11, fuel_type: 'percent', net_tons: 22 },
+  }));
+  assert.equal(inputHash(rated, 7), before, 'nor is a rate, a fuel charge or a weight');
+  const checked = base.map((r) => ({ ...r, reviewed_at: '2026-09-20T12:00:00.000Z', edited_at: '2026-09-20T12:00:00.000Z' }));
+  assert.equal(inputHash(checked, 7), before, 'checking a ticket off does not change where it went');
+  const rescanned = base.map((r) => ({ ...r, ocr_text: 'the print as read', source: { ...r.source, file_name: 'b.jpg' } }));
+  assert.equal(inputHash(rescanned, 7), before);
+  // A ticket re-dated leaves the day it was on and joins the day it now names.
+  const trucks = [truck()];
+  assert.deepEqual(truckDays(base, trucks).days.map((d) => d.key), ['7|2026-09-18']);
+  const split = truckDays(
+    base.map((r, i) => (i === 0 ? { ...r, ticket: { ...r.ticket, ticket_date: '2026-09-19' } } : r)),
+    trucks,
+  ).days;
+  assert.deepEqual(split.map((d) => d.key), ['7|2026-09-19', '7|2026-09-18']);
+  assert.notEqual(
+    split.find((d) => d.date === '2026-09-18')?.input_hash,
+    before,
+    'the day it left is no longer the day it was',
+  );
+  const emptied = truckDays(
+    base.map((r) => ({ ...r, ticket: { ...r.ticket, ticket_date: '2026-09-19' } })),
+    trucks,
+  ).days;
+  assert.deepEqual(emptied.map((d) => d.key), ['7|2026-09-19'], 'the day they all left is gone');
+});
+
+void test('a leg reads back the address and the name the day was stored with, or neither', () => {
+  const day = readMileageDay({
+    id: 1,
+    status: 'current',
+    legs: [
+      {
+        seq: 1,
+        kind: 'yard_to_pickup',
+        ticket_id: 1,
+        from: { label: 'Yard', place_key: 'A', lat: 41.5, lon: -87.9, address: ` ${YARD} `, name: 'Home yard' },
+        to: { label: 'Thornton', place_key: 'B', lat: '41.57', lon: '-87.61', address: 42, name: '   ' },
+        miles: 55.2,
+        seconds: 3600,
+        route_id: 9,
+        cached: true,
+      },
+      { seq: 2, kind: 'delivery_to_yard', ticket_id: 1, from: 'not a place', to: null, miles: 0, seconds: 0, route_id: null, cached: false },
+    ],
+  });
+  const [first, second] = day.legs;
+  assert.equal(first.from.address, YARD);
+  assert.equal(first.from.name, 'Home yard');
+  assert.equal(first.to.lat, 41.57, 'coordinates arrive as text and read as numbers');
+  assert.equal(first.to.address, undefined, 'a number is not an address');
+  assert.equal(first.to.name, undefined, 'a blank name is no name');
+  assert.equal(first.miles, 55.2, 'the rest of the leg is untouched');
+  assert.equal(first.route_id, 9);
+  assert.deepEqual(second.from, { label: '', place_key: '', lat: 0, lon: 0 }, 'a leg stored wrong reads as empty, not as a crash');
+  assert.deepEqual(second.to, { label: '', place_key: '', lat: 0, lon: 0 });
 });
 
 // ---------------------------------------------------------- source guards

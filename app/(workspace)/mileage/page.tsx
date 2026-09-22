@@ -3,7 +3,7 @@ import MileagePage from '@/components/mileage/mileage-page';
 
 export const metadata: Metadata = {
   title: 'Mileage · Load Desk',
-  description: 'Estimated road miles and fuel per truck and day, from saved tickets.',
+  description: 'See where each truck drove and how many miles it traveled.',
 };
 
 export default function Page() {

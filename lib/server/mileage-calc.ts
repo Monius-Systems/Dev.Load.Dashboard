@@ -18,6 +18,7 @@ import {
   type ReviewReason,
 } from '@/lib/load-desk/mileage';
 import { truckIdFor, type TruckProfile } from '@/lib/load-desk/profiles';
+import type { SavedRecord } from '@/lib/load-desk/types';
 import {
   claimDay,
   deleteDay,
@@ -27,6 +28,7 @@ import {
   getRoutes,
   putRoute,
   recordsForDay,
+  releaseClaim,
   setStopOrder,
   upsertPlace,
   writeDayResult,
@@ -45,6 +47,10 @@ import { ProviderError, type RouteResult, type RoutingProvider } from '@/lib/ser
 // - Nothing is guessed: a place the provider is not sure of is a review item
 //   with the provider's suggestion offered, and the day waits.
 // - One provider call per unique leg and place, cached for every later day.
+// - A day already worked out from the same tickets is handed back untouched:
+//   no provider call and no write (see dayIsUpToDate).
+// - Every write names the claim's token, so a calculation another one has
+//   taken over since writes nothing and the newer answer stands.
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 
@@ -107,6 +113,43 @@ async function resolvePlaces(
 }
 
 /**
+ * Whether the stored day already answers this request: the same tickets as
+ * the ones just read, a result written from them, the order it was worked out
+ * with still the order that applies, and nothing forced. Such a day is handed
+ * back as it stands — no provider call and no write — so asking for a day
+ * that has not changed costs a read and nothing else.
+ *
+ * `status` is 'current' only where writeDayResult put it, and a result carries
+ * the hash it was worked out from, so both are checked: a row whose state was
+ * written by a later attempt is not up to date, whatever it says.
+ *
+ * The tickets are not the only input. Given `currentProfile` — the truck's
+ * yard, MPG and vehicle together with the provider's version, as
+ * profileHash() writes it — a day worked out with settings the truck no
+ * longer has is not up to date either, so changing the yard and asking for
+ * the day again works the day out again rather than handing back the old
+ * answer.
+ */
+export function dayIsUpToDate(
+  stored: MileageDay | null | undefined,
+  hash: string,
+  records: SavedRecord[],
+  force: boolean,
+  currentProfile?: string,
+): boolean {
+  if (!stored || force) return false;
+  if (stored.status !== 'current') return false;
+  if (stored.input_hash !== hash || stored.result_input_hash !== hash) return false;
+  if (currentProfile !== undefined && stored.profile_hash !== currentProfile) return false;
+  // An order a person has just confirmed, or one the day has outgrown, is
+  // reason enough to work the day out again.
+  if (stored.stop_order) {
+    return stored.order_basis === 'confirmed' && stopOrderApplies(stored.stop_order, records);
+  }
+  return stored.order_basis !== 'confirmed';
+}
+
+/**
  * Recalculates one truck-day and returns the stored row, or null when the
  * truck has no tickets that day (the row is removed). `force` asks the
  * provider again for every leg instead of using cached routes.
@@ -120,10 +163,14 @@ export async function recalculateDay(
   date: string,
   { force = false } = {},
 ): Promise<MileageDay | null> {
+  // What the day says before it is claimed: the hash and status a repeat
+  // request is measured against, and the order a person confirmed. Read first,
+  // because the claim itself marks the row calculating.
+  const stored = await getDay(client, workspace, truck.id, date);
   await ensureDay(client, workspace, truck, date);
-  if (!(await claimDay(client, workspace, truck.id, date))) {
-    return getDay(client, workspace, truck.id, date);
-  }
+  const claim = await claimDay(client, workspace, truck.id, date);
+  if (!claim) return getDay(client, workspace, truck.id, date);
+  const { token } = claim;
   const records = (await recordsForDay(client, workspace, date)).filter(
     (record) => truckIdFor(record, trucks) === truck.id,
   );
@@ -133,29 +180,45 @@ export async function recalculateDay(
   }
   const hash = inputHash(records, truck.id);
   const ifta = truckIfta(truck);
+  if (dayIsUpToDate(stored, hash, records, force, profileHash(ifta, provider.version))) {
+    // Nothing to do, so nothing is written: the claim is given back with the
+    // status the day already had — 'current', by the check above — and the day
+    // is answered exactly as it stands.
+    await releaseClaim(client, workspace, truck.id, date, token);
+    return stored;
+  }
   // The order a person confirmed, unless the day has changed since they did:
   // a confirmation that no longer describes the day is forgotten rather than
   // left to order stops it was never given for.
-  const stored = await getDay(client, workspace, truck.id, date);
   let stopOrder = stored?.stop_order ?? null;
   if (stopOrder && !stopOrderApplies(stopOrder, records)) {
     await setStopOrder(client, workspace, truck.id, date, null);
     stopOrder = null;
   }
-  const state = (
+  // A write the claim no longer owns means another calculation took the day
+  // over while this one worked: its answer is the newer one, so this one
+  // writes nothing and the day is answered as that calculation left it.
+  const state = async (
     status: 'needs_review' | 'failed',
     reasons: ReviewReason[],
     warnings: string[],
     error: string | null,
   ) =>
-    writeDayState(client, workspace, truck.id, date, {
-      truck_number: truck.truck_number,
-      status,
-      review_reasons: reasons,
-      warnings,
-      error,
-      input_hash: hash,
-    });
+    (await writeDayState(
+      client,
+      workspace,
+      truck.id,
+      date,
+      {
+        truck_number: truck.truck_number,
+        status,
+        review_reasons: reasons,
+        warnings,
+        error,
+        input_hash: hash,
+      },
+      token,
+    )) ?? (await getDay(client, workspace, truck.id, date));
 
   // Which step a failure happened in, so the day can say so.
   let stage: 'planning' | 'placing addresses' | 'routing' | 'saving' = 'planning';
@@ -202,13 +265,28 @@ export async function recalculateDay(
     stage = 'routing';
     const profile = toRoutingProfile(ifta);
     const profileKey = routingProfileHash(profile);
+    // What the day reads as for a person: the town on the route line, the
+    // whole address the provider settled on, and what the paperwork calls the
+    // place — the plant it was loaded at, the job it was tipped on, or the
+    // yard the truck starts and ends its day at.
+    const byTicket = new Map(plan.records.map((record) => [record.id, record.ticket]));
+    const nameOf = (stop: PlanStop): string => {
+      if (stop.kind === 'yard') return 'Home yard';
+      const ticket = stop.ticket_id === null ? undefined : byTicket.get(stop.ticket_id);
+      const printed = stop.kind === 'pickup' ? ticket?.plant_name : ticket?.project_name;
+      return (printed ?? '').replace(/\s+/g, ' ').trim();
+    };
     const at = (stop: PlanStop): MileagePlace => {
       const place = places.get(stop.place_key) as PlaceRow;
+      const address = (place.formatted ?? '').trim();
+      const name = nameOf(stop);
       return {
         label: yardLabel(stop, place),
         place_key: stop.place_key,
         lat: place.lat as number,
         lon: place.lon as number,
+        ...(address ? { address } : {}),
+        ...(name ? { name } : {}),
       };
     };
     const keys = plan.legs
@@ -284,23 +362,31 @@ export async function recalculateDay(
     stage = 'saving';
     const totalMiles = round2(legs.reduce((sum, leg) => sum + leg.miles, 0));
     const totalSeconds = legs.reduce((sum, leg) => sum + leg.seconds, 0);
-    return await writeDayResult(client, workspace, truck.id, date, {
-      truck_number: truck.truck_number,
-      status: plan.reasons.length ? 'needs_review' : 'current',
-      review_reasons: plan.reasons,
-      warnings,
-      input_hash: hash,
-      ticket_ids: plan.ticket_ids,
-      order_basis: plan.order_basis,
-      legs,
-      total_miles: totalMiles,
-      total_seconds: totalSeconds,
-      mpg: ifta.mpg,
-      est_gallons: estimatedGallons(totalMiles, ifta.mpg),
-      profile_snapshot: ifta,
-      profile_hash: profileHash(ifta, provider.version),
-      calc_version: CALC_VERSION,
-    });
+    const saved = await writeDayResult(
+      client,
+      workspace,
+      truck.id,
+      date,
+      {
+        truck_number: truck.truck_number,
+        status: plan.reasons.length ? 'needs_review' : 'current',
+        review_reasons: plan.reasons,
+        warnings,
+        input_hash: hash,
+        ticket_ids: plan.ticket_ids,
+        order_basis: plan.order_basis,
+        legs,
+        total_miles: totalMiles,
+        total_seconds: totalSeconds,
+        mpg: ifta.mpg,
+        est_gallons: estimatedGallons(totalMiles, ifta.mpg),
+        profile_snapshot: ifta,
+        profile_hash: profileHash(ifta, provider.version),
+        calc_version: CALC_VERSION,
+      },
+      token,
+    );
+    return saved ?? (await getDay(client, workspace, truck.id, date));
   } catch (error) {
     // Never the key and never a payload: only that the day did not calculate,
     // at which step, and what the provider or database said about it. The

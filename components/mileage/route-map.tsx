@@ -5,8 +5,14 @@ import { useT } from '@/lib/i18n/use-t';
 import { formatNumber, type LegKind } from '@/lib/load-desk/mileage';
 import {
   decodePolyline,
+  FINISH,
   fitBounds,
   googleMapsDirectionsUrl,
+  sequenceLabels,
+  START,
+  START_FINISH,
+  visitLabel,
+  visitTag,
   type RouteGeometry,
   type RouteStop,
 } from '@/lib/load-desk/route-geometry';
@@ -16,6 +22,11 @@ import {
 // never reaches the browser — so what is on screen is the geometry, the stops
 // and nothing else. Where a leg has no geometry it is drawn as a dashed
 // straight line, which is a reminder rather than a road.
+//
+// The markers say where the truck started, where it went in what order and
+// where it came back, in those words, so nothing on the canvas needs a legend
+// to decode. Pickups and deliveries also differ in fill and outline, never in
+// colour alone.
 
 export type RouteMapLeg = {
   seq: number;
@@ -28,10 +39,16 @@ export type RouteMapLeg = {
 
 /** The canvas is this much of its width tall, between these bounds. */
 const ASPECT = 0.58;
+/** A phone gets a taller canvas, or the route is a sliver across 375px. */
+const COMPACT_ASPECT = 0.72;
 const MIN_HEIGHT = 210;
 const MAX_HEIGHT = 420;
-/** Below this the labels and discs step down a size for a phone. */
+const COMPACT_MAX_HEIGHT = 360;
+/** Below this the drawing counts as a phone, whatever the page said. */
 const COMPACT_WIDTH = 420;
+/** Clear space for the markers and their labels, so nothing is cut off. */
+const PADDING = 44;
+const COMPACT_PADDING = 36;
 
 type Point = { x: number; y: number };
 
@@ -59,6 +76,14 @@ function midpoint(points: Point[]): { x: number; y: number; angle: number } | nu
 /** Loaded legs carry a ticket; everything else is the truck running empty. */
 const toneOf = (kind: LegKind) => (kind === 'pickup_to_delivery' ? 'loaded' : 'empty');
 
+/**
+ * A marker is a pill, so 'Start' fits at the same text size a number does; at
+ * a number's width the pill is a disc. Sized off the glyph width rather than a
+ * measurement, which is enough for the two or three characters shown here.
+ */
+const markerWidth = (label: string, radius: number, glyph: number) =>
+  Math.max(radius * 2, label.length * glyph + 16);
+
 export default function RouteMap({
   stops,
   legs,
@@ -67,6 +92,7 @@ export default function RouteMap({
   title,
   selectedLeg = null,
   onSelectLeg,
+  compact: compactProp = false,
 }: {
   stops: RouteStop[];
   legs: RouteMapLeg[];
@@ -75,6 +101,7 @@ export default function RouteMap({
   title?: string;
   selectedLeg?: number | null;
   onSelectLeg?: (seq: number | null) => void;
+  compact?: boolean;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -94,9 +121,15 @@ export default function RouteMap({
     return () => observer.disconnect();
   }, []);
 
-  const compact = width > 0 && width < COMPACT_WIDTH;
-  const height = Math.round(Math.min(Math.max(width * ASPECT, MIN_HEIGHT), MAX_HEIGHT));
-  const padding = compact ? 26 : 38;
+  const compact = compactProp || (width > 0 && width < COMPACT_WIDTH);
+  const height = Math.round(
+    compact
+      ? Math.min(Math.max(width * COMPACT_ASPECT, MIN_HEIGHT), COMPACT_MAX_HEIGHT)
+      : Math.min(Math.max(width * ASPECT, MIN_HEIGHT), MAX_HEIGHT),
+  );
+  const padding = compact ? COMPACT_PADDING : PADDING;
+  const radius = compact ? 16 : 13;
+  const glyph = compact ? 7.8 : 7.2;
 
   // Roads first: every leg that has geometry decoded once, so the bounds hold
   // the whole route rather than only the stops it passes through.
@@ -119,15 +152,46 @@ export default function RouteMap({
   const interactive = typeof onSelectLeg === 'function';
   const pick = (seq: number) => onSelectLeg?.(selectedLeg === seq ? null : seq);
   const heading = title ?? t('Route map');
-  // A day with nothing routed yet says so plainly: no legend to read, no
-  // link to follow, and never a count of zero straight legs.
-  const blank = status === 'empty' || (status === 'incomplete' && missing === 0);
+
+  // 'Start', '1', 'Finish' — the words the markers read, by stop index. The
+  // arithmetic is in route-geometry; only the three words are translated.
+  const word = (label: string) =>
+    label === START
+      ? t('Start')
+      : label === FINISH
+        ? t('Finish')
+        : label === START_FINISH
+          ? t('Start/Finish')
+          : label;
+  const marks = new Map(sequenceLabels(stops).map((mark) => [mark.index, mark]));
+  const markOf = (stop: RouteStop) => marks.get(stop.index) ?? { primary: '', secondary: null };
+  const nameOf = (stop: RouteStop) => stop.name || stop.label;
+  const lastVisit = (stop: RouteStop) => (stop.seqs.length ? Math.max(...stop.seqs) : 0);
+  const start = stops[0] ?? null;
+  const finish = stops.reduce<RouteStop | null>(
+    (latest, stop) => (!latest || lastVisit(stop) > lastVisit(latest) ? stop : latest),
+    null,
+  );
+  /** A word marker is wider than a number and reads dark on its own fill. */
+  const isWord = (label: string) => label === START || label === FINISH || label === START_FINISH;
+
+  // One plain sentence about the day, said once: inside the canvas when there
+  // is nothing to draw, under it when there is. Never a count of zero.
+  const note =
+    status === 'empty'
+      ? t('The route will appear here once mileage is calculated.')
+      : status === 'review'
+        ? t('Some stops couldn’t be placed yet.')
+        : status === 'incomplete' && missing > 0
+          ? t('We couldn’t draw part of this route.')
+          : t('{miles} miles over {legs} legs', { miles: formatNumber(miles), legs: legs.length });
+  const warned = status === 'review' || (status === 'incomplete' && missing > 0);
 
   return (
-    <figure className="rm" data-status={status}>
+    <figure className="rm" data-status={status} data-compact={compact ? '' : undefined}>
       <div className="rm-head">
         <p className="ld-step">{heading}</p>
-        {directions && !blank ? (
+        {directions && status !== 'empty' ? (
           <a className="rm-open" href={directions} target="_blank" rel="noreferrer">
             {t('Open in Google Maps')}
           </a>
@@ -144,10 +208,13 @@ export default function RouteMap({
             data-focused={selectedLeg === null ? undefined : ''}
           >
             <title id={titleId}>
-              {t('The day’s route, {stops} stops and {legs} legs', {
-                stops: stops.length,
-                legs: legs.length,
-              })}
+              {start
+                ? t('Route with {stops} stops, from {start} to {finish}', {
+                    stops: stops.length,
+                    start: nameOf(start),
+                    finish: nameOf(finish ?? start),
+                  })
+                : heading}
             </title>
             <defs>
               <pattern id={dotsId} width="26" height="26" patternUnits="userSpaceOnUse">
@@ -175,7 +242,7 @@ export default function RouteMap({
                   {arrow ? (
                     <path
                       className="rm-arrow"
-                      d="M-2.6,-3 L3,0 L-2.6,3 Z"
+                      d="M-3.2,-3.6 L3.6,0 L-3.2,3.6 Z"
                       transform={`translate(${arrow.x.toFixed(1)} ${arrow.y.toFixed(1)}) rotate(${arrow.angle.toFixed(1)})`}
                     />
                   ) : null}
@@ -188,55 +255,80 @@ export default function RouteMap({
 
             {stops.map((stop) => {
               const { x, y } = fit.project(stop);
-              const radius = compact ? 9 : 10.5;
-              const [first, ...rest] = stop.short.split('·');
-              const right = x > width * 0.72;
+              const mark = markOf(stop);
+              // The disc is the first visit; the tag is the second, or a
+              // count past that, so a shuttle day never grows a label wider
+              // than the canvas.
+              const primary = word(mark.primary);
+              const tagged = visitTag(stops, stop);
+              const secondary = tagged ? word(tagged) : null;
+              const pill = markerWidth(primary, radius, glyph);
+              // The second visit sits on whichever side has room for it.
+              const left = x > width * 0.68;
+              const tag = secondary ? markerWidth(secondary, radius * 0.7, glyph) : 0;
+              const tagX = left ? x - pill / 2 - 6 - tag : x + pill / 2 + 6;
               return (
-                <g className="rm-stop" key={stop.index} data-kind={stop.kind}>
-                  <circle className="rm-disc" cx={x} cy={y} r={radius} />
+                <g
+                  className="rm-stop"
+                  key={stop.index}
+                  data-kind={stop.kind}
+                  data-word={isWord(mark.primary) ? '' : undefined}
+                >
+                  <title>{[primary, secondary, nameOf(stop)].filter(Boolean).join(' · ')}</title>
+                  <rect
+                    className="rm-disc"
+                    x={x - pill / 2}
+                    y={y - radius}
+                    width={pill}
+                    height={radius * 2}
+                    rx={radius}
+                  />
                   <text className="rm-disc-text" x={x} y={y} dominantBaseline="central" textAnchor="middle">
-                    {first}
+                    {primary}
                   </text>
-                  {rest.length ? (
-                    <text
-                      className="rm-stack"
-                      x={right ? x - radius - 4 : x + radius + 4}
-                      y={y}
-                      dominantBaseline="central"
-                      textAnchor={right ? 'end' : 'start'}
-                    >
-                      {`·${rest.join('·')}`}
-                    </text>
+                  {secondary ? (
+                    <>
+                      <rect
+                        className="rm-tag"
+                        x={tagX}
+                        y={y - radius * 0.7}
+                        width={tag}
+                        height={radius * 1.4}
+                        rx={radius * 0.7}
+                      />
+                      <text
+                        className="rm-tag-text"
+                        x={tagX + tag / 2}
+                        y={y}
+                        dominantBaseline="central"
+                        textAnchor="middle"
+                      >
+                        {secondary}
+                      </text>
+                    </>
                   ) : null}
                 </g>
               );
             })}
           </svg>
         ) : (
-          <p className="rm-empty">{width ? t('No route to draw yet.') : ''}</p>
+          <p className="rm-empty">{width ? note : ''}</p>
         )}
       </div>
 
-      <figcaption
-        className="rm-caption"
-        data-tone={status === 'complete' || blank ? undefined : 'warning'}
-      >
-        {blank
-          ? t('No route to draw yet.')
-          : status === 'review'
-            ? t('Some stops could not be placed, so the route is only part of the day.')
-            : status === 'incomplete'
-              ? t(
-                  missing === 1
-                    ? 'One leg has no road to follow and is drawn straight.'
-                    : '{count} legs have no road to follow and are drawn straight.',
-                  { count: missing },
-                )
-              : t('Routed roads, {miles} mi over {count} legs.', {
-                  miles: formatNumber(miles),
-                  count: legs.length,
-                })}
-      </figcaption>
+      {fit ? (
+        <figcaption
+          className="rm-caption"
+          data-tone={warned ? 'warning' : undefined}
+          title={
+            status === 'incomplete' && missing > 0
+              ? t('{count} of {legs} legs have no road to follow.', { count: missing, legs: legs.length })
+              : undefined
+          }
+        >
+          {note}
+        </figcaption>
+      ) : null}
 
       {unresolved.length ? (
         <div className="rm-unresolved">
@@ -249,43 +341,53 @@ export default function RouteMap({
         </div>
       ) : null}
 
-      {blank ? null : (
+      {fit ? (
         <ul className="rm-legend">
-          <li className="rm-key" data-tone="loaded">{t('Loaded')}</li>
+          <li className="rm-key" data-tone="loaded">{t('Carrying a load')}</li>
           <li className="rm-key" data-tone="empty">{t('Empty')}</li>
           {missing ? (
-            <li className="rm-key" data-tone="missing">{t('Straight line')}</li>
+            <li className="rm-key" data-tone="missing">{t('Route not drawn')}</li>
           ) : null}
         </ul>
-      )}
+      ) : null}
 
-      <ul className="rm-legs">
-        {legs.map((leg) => {
-          const row = (
-            <>
-              <span className="rm-leg-mark" data-tone={toneOf(leg.kind)} aria-hidden="true" />
-              <span className="rm-leg-where">
-                <b>{leg.from.short}</b> {leg.from.label} <span aria-hidden="true">→</span>{' '}
-                <b>{leg.to.short}</b> {leg.to.label}
-              </span>
-              <span className="rm-leg-miles">
-                {formatNumber(leg.miles)} <small>{t('mi')}</small>
-              </span>
-            </>
-          );
-          return (
-            <li key={leg.seq} data-selected={selectedLeg === leg.seq ? '' : undefined}>
-              {interactive ? (
-                <button type="button" className="rm-leg-row" onClick={() => pick(leg.seq)}>
-                  {row}
-                </button>
-              ) : (
-                <span className="rm-leg-row">{row}</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      {/* On a phone the rows are only worth their height when they do something. */}
+      {compact && !interactive ? null : (
+        <ul className="rm-legs">
+          {legs.map((leg, at) => {
+            // A row names the two visits this leg runs between and no others:
+            // the nth drawn leg leaves visit n and arrives at visit n + 1,
+            // which is the walk stopsFromLegs numbered. The drawn order is
+            // used rather than the stored seq, since a leg left out for an
+            // unplaced stop would put the two out of step.
+            const from = word(visitLabel(stops, at + 1));
+            const to = word(visitLabel(stops, at + 2));
+            const row = (
+              <>
+                <span className="rm-leg-mark" data-tone={toneOf(leg.kind)} aria-hidden="true" />
+                <span className="rm-leg-where">
+                  <b>{from}</b> {nameOf(leg.from)} <span aria-hidden="true">→</span>{' '}
+                  <b>{to}</b> {nameOf(leg.to)}
+                </span>
+                <span className="rm-leg-miles">
+                  {formatNumber(leg.miles)} <small>{t('mi')}</small>
+                </span>
+              </>
+            );
+            return (
+              <li key={leg.seq} data-selected={selectedLeg === leg.seq ? '' : undefined}>
+                {interactive ? (
+                  <button type="button" className="rm-leg-row" onClick={() => pick(leg.seq)}>
+                    {row}
+                  </button>
+                ) : (
+                  <span className="rm-leg-row">{row}</span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </figure>
   );
 }

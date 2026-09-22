@@ -641,7 +641,21 @@ export function quarterKeys(from: string, to: string): string[] {
 
 export type MileageStatus = 'calculating' | 'current' | 'needs_review' | 'failed';
 
-export type MileagePlace = { label: string; place_key: string; lat: number; lon: number };
+/**
+ * One end of a leg. `label` is the town, as route lines read it; `address` is
+ * the whole address the provider settled on, and `name` what the paperwork
+ * calls the place — the plant on a pickup, the job on a delivery, the home
+ * yard at either end of the day. Both are for a person reading the day, and
+ * both are absent on days stored before they were written.
+ */
+export type MileagePlace = {
+  label: string;
+  place_key: string;
+  lat: number;
+  lon: number;
+  address?: string;
+  name?: string;
+};
 
 export type MileageLeg = {
   seq: number;
@@ -716,6 +730,26 @@ function readStopOrder(value: unknown): StopOrder | null {
 }
 
 /**
+ * One end of a stored leg. The label and the coordinates are what a route
+ * line and a map need; the address and the name are kept only when they are
+ * text, so a day stored before either was written simply has neither rather
+ * than an empty line where a name should be.
+ */
+function readLegPlace(value: unknown): MileagePlace {
+  const place = isObject(value) ? value : {};
+  const address = str(place.address)?.trim();
+  const name = str(place.name)?.trim();
+  return {
+    label: str(place.label) ?? '',
+    place_key: str(place.place_key) ?? '',
+    lat: num(place.lat) ?? 0,
+    lon: num(place.lon) ?? 0,
+    ...(address ? { address } : {}),
+    ...(name ? { name } : {}),
+  };
+}
+
+/**
  * A database row as the app's day. Numeric columns come over the wire as
  * strings, and JSON columns as whatever was stored, so every field is read
  * rather than cast.
@@ -749,9 +783,12 @@ export function readMileageDay(row: Record<string, unknown>): MileageDay {
     ticket_count: num(row.ticket_count) ?? 0,
     order_basis: isBasis(row.order_basis) ? row.order_basis : null,
     stop_order: readStopOrder(row.stop_order),
-    legs: legs.filter(
-      (leg): leg is MileageLeg => !!leg && typeof leg === 'object' && typeof (leg as MileageLeg).seq === 'number',
-    ),
+    legs: legs
+      .filter(
+        (leg): leg is MileageLeg =>
+          !!leg && typeof leg === 'object' && typeof (leg as MileageLeg).seq === 'number',
+      )
+      .map((leg) => ({ ...leg, from: readLegPlace(leg.from), to: readLegPlace(leg.to) })),
     total_miles: num(row.total_miles),
     total_seconds: num(row.total_seconds),
     mpg: num(row.mpg),
@@ -824,6 +861,129 @@ export function needsRecalculation(
   }
   if (day.input_hash !== expected.input_hash) return true;
   return retryFailed && retryable(day);
+}
+
+// ------------------------------------------------------------------ problems
+
+/**
+ * What is the matter with a day, in the words a dispatcher would use. The
+ * review codes say what the calculation found; these say what somebody can do
+ * about it, and are what a page shows. `stuck` is reserved: a day whose update
+ * started and never came back is reported as `could_not_update`, and the kind
+ * is kept so a page may label that case apart if it wants to.
+ */
+export type ProblemKind =
+  | 'missing_yard'
+  | 'unknown_place'
+  | 'uncertain_order'
+  | 'missing_pickup'
+  | 'missing_delivery'
+  | 'no_route'
+  | 'too_many_tickets'
+  | 'missing_mpg'
+  | 'could_not_update'
+  | 'settings_changed'
+  | 'stuck';
+
+export type Problem = {
+  kind: ProblemKind;
+  ticket_id?: number;
+  place_key?: string;
+  query?: string;
+  suggestion?: string | null;
+  ticket_ids?: number[];
+  detail?: string;
+  /** When the day last calculated, so a stale figure can say how old it is. */
+  last_success_at?: string | null;
+};
+
+const PROBLEM_OF: Record<ReviewCode, ProblemKind> = {
+  yard_missing: 'missing_yard',
+  place_unresolved: 'unknown_place',
+  order_ambiguous: 'uncertain_order',
+  missing_pickup_address: 'missing_pickup',
+  missing_delivery_address: 'missing_delivery',
+  no_route: 'no_route',
+  too_many_tickets: 'too_many_tickets',
+  mpg_missing: 'missing_mpg',
+};
+
+/**
+ * Everything wrong with one day: what the last calculation put it up for
+ * review over, whether it failed or is stuck, and whether the truck's settings
+ * have moved since the figures were worked out. Each review reason becomes one
+ * problem, carrying only what a page needs to offer the fix — the address that
+ * was not placed and the provider's suggestion, the order that was assumed,
+ * the leg that could not be routed.
+ *
+ * A reason about a ticket that is no longer on the day is left out: the
+ * calculation that raised it ran before the ticket was deleted or moved to
+ * another truck, and there is nothing to put right. Days whose expected
+ * tickets are not to hand (`expected.records` empty) keep every reason.
+ */
+export function dayProblems(
+  day: MileageDay | undefined,
+  expected: TruckDay,
+  truck: TruckProfile,
+  options: { stuck?: boolean } = {},
+): Problem[] {
+  const problems: Problem[] = [];
+  const onDay = new Set(expected.records.map((record) => record.id));
+  const stillThere = (ticketId: number | undefined) =>
+    ticketId === undefined || !onDay.size || onDay.has(ticketId);
+  for (const reason of day?.review_reasons ?? []) {
+    const kind = PROBLEM_OF[reason.code];
+    if (!kind) continue;
+    if (!stillThere(reason.ticket_id)) continue;
+    const problem: Problem = { kind };
+    if (reason.ticket_id !== undefined) problem.ticket_id = reason.ticket_id;
+    if (kind === 'unknown_place') {
+      problem.place_key = reason.place_key;
+      problem.query = reason.query;
+      problem.suggestion = reason.suggestion ?? null;
+    }
+    if (reason.ticket_ids) problem.ticket_ids = [...reason.ticket_ids];
+    if (reason.detail) problem.detail = reason.detail;
+    problems.push(problem);
+  }
+  if (day?.status === 'failed' || options.stuck === true) {
+    problems.push({
+      kind: 'could_not_update',
+      detail:
+        day?.status === 'failed'
+          ? day.error ?? 'The last update did not finish.'
+          : 'The last update started and did not finish.',
+      last_success_at: day?.calculated_at ?? null,
+    });
+  }
+  if (day && hasResult(day) && settingsChanged(day, truckIfta(truck))) {
+    problems.push({ kind: 'settings_changed', last_success_at: day.calculated_at });
+  }
+  return problems;
+}
+
+/** Problems a day can show its figures in spite of. */
+const QUIET_PROBLEMS = new Set<ProblemKind>(['could_not_update', 'settings_changed', 'stuck']);
+
+/**
+ * The one thing to say about a day on a card. Anything a person can put right
+ * comes first, then a day that could not be worked out, then one still being
+ * worked out; a day whose only news is that the truck's settings have changed
+ * says so, and a day with nothing to report is ready.
+ */
+export function dayHeadline(
+  day: MileageDay | undefined,
+  expected: TruckDay,
+  truck: TruckProfile,
+  options: { stuck?: boolean } = {},
+): 'ready' | 'updating' | 'needs_help' | 'could_not_update' | 'settings_changed' {
+  const problems = dayProblems(day, expected, truck, options);
+  if (problems.some((problem) => !QUIET_PROBLEMS.has(problem.kind))) return 'needs_help';
+  if (day?.status === 'failed' || options.stuck === true) return 'could_not_update';
+  const view = dayView(day, expected.input_hash);
+  if (view === 'missing' || view === 'stale' || view === 'calculating') return 'updating';
+  if (problems.some((problem) => problem.kind === 'settings_changed')) return 'settings_changed';
+  return 'ready';
 }
 
 // ----------------------------------------------------------------- summaries

@@ -66,9 +66,12 @@ export function decodePolyline(encoded: string, precision: 5 | 7): LatLon[] {
 
 /**
  * A place the truck stood at, once per position however many times it was
- * visited. `short` is what a marker shows — 'Y' for the yard, '1P' and '1D'
+ * visited. `short` is the ticket shorthand — 'Y' for the yard, '1P' and '1D'
  * for the first ticket, and the stacked '1D·2P' where two visits share a
- * position. `seqs` are the 1-based places in the visiting order.
+ * position; a marker shows `sequenceLabels` instead, which reads as words and
+ * numbers. `seqs` are the 1-based places in the visiting order. `name` and
+ * `address` are what the place is called where the stored place carried them,
+ * and a marker prefers the name over the raw label.
  */
 export type RouteStop = {
   index: number;
@@ -80,7 +83,24 @@ export type RouteStop = {
   ticket_id: number | null;
   place_key: string;
   seqs: number[];
+  name?: string;
+  address?: string;
 };
+
+/**
+ * A leg's place as this module reads it. A stored place may carry the name and
+ * the address it was resolved from; both are optional, so a day saved before
+ * they existed still draws.
+ */
+type RoutePlace = MileageLeg['from'] & { name?: string; address?: string };
+
+/**
+ * The three words a marker can read instead of a number. Exported because
+ * this module stays pure English and the drawing translates them.
+ */
+export const START = 'Start';
+export const FINISH = 'Finish';
+export const START_FINISH = 'Start/Finish';
 
 const placed = (place: { lat: number; lon: number }) =>
   Number.isFinite(place.lat) && Number.isFinite(place.lon);
@@ -130,7 +150,7 @@ export function stopsFromLegs(legs: MileageLeg[]): RouteStop[] {
 
   const byPosition = new Map<string, { stop: RouteStop; shorts: string[] }>();
   const stops: RouteStop[] = [];
-  const visit = (place: MileageLeg['from'], kind: StopKind, ticketId: number | null, seq: number) => {
+  const visit = (place: RoutePlace, kind: StopKind, ticketId: number | null, seq: number) => {
     const key = positionKey(place);
     const short = shortFor(kind, ticketId);
     const seen = byPosition.get(key);
@@ -149,6 +169,8 @@ export function stopsFromLegs(legs: MileageLeg[]): RouteStop[] {
       ticket_id: ticketId,
       place_key: place.place_key,
       seqs: [seq],
+      ...(place.name ? { name: place.name } : {}),
+      ...(place.address ? { address: place.address } : {}),
     };
     stops.push(stop);
     byPosition.set(key, { stop, shorts: [short] });
@@ -168,6 +190,79 @@ export function stopsFromLegs(legs: MileageLeg[]): RouteStop[] {
   // loaded twice at one place, 'Y' however often it passed the yard.
   for (const { stop, shorts } of byPosition.values()) stop.short = shorts.join('·');
   return stops;
+}
+
+/**
+ * What each marker reads, in words a dispatcher does not have to decode. The
+ * first visit of the day is 'Start' and the last is 'Finish'; every visit in
+ * between is numbered 1, 2, 3… in the order it happened. A place visited more
+ * than once carries the rest of its visits as `secondary` — the yard comes
+ * back as 'Start' with a 'Finish' beside it, a plant loaded twice as '1' with
+ * '3'. Where the whole day is one visit there is nothing to tell apart, so it
+ * reads 'Start/Finish'. Returned in the order the stops were given.
+ */
+export function sequenceLabels(
+  stops: RouteStop[],
+): { index: number; primary: string; secondary: string | null }[] {
+  const labels = visitWords(stops);
+  return stops.map((stop) => {
+    const mine = [...stop.seqs].sort((a, b) => a - b).map((seq) => labels.get(seq) ?? '');
+    return {
+      index: stop.index,
+      primary: mine[0] ?? '',
+      secondary: mine.length > 1 ? mine.slice(1).join(' · ') : null,
+    };
+  });
+}
+
+/**
+ * What one visit reads, rather than every visit its place ever had. A leg
+ * connects two visits and nothing else, so a list of legs asks for those two
+ * by their visiting number — on a nine-load day the row for leg three says
+ * '2 → 3' instead of reciting all nine times the truck stood at that plant.
+ * Empty where there is no such visit.
+ */
+export function visitLabel(stops: RouteStop[], seq: number): string {
+  return visitWords(stops).get(seq) ?? '';
+}
+
+/**
+ * What sits beside a marker, or null where the place was stood at once and
+ * there is nothing to add. Two visits name the second one — the yard comes
+ * back as 'Finish', a plant loaded twice as '3'. Past two visits the list
+ * would run wider than the disc it sits next to, so it becomes a count
+ * instead: a twelve-load shuttle reads '×12' rather than eleven numbers
+ * nobody can take in on a phone.
+ */
+export function visitTag(stops: RouteStop[], stop: RouteStop): string | null {
+  const mine = [...stop.seqs].sort((a, b) => a - b);
+  if (mine.length < 2) return null;
+  if (mine.length > 2) return `×${mine.length}`;
+  return visitWords(stops).get(mine[1]) ?? null;
+}
+
+/**
+ * One label per visit, walked in visiting order, so the numbering never
+ * depends on which stop a visit happens to belong to: the first visit of the
+ * day is 'Start', the last is 'Finish', the rest are 1, 2, 3…
+ */
+function visitWords(stops: RouteStop[]): Map<number, string> {
+  const labels = new Map<number, string>();
+  const visits = stops.flatMap((stop) => stop.seqs).filter((seq) => Number.isFinite(seq));
+  if (!visits.length) return labels;
+  const first = Math.min(...visits);
+  const last = Math.max(...visits);
+  let numbered = 0;
+  for (const seq of [...new Set(visits)].sort((a, b) => a - b)) {
+    if (seq === first && seq === last) labels.set(seq, START_FINISH);
+    else if (seq === first) labels.set(seq, START);
+    else if (seq === last) labels.set(seq, FINISH);
+    else {
+      numbered += 1;
+      labels.set(seq, String(numbered));
+    }
+  }
+  return labels;
 }
 
 /**

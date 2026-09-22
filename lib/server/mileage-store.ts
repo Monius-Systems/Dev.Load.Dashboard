@@ -25,6 +25,12 @@ import { StoreError } from '@/lib/server/load-desk-store';
 // Two kinds of write to a day: state (what the last attempt did) and result
 // (what the last success found). They are separate functions on purpose, so a
 // failure can never touch the figures.
+//
+// Both writes are compare-and-set on the claim: claimDay stamps the row with a
+// fresh token and hands it back, and every write names that token. A
+// calculation another one has claimed since therefore writes nothing at all
+// and says so by returning null — the newest valid calculation's answer
+// stands, and never an older one that finished late.
 
 const unavailable = (what: string) =>
   new StoreError(`Could not ${what}. Please try again.`, 503);
@@ -124,22 +130,34 @@ export async function ensureDay(
 }
 
 /**
+ * Whether the calculation holding `myToken` may still write to the row. The
+ * row carries the token of the calculation that claimed it last, so a token
+ * that no longer matches means another calculation took the day over and its
+ * answer is the newer one.
+ */
+export const resultWriteAllowed = (rowToken: string | null, myToken: string) =>
+  myToken.length > 0 && rowToken === myToken;
+
+/**
  * Takes the day for this request: marks it calculating unless another
- * request did so within the last three minutes. False means someone else has
- * it; the caller shows what is stored and lets them finish.
+ * request did so within the last three minutes, and stamps it with a fresh
+ * token for this calculation to write under. Null means someone else has it;
+ * the caller shows what is stored and lets them finish.
  */
 export async function claimDay(
   client: SupabaseClient,
   workspace: string,
   truckId: number,
   date: string,
-): Promise<boolean> {
+): Promise<{ token: string } | null> {
   const now = new Date();
   const cutoff = new Date(now.getTime() - CLAIM_TIMEOUT_MS).toISOString();
+  const token = crypto.randomUUID();
   const { data, error } = await client
     .from('load_desk_daily_mileage')
     .update({
       status: 'calculating',
+      calc_token: token,
       calc_started_at: now.toISOString(),
       last_attempt_at: now.toISOString(),
       updated_at: now.toISOString(),
@@ -150,7 +168,32 @@ export async function claimDay(
     .or(`status.neq.calculating,calc_started_at.is.null,calc_started_at.lt.${cutoff}`)
     .select('id');
   if (error) throw unavailable('start the calculation');
-  return data.length > 0;
+  return data.length > 0 ? { token } : null;
+}
+
+/**
+ * Gives the day back without having written anything: the status it had
+ * before the claim, and the token cleared, so the next request may take it.
+ * Only the holder of the token may release, and nothing else — not the
+ * figures, not `calculated_at`, not even `updated_at` — is touched, since
+ * nothing about the day changed.
+ */
+export async function releaseClaim(
+  client: SupabaseClient,
+  workspace: string,
+  truckId: number,
+  date: string,
+  token: string,
+  status: Extract<MileageStatus, 'current' | 'needs_review' | 'failed'> = 'current',
+): Promise<void> {
+  const { error } = await client
+    .from('load_desk_daily_mileage')
+    .update({ status, calc_token: null })
+    .eq('workspace_id', workspace)
+    .eq('truck_id', truckId)
+    .eq('service_date', date)
+    .eq('calc_token', token);
+  if (error) throw unavailable('finish with the day');
 }
 
 export type DayResult = {
@@ -171,14 +214,23 @@ export type DayResult = {
   calc_version: number;
 };
 
-/** A success: every result column and the state, in one update. */
+/**
+ * A success: every result column and the state, in one update. The result
+ * columns — the legs, the totals, the snapshot and `calculated_at` — are
+ * written here and nowhere else, so only a calculation that finished can
+ * change the figures a day shows.
+ *
+ * Null when the day has been claimed by another calculation since: this one
+ * is the older answer and writes nothing.
+ */
 export async function writeDayResult(
   client: SupabaseClient,
   workspace: string,
   truckId: number,
   date: string,
   result: DayResult,
-): Promise<MileageDay> {
+  token: string,
+): Promise<MileageDay | null> {
   const now = new Date().toISOString();
   const { data, error } = await client
     .from('load_desk_daily_mileage')
@@ -208,13 +260,21 @@ export async function writeDayResult(
     .eq('workspace_id', workspace)
     .eq('truck_id', truckId)
     .eq('service_date', date)
+    .eq('calc_token', token)
     .select(DAY_COLUMNS)
     .maybeSingle();
-  if (error || !data) throw unavailable('save the mileage');
-  return readMileageDay(data as Record<string, unknown>);
+  if (error) throw unavailable('save the mileage');
+  return data ? readMileageDay(data as Record<string, unknown>) : null;
 }
 
-/** What an attempt found without a result: state columns only, figures untouched. */
+/**
+ * What an attempt found without a result: the state columns only. The legs,
+ * the totals, the snapshot and `calculated_at` are left exactly as the last
+ * success left them, so a day that fails or goes up for review still shows
+ * the last good figures and when they were worked out.
+ *
+ * Null when another calculation has claimed the day since, as for a result.
+ */
 export async function writeDayState(
   client: SupabaseClient,
   workspace: string,
@@ -228,7 +288,8 @@ export async function writeDayState(
     error: string | null;
     input_hash: string | null;
   },
-): Promise<MileageDay> {
+  token: string,
+): Promise<MileageDay | null> {
   const now = new Date().toISOString();
   const { data, error } = await client
     .from('load_desk_daily_mileage')
@@ -245,10 +306,11 @@ export async function writeDayState(
     .eq('workspace_id', workspace)
     .eq('truck_id', truckId)
     .eq('service_date', date)
+    .eq('calc_token', token)
     .select(DAY_COLUMNS)
     .maybeSingle();
-  if (error || !data) throw unavailable('save the day');
-  return readMileageDay(data as Record<string, unknown>);
+  if (error) throw unavailable('save the day');
+  return data ? readMileageDay(data as Record<string, unknown>) : null;
 }
 
 /**
