@@ -57,3 +57,19 @@ export function closeOperator() {
 export function consumePrefill() {
   if (snapshot.prefill !== null) publish({ ...snapshot, prefill: null });
 }
+
+/**
+ * The person moved to another page while the panel was open.
+ *
+ * The page is part of what the Operator is told, so it follows the router
+ * rather than being fixed at the moment the panel opened. The thing being
+ * looked at does not follow: an invoice is the page's own, so leaving that
+ * page leaves the invoice behind, and only a page that says so again — by
+ * opening the panel on something — puts one back.
+ */
+export function setPage(page: string) {
+  // Nothing to keep current until the panel has been opened once: a context is
+  // made by opening it, and the shell moving between pages is not that.
+  if (snapshot.context === null || snapshot.context.page === page) return;
+  publish({ ...snapshot, context: { page, entity: null } });
+}

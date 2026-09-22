@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -26,6 +27,22 @@ import { usePageSwipe } from '@/hooks/use-page-swipe';
 import SectionPager from '@/components/shell/section-pager';
 import { useT } from '@/lib/i18n/use-t';
 import { shellConfig } from '@/lib/shell-config';
+
+/**
+ * The Operator, split out of the shell the way the sections are.
+ *
+ * Whatever this file imports is evaluated wherever this file is, and on the
+ * server that is every request for every workspace page — so the panel, its
+ * conversation store and everything they reach are fetched by the browser and
+ * never by the worker. Nothing of it runs until the trigger is pressed.
+ */
+const OperatorMount = dynamic(() => import('@/components/operator/operator-mount'), {
+  ssr: false,
+});
+const OperatorTrigger = dynamic(
+  () => import('@/components/operator/operator-mount').then((module) => module.OperatorTrigger),
+  { ssr: false },
+);
 
 function ShellNavigation({
   initialAccount,
@@ -426,6 +443,7 @@ export default function AppShell({
               <strong>{title}</strong>
             </div>
             <DeskActivity />
+            <OperatorTrigger />
             {/* The way to the account on a phone. The sidebar holds it on a
                 screen with room, but there the sidebar is a drawer and the
                 bar along the bottom replaced its trigger — leaving nowhere to
@@ -445,6 +463,7 @@ export default function AppShell({
           <SectionPager>{children}</SectionPager>
           <TabBar />
         </SidebarInset>
+        <OperatorMount />
       </SidebarProvider>
     </Toaster>
   );

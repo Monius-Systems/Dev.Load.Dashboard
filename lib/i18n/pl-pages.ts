@@ -1246,4 +1246,102 @@ export const PL_PAGES: Record<string, string> = {
     'Prośby o stawki są wyłączone dla tego klienta.',
   'A request for this period already exists.': 'Prośba na ten okres już istnieje.',
   'The ticket pricing details are not valid.': 'Szczegóły wyceny kwitu są nieprawidłowe.',
+
+  // Monius Operator
+  // The trigger in the top bar, the drawer it opens, the cards a run puts in
+  // it, and the settings that say how far it may go. Wording already in this
+  // file or in pl.ts — Close, Save, Send, Failed, Done — is not repeated.
+  'Ask Monius': 'Zapytaj Monius',
+  'MONIUS OPERATOR': 'MONIUS OPERATOR',
+  Operations: 'Operacje',
+  'Where to start': 'Od czego zacząć',
+  'Ask about tickets, invoices, rates or mileage…':
+    'Zapytaj o kwity, faktury, stawki lub przebieg…',
+  'New conversation': 'Nowa rozmowa',
+  'Back to the conversation': 'Wróć do rozmowy',
+  'Working…': 'Pracuję…',
+  'Okay — nothing was changed.': 'Dobrze — nic nie zostało zmienione.',
+  'The run stopped before it could answer.': 'Uruchomienie zatrzymało się, zanim zdążyło odpowiedzieć.',
+  'Monius Operator works on the server and isn’t available in this preview.':
+    'Monius Operator działa na serwerze i nie jest dostępny w tym podglądzie.',
+  'Monius Operator isn’t set up on this deployment yet.':
+    'Monius Operator nie jest jeszcze skonfigurowany w tym wdrożeniu.',
+  // The checks a run made, folded under the answer it gave.
+  '{n} checks': 'Sprawdzenia: {n}',
+  'Hide the checks': 'Ukryj sprawdzenia',
+  // The card that asks before anything is changed.
+  'Needs your go-ahead': 'Czeka na Twoją zgodę',
+  Confirm: 'Potwierdź',
+  'Not now': 'Nie teraz',
+  'Level 0 · read only': 'Poziom 0 · tylko odczyt',
+  'Level 1 · safe': 'Poziom 1 · bezpieczne',
+  'Level 2 · changes data': 'Poziom 2 · zmienia dane',
+  'Level 3 · high impact': 'Poziom 3 · duży wpływ',
+  // What a write tool is called in front of a person.
+  'Reprocess ticket': 'Przetwórz kwit ponownie',
+  'Correct tickets': 'Popraw kwity',
+  'Resolve exception': 'Rozwiąż wyjątek',
+  'Recalculate mileage': 'Przelicz przebieg',
+  'Recalculate invoice': 'Przelicz fakturę',
+  'Draft rate request': 'Przygotuj prośbę o stawkę',
+  // What a write actually did, in three lists and a verification.
+  'Partly done': 'Częściowo wykonane',
+  Refused: 'Odmówiono',
+  Succeeded: 'Udało się',
+  'Not attempted': 'Nie próbowano',
+  'Verified {passed} of {checked}': 'Zweryfikowano {passed} z {checked}',
+  'Verified {passed} of {checked} — {failure}':
+    'Zweryfikowano {passed} z {checked} — {failure}',
+  // Settings: how far it may go, and what it may touch.
+  'Operator settings': 'Ustawienia Operatora',
+  'Operator settings saved': 'Zapisano ustawienia Operatora',
+  'Reading the Operator settings…': 'Wczytywanie ustawień Operatora…',
+  'How far it may go': 'Jak daleko może się posunąć',
+  Autonomy: 'Samodzielność',
+  Assist: 'Pomoc',
+  Controlled: 'Kontrolowany',
+  Autonomous: 'Samodzielny',
+  'Investigate, explain and recommend. Every change is confirmed by you.':
+    'Bada, wyjaśnia i podpowiada. Każdą zmianę potwierdzasz Ty.',
+  'Safe, reversible work you have granted runs on its own. Anything that changes business data is confirmed.':
+    'Bezpieczne, odwracalne prace, na które pozwolisz, wykonuje sam. Wszystko, co zmienia dane firmy, jest potwierdzane.',
+  'Granted work runs on its own within record limits. High-impact actions are still confirmed, always.':
+    'Dozwolone prace wykonuje sam w granicach limitu rekordów. Działania o dużym wpływie zawsze są potwierdzane.',
+  'What it may change': 'Co może zmieniać',
+  'Reprocess tickets': 'Ponowne przetwarzanie kwitów',
+  'Correct ticket fields': 'Poprawianie pól kwitów',
+  'Resolve safe exceptions': 'Rozwiązywanie bezpiecznych wyjątków',
+  'Recalculate draft invoices': 'Przeliczanie szkiców faktur',
+  'Draft rate requests and follow-ups': 'Przygotowywanie próśb o stawki i przypomnień',
+  'Reading is always on: tickets, invoices, customers, rates, mileage, IFTA and system health.':
+    'Odczyt jest zawsze włączony: kwity, faktury, klienci, stawki, przebieg, IFTA i stan systemu.',
+  'Level 3 actions (sending, finalizing, deleting) always need your confirmation and are not available in this version.':
+    'Działania poziomu 3 (wysyłka, zatwierdzanie, usuwanie) zawsze wymagają Twojego potwierdzenia i nie są dostępne w tej wersji.',
+  'Discard changes': 'Odrzuć zmiany',
+  // The runs already made, listed under the settings.
+  'Recent runs': 'Ostatnie uruchomienia',
+  'Reading the recent runs…': 'Wczytywanie ostatnich uruchomień…',
+  'Nothing has been asked yet.': 'Nic jeszcze nie zapytano.',
+  Running: 'W toku',
+  Completed: 'Zakończone',
+  'Stopped early': 'Zatrzymane wcześniej',
+  // The questions the panel offers before anything is typed.
+  'What needs attention today?': 'Co dziś wymaga uwagi?',
+  'Check last week’s billing': 'Sprawdź fakturowanie z zeszłego tygodnia',
+  'Find missing tickets': 'Znajdź brakujące kwity',
+  'Why isn’t this invoice ready?': 'Dlaczego ta faktura nie jest gotowa?',
+  'How many invoices are waiting on rates?': 'Ile faktur czeka na stawki?',
+  'Which tickets need attention?': 'Które kwity wymagają uwagi?',
+  'Check this route': 'Sprawdź tę trasę',
+  'Why is this mileage high?': 'Dlaczego ten przebieg jest tak wysoki?',
+  'Recalculate yesterday’s mileage': 'Przelicz wczorajszy przebieg',
+  'What rates are missing?': 'Jakich stawek brakuje?',
+  'Prepare the missing rate requests': 'Przygotuj brakujące prośby o stawki',
+  'Check for replies': 'Sprawdź odpowiedzi',
+  'Which customers are waiting on rates?': 'Którzy klienci czekają na stawki?',
+  'Check extraction': 'Sprawdź odczyt kwitów',
+  'Find duplicates': 'Znajdź duplikaty',
+  'What’s wrong today?': 'Co jest dziś nie tak?',
+  'Get everything possible ready for invoicing':
+    'Przygotuj do fakturowania wszystko, co się da',
 };

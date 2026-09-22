@@ -15,7 +15,9 @@ export type AiUsage = {
   requestType:
     | 'load-ticket-extraction'
     | 'rate-reply-understanding'
-    | 'rate-request-wording';
+    | 'rate-request-wording'
+    /** One turn of a Monius Operator run: a run may take several. */
+    | 'operator-turn';
   model: string;
   /** Null when the model answered without telling us what it counted. */
   inputTokens: number | null;

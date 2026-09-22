@@ -1,0 +1,591 @@
+/* ========================================================== Monius Operator */
+/* The trigger in the top bar and the drawer it opens. Built from the same
+   pieces as the rest of the dashboard — Load Desk's panels, chips, notices and
+   eyebrows, Home's surfaces, the shared segmented control — so that asking a
+   question looks like another part of the app rather than a chat window that
+   happens to be parked in it. Only what is new to the Operator lives here. */
+
+/* ------------------------------------------------------------ the trigger */
+/* A pill beside the scan progress, in the bar's own shape. It keeps the far
+   end of the bar on a desk (the account there is a phone control) and sits
+   beside the account on a phone, where the words come off and the mark alone
+   is the button. */
+[data-slot='button'].op-trigger {
+  position: relative;
+  height: auto;
+  flex: none;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-surface);
+  font-size: var(--type-xs);
+  font-weight: var(--type-medium);
+  color: var(--ui-text-2);
+  white-space: nowrap;
+}
+[data-slot='button'].op-trigger:hover {
+  border-color: var(--ui-accent);
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+[data-slot='button'].op-trigger[data-busy] {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+  color: var(--ui-accent-ink);
+}
+.op-trigger svg {
+  width: 14px;
+  height: 14px;
+}
+/* While a run is going, a dot on the corner of the mark. Nothing spins in the
+   bar: the answer lands in the panel, and this only says it is coming. */
+.op-trigger-dot {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-accent);
+  animation: op-pulse 1.4s ease-in-out infinite;
+}
+@keyframes op-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(0.7);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .op-trigger-dot {
+    animation: none;
+  }
+}
+
+/* --------------------------------------------------------------- the sheet */
+[data-slot='sheet-content'].op-sheet {
+  width: 440px;
+  max-width: 100vw;
+  gap: 0;
+  padding: 0;
+  background: var(--ui-surface);
+  color: var(--ui-text);
+}
+.op-sheet [data-slot='sheet-header'] {
+  gap: 0;
+  padding: var(--ui-space-4) var(--ui-space-5);
+}
+
+/* ------------------------------------------------------------- the header */
+.op-head {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-3);
+  border-bottom: 1px solid var(--ui-separator);
+}
+.op-head-copy {
+  min-width: 0;
+}
+.op-title {
+  overflow: hidden;
+  font-size: var(--type-md);
+  font-weight: var(--type-semibold);
+  letter-spacing: var(--type-tracking-card);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.op-head-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--ui-space-1);
+}
+.op-head-tools .ld-chip {
+  margin-right: var(--ui-space-1);
+}
+.ld-chip.op-mode[data-tone='neutral'],
+.ld-chip.op-risk[data-tone='neutral'] {
+  background: var(--ui-fill);
+  color: var(--ui-text-2);
+}
+
+/* --------------------------------------------------------------- the body */
+.op-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+  min-height: 0;
+  padding: var(--ui-space-4) var(--ui-space-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.op-foot {
+  height: 1px;
+  flex: none;
+}
+
+/* Where to start: the page's own questions, before anything is typed. */
+.op-empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+}
+.op-suggestions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.op-suggestion {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--ui-duration) var(--ui-ease),
+    background-color var(--ui-duration) var(--ui-ease);
+}
+.op-suggestion:hover:not(:disabled) {
+  border-color: var(--ui-accent-border);
+  background: var(--ui-accent-faint);
+}
+.op-suggestion:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.op-suggestion svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--ui-text-3);
+}
+
+/* ---------------------------------------------------------------- a turn */
+/* What you asked, set against the right in a quiet fill; what came back, on a
+   surface of its own with everything it found attached to it. */
+.op-you {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-fill);
+  font-size: var(--type-sm);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text);
+}
+.op-you p {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.op-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface-2);
+}
+.op-answer[data-tone='warning'] {
+  border-color: var(--ui-warning);
+  background: var(--ui-warning-soft);
+}
+.op-answer-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+  font-size: var(--type-sm);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text);
+}
+.op-answer-text p {
+  overflow-wrap: anywhere;
+}
+.op-answer-text ul {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+  list-style: disc;
+}
+.op-working {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-text-2);
+}
+.op-working svg {
+  width: 14px;
+  height: 14px;
+}
+.op-spin {
+  animation: ui-spin 1s linear infinite;
+}
+.op-skeleton {
+  display: block;
+  height: 10px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-fill);
+}
+.op-skeleton:nth-of-type(2) {
+  width: 86%;
+}
+.op-skeleton:nth-of-type(3) {
+  width: 62%;
+}
+
+/* ---------------------------------------------------------------- chips */
+/* Every thing an answer named, as something you can press. */
+.op-entities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.op-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-surface);
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+  text-decoration: none;
+  transition:
+    border-color var(--ui-duration) var(--ui-ease),
+    color var(--ui-duration) var(--ui-ease);
+}
+.op-chip:hover {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+.op-chip[data-plain='true'] {
+  background: var(--ui-fill);
+  color: var(--ui-text-2);
+}
+.op-chip[data-plain='true']:hover {
+  border-color: var(--ui-border);
+  color: var(--ui-text-2);
+}
+.op-chip svg {
+  width: 12px;
+  height: 12px;
+  color: var(--ui-text-3);
+}
+
+/* -------------------------------------------------------- what it checked */
+.op-trail {
+  border-top: 1px solid var(--ui-separator);
+  padding-top: var(--ui-space-2);
+}
+.op-trail-toggle {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: var(--type-xs);
+  font-weight: var(--type-medium);
+  color: var(--ui-text-3);
+  cursor: pointer;
+}
+.op-trail-toggle:hover {
+  color: var(--ui-accent);
+}
+.op-trail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: var(--ui-space-2);
+}
+.op-trail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-snug);
+  color: var(--ui-text-2);
+}
+.op-trail-row svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  margin-top: 1px;
+  color: var(--ui-text-3);
+}
+.op-trail-row strong {
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+/* A call the policy refused is part of the working, and is not hidden in it. */
+.op-trail-row[data-kind='denied'],
+.op-trail-row[data-kind='denied'] strong,
+.op-trail-row[data-kind='denied'] svg {
+  color: var(--ui-warning);
+}
+
+/* ------------------------------------------------------- the go-ahead card */
+.op-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-warning);
+  border-radius: var(--ui-radius-lg);
+  background: var(--ui-surface);
+}
+.op-confirm-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+}
+.op-confirm-head .ld-step {
+  margin-bottom: 0;
+}
+.op-confirm-title {
+  font-size: var(--type-md);
+  font-weight: var(--type-semibold);
+  letter-spacing: var(--type-tracking-card);
+  color: var(--ui-text);
+}
+.op-confirm-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: var(--type-sm);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text);
+}
+.op-confirm-why {
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-2);
+}
+.op-confirm-buttons {
+  display: flex;
+  gap: var(--ui-space-2);
+}
+
+/* ------------------------------------------------------------ what it did */
+.op-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+}
+.op-result-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ui-space-2);
+}
+.op-result-summary {
+  font-size: var(--type-sm);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text);
+}
+.op-result-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.op-result-group .ld-step {
+  margin-bottom: 0;
+}
+.op-result-failed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+  list-style: disc;
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-danger);
+}
+.op-result-verified {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+.ld-chip[data-tone='danger'] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+
+/* --------------------------------------------------------------- settings */
+.op-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-5);
+}
+.op-settings-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-2);
+}
+.op-modes {
+  align-self: flex-start;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.op-settings-note {
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-2);
+}
+.op-checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-space-1);
+}
+.op-check {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-height: 32px;
+  font-size: var(--type-sm);
+  color: var(--ui-text);
+  cursor: pointer;
+}
+.op-settings-buttons {
+  display: flex;
+  gap: var(--ui-space-2);
+}
+.op-runs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.op-run {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+  padding: 8px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface-2);
+  font-size: var(--type-xs);
+  color: var(--ui-text-2);
+}
+.op-run-request {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------- the box */
+/* Stuck to the foot of the drawer, so a long answer scrolls past it rather
+   than pushing it off the bottom. */
+.op-composer {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3) var(--ui-space-5) var(--ui-space-4);
+  border-top: 1px solid var(--ui-separator);
+  background: var(--ui-surface);
+}
+.op-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  /* Four lines, and then it scrolls: past that the box is the panel. */
+  max-height: 104px;
+  padding: 9px 12px;
+  border: 1px solid var(--ui-border-strong);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface-2);
+  font: inherit;
+  font-size: var(--type-sm);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text);
+  resize: none;
+  field-sizing: content;
+}
+.op-input:focus-visible {
+  border-color: var(--ui-accent);
+  outline: none;
+}
+.op-input:disabled {
+  opacity: 0.6;
+}
+[data-slot='button'].op-send {
+  height: 38px;
+  flex: none;
+}
+
+/* ------------------------------------------------------------ phone */
+@media (max-width: 767px) {
+  /* Up from the bottom, stopping above the bar along the bottom so the way
+     around the app is never covered by the drawer. The figure is the one
+     globals.css uses for that bar. */
+  [data-slot='sheet-content'].op-sheet {
+    top: 0;
+    bottom: calc(92px + env(safe-area-inset-bottom));
+    width: 100%;
+    height: auto;
+    padding-top: env(safe-area-inset-top);
+    border-top: 0;
+    border-radius: 0;
+  }
+  .op-sheet [data-slot='sheet-header'],
+  .op-body {
+    padding-inline: var(--ui-space-4);
+  }
+  .op-composer {
+    padding-inline: var(--ui-space-4);
+  }
+  /* The words come off the trigger; the mark alone opens the panel. */
+  .op-trigger-label {
+    display: none;
+  }
+  [data-slot='button'].op-trigger {
+    margin-inline-start: auto;
+    padding: 8px;
+  }
+  /* The account keeps the corner, with the trigger beside it rather than the
+     two of them sharing out the width of the bar. */
+  .topbar:has(.op-trigger) .topbar-account {
+    margin-left: var(--ui-space-2);
+  }
+  .op-send-label {
+    display: none;
+  }
+  [data-slot='button'].op-send {
+    padding-inline: 10px;
+  }
+  .op-you {
+    max-width: 92%;
+  }
+}
+
+@media (max-width: 460px) {
+  .op-confirm-buttons > [data-slot='button'],
+  .op-settings-buttons > [data-slot='button'] {
+    flex: 1;
+  }
+}
