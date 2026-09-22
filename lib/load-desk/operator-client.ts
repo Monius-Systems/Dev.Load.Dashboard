@@ -294,6 +294,54 @@ export function cancelPending() {
   });
 }
 
+/**
+ * Puts an answer the store did not ask for into the conversation.
+ *
+ * Everything else here asks a question and lands its own answer. A standing
+ * inspection is a question nobody typed — the settings view presses "Run now"
+ * and the server answers in exactly the shape a turn answers in — so it lands
+ * here, in the conversation, where the person reads every other answer. It is
+ * written as one call rather than left to the view because the conversation is
+ * this module's, and a view that published into it would be a second writer.
+ */
+export function pushResponse(response: OperatorResponse): void {
+  publish({
+    ...snapshot,
+    turns: [...snapshot.turns, answerOf(response)],
+    pending: response.pending ?? null,
+    error: null,
+    notConfigured: false,
+  });
+}
+
+/**
+ * Runs one standing inspection now, on demand, and lands its answer in the
+ * conversation. Nothing calls this on a page load or a timer: it exists so
+ * that a person can ask a question that is otherwise only asked on a rhythm.
+ * Returns the error in plain words, or null when the answer arrived.
+ */
+export async function runInspection(name: string): Promise<string | null> {
+  if (snapshot.busy) return null;
+  if ((await loadMode()) !== 'remote') return 'The Operator works on the server.';
+  publish({ ...snapshot, busy: true, error: null });
+  const result = await apiJson<OperatorResponse>('/api/operator/inspections', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+  if (!result.ok) {
+    publish({
+      ...snapshot,
+      busy: false,
+      error: result.error,
+      notConfigured: result.status === 503,
+    });
+    return result.error;
+  }
+  publish({ ...snapshot, busy: false });
+  pushResponse(result.data);
+  return null;
+}
+
 /** Starts again. Anything still in flight lands in the conversation it left. */
 export function reset() {
   generation += 1;

@@ -14,6 +14,7 @@ import {
   type PendingConfirmation,
   type RiskLevel,
   type RunStatus,
+  type RunSummary,
   type ToolImpact,
   type Verification,
   type WritePermission,
@@ -162,20 +163,10 @@ const snapshot = (value: unknown): unknown => {
 
 // -------------------------------------------------------------- run rows
 
-/** A finished run as a list shows it: no activity, no page context, no input. */
-export type RunSummary = {
-  id: string;
-  user_id: string;
-  request: string;
-  status: RunStatus;
-  started_at: string;
-  finished_at: string | null;
-  summary: string;
-  entities: EntityRef[];
-  error: string | null;
-  tool_calls: number;
-  writes: number;
-};
+// The one client-visible run shape lives in lib/operator/types.ts, beside the
+// response it is part of; it is re-exported here so a caller that reads runs
+// from this store need not know which of the two files to ask.
+export type { RunSummary };
 
 /** One run in full, as the panel reopens it. */
 export type RunDetail = RunSummary & {

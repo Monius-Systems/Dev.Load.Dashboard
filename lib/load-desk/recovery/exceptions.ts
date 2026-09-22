@@ -34,6 +34,23 @@ export type ExceptionType =
   | 'CONFLICTING_GROUP_DATA'
   | 'INDIVIDUAL_CRITICAL_FIELD';
 
+/**
+ * The union above, as a list anything that has to offer the types can walk.
+ * Typed against the union, so a type renamed there fails to compile here
+ * rather than quietly becoming a string the grouping never produces.
+ */
+export const EXCEPTION_TYPES: readonly ExceptionType[] = [
+  'NEW_CUSTOMER',
+  'NEW_LOCATION',
+  'NEW_PROJECT',
+  'NEW_CUSTOMER_PROJECT_COMBINATION',
+  'AMBIGUOUS_LOCATION',
+  'AMBIGUOUS_CUSTOMER',
+  'CLIPPED_TEXT_RECOVERABLE',
+  'CONFLICTING_GROUP_DATA',
+  'INDIVIDUAL_CRITICAL_FIELD',
+];
+
 /** What the group screen asks for, by type. */
 export type Ask = 'customer_name' | 'project_name' | 'project_address' | keyof Ticket;
 

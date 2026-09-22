@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/toast';
 import { useT } from '@/lib/i18n/use-t';
 import {
   loadRuns,
+  runInspection,
   saveSettings,
   type OperatorSnapshot,
 } from '@/lib/load-desk/operator-client';
@@ -37,6 +38,25 @@ const RUN_TONES: Record<string, 'good' | 'warning' | undefined> = {
   limited: 'warning',
 };
 
+/**
+ * The standing questions, as this view lists them: the name the server knows
+ * each one by, what to call it, and how often it is meant to be asked.
+ *
+ * The questions themselves are the server's — lib/server/operator/inspections
+ * holds the wording, and the route refuses a name it does not know — so what
+ * is repeated here is only what a person reads. Nothing asks any of them on a
+ * rhythm yet: this deployment has no scheduler, and "Run now" is the only
+ * thing that runs one.
+ */
+const INSPECTIONS: { name: string; label: string; cadence: string }[] = [
+  { name: 'morning_operations', label: 'Morning operations', cadence: 'Daily' },
+  { name: 'billing_readiness', label: 'Billing readiness', cadence: 'Daily' },
+  { name: 'end_of_day_tickets', label: 'End-of-day tickets', cadence: 'Daily' },
+  { name: 'weekly_rates', label: 'Weekly rates', cadence: 'Weekly' },
+  { name: 'ifta_completeness', label: 'IFTA completeness', cadence: 'Quarterly' },
+  { name: 'invoice_exceptions', label: 'Invoice exceptions', cadence: 'Weekly' },
+];
+
 const RUN_STATUS: Record<string, string> = {
   running: 'Running',
   completed: 'Completed',
@@ -53,6 +73,8 @@ export default function OperatorSettings({ snapshot }: { snapshot: OperatorSnaps
     autonomy: AutonomyMode;
     granted: WritePermission[];
   } | null>(null);
+  /** The inspection being run by hand, if one is; only one goes at a time. */
+  const [running, setRunning] = useState<string | null>(null);
 
   // The runs list is read when this view opens and never again: it is a record
   // of what has happened, not a thing that needs watching.
@@ -96,6 +118,23 @@ export default function OperatorSettings({ snapshot }: { snapshot: OperatorSnaps
     if (!saved) return;
     setDraft(null);
     toast.add({ title: t('Operator settings saved'), type: 'success' });
+  }
+
+  /**
+   * Asks one standing question now. The answer lands in the conversation
+   * rather than here, because it is an answer like any other and belongs where
+   * a person reads answers; the toast is only to say where it went.
+   */
+  async function inspect(name: string, label: string) {
+    if (running || snapshot.busy) return;
+    setRunning(name);
+    const error = await runInspection(name);
+    setRunning(null);
+    toast.add({
+      title: error ? t('Could not run {inspection}', { inspection: t(label) }) : t('{inspection} is in the conversation', { inspection: t(label) }),
+      description: error ? t(error) : undefined,
+      type: error ? 'error' : 'success',
+    });
   }
 
   return (
@@ -175,6 +214,31 @@ export default function OperatorSettings({ snapshot }: { snapshot: OperatorSnaps
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="op-settings-block">
+        <p className="ld-step">{t('Inspections')}</p>
+        <ul className="op-runs op-inspections">
+          {INSPECTIONS.map((inspection) => (
+            <li key={inspection.name} className="op-run">
+              <span className="op-run-request">
+                {t(inspection.label)}
+                <span className="ld-chip">{t(inspection.cadence)}</span>
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={running !== null || snapshot.busy}
+                onClick={() => void inspect(inspection.name, inspection.label)}
+              >
+                {running === inspection.name ? t('Working…') : t('Run now')}
+              </Button>
+            </li>
+          ))}
+        </ul>
+        <p className="op-settings-note">
+          {t('These are the standing questions. Nothing asks them on a schedule yet — pressing Run now asks one, and the answer arrives in the conversation.')}
+        </p>
       </section>
     </div>
   );

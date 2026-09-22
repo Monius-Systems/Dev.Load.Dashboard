@@ -1344,4 +1344,45 @@ export const PL_PAGES: Record<string, string> = {
   'What’s wrong today?': 'Co jest dziś nie tak?',
   'Get everything possible ready for invoicing':
     'Przygotuj do fakturowania wszystko, co się da',
+  // The questions offered about the thing a page opened the panel on.
+  'Check the rates on this invoice': 'Sprawdź stawki na tej fakturze',
+  'Check the tickets on this invoice': 'Sprawdź kwity na tej fakturze',
+  'Recalculate this invoice': 'Przelicz tę fakturę',
+  'Check this ticket’s extraction': 'Sprawdź odczyt tego kwitu',
+  'Is this ticket a duplicate?': 'Czy ten kwit to duplikat?',
+  'Which invoice is this on?': 'Na której fakturze to jest?',
+  'What rates are missing for this customer?': 'Jakich stawek brakuje dla tego klienta?',
+  'Prepare a rate request for this customer': 'Przygotuj prośbę o stawkę dla tego klienta',
+  'Show this customer’s recent activity': 'Pokaż ostatnią aktywność tego klienta',
+  'Recalculate this day': 'Przelicz ten dzień',
+  'Has the customer replied?': 'Czy klient odpowiedział?',
+  'Draft a follow-up': 'Przygotuj przypomnienie',
+  'Check this truck’s mileage this week': 'Sprawdź przebieg tej ciężarówki w tym tygodniu',
+  // "Ask Monius" where it sits on the thing itself: an invoice, a ticket, a
+  // customer, a truck's day, a rate request, the list of what needs attention.
+  'Ask Monius about invoice {number}': 'Zapytaj Monius o fakturę {number}',
+  'Ask Monius about ticket {number}': 'Zapytaj Monius o kwit {number}',
+  'Ask Monius about {name}': 'Zapytaj Monius o {name}',
+  'Ask Monius about truck {number} on {date}':
+    'Zapytaj Monius o ciężarówkę {number} w dniu {date}',
+  'Ask Monius about the request to {customer}': 'Zapytaj Monius o prośbę do {customer}',
+  'Ask Monius what needs attention today': 'Zapytaj Monius, co dziś wymaga uwagi',
+  // The standing questions, and the one button that asks one now.
+  Inspections: 'Przeglądy',
+  'Run now': 'Uruchom teraz',
+  Daily: 'Codziennie',
+  Weekly: 'Co tydzień',
+  Quarterly: 'Co kwartał',
+  'Morning operations': 'Poranny przegląd operacji',
+  'Billing readiness': 'Gotowość do fakturowania',
+  'End-of-day tickets': 'Kwity na koniec dnia',
+  'Weekly rates': 'Tygodniowy przegląd stawek',
+  'IFTA completeness': 'Kompletność IFTA',
+  'Invoice exceptions': 'Wyjątki na fakturach',
+  '{inspection} is in the conversation': '{inspection} jest w rozmowie',
+  'Could not run {inspection}': 'Nie udało się uruchomić: {inspection}',
+  'These are the standing questions. Nothing asks them on a schedule yet — pressing Run now asks one, and the answer arrives in the conversation.':
+    'To są stałe pytania. Nic nie zadaje ich jeszcze według harmonogramu — naciśnięcie „Uruchom teraz” zadaje jedno, a odpowiedź pojawia się w rozmowie.',
+  'The Operator works on the server.': 'Operator działa na serwerze.',
+  'Unknown inspection.': 'Nieznany przegląd.',
 };

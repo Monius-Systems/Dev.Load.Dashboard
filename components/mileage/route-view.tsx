@@ -2,6 +2,7 @@
 
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import AskMonius from '@/components/operator/ask-monius';
 import { DayStatus, longDate, type DayHeadline } from '@/components/mileage/day-card';
 import NeedsHelp from '@/components/mileage/needs-help';
 import RouteChoice from '@/components/mileage/route-choice';
@@ -26,6 +27,7 @@ import {
   type RouteStop,
 } from '@/lib/load-desk/route-geometry';
 import type { SavedRecord } from '@/lib/load-desk/types';
+import { mileageDayRef } from '@/lib/operator/entities';
 
 // One day's route, in the order the truck drove it: the three figures that
 // answer "how far", whatever the day needs a person for, the drawing of the
@@ -155,12 +157,25 @@ export default function RouteView({
             {t('Truck {number} · {date}', { number: truck.truck_number, date: when })}
           </h2>
         </div>
-        {phone ? (
-          <Button variant="secondary" className="mileage-back" onClick={onBack}>
-            <ArrowLeft />
-            {t('Back to all trucks')}
-          </Button>
-        ) : null}
+        <div className="pf-actions">
+          {/* The Operator, on this one day: the panel opens knowing which
+              truck and which date, so "why is this mileage high?" is about
+              the route on the screen and not about mileage in general. */}
+          <AskMonius
+            variant="secondary"
+            entity={mileageDayRef(String(truck.id), day.date, truck.truck_number)}
+            label={t('Ask Monius about truck {number} on {date}', {
+              number: truck.truck_number,
+              date: when,
+            })}
+          />
+          {phone ? (
+            <Button variant="secondary" className="mileage-back" onClick={onBack}>
+              <ArrowLeft />
+              {t('Back to all trucks')}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       <dl className="mileage-facts">

@@ -3,6 +3,7 @@
 import {
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -48,6 +49,7 @@ import { toast } from '@/components/ui/toast';
 import InvoiceDialog, {
   type InvoiceView,
 } from '@/components/load-desk/invoice-dialog';
+import AskMonius from '@/components/operator/ask-monius';
 import { useProfiles, useRecords } from '@/components/profiles/profile-ui';
 import type { Translator } from '@/lib/i18n/translate';
 import { useT } from '@/lib/i18n/use-t';
@@ -67,6 +69,7 @@ import {
 } from '@/lib/load-desk/profiles';
 import {
   invoiceGroups,
+  invoiceKey,
   invoiceLines,
   invoicesCsv,
   isPendingInvoiceNumber,
@@ -98,11 +101,35 @@ import {
   openStoredOriginal,
 } from '@/lib/load-desk/storage';
 import type { SavedRecord } from '@/lib/load-desk/types';
+import { clearDeepLink, readDeepLink } from '@/lib/operator/deep-links';
+import { invoiceRef, ticketRef } from '@/lib/operator/entities';
 
 // The rate agent's rows, as this page reads them: the periods an invoice is
 // priced from and the invoices already closed against them.
 const useRates = () =>
   useSyncExternalStore(subscribeRates, getRatesSnapshot, getServerRatesSnapshot);
+
+// The address is the one thing on this page the page does not own: the
+// Operator links to /records?invoice=… for an invoice it named and
+// /records?ticket=… for a ticket. Read as any other outside source is, so that
+// following a link opens the thing without a render setting state.
+const subscribeSearch = (listener: () => void) => {
+  window.addEventListener('popstate', listener);
+  return () => window.removeEventListener('popstate', listener);
+};
+const getSearch = () => window.location.search;
+const getServerSearch = () => '';
+
+/**
+ * Takes a deep link out of the address once the page has done what it asked.
+ * A link is an instruction, not a place: having opened the invoice it named,
+ * a refresh should leave the page as the person left it. The popstate is the
+ * page telling itself the address moved, which replaceState does not do.
+ */
+function forget(param: string) {
+  window.history.replaceState(null, '', clearDeepLink(param, window.location.href));
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
 
 const DAY_MS = 86_400_000;
 /** As far back as the Rates page offers, so the invoices on screen are covered. */
@@ -249,7 +276,12 @@ export default function RecordsPage() {
   const tr = useT();
   const { t, plural, date } = tr;
   const fieldId = useId();
-  const [tab, setTab] = useState<Tab>('invoices');
+  const search = useSyncExternalStore(subscribeSearch, getSearch, getServerSearch);
+  /** What the address asks this page to open, strictly read; {} when nothing. */
+  const link = useMemo(() => readDeepLink(search), [search]);
+  /** The tab a person chose; null lets a link for a ticket choose it instead. */
+  const [chosenTab, setTab] = useState<Tab | null>(null);
+  const tab: Tab = chosenTab ?? (link.ticket === undefined ? 'invoices' : 'tickets');
   const [query, setQuery] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -260,7 +292,13 @@ export default function RecordsPage() {
   // reach the thing it came for. They fold away there; on a screen with room
   // the CSS shows them regardless and this does nothing.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
+  /**
+   * The invoice dialog as a person left it: undefined until they open or close
+   * one themselves, after which it is theirs and a link no longer decides.
+   */
+  const [typedInvoice, setInvoiceView] = useState<InvoiceView | null | undefined>(
+    undefined,
+  );
   const [toDelete, setToDelete] = useState<SavedRecord | null>(null);
   const [toFinalize, setToFinalize] = useState<InvoiceGroup | null>(null);
   const [toUnlock, setToUnlock] = useState<InvoiceGroup | null>(null);
@@ -289,6 +327,16 @@ export default function RecordsPage() {
     askedForRates.current = true;
     void loadRates(ratesRange(now));
   }, [ready, mode, rates.ready, rates.range, now]);
+
+  // A ticket a link asked for is somewhere down a long list, so the page goes
+  // to it once the tickets are in. Reading only: the row is already rendered
+  // and already marked, and this moves the window rather than the page.
+  useEffect(() => {
+    if (link.ticket === undefined || !ready) return;
+    document
+      .getElementById(`${fieldId}-ticket-${link.ticket}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [link.ticket, ready, fieldId]);
 
   const ticketNumber = (record: SavedRecord) =>
     record.ticket.ticket_number ?? t('unnumbered');
@@ -388,7 +436,12 @@ export default function RecordsPage() {
     setStatus('all');
   }
 
-  const invoiceOpen = (key: string) => flippedInvoices.has(key) !== filtersActive;
+  // An invoice a link asked a ticket of is open to begin with, whichever way
+  // the page is folded — and stays open on its own terms the moment somebody
+  // presses it, because pressing it puts the key in the flipped set.
+  const invoiceOpen = (key: string) =>
+    flippedInvoices.has(key) !== filtersActive ||
+    (key === askedTicketInvoice && !flippedInvoices.has(key));
   /**
    * Opens or closes an invoice. A press with the pointer lets go of the button
    * afterwards: the browser may otherwise leave its focus ring drawn round the
@@ -398,6 +451,8 @@ export default function RecordsPage() {
    */
   const toggleInvoice = (key: string, event?: MouseEvent<HTMLButtonElement>) => {
     if (event?.detail) event.currentTarget.blur();
+    // Folding an invoice by hand is the page being taken over from the link.
+    if (link.ticket !== undefined) forget('ticket');
     setFlippedInvoices((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
@@ -417,11 +472,37 @@ export default function RecordsPage() {
 
   const openInvoice = (invoiceNumber: string, invoice = invoiceLines(records, invoiceNumber)[0]?.invoice) => {
     if (!invoice) return;
+    // A person opening an invoice themselves takes the dialog over from any
+    // link that opened one, so the link has nothing left to say.
+    if (link.invoice !== undefined) forget('invoice');
     setInvoiceView({
       lines: invoiceLines(records, invoiceNumber),
       invoice,
     });
   };
+
+  /**
+   * The invoice a link asks for, matched on the same key the Operator built
+   * its link from — the invoice number, trimmed and folded to lower case — so
+   * a number typed with different spacing still lands on the right invoice.
+   */
+  const askedInvoice = link.invoice === undefined ? undefined : invoiceKey(link.invoice);
+  const linkedInvoice =
+    askedInvoice === undefined
+      ? null
+      : (groups.find((group) => group.key === askedInvoice) ?? null);
+  const invoiceView =
+    typedInvoice === undefined
+      ? linkedInvoice
+        ? { lines: linkedInvoice.records, invoice: linkedInvoice.invoice }
+        : null
+      : typedInvoice;
+
+  /** The ticket a link asks for, and the invoice it sits under on the Tickets tab. */
+  const askedTicket = records.find((record) => record.id === link.ticket) ?? null;
+  const askedTicketInvoice = askedTicket
+    ? invoiceKey(askedTicket.invoice.invoice_number)
+    : null;
 
   async function openOriginal(record: SavedRecord) {
     try {
@@ -547,6 +628,14 @@ export default function RecordsPage() {
             {t('Finalize')}
           </Button>
         )}
+        {/* The Operator, on this invoice: the panel opens knowing which one,
+            so "why isn't this ready?" needs no number typing out. */}
+        <AskMonius
+          entity={invoiceRef(group.key, invoiceName(tr, group))}
+          label={t('Ask Monius about invoice {number}', {
+            number: invoiceName(tr, group),
+          })}
+        />
       </div>
     );
   };
@@ -593,6 +682,14 @@ export default function RecordsPage() {
       >
         <Trash2 />
       </Button>
+      <AskMonius
+        size="icon-sm"
+        entity={ticketRef(
+          String(record.id),
+          t('Ticket {number}', { number: ticketNumber(record) }),
+        )}
+        label={t('Ask Monius about ticket {number}', { number: ticketNumber(record) })}
+      />
     </div>
   );
 
@@ -1065,7 +1162,11 @@ export default function RecordsPage() {
                       </tr>
                     ) : null}
                     {open ? group.records.map((record) => (
-                      <tr key={record.id}>
+                      <tr
+                        key={record.id}
+                        id={`${fieldId}-ticket-${record.id}`}
+                        data-linked={record.id === link.ticket || undefined}
+                      >
                         <th scope="row" className="pf-name">
                           <strong>
                             {record.ticket.ticket_number ?? t('Unnumbered')}
@@ -1194,7 +1295,13 @@ export default function RecordsPage() {
       </div>
 
 
-      <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />
+      <InvoiceDialog
+        view={invoiceView}
+        onClose={() => {
+          if (link.invoice !== undefined) forget('invoice');
+          setInvoiceView(null);
+        }}
+      />
 
       <AlertDialog
         open={toFinalize !== null}

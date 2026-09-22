@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   applyGroupAnswer,
+  EXCEPTION_TYPES,
   groupExceptions,
   membersOf,
   type ExceptionGroup,
@@ -68,23 +69,6 @@ import {
 // a person's, which would set `reviewed_at`; every edit leaving this file
 // carries `bookkeeping`, so the human marks stay a human's. The Operator can
 // settle what a ticket says; it cannot say that somebody looked at it.
-
-/**
- * The union in recovery/exceptions.ts, as a list the model can be offered.
- * Typed against the union, so a type renamed there fails to compile here
- * rather than quietly becoming a string the grouping never produces.
- */
-const EXCEPTION_TYPES: readonly ExceptionType[] = [
-  'NEW_CUSTOMER',
-  'NEW_LOCATION',
-  'NEW_PROJECT',
-  'NEW_CUSTOMER_PROJECT_COMBINATION',
-  'AMBIGUOUS_LOCATION',
-  'AMBIGUOUS_CUSTOMER',
-  'CLIPPED_TEXT_RECOVERABLE',
-  'CONFLICTING_GROUP_DATA',
-  'INDIVIDUAL_CRITICAL_FIELD',
-];
 
 /** The most tickets one answer may settle. */
 const MAX_TICKETS = 25;

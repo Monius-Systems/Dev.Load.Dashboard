@@ -1,6 +1,13 @@
 'use client';
 
-import { useId, useState, type SyntheticEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type SyntheticEvent,
+} from 'react';
 import { Mail, MapPin, Pencil, Plus, ScanLine, StickyNote, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import {
   AlertDialog,
@@ -23,6 +30,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { SelectField } from '@/components/ui/select-field';
 import { toast } from '@/components/ui/toast';
+import AskMonius from '@/components/operator/ask-monius';
 import ClientsSection from '@/components/profiles/clients-section';
 import CustomerLoadsChart from '@/components/profiles/customer-loads-chart';
 import {
@@ -57,7 +65,7 @@ import {
   type CustomerProfile,
   type LocationRate,
 } from '@/lib/load-desk/profiles';
-import { BASE_RATE_TYPES, MAX_CONTACTS, type JobAlias } from '@/lib/load-desk/rates';
+import { BASE_RATE_TYPES, jobKeyOf, MAX_CONTACTS, type JobAlias } from '@/lib/load-desk/rates';
 import {
   aliasLabel,
   BASE_BEHAVIOR_LABELS,
@@ -86,6 +94,8 @@ import {
   type RateType,
   type SavedRecord,
 } from '@/lib/load-desk/types';
+import { clearDeepLink, readDeepLink } from '@/lib/operator/deep-links';
+import { customerRef } from '@/lib/operator/entities';
 
 /** " + $20.00 fuel" or " + 15% fuel"; empty without a fuel charge. */
 const fuelText = ({ t }: Translator, site: LocationRate) =>
@@ -241,6 +251,29 @@ function matchDescription({ t, plural }: Translator, customer: CustomerProfile) 
   return parts.length ? parts.join(' · ') : t('Matches by profile name');
 }
 
+// The address is the one thing on this page the page does not own: the
+// Operator links to /customers?customer=… for a customer it named, and to
+// /customers?job=… for the job a rate is missing on. Read as any other outside
+// source is, so that following a link opens the customer's form without a
+// render setting state.
+const subscribeSearch = (listener: () => void) => {
+  window.addEventListener('popstate', listener);
+  return () => window.removeEventListener('popstate', listener);
+};
+const getSearch = () => window.location.search;
+const getServerSearch = () => '';
+
+/**
+ * Takes a deep link out of the address once the page has acted on it, so a
+ * refresh leaves the page where the person left it rather than opening the
+ * same form again. The popstate is the page telling itself the address moved,
+ * which replaceState does not do.
+ */
+function forget(param: string) {
+  window.history.replaceState(null, '', clearDeepLink(param, window.location.href));
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
+
 export default function CustomersPage() {
   const { records, ready: recordsReady } = useRecords();
   const profiles = useProfiles();
@@ -248,7 +281,8 @@ export default function CustomersPage() {
   const tr = useT();
   const { t, plural, date } = tr;
   const [now] = useState(() => new Date());
-  const [draft, setDraft] = useState<Draft | null>(null);
+  /** The form as typed; null once a person closes it, undefined until then. */
+  const [typed, setTyped] = useState<Draft | null | undefined>(undefined);
   const [formError, setFormError] = useState<string | null>(null);
   const [toDelete, setToDelete] = useState<CustomerProfile | null>(null);
   const [saving, setSaving] = useState(false);
@@ -257,6 +291,27 @@ export default function CustomersPage() {
   // The job-site address being typed into this customer's list.
   const [addressDraft, setAddressDraft] = useState('');
   const fieldId = useId();
+  const search = useSyncExternalStore(subscribeSearch, getSearch, getServerSearch);
+  /** What the address asks this page to open, strictly read; {} when nothing. */
+  const link = useMemo(() => readDeepLink(search), [search]);
+
+  // The customer a link asks for: by id, or by the job whose delivery address
+  // it names, compared the way every address in the app is compared. Until a
+  // person opens or closes a form themselves the link decides; after that the
+  // form is theirs and following the same link again leaves it shut.
+  const linkedCustomer =
+    link.customer === undefined
+      ? null
+      : (customers.find((customer) => customer.id === link.customer) ?? null);
+  const askedJob = link.job === undefined ? null : jobKeyOf(link.job);
+  const linkedJobCustomer =
+    askedJob === null
+      ? null
+      : (customers.find((customer) =>
+          (customer.addresses ?? []).some((address) => jobKeyOf(address) === askedJob),
+        ) ?? null);
+  const draft = typed === undefined ? (linkedCustomer ? draftFrom(linkedCustomer) : null) : typed;
+
   const rateUnit = (type: RateType | null | undefined) => t(RATE_UNITS[type ?? 'flat']);
 
   const byCustomer = new Map<number | null, SavedRecord[]>();
@@ -308,11 +363,32 @@ export default function CustomersPage() {
     return [...found.values()];
   })();
 
+  // A customer a link named by its job is somewhere down the list, so the page
+  // goes to it once the profiles are in. Reading only: the row is already
+  // rendered and already marked, and this moves the window rather than the
+  // page. Whichever of the table and the cards this width is showing answers;
+  // the other is not laid out and scrolling to it does nothing.
+  const linkedJobId = linkedJobCustomer?.id ?? null;
+  useEffect(() => {
+    if (linkedJobId === null || !profiles.ready) return;
+    const go = { behavior: 'smooth', block: 'center' } as const;
+    document.getElementById(`${fieldId}-customer-${linkedJobId}`)?.scrollIntoView(go);
+    document.getElementById(`${fieldId}-customer-card-${linkedJobId}`)?.scrollIntoView(go);
+  }, [linkedJobId, profiles.ready, fieldId]);
+
   const edit = (next: Draft) => {
     setFormError(null);
     setAliasDraft('');
     setAddressDraft('');
-    setDraft(next);
+    // A person opening a form themselves takes the page over from the link.
+    if (link.customer !== undefined) forget('customer');
+    setTyped(next);
+  };
+
+  /** Shuts the form, and with it any link that opened one. */
+  const close = () => {
+    if (link.customer !== undefined) forget('customer');
+    setTyped(null);
   };
 
   async function save(event: SyntheticEvent<HTMLFormElement>) {
@@ -401,7 +477,7 @@ export default function CustomersPage() {
       setFormError(error);
       return;
     }
-    setDraft(null);
+    close();
     toast.add({
       title: existing ? t('Updated {name}', { name }) : t('Added {name}', { name }),
       description: locationRates.length
@@ -425,7 +501,10 @@ export default function CustomersPage() {
   }
 
   const setDraftField = (patch: Partial<Draft>) =>
-    setDraft((current) => (current ? { ...current, ...patch } : current));
+    setTyped((current) => {
+      const base = current ?? draft;
+      return base ? { ...base, ...patch } : base;
+    });
 
   /** Keeps a printed name, ignoring one that is already on the list. */
   const addAlias = () => {
@@ -507,6 +586,13 @@ export default function CustomersPage() {
       >
         <Trash2 />
       </Button>
+      {/* The Operator, on this customer: the panel opens knowing which one,
+          so "what rates are missing?" is about them and not about everybody. */}
+      <AskMonius
+        size="icon-sm"
+        entity={customerRef(String(customer.id), customer.name)}
+        label={t('Ask Monius about {name}', { name: customer.name })}
+      />
     </div>
   );
 
@@ -595,7 +681,12 @@ export default function CustomersPage() {
                 </thead>
                 <tbody>
                   {rows.map(({ customer, summary }) => (
-                    <tr key={customer.id}>
+                    <tr
+                      key={customer.id}
+                      id={`${fieldId}-customer-${customer.id}`}
+                      data-linked={customer.id === linkedJobCustomer?.id || undefined}
+                      aria-current={customer.id === linkedJobCustomer?.id ? true : undefined}
+                    >
                       <th scope="row" className="pf-name">
                         <strong>
                           {customer.name}
@@ -636,7 +727,13 @@ export default function CustomersPage() {
             </div>
             <ul className="pf-cards">
               {rows.map(({ customer, summary }) => (
-                <li key={customer.id} className="pf-card">
+                <li
+                  key={customer.id}
+                  className="pf-card"
+                  id={`${fieldId}-customer-card-${customer.id}`}
+                  data-linked={customer.id === linkedJobCustomer?.id || undefined}
+                  aria-current={customer.id === linkedJobCustomer?.id ? true : undefined}
+                >
                   <div className="pf-card-head">
                     <div>
                       <strong>
@@ -729,7 +826,7 @@ export default function CustomersPage() {
       <Dialog
         open={draft !== null}
         onOpenChange={(open) => {
-          if (!open) setDraft(null);
+          if (!open) close();
         }}
       >
         <DialogContent className="sm:max-w-xl">

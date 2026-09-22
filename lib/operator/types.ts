@@ -289,6 +289,26 @@ export type ActivityItem = {
   summary: string;
 };
 
+/**
+ * A finished run as a list shows it: no activity, no page context, no input,
+ * and never a word of what the model thought on the way. The panel's run list
+ * and the server's store agree on this one shape, which is why it lives here
+ * rather than beside the queries that read it.
+ */
+export type RunSummary = {
+  id: string;
+  user_id: string;
+  request: string;
+  status: RunStatus;
+  started_at: string;
+  finished_at: string | null;
+  summary: string;
+  entities: EntityRef[];
+  error: string | null;
+  tool_calls: number;
+  writes: number;
+};
+
 /** A write the run wanted but policy said a person must confirm first. */
 export type PendingConfirmation = {
   id: string;

@@ -19,6 +19,7 @@ import InvoiceDialog, {
   type InvoiceView,
 } from '@/components/load-desk/invoice-dialog';
 import LoadsChart from '@/components/home/loads-chart';
+import AskMonius from '@/components/operator/ask-monius';
 import { useProfiles, useRecords } from '@/components/profiles/profile-ui';
 import { useIsPhone } from '@/hooks/use-phone';
 import { requestScanner } from '@/lib/scanner/hand-off';
@@ -482,6 +483,14 @@ export default function HomePage() {
                     <p className="ld-step">{t('To do')}</p>
                     <h2 id="hm-attention-title">{t('Needs Attention')}</h2>
                   </div>
+                  {/* The list says what is wrong; the Operator is where a
+                      person asks why, and it opens on this page already
+                      holding the question the panel would have offered. */}
+                  <AskMonius
+                    variant="secondary"
+                    ask="What needs attention today?"
+                    label={t('Ask Monius what needs attention today')}
+                  />
                 </div>
                 {attention.length ? (
                   <ul className="hm-attention">

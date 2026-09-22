@@ -1,27 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { CustomerProfile } from '@/lib/load-desk/profiles';
-import {
-  billingPeriodFor,
-  missingRates,
-  periodLabel,
-  planRequests,
-  remainingItems,
-  requestWording,
-  type RateContact,
-  type RateRequest,
-  type RequestPlan,
-} from '@/lib/load-desk/rates';
 import type { EntityRef, ToolImpact, ToolResult } from '@/lib/operator/types';
-import { listProfiles, listRecordsBetween } from '@/lib/server/load-desk-store';
-import { rateProfileOf } from '@/lib/server/rates-engine';
+import { listProfiles } from '@/lib/server/load-desk-store';
 import {
-  appendEvent,
-  getRequest,
-  insertRequest,
-  listPeriods,
-  listRequests,
-  updateRequest,
-} from '@/lib/server/rates-store';
+  createRequestDrafts,
+  followUpDraft,
+  planDraftableRequests,
+  planFollowUp,
+  type DraftablePlan,
+  type SkippedCustomer,
+} from '@/lib/server/rate-requests';
+import { getRequest, listPeriods, listRequests } from '@/lib/server/rates-store';
 import { customerRef, rateRequestRef } from './refs';
 import {
   defineAction,
@@ -40,19 +28,19 @@ import {
 
 // Asking a customer for a rate — as a draft, and only ever as a draft.
 //
-// Both tools mirror the routes the Rates page already posts to, and they mirror
-// them deliberately: the same gaps, the same wording, the same skip rules, the
-// same line in the trail. What is asked and of whom is worked out from the
-// tickets by `missingRates` and `planRequests`; the wording is
-// `requestWording`'s, which is fixed, so the same gap produces the same email
-// however it was asked for.
+// Both tools ask lib/server/rate-requests.ts, which is the same module the
+// Rates page's own generate and follow-up routes ask: the same gaps, the same
+// wording, the same skip rules, the same line in the trail. That is deliberate,
+// and it is why the rules are not written down here — a skip rule with two
+// copies is a customer emailed twice about a week they already answered.
 //
-// Two deliberate differences from the routes, both narrowing:
+// Two deliberate differences from the routes, both narrowing, and both passed
+// to that module rather than decided again here:
 //
 // The model is never asked to rephrase the body. The route lets `naturalBody`
 // make the wording more natural when a key is configured; an agent drafting on
-// its own behalf should produce the deterministic text, so that what a person
-// reads before sending is exactly what the rules wrote.
+// its own behalf produces the deterministic text, so that what a person reads
+// before sending is exactly what the rules wrote.
 //
 // The request is created DRAFT_ONLY, whatever the customer's own send mode
 // allows. The route caps the customer's mode against the deployment's; here
@@ -62,17 +50,8 @@ import {
 // Nothing in this file sends, marks sent, or touches a thread. There is no
 // mail adapter on this deployment at all, and this is not the place to want one.
 
-/** A request that is still in play: asking again would be asking twice. */
-const OPEN_STATUSES = new Set(['CLOSED', 'FAILED']);
-
 /** The most customers one call drafts for. */
 const MAX_DRAFTS = 5;
-
-/** The contact a customer's rate email goes to: the main one, else the first. */
-const contactFor = (customer: CustomerProfile | undefined): RateContact | null => {
-  const contacts = customer?.rate_contacts ?? [];
-  return contacts.find((contact) => contact.primary) ?? contacts[0] ?? null;
-};
 
 // -------------------------------------------------- create_rate_request_draft
 
@@ -82,21 +61,22 @@ export type RateDraftInput = {
   to: string | null;
 };
 
-type Draftable = { plan: RequestPlan; customer: CustomerProfile; label: string };
-
 type DraftLoad = {
-  draftable: Draftable[];
-  skipped: { customer: CustomerProfile; reason: string }[];
+  draftable: DraftablePlan[];
+  skipped: SkippedCustomer[];
   overflow: number;
   blockers: string[];
 };
 
 /**
- * Who has an outstanding rate and no request already asking for it.
+ * Who has an outstanding rate and no request already asking for it, as far as
+ * one call of this tool will go.
  *
- * Each customer is asked about its own billing period unless a window was
- * named: a monthly customer must not be emailed about a week. That is the
- * generate route's rule, and the windows are worked out the same way here.
+ * The plan is the drafting service's; what this adds is the agent's own cap and
+ * the refusals it owes the model — a customer asked for by name and skipped is
+ * a refusal with a reason, where the same customer skipped in a sweep is simply
+ * not drafted for. The service reads each billing period narrowly rather than
+ * scanning the workspace, which is the same question asked of fewer rows.
  */
 async function load(
   client: SupabaseClient,
@@ -104,72 +84,34 @@ async function load(
   input: RateDraftInput,
   now: Date,
 ): Promise<DraftLoad> {
-  const blockers: string[] = [];
-  const [profiles, periods] = await Promise.all([
+  const [profiles, periods, existing] = await Promise.all([
     listProfiles(client, workspace),
     listPeriods(client, workspace),
+    listRequests(client, workspace),
   ]);
-  const customers = profiles.customers.filter(
-    (customer) => input.customer_id === null || customer.id === input.customer_id,
+  const planned = await planDraftableRequests(
+    client,
+    workspace,
+    null,
+    profiles.customers,
+    periods,
+    existing,
+    { customerId: input.customer_id, from: input.from, to: input.to, now },
   );
-  if (input.customer_id !== null && !customers.length) {
+  if (planned.unknownCustomer) {
     return { draftable: [], skipped: [], overflow: 0, blockers: ['That customer no longer exists.'] };
   }
-  const windows = new Map<string, { from: string; to: string; ids: Set<number> }>();
-  for (const customer of customers) {
-    const period =
-      input.from && input.to
-        ? { from: input.from, to: input.to }
-        : billingPeriodFor(rateProfileOf(customer), now);
-    const key = `${period.from}|${period.to}`;
-    const known = windows.get(key) ?? { ...period, ids: new Set<number>() };
-    known.ids.add(customer.id);
-    windows.set(key, known);
+  const blockers: string[] = [];
+  if (input.customer_id !== null && !planned.draftable.length && planned.skipped.length) {
+    blockers.push(planned.skipped[0].reason);
   }
-  const plans: RequestPlan[] = [];
-  for (const period of windows.values()) {
-    // Bounded where the route reads the workspace: `missingRates` only looks
-    // at the window, so the window is what is read.
-    const records = await listRecordsBetween(client, workspace, period.from, period.to, 500);
-    const needs = missingRates(records, customers, periods, period.from, period.to).filter(
-      (need) => period.ids.has(need.customer_profile_id),
-    );
-    plans.push(...planRequests(needs, period.from, period.to));
-  }
-  const existing = await listRequests(client, workspace);
-  const draftable: Draftable[] = [];
-  const skipped: { customer: CustomerProfile; reason: string }[] = [];
-  for (const plan of plans) {
-    const customer = customers.find(({ id }) => id === plan.customer_profile_id);
-    if (!customer) continue;
-    if (!rateProfileOf(customer).auto_create) {
-      skipped.push({ customer, reason: 'Rate requests are turned off for this customer.' });
-      continue;
-    }
-    const open = existing.some(
-      (entry) =>
-        entry.customer_profile_id === customer.id &&
-        entry.period_from === plan.period_from &&
-        !OPEN_STATUSES.has(entry.status),
-    );
-    if (open) {
-      skipped.push({ customer, reason: 'A request for this period already exists.' });
-      continue;
-    }
-    draftable.push({ plan, customer, label: periodLabel(plan.period_from, plan.period_to) });
-  }
-  // A customer the request was asked for by name, and skipped, is a refusal
-  // with a reason; a customer skipped in a sweep is just not drafted for.
-  if (input.customer_id !== null && !draftable.length && skipped.length) {
-    blockers.push(skipped[0].reason);
-  }
-  if (!draftable.length && !skipped.length && !blockers.length) {
+  if (!planned.draftable.length && !planned.skipped.length && !blockers.length) {
     blockers.push('Every rate for that period is already on file.');
   }
   return {
-    draftable: draftable.slice(0, MAX_DRAFTS),
-    skipped,
-    overflow: Math.max(0, draftable.length - MAX_DRAFTS),
+    draftable: planned.draftable.slice(0, MAX_DRAFTS),
+    skipped: planned.skipped,
+    overflow: Math.max(0, planned.draftable.length - MAX_DRAFTS),
     blockers,
   };
 }
@@ -252,6 +194,9 @@ export const createRateRequestDraft = defineAction<RateDraftInput>({
     const { client } = deps(given);
     const workspace = ctx.workspaceId;
     const loaded = await load(client, workspace, input, ctx.now);
+    const notAttempted = loaded.skipped.map(({ customer }) =>
+      customerRef(customer.id, customer.name),
+    );
     if (loaded.blockers.length || !loaded.draftable.length) {
       const reason = loaded.blockers.length ? loaded.blockers.join(' ') : 'There was nothing to draft.';
       return {
@@ -259,55 +204,25 @@ export const createRateRequestDraft = defineAction<RateDraftInput>({
         outcome: 'refused',
         succeeded: [],
         failed: [],
-        not_attempted: loaded.skipped.map(({ customer }) => customerRef(customer.id, customer.name)),
+        not_attempted: notAttempted,
         verification: nothingVerified(),
         summary: reason,
-        entities: loaded.skipped.map(({ customer }) => customerRef(customer.id, customer.name)),
+        entities: notAttempted,
       };
     }
-    const created: RateRequest[] = [];
-    const failed: { entity: EntityRef; reason: string }[] = [];
-    for (const { plan, customer, label } of loaded.draftable) {
-      const contact = contactFor(customer);
-      // Deterministic wording only. See the note at the top of this file.
-      const wording = requestWording(plan, customer, contact, label);
-      try {
-        const saved = await insertRequest(client, workspace, {
-          customer_profile_id: customer.id,
-          period_from: plan.period_from,
-          period_to: plan.period_to,
-          status: 'DRAFT',
-          mode: 'DRAFT_ONLY',
-          recipient: contact?.email ?? null,
-          cc: contact?.cc ?? [],
-          subject: wording.subject,
-          body: wording.body,
-          items: plan.items,
-          answered: [],
-          sent_at: null,
-          reply_at: null,
-          follow_up_due_at: null,
-          follow_up_count: 0,
-          thread_ref: null,
-        });
-        await appendEvent(client, workspace, {
-          kind: 'RATE_REQUEST_CREATED',
-          customer_profile_id: customer.id,
-          request_id: saved.id,
-          response_id: null,
-          period_id: null,
-          invoice_key: null,
-          detail: `Drafted for ${customer.name}: ${plural(plan.items.length, 'job')} for ${label}.`,
-          actor: ctx.userId,
-        });
-        created.push(saved);
-      } catch (error) {
-        failed.push({
-          entity: customerRef(customer.id, customer.name),
-          reason: error instanceof Error ? error.message : 'The draft could not be saved.',
-        });
-      }
-    }
+    // Deterministic wording, DRAFT_ONLY, and a failed insert reported rather
+    // than thrown: the three ways an agent's draft differs from a person's.
+    const drafting = await createRequestDrafts(
+      client,
+      workspace,
+      { id: ctx.userId, email: null, workspaceId: workspace },
+      loaded.draftable,
+      { wording: 'deterministic', onError: 'collect' },
+    );
+    const created = drafting.created;
+    const failed: { entity: EntityRef; reason: string }[] = drafting.failed.map(
+      ({ customer, reason }) => ({ entity: customerRef(customer.id, customer.name), reason }),
+    );
 
     const drafts = await listRequests(client, workspace, { status: 'DRAFT' });
     const onFile = new Set(drafts.map((request) => request.id));
@@ -330,10 +245,10 @@ export const createRateRequestDraft = defineAction<RateDraftInput>({
     });
     return {
       kind: 'action',
-      outcome: settle(succeeded, failed, loaded.skipped.map(({ customer }) => customerRef(customer.id, customer.name))),
+      outcome: settle(succeeded, failed, notAttempted),
       succeeded,
       failed,
-      not_attempted: loaded.skipped.map(({ customer }) => customerRef(customer.id, customer.name)),
+      not_attempted: notAttempted,
       verification,
       after: created.map((request) => ({ id: request.id, status: request.status })),
       summary,
@@ -355,43 +270,6 @@ const parseFollowUp = (args: unknown): Parsed<FollowUpInput> => {
   if (id === null) return { error: 'request_id must be the number of a rate request.' };
   return { value: { request_id: id } };
 };
-
-/**
- * The chaser's wording, as the follow-up route writes it: the same fixed text
- * about what is still outstanding, opened the way a person would open it. No
- * model is asked to chase a customer.
- */
-function followUpBody(body: string, label: string): string {
-  const opener = `\n\nJust following up on my note about ${label} — could you please`;
-  return body.includes('\n\nCould you please')
-    ? body.replace('\n\nCould you please', opener)
-    : `${body}\n\nJust following up on my note about ${label}.`;
-}
-
-type FollowUpLoad = {
-  request: RateRequest | null;
-  customer: CustomerProfile | null;
-  remaining: ReturnType<typeof remainingItems>;
-  blockers: string[];
-};
-
-async function loadFollowUp(
-  client: SupabaseClient,
-  workspace: string,
-  id: number,
-): Promise<FollowUpLoad> {
-  const request = await getRequest(client, workspace, id);
-  if (!request) {
-    return { request: null, customer: null, remaining: [], blockers: ['That rate request no longer exists.'] };
-  }
-  const remaining = remainingItems(request);
-  const { customers } = await listProfiles(client, workspace);
-  const customer = customers.find(({ id: key }) => key === request.customer_profile_id) ?? null;
-  const blockers: string[] = [];
-  if (!remaining.length) blockers.push('This customer has answered everything that was asked.');
-  if (!customer) blockers.push('That customer no longer exists.');
-  return { request, customer, remaining, blockers };
-}
 
 export const createRateFollowUpDraft = defineAction<FollowUpInput>({
   name: 'create_rate_followup_draft',
@@ -420,7 +298,7 @@ export const createRateFollowUpDraft = defineAction<FollowUpInput>({
   parse: parseFollowUp,
   dryRun: async (input, ctx, given): Promise<ToolImpact> => {
     const { client } = deps(given);
-    const loaded = await loadFollowUp(client, ctx.workspaceId, input.request_id);
+    const loaded = await planFollowUp(client, ctx.workspaceId, input.request_id);
     const ref = rateRequestRef(input.request_id, `Rate request #${input.request_id}`);
     return {
       records: loaded.blockers.length ? 0 : 1,
@@ -446,9 +324,14 @@ export const createRateFollowUpDraft = defineAction<FollowUpInput>({
   handler: async (input, ctx, given): Promise<ToolResult> => {
     const { client } = deps(given);
     const workspace = ctx.workspaceId;
-    const loaded = await loadFollowUp(client, workspace, input.request_id);
     const ref = rateRequestRef(input.request_id, `Rate request #${input.request_id}`);
-    if (loaded.blockers.length || !loaded.request || !loaded.customer) {
+    const chased = await followUpDraft(
+      client,
+      workspace,
+      { id: ctx.userId, email: null, workspaceId: workspace },
+      input.request_id,
+    );
+    if (!chased.ok) {
       return {
         kind: 'action',
         outcome: 'refused',
@@ -456,42 +339,11 @@ export const createRateFollowUpDraft = defineAction<FollowUpInput>({
         failed: [],
         not_attempted: [ref],
         verification: nothingVerified(),
-        summary: loaded.blockers.join(' ') || 'That rate request cannot be chased.',
+        summary: chased.blockers.join(' ') || 'That rate request cannot be chased.',
         entities: [ref],
       };
     }
-    const { request, customer, remaining } = loaded;
-    const label = periodLabel(request.period_from, request.period_to);
-    const wording = requestWording(
-      {
-        customer_profile_id: request.customer_profile_id,
-        period_from: request.period_from,
-        period_to: request.period_to,
-        items: remaining,
-      },
-      customer,
-      contactFor(customer),
-      label,
-    );
-    const drafted = await updateRequest(client, workspace, request.id, {
-      status: 'DRAFT',
-      body: followUpBody(wording.body, label),
-      follow_up_count: request.follow_up_count + 1,
-      follow_up_due_at: null,
-    });
-    await appendEvent(client, workspace, {
-      kind: 'RATE_FOLLOWUP_DUE',
-      customer_profile_id: request.customer_profile_id,
-      request_id: request.id,
-      response_id: null,
-      period_id: null,
-      invoice_key: null,
-      detail: `Follow-up ${drafted.follow_up_count} drafted for ${plural(
-        remaining.length,
-        'job',
-      )} still outstanding.`,
-      actor: ctx.userId,
-    });
+    const { request, customer, remaining, drafted } = chased;
 
     const after = await getRequest(client, workspace, request.id);
     const verification = verifyAll([

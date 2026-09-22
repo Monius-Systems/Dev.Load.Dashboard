@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { SelectField } from '@/components/ui/select-field';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/toast';
+import AskMonius from '@/components/operator/ask-monius';
 import { useProfiles, useRecords } from '@/components/profiles/profile-ui';
 import { useT } from '@/lib/i18n/use-t';
 import { money } from '@/lib/load-desk/format';
@@ -74,6 +75,8 @@ import {
   subscribeRates,
   type ConfirmedMatch,
 } from '@/lib/load-desk/rates-store';
+import { clearDeepLink, readDeepLink } from '@/lib/operator/deep-links';
+import { rateRequestRef } from '@/lib/operator/entities';
 
 // Rates: the desk the rate and fuel agent works from. One week at a time —
 // what has to be asked of each customer, what they wrote back, what is still
@@ -86,6 +89,28 @@ import {
 
 const useRates = () =>
   useSyncExternalStore(subscribeRates, getRatesSnapshot, getServerRatesSnapshot);
+
+// The address is the one thing on this page the page does not own: the
+// Operator links to /rates?request=… for a request it named. Read as any other
+// outside source is, so that following a link selects a request without a
+// render setting state.
+const subscribeSearch = (listener: () => void) => {
+  window.addEventListener('popstate', listener);
+  return () => window.removeEventListener('popstate', listener);
+};
+const getSearch = () => window.location.search;
+const getServerSearch = () => '';
+
+/**
+ * Takes the deep link out of the address once the page has acted on it, so a
+ * refresh leaves the page where the person left it rather than selecting the
+ * request again. The popstate is the page telling itself the address moved,
+ * which replaceState does not do.
+ */
+function forget(param: string) {
+  window.history.replaceState(null, '', clearDeepLink(param, window.location.href));
+  window.dispatchEvent(new PopStateEvent('popstate'));
+}
 
 /** How many weeks back the period picker offers. */
 const PERIODS_OFFERED = 8;
@@ -212,7 +237,16 @@ export default function RatesPage() {
   /** The week being worked on, as `from|to`; null is the latest complete one. */
   const [periodKey, setPeriodKey] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
-  const [selected, setSelected] = useState<number | null>(null);
+  /** The request a person picked; null lets a link pick one instead. */
+  const [chosen, setChosen] = useState<number | null>(null);
+  const search = useSyncExternalStore(subscribeSearch, getSearch, getServerSearch);
+  const link = useMemo(() => readDeepLink(search), [search]);
+  const selected = chosen ?? link.request ?? null;
+  /** Picking one by hand takes the page over from whatever the link asked. */
+  const setSelected = (id: number | null) => {
+    if (link.request !== undefined) forget('request');
+    setChosen(id);
+  };
   /** What the server said about the last action on the open request. */
   const [notice, setNotice] = useState<string | null>(null);
   /** Edits to the figures read out of a reply, by `${response}:${line}`. */
@@ -250,6 +284,14 @@ export default function RatesPage() {
     if (selected === null || !window.matchMedia('(max-width: 720px)').matches) return;
     document.getElementById('rates-request')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [selected]);
+
+  // A request a link asked for is selected already; this is only the page
+  // going to it, on any width, because somebody who followed a link to one
+  // request did not come here to read the list.
+  useEffect(() => {
+    if (link.request === undefined || !rates.ready) return;
+    document.getElementById('rates-request')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [link.request, rates.ready]);
 
   const customers = profiles.customers;
   const customerById = useMemo(
@@ -858,7 +900,21 @@ export default function RatesPage() {
               {nameOf(request.customer_profile_id)} · {periodFor(request)}
             </h2>
           </div>
-          <span className="rates-chips">{statusChip(request)}</span>
+          <span className="rates-chips">
+            {statusChip(request)}
+            {/* The Operator, on this request: it already knows which customer
+                and which period, so "has the customer replied?" is about this
+                one. */}
+            <AskMonius
+              entity={rateRequestRef(
+                String(request.id),
+                nameOf(request.customer_profile_id),
+              )}
+              label={t('Ask Monius about the request to {customer}', {
+                customer: nameOf(request.customer_profile_id),
+              })}
+            />
+          </span>
         </div>
 
         {notice ? (
