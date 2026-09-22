@@ -339,6 +339,34 @@ void test('a chosen route is the run’s own, and a browser only names one', () 
   assert.match(store, /update\(\{ input_hash: '' \}\)/);
 });
 
+void test('a settled run keeps its way for the tickets that come after', () => {
+  // A run is keyed by its two places and the truck's size, and by nothing
+  // about a day: a ticket that turns up next week between the same two places
+  // reads the same row, which is the one a person settled. This is the whole
+  // mechanism, so it is pinned here rather than left to be rediscovered.
+  const mileage = source('lib/load-desk/mileage.ts');
+  assert.match(
+    mileage,
+    /export const routeKey = \(origin: LatLon, destination: LatLon, profileHash: string\) =>/,
+  );
+  const keyed = mileage.slice(
+    mileage.indexOf('export const routeKey'),
+    mileage.indexOf('export const routeKey') + 300,
+  );
+  assert.ok(!keyed.includes('date'), 'a run is keyed by a day');
+
+  // The calculation reads that row for every leg it has not been forced past,
+  // so a new day's legs are the chosen figures without asking the provider.
+  const calc = source('lib/server/mileage-calc.ts');
+  assert.match(calc, /const key = routeKey\(from, to, profileKey\);\s*let route = routes\.get\(key\);/);
+
+  // And every day that drives a settled run says so, not only the day it was
+  // settled on.
+  const choice = source('components/mileage/route-choice.tsx');
+  assert.match(choice, /modes\[String\(run\.route_id\)\] \? \(/);
+  assert.match(choice, /every ticket that comes in for it afterwards/);
+});
+
 void test('a car’s way is offered but never taken on anybody’s behalf', () => {
   const tomtom = source('lib/server/tomtom-routing.ts');
   // The calculation asks for one thing only: this truck, at its size and

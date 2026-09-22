@@ -100,12 +100,17 @@ export default function RouteChoice({
           <li key={run.route_id} className="rc-run">
             <span className="rc-run-where">
               {nameOf(run.from)} <span aria-hidden="true">→</span> {nameOf(run.to)}
-              {/* A run driven a way that was not checked against this truck
-                  says so here as well as in the dialog, so it is not a thing
-                  a person has to open something to find out. */}
+              {/* A run somebody settled says so on every day that drives it,
+                  this one and the ones to come, so the choice is not a thing
+                  a person has to open something to find out. A way that was
+                  never checked against this truck says which it is. */}
               {modes[String(run.route_id)] === 'car' ? (
                 <span className="ld-chip rc-run-chip" data-tone="warning">
                   {t('Any vehicle')}
+                </span>
+              ) : modes[String(run.route_id)] ? (
+                <span className="ld-chip rc-run-chip" data-tone="good">
+                  {t('Your route')}
                 </span>
               ) : null}
               <small>
@@ -129,7 +134,7 @@ export default function RouteChoice({
         ))}
       </ul>
       <p className="ld-hint rc-note">
-        {t('A route you choose is used for every trip between those two places, today and on the days ahead.')}
+        {t('A route you choose is used for every trip between those two places — the rest of this day, and every ticket that comes in for it afterwards.')}
       </p>
       {open ? (
         <ChooseWay

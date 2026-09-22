@@ -832,8 +832,9 @@ export const PL_PAGES: Record<string, string> = {
   'Change route': 'Zmień trasę',
   'Change the route from {from} to {to}': 'Zmień trasę z {from} do {to}',
   '{n} times today': '{n} razy tego dnia',
-  'A route you choose is used for every trip between those two places, today and on the days ahead.':
-    'Wybrana trasa jest używana dla każdego przejazdu między tymi miejscami, dziś i w kolejne dni.',
+  'A route you choose is used for every trip between those two places — the rest of this day, and every ticket that comes in for it afterwards.':
+    'Wybrana trasa jest używana dla każdego przejazdu między tymi miejscami — przez resztę tego dnia i dla każdego kolejnego kwitu.',
+  'Your route': 'Twoja trasa',
   'It drives this {n} times on this day.': 'Ciężarówka pokonuje ją tego dnia {n} razy.',
   'Pick the roads the truck really takes.': 'Wybierz drogi, którymi naprawdę jedzie ciężarówka.',
   'Looking up the routes…': 'Szukamy możliwych tras…',
