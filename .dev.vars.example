@@ -43,3 +43,16 @@ RATE_MAIL_MODE=DRAFT_ONLY
 # before there is one. 'true' turns them on; they are also on in the local
 # preview. Never set on a client deployment.
 RATE_DEV_TOOLS=false
+
+# The map under a day's route on the Mileage page. Both are optional: with
+# neither set the map is OpenStreetMap's own tiles, which need no key and no
+# account, fetched by the server (lib/server/map-tiles.ts) and never by the
+# browser. Their tile policy is written for light use, so a deployment serving
+# many workspaces should point these at a paid source instead — any {z}/{x}/{y}
+# template, with the key in the URL, since the URL stays on the server.
+#   MAP_TILE_URL=https://api.example.com/tiles/{z}/{x}/{y}.png?key=...
+#   MAP_TILE_CREDIT=© Example Maps
+# The credit is shown in the corner of every map, so set it whenever the URL is
+# set. Without a map the route is still drawn, on its own plain canvas.
+MAP_TILE_URL=
+MAP_TILE_CREDIT=

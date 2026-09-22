@@ -203,6 +203,27 @@ export async function workspaceUser(
   };
 }
 
+/**
+ * Whether this request carries a session this deployment trusts. The token is
+ * checked against the project's signing key rather than by asking Supabase
+ * who the user is, and no membership row is read.
+ *
+ * Only for requests that carry nothing belonging to a workspace — the map
+ * pictures behind a route, of which one screen needs a dozen. Everything that
+ * reads or writes a company's own data goes through `memberRoute`, which
+ * settles who is asking and which workspace they are in.
+ */
+export async function hasSession(request: Request): Promise<boolean> {
+  if (localPreview(request)) return true;
+  try {
+    const { client } = authClient(request);
+    const { data } = await client.auth.getClaims();
+    return typeof data?.claims?.sub === 'string';
+  } catch {
+    return false;
+  }
+}
+
 /** Rejects cross-site state-changing requests. */
 export const sameOrigin = (request: Request) =>
   request.headers.get('origin') === new URL(request.url).origin;

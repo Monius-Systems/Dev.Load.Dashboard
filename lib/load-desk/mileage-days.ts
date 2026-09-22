@@ -24,6 +24,8 @@ export type DaysSnapshot = {
   range: { from: string; to: string } | null;
   /** Whether the deployment has a routing key. */
   configured: boolean;
+  /** The words the map under a route must be credited with; '' for no map. */
+  mapCredit: string;
   error: string | null;
   ready: boolean;
   mode: DataMode | null;
@@ -36,6 +38,7 @@ const SERVER_SNAPSHOT: DaysSnapshot = {
   geometry: {},
   range: null,
   configured: true,
+  mapCredit: '',
   error: null,
   ready: false,
   mode: null,
@@ -87,7 +90,7 @@ export async function loadDays(range: { from: string; to: string }): Promise<voi
     });
     return;
   }
-  const result = await apiJson<{ days: MileageDay[]; configured: boolean }>(
+  const result = await apiJson<{ days: MileageDay[]; configured: boolean; map_credit?: string }>(
     `/api/mileage?from=${range.from}&to=${range.to}`,
   );
   if (!result.ok) {
@@ -104,6 +107,7 @@ export async function loadDays(range: { from: string; to: string }): Promise<voi
     days,
     range,
     configured: result.data.configured,
+    mapCredit: result.data.map_credit ?? '',
     error: null,
     ready: true,
     mode,

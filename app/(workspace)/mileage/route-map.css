@@ -52,7 +52,8 @@
   text-decoration: none;
 }
 
-/* The canvas. No tiles: a dot grid so the drawing has somewhere to sit. */
+/* The canvas: the map, with the route drawn over it. Without the map it is a
+   dot grid, so the drawing still has somewhere to sit. */
 .rm-canvas {
   position: relative;
   display: grid;
@@ -62,8 +63,43 @@
   border-radius: var(--ui-radius-lg);
   background: var(--ui-surface-2);
 }
+/* The pictures of the world, laid out by route-geometry and stacked under the
+   route. They are scenery: no pointer reaches them and no reader is told
+   about them, because the route itself carries the description. */
+.rm-tiles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.rm-tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  max-width: none;
+  user-select: none;
+}
+/* The map is a photograph of the world and the page is not: this holds it to
+   the page's own weight, and steps back further where the ink has to read
+   over it. */
+.rm-canvas[data-mapped] .rm-tiles {
+  opacity: 0.88;
+}
 .rm-svg {
+  position: relative;
   display: block;
+}
+/* The credit the map source is owed, wherever its pictures are shown. */
+.rm-credit {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  padding: 2px 6px;
+  border-top-left-radius: var(--ui-radius-sm);
+  background: color-mix(in srgb, var(--ui-surface) 82%, transparent);
+  font-size: var(--type-2xs);
+  color: var(--ui-text-3);
+  pointer-events: none;
 }
 .rm-field {
   color: var(--ui-text-3);
@@ -79,6 +115,21 @@
   line-height: var(--type-leading-normal);
   text-align: center;
   color: var(--ui-text-2);
+}
+
+/* Over a map every line needs its own light behind it, the way a road atlas
+   prints one route over the roads it follows. */
+.rm-casing {
+  fill: none;
+  stroke: var(--ui-surface);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+.rm-leg[data-tone='empty'] .rm-casing,
+.rm-leg[data-missing] .rm-casing {
+  stroke-width: 6;
 }
 
 /* Legs. Loaded miles carry the accent; empty miles stay quiet. */
@@ -106,6 +157,19 @@
   stroke-width: 2;
   stroke-dasharray: 4 6;
   opacity: 0.9;
+}
+/* Over a map the loaded miles are the subject and lead; the empty miles are
+   the same route drawn quieter, never the heaviest ink on the picture. */
+.rm-svg[data-mapped] .rm-leg[data-tone='loaded'] .rm-line {
+  stroke-width: 4;
+}
+.rm-svg[data-mapped] .rm-leg[data-tone='empty'] .rm-line {
+  stroke: var(--ui-text-3);
+  stroke-width: 2.5;
+  opacity: 0.95;
+}
+.rm-svg[data-mapped] .rm-leg[data-tone='empty'] .rm-arrow {
+  fill: var(--ui-text-3);
 }
 .rm-arrow {
   fill: var(--ui-accent);

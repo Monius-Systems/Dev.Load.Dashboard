@@ -55,6 +55,7 @@ export default function RouteView({
   busy,
   phone,
   canUpdate,
+  mapCredit,
   tr,
   onBack,
   onTryAgain,
@@ -72,6 +73,8 @@ export default function RouteView({
   busy: boolean;
   phone: boolean;
   canUpdate: boolean;
+  /** The words the map source is credited with; '' where there is no map. */
+  mapCredit: string;
   tr: Translator;
   onBack: () => void;
   onTryAgain: () => void;
@@ -207,6 +210,7 @@ export default function RouteView({
         status={mapStatus}
         unresolved={unresolved}
         title={t('Truck {number} · {date}', { number: truck.truck_number, date: when })}
+        credit={mapCredit || null}
         compact={phone}
       />
 

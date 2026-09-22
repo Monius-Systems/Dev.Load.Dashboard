@@ -189,6 +189,7 @@ project and never overwrites the website.
    | `WEBSITE_URL` | `https://moniussystems.com` |
    | `OPENAI_API_KEY` | the Monius OpenAI key — set as a **secret**, value not recorded here |
    | `TOMTOM_API_KEY` | the Monius TomTom key for Mileage and IFTA — set as a **secret**, value not recorded here |
+   | `MAP_TILE_URL` / `MAP_TILE_CREDIT` | leave unset unless you buy map imagery. Unset means OpenStreetMap's own tiles, which need no key |
    | `RATE_MAIL_MODE` | leave unset. `DRAFT_ONLY` is what unset means, and it is the only mode this release can honour |
    | `RATE_DEV_TOOLS` | leave unset in production. `true` turns on the Rates page's "Simulate a reply" box and "Mark as sent" |
 
@@ -211,6 +212,16 @@ project and never overwrites the website.
    `supabase/migrations/202609200001_mileage_stop_order.sql` and
    `supabase/migrations/202609230001_mileage_calc_token.sql`; apply all three
    with `supabase db push`.
+
+   `MAP_TILE_URL` is where the map under a day's route on **Mileage** comes
+   from. Left unset it is OpenStreetMap's own tiles: no key, no account, and
+   fetched by the server (`lib/server/map-tiles.ts`) so the browser never talks
+   to a map company. Their tile policy is written for light use, so a
+   deployment carrying many workspaces should buy imagery and set this to that
+   source's `{z}/{x}/{y}` template — the key may sit in the URL, which stays on
+   the server — together with `MAP_TILE_CREDIT`, the words shown in the corner
+   of every map. Without any map the route is still drawn, on its own plain
+   canvas, with the miles and the stops unchanged.
 
 3. Point `dashboard.moniussystems.com` at the project, as the host's custom-domain
    setup asks. The website keeps `moniussystems.com`. They have to be separate

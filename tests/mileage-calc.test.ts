@@ -60,6 +60,7 @@ register(
 
 const { resultWriteAllowed } = await import(`${root}lib/server/mileage-store.ts`);
 const { dayIsUpToDate } = await import(`${root}lib/server/mileage-calc.ts`);
+const { mapCredit, parseTile, MAX_TILE_ZOOM } = await import(`${root}lib/server/map-tiles.ts`);
 
 const source = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const walk = (directory: string): string[] => {
@@ -266,6 +267,51 @@ void test('an automatic lookup takes a building, and a street only where a perso
   assert.ok(!source('lib/server/mileage-calc.ts').includes('acceptStreet'));
 });
 
+// --------------------------------------------------------------- the map
+
+void test('a tile is three whole numbers of a zoom the source serves', () => {
+  assert.deepEqual(parseTile('12', '1049', '1521'), { z: 12, x: 1049, y: 1521 });
+  // The row carries whatever extension the browser asked the picture by.
+  assert.deepEqual(parseTile('0', '0', '0.png'), { z: 0, x: 0, y: 0 });
+  for (const bad of [
+    ['-1', '0', '0'],
+    ['12', '-3', '4'],
+    ['12', '1.5', '4'],
+    ['12', '4096', '4'],
+    ['12', '4', '4096'],
+    [String(MAX_TILE_ZOOM + 1), '0', '0'],
+    ['12', '4', '4.svg'],
+    ['12', '4', ''],
+    ['', '', ''],
+    ['12', '4', '4/../../etc/passwd'],
+  ]) {
+    assert.equal(parseTile(bad[0], bad[1], bad[2]), null, `parsed ${bad.join('/')}`);
+  }
+});
+
+void test('the map is fetched by the server, and its source is credited', () => {
+  // A deployment with nothing configured still has a map, and still says
+  // whose it is: the page shows whatever this returns, so it is never blank.
+  assert.ok(mapCredit().length > 0);
+
+  const route = source('app/api/mileage/tiles/[z]/[x]/[y]/route.ts');
+  // A tile says nothing about a workspace, so it is not a member route — but
+  // it is nobody's business either: no session, no picture.
+  assert.match(route, /hasSession\(/);
+  assert.ok(!route.includes('workspaceId'), 'the tile route reads a workspace');
+  assert.match(route, /parseTile\(/, 'the tile route trusts the path');
+
+  // Where the pictures come from, and any credential for them, live in one
+  // server file. The page asks this app and nobody else.
+  const map = source('components/mileage/route-map.tsx');
+  assert.match(map, /'\/api\/mileage\/tiles'/);
+  assert.ok(!/https?:\/\//.test(map), 'the map component names an outside address');
+  for (const path of [...walk('components'), ...walk('app')]) {
+    if (!/\.(ts|tsx)$/.test(path) || path.includes('/tiles/')) continue;
+    assert.ok(!source(path).includes('MAP_TILE_URL'), `${path} reads the tile source`);
+  }
+});
+
 // ------------------------------------------------------------- the routes
 
 void test('the mileage routes take a day, never a figure', () => {
@@ -275,7 +321,11 @@ void test('the mileage routes take a day, never a figure', () => {
   // a page could dictate what a quarter's IFTA filing says.
   const asked = new Set(['truck_id', 'date', 'days', 'force', 'ticket_ids', 'place_key', 'address']);
   const forbidden = ['miles', 'lat', 'lon', 'geometry', 'total_miles', 'total_seconds', 'est_gallons', 'legs', 'status'];
-  const routes = walk('app/api/mileage').filter((path) => path.endsWith('route.ts'));
+  const routes = walk('app/api/mileage')
+    .filter((path) => path.endsWith('route.ts'))
+    // The map tiles are pictures of the world, the same for every company and
+    // read from no workspace at all. They have their own guards below.
+    .filter((path) => !path.includes('/tiles/'));
   assert.ok(routes.length >= 5, 'the mileage routes moved');
   for (const path of routes) {
     const text = source(path);

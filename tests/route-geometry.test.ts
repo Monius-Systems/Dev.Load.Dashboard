@@ -4,6 +4,7 @@ import type { MileageLeg, MileagePlace } from '../lib/load-desk/mileage.ts';
 import {
   decodePolyline,
   fitBounds,
+  fitTiles,
   googleMapsDirectionsUrl,
   legsWithStops,
   sequenceLabels,
@@ -252,6 +253,57 @@ void test('fitBounds centres a single point and refuses an empty day', () => {
   assert.deepEqual(fit.project({ lat: 41.6, lon: -87.6 }), { x: 300, y: 150 });
   assert.equal(fitBounds([], 600, 300, 20), null);
   assert.equal(fitBounds([{ lat: Number.NaN, lon: 0 }], 600, 300, 20), null);
+});
+
+void test('fitTiles fits the day at a whole-number zoom, north up', () => {
+  const view = fitTiles([YARD, PICKUP, DELIVERY], 640, 400, 32);
+  assert.ok(view);
+  assert.ok(Number.isInteger(view.zoom));
+  assert.ok(view.zoom > 0 && view.zoom <= 17);
+  for (const point of [YARD, PICKUP, DELIVERY]) {
+    const { x, y } = view.project(point);
+    assert.ok(x >= 32 - 1e-6 && x <= 640 - 32 + 1e-6, `x ${x} inside`);
+    assert.ok(y >= 32 - 1e-6 && y <= 400 - 32 + 1e-6, `y ${y} inside`);
+  }
+  // One zoom further and the day would not have fitted, which is what makes
+  // this the largest one: the span doubles with every step.
+  const span = {
+    x: view.project(DELIVERY).x - view.project(PICKUP).x,
+    y: view.project(YARD).y - view.project(PICKUP).y,
+  };
+  assert.ok(Math.abs(span.x) * 2 > 640 - 64 || Math.abs(span.y) * 2 > 400 - 64);
+  assert.ok(view.project({ lat: 42.1, lon: -87.2 }).y < view.project({ lat: 41.5, lon: -87.2 }).y);
+  assert.ok(view.project({ lat: 41.8, lon: -87.2 }).x > view.project({ lat: 41.8, lon: -87.9 }).x);
+});
+
+void test('fitTiles covers the canvas with tiles of that zoom', () => {
+  const view = fitTiles([YARD, PICKUP, DELIVERY], 640, 400, 32);
+  assert.ok(view);
+  const across = 2 ** view.zoom;
+  assert.ok(view.tiles.length >= 6, `${view.tiles.length} tiles for 640x400`);
+  assert.equal(new Set(view.tiles.map((tile) => tile.key)).size, view.tiles.length);
+  // Every tile is one the source can serve, and together they leave no gap.
+  const left = Math.min(...view.tiles.map((tile) => tile.left));
+  const top = Math.min(...view.tiles.map((tile) => tile.top));
+  const right = Math.max(...view.tiles.map((tile) => tile.left)) + 256;
+  const bottom = Math.max(...view.tiles.map((tile) => tile.top)) + 256;
+  assert.ok(left <= 0 && top <= 0 && right >= 640 && bottom >= 400);
+  for (const tile of view.tiles) {
+    assert.equal(tile.z, view.zoom);
+    assert.ok(tile.x >= 0 && tile.x < across, `column ${tile.x} of ${across}`);
+    assert.ok(tile.y >= 0 && tile.y < across, `row ${tile.y} of ${across}`);
+  }
+});
+
+void test('fitTiles centres a single point and refuses an empty day', () => {
+  const view = fitTiles([{ lat: 41.6, lon: -87.6 }], 600, 300, 20);
+  assert.ok(view);
+  assert.equal(view.zoom, 17);
+  const { x, y } = view.project({ lat: 41.6, lon: -87.6 });
+  assert.ok(Math.abs(x - 300) < 1e-6 && Math.abs(y - 150) < 1e-6);
+  assert.equal(fitTiles([], 600, 300, 20), null);
+  assert.equal(fitTiles([{ lat: Number.NaN, lon: 0 }], 600, 300, 20), null);
+  assert.equal(fitTiles([YARD], 0, 300, 20), null);
 });
 
 // ----------------------------------------------------------------- hand-off

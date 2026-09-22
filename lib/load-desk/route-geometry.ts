@@ -336,6 +336,101 @@ export function fitBounds(
   };
 }
 
+/** A map tile is this many pixels square, at every zoom. */
+export const TILE_SIZE = 256;
+
+export type MapTile = { key: string; z: number; x: number; y: number; left: number; top: number };
+
+export type TileView = {
+  /** The whole-number zoom the pictures are fetched at. */
+  zoom: number;
+  project(point: LatLon): { x: number; y: number };
+  /** The pictures that cover the canvas, with where each one sits on it. */
+  tiles: MapTile[];
+};
+
+/**
+ * The same fit as `fitBounds`, on a map made of tiles.
+ *
+ * Tiles only exist at whole-number zooms, so the zoom is the largest one at
+ * which every point still fits inside the padding, and the canvas is then
+ * centred on the middle of the route. Both this and `fitBounds` are Web
+ * Mercator, which is what the pictures are drawn in, so the roads land on
+ * their own streets.
+ *
+ * Null when there is nothing to fit. A single point is centred at a zoom close
+ * enough to read the street it is on.
+ */
+export function fitTiles(
+  points: LatLon[],
+  width: number,
+  height: number,
+  padding: number,
+  maxZoom = 17,
+): TileView | null {
+  const usable = points.filter((point) => placed(point));
+  if (!usable.length || width <= 0 || height <= 0) return null;
+  // World pixels at zoom 0, where the whole world is one tile.
+  const worldX = (lon: number) => ((lon + 180) / 360) * TILE_SIZE;
+  const worldY = (lat: number) => {
+    const clamped = Math.min(Math.max(lat, -MAX_LATITUDE), MAX_LATITUDE);
+    const sin = Math.sin((clamped * Math.PI) / 180);
+    return (0.5 - Math.log((1 + sin) / (1 - sin)) / (4 * Math.PI)) * TILE_SIZE;
+  };
+  const xs = usable.map((point) => worldX(point.lon));
+  const ys = usable.map((point) => worldY(point.lat));
+  const spanX = Math.max(...xs) - Math.min(...xs);
+  const spanY = Math.max(...ys) - Math.min(...ys);
+  const innerWidth = Math.max(width - padding * 2, 1);
+  const innerHeight = Math.max(height - padding * 2, 1);
+  const room = Math.min(
+    spanX > 0 ? innerWidth / spanX : Infinity,
+    spanY > 0 ? innerHeight / spanY : Infinity,
+  );
+  const zoom = Math.max(
+    0,
+    Math.min(maxZoom, room === Infinity ? maxZoom : Math.floor(Math.log2(room))),
+  );
+  const scale = 2 ** zoom;
+  const centreX = ((Math.min(...xs) + Math.max(...xs)) / 2) * scale;
+  const centreY = ((Math.min(...ys) + Math.max(...ys)) / 2) * scale;
+  const originX = centreX - width / 2;
+  const originY = centreY - height / 2;
+
+  const across = scale;
+  const tiles: MapTile[] = [];
+  const firstColumn = Math.floor(originX / TILE_SIZE);
+  const lastColumn = Math.floor((originX + width - 1) / TILE_SIZE);
+  const firstRow = Math.floor(originY / TILE_SIZE);
+  const lastRow = Math.floor((originY + height - 1) / TILE_SIZE);
+  for (let row = firstRow; row <= lastRow; row += 1) {
+    // Above the north pole or below the south there is no picture; the canvas
+    // shows its own background there.
+    if (row < 0 || row >= across) continue;
+    for (let column = firstColumn; column <= lastColumn; column += 1) {
+      // East of the date line the world starts again.
+      const wrapped = ((column % across) + across) % across;
+      tiles.push({
+        key: `${zoom}/${column}/${row}`,
+        z: zoom,
+        x: wrapped,
+        y: row,
+        left: Math.round(column * TILE_SIZE - originX),
+        top: Math.round(row * TILE_SIZE - originY),
+      });
+    }
+  }
+
+  return {
+    zoom,
+    tiles,
+    project: (point: LatLon) => ({
+      x: worldX(point.lon) * scale - originX,
+      y: worldY(point.lat) * scale - originY,
+    }),
+  };
+}
+
 // ----------------------------------------------------------------- hand-off
 
 /** Google takes ten points in a directions link. */
