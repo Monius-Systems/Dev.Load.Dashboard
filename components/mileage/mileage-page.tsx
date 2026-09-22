@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { Fuel } from 'lucide-react';
+import { ArrowRight, Fuel } from 'lucide-react';
 import { buttonVariants } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
 import DayCard, { type DayHeadline } from '@/components/mileage/day-card';
@@ -200,6 +200,9 @@ export default function MileagePage() {
   const open = asking ? describe(asking) : null;
 
   const summary = summarizeDays(Object.values(days.days), shownRange.from, shownRange.to);
+  const toReview = shown.filter(
+    (item) => item.headline === 'needs_help' || item.headline === 'could_not_update',
+  ).length;
   const trucksWithoutYard = trucks.filter((truck) => truck.active && !truck.ifta?.yard_address);
   const loading = !recordsReady || !profiles.ready || !days.ready;
   const labels = PERIODS.find(([value]) => value === shownPeriod) ?? PERIODS[1];
@@ -234,44 +237,51 @@ export default function MileagePage() {
             {t('See where each truck drove and how many miles it traveled.')}
           </p>
           <Link href="/ifta" className="mileage-ifta-link">
-            {t('IFTA reporting')} <span aria-hidden="true">→</span>
+            {t('IFTA reporting')}
+            <ArrowRight aria-hidden="true" />
           </Link>
         </div>
+        <dl className="ld-stats">
+          <div>
+            <dt>{t('Showing')}</dt>
+            <dd>{t(labels[1])}</dd>
+          </div>
+          <div>
+            <dt>{t('Miles')}</dt>
+            <dd>{formatNumber(summary.miles)}</dd>
+          </div>
+          <div>
+            <dt>{t('Days to review')}</dt>
+            <dd>{toReview}</dd>
+          </div>
+        </dl>
       </div>
 
       <div className="page-sheet">
-        <fieldset className="ui-segmented mileage-periods">
-          <legend className="sr-only">{t('Show')}</legend>
-          {PERIODS.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={shownPeriod === value}
-              onClick={() => setPeriod(value)}
-            >
-              {t(label)}
-            </button>
-          ))}
-        </fieldset>
-
         <div className="mileage-tiles">
           <div className="ld-panel hm-stat mileage-tile">
-            <p className="hm-stat-value">{formatNumber(summary.miles)}</p>
             <p className="hm-stat-label">{t(labels[2])}</p>
+            <p className="hm-stat-value">{formatNumber(summary.miles)}</p>
+            <p className="hm-stat-sub">{t('Route miles from each day’s tickets')}</p>
           </div>
           <div className="ld-panel hm-stat mileage-tile">
+            <p className="hm-stat-label">{t('Estimated Fuel Used')}</p>
             <p className="hm-stat-value">
               {formatNumber(summary.gallons)} <small>{t('gal')}</small>
             </p>
-            <p className="hm-stat-label">{t('Estimated Fuel Used')}</p>
+            <p className="hm-stat-sub">{t('At each truck’s average MPG')}</p>
           </div>
           <div className="ld-panel hm-stat mileage-tile">
-            <p className="hm-stat-value">{summary.loads}</p>
             <p className="hm-stat-label">{t('Loads')}</p>
+            <p className="hm-stat-value">{summary.loads}</p>
+            <p className="hm-stat-sub">{t('Tickets on the days counted')}</p>
           </div>
           <div className="ld-panel hm-stat mileage-tile">
-            <p className="hm-stat-value">{summary.trucks}</p>
             <p className="hm-stat-label">{t('Trucks')}</p>
+            <p className="hm-stat-value">{summary.trucks}</p>
+            <p className="hm-stat-sub">
+              {t('Trucks with miles {when}', { when: t(labels[3]) })}
+            </p>
           </div>
         </div>
         <p className="ld-hint mileage-footnote">
@@ -314,7 +324,29 @@ export default function MileagePage() {
 
         <div className="mileage-split" data-open={open ? '' : undefined}>
           {phone && open ? null : (
-            <div className="mileage-list">
+            <section
+              className="ld-panel pf-section mileage-days"
+              aria-labelledby="mileage-days-title"
+            >
+              <div className="ld-panel-head">
+                <div>
+                  <p className="ld-step">{t('Per truck and day')}</p>
+                  <h2 id="mileage-days-title">{t('Daily mileage')}</h2>
+                </div>
+                <fieldset className="ui-segmented mileage-periods">
+                  <legend className="sr-only">{t('Show')}</legend>
+                  {PERIODS.map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={shownPeriod === value}
+                      onClick={() => setPeriod(value)}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </fieldset>
+              </div>
               {loading ? (
                 <p className="ld-empty">{t('Loading mileage…')}</p>
               ) : shown.length === 0 ? (
@@ -324,22 +356,23 @@ export default function MileagePage() {
                   })}
                 </p>
               ) : (
-                shown.map((item) => (
-                  <DayCard
-                    key={item.day.key}
-                    day={item.day}
-                    truck={item.truck}
-                    row={item.row}
-                    headline={item.headline}
-                    selected={item.day.key === selectedKey}
-                    tr={tr}
-                    onOpen={() => setSelected(item.day.key)}
-                  />
-                ))
+                <ul className="mileage-list">
+                  {shown.map((item) => (
+                    <DayCard
+                      key={item.day.key}
+                      day={item.day}
+                      truck={item.truck}
+                      row={item.row}
+                      headline={item.headline}
+                      selected={item.day.key === selectedKey}
+                      tr={tr}
+                      onOpen={() => setSelected(item.day.key)}
+                    />
+                  ))}
+                </ul>
               )}
-            </div>
+            </section>
           )}
-
           {open ? (
             <RouteView
               key={open.day.key}

@@ -790,6 +790,11 @@ export const PL_PAGES: Record<string, string> = {
   'Miles This Week': 'Mile w tym tygodniu',
   'Miles This Month': 'Mile w tym miesiącu',
   'Estimated Fuel Used': 'Szacowane zużycie paliwa',
+  Showing: 'Okres',
+  'Route miles from each day’s tickets': 'Mile z tras według kwitów każdego dnia',
+  'Trucks with miles {when}': 'Ciężarówki z milami {when}',
+  'Per truck and day': 'Według ciężarówki i dnia',
+  'Daily mileage': 'Dzienny przebieg',
   'Estimated Fuel Used is miles ÷ average MPG. It is not fuel purchased.':
     'Szacowane zużycie paliwa to mile ÷ średnie MPG. To nie jest paliwo zakupione.',
   'Mileage is worked out on the server and isn’t available in this preview.':

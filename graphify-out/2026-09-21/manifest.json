@@ -510,9 +510,9 @@
     "semantic_hash": ""
   },
   "lib/i18n/pl-pages.ts": {
-    "mtime": 1790048649.7421563,
-    "seen": 1790049927.640457,
-    "ast_hash": "10c92944b05f490089141d25e3ba2796",
+    "mtime": 1790050378.4382205,
+    "seen": 1790050499.683775,
+    "ast_hash": "51cd25bd048e2df93a232f66476212a3",
     "semantic_hash": ""
   },
   "lib/i18n/pl.ts": {
@@ -768,50 +768,50 @@
     "semantic_hash": ""
   },
   "public/ocr/pdf.worker.min.mjs": {
-    "mtime": 1790049900.672734,
-    "seen": 1790049927.64054,
+    "mtime": 1790050421.199737,
+    "seen": 1790050499.683865,
     "ast_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e",
     "semantic_hash": "ebbc6cf5cc66eb718f3ca35ecbc3b07e"
   },
   "public/ocr/tesseract-core-lstm.wasm.js": {
-    "mtime": 1790049900.6878924,
-    "seen": 1790049927.6405408,
+    "mtime": 1790050421.2159896,
+    "seen": 1790050499.683866,
     "ast_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3",
     "semantic_hash": "a3c227d2e04b7be5d1ef50d75f3a5ee3"
   },
   "public/ocr/tesseract-core-relaxedsimd-lstm.wasm.js": {
-    "mtime": 1790049900.7053673,
-    "seen": 1790049927.640542,
+    "mtime": 1790050421.2333946,
+    "seen": 1790050499.683866,
     "ast_hash": "f267f4efd6219843707c73b3a9a70604",
     "semantic_hash": "f267f4efd6219843707c73b3a9a70604"
   },
   "public/ocr/tesseract-core-relaxedsimd.wasm.js": {
-    "mtime": 1790049900.7245526,
-    "seen": 1790049927.640543,
+    "mtime": 1790050421.2522252,
+    "seen": 1790050499.683867,
     "ast_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb",
     "semantic_hash": "c1d153edf29889b3ab4b14d4b7b8d1eb"
   },
   "public/ocr/tesseract-core-simd-lstm.wasm.js": {
-    "mtime": 1790049900.7460022,
-    "seen": 1790049927.640544,
+    "mtime": 1790050421.273953,
+    "seen": 1790050499.683868,
     "ast_hash": "2bd630487581a49b7d7cce1bfe42314c",
     "semantic_hash": "2bd630487581a49b7d7cce1bfe42314c"
   },
   "public/ocr/tesseract-core-simd.wasm.js": {
-    "mtime": 1790049900.7661307,
-    "seen": 1790049927.6405451,
+    "mtime": 1790050421.2960765,
+    "seen": 1790050499.683869,
     "ast_hash": "3fb1f6589c0569134cc593e0155acec4",
     "semantic_hash": "3fb1f6589c0569134cc593e0155acec4"
   },
   "public/ocr/tesseract-core.wasm.js": {
-    "mtime": 1790049900.7854874,
-    "seen": 1790049927.6405451,
+    "mtime": 1790050421.3184094,
+    "seen": 1790050499.6838698,
     "ast_hash": "7ec67b8a67ab4d41b74dd8df49db9224",
     "semantic_hash": "7ec67b8a67ab4d41b74dd8df49db9224"
   },
   "public/ocr/worker.min.js": {
-    "mtime": 1790049900.6738229,
-    "seen": 1790049927.640546,
+    "mtime": 1790050421.201449,
+    "seen": 1790050499.6838698,
     "ast_hash": "b1ab464237e687b323da236fff45ba05",
     "semantic_hash": "b1ab464237e687b323da236fff45ba05"
   },
@@ -1740,9 +1740,9 @@
     "semantic_hash": ""
   },
   "components/mileage/route-map.tsx": {
-    "mtime": 1790050096.790901,
-    "seen": 1790050130.649118,
-    "ast_hash": "a856ff5170fbf38ce9e562241935a443",
+    "mtime": 1790050325.4736152,
+    "seen": 1790050371.1859798,
+    "ast_hash": "1f72331013d24c93aa3fa1b39a63415f",
     "semantic_hash": ""
   },
   "lib/load-desk/mileage-days.ts": {
@@ -1758,9 +1758,9 @@
     "semantic_hash": ""
   },
   "lib/load-desk/route-geometry.ts": {
-    "mtime": 1790050070.4020534,
-    "seen": 1790050130.6492128,
-    "ast_hash": "cf7ec97c0c172d9930121b2527bd7bd0",
+    "mtime": 1790050325.473377,
+    "seen": 1790050371.186075,
+    "ast_hash": "e155dd2ad0703e98460fd2fa71dd8773",
     "semantic_hash": ""
   },
   "lib/server/mileage-calc.ts": {
@@ -1812,9 +1812,9 @@
     "semantic_hash": ""
   },
   "tests/route-geometry.test.ts": {
-    "mtime": 1790050096.7913158,
-    "seen": 1790050130.649318,
-    "ast_hash": "8f7212a28fa8aa0549b3083196286578",
+    "mtime": 1790050340.4987717,
+    "seen": 1790050371.1861749,
+    "ast_hash": "9b7f72d205e6eb410872b3d556f44df7",
     "semantic_hash": ""
   },
   "app/(workspace)/rates/page.tsx": {
@@ -2010,9 +2010,9 @@
     "semantic_hash": ""
   },
   "components/mileage/route-view.tsx": {
-    "mtime": 1790050063.3738968,
-    "seen": 1790050130.649119,
-    "ast_hash": "b1bdd7f0becc4455c9ff6a4d55be0a0f",
+    "mtime": 1790050303.9687536,
+    "seen": 1790050371.185981,
+    "ast_hash": "2921f93473945259b56a8a288dbfdde6",
     "semantic_hash": ""
   },
   "supabase/migrations/202609230001_mileage_calc_token.sql": {

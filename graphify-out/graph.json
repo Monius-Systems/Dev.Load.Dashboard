@@ -69750,7 +69750,7 @@
       "file_type": "code",
       "norm_label": "locationfixed()",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L220"
+      "source_location": "L223"
     },
     {
       "id": "components_mileage_mileage_page_mileagepage_update",
@@ -69762,7 +69762,7 @@
       "file_type": "code",
       "norm_label": "update()",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L208"
+      "source_location": "L211"
     },
     {
       "id": "components_mileage_mileage_page_periodfor",
@@ -107788,7 +107788,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/day-card.tsx",
-      "source_location": "L106",
+      "source_location": "L124",
       "weight": 1.0
     },
     {
@@ -108184,7 +108184,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L211",
+      "source_location": "L214",
       "weight": 1.0
     },
     {
@@ -108196,7 +108196,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L212",
+      "source_location": "L215",
       "weight": 1.0
     },
     {
@@ -108208,7 +108208,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L259",
+      "source_location": "L251",
       "weight": 1.0
     },
     {
@@ -108220,7 +108220,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L307",
+      "source_location": "L317",
       "weight": 1.0
     },
     {
@@ -108232,7 +108232,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L358",
+      "source_location": "L391",
       "weight": 1.0
     },
     {
@@ -108244,7 +108244,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L224",
+      "source_location": "L227",
       "weight": 1.0
     },
     {
@@ -108256,7 +108256,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L211",
+      "source_location": "L214",
       "weight": 1.0
     },
     {
@@ -108268,7 +108268,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L212",
+      "source_location": "L215",
       "weight": 1.0
     },
     {
@@ -108532,7 +108532,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/route-view.tsx",
-      "source_location": "L166",
+      "source_location": "L170",
       "weight": 1.0
     },
     {
@@ -108544,7 +108544,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/route-view.tsx",
-      "source_location": "L216",
+      "source_location": "L220",
       "weight": 1.0
     },
     {
@@ -108556,7 +108556,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/route-view.tsx",
-      "source_location": "L268",
+      "source_location": "L272",
       "weight": 1.0
     },
     {
@@ -211648,7 +211648,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L208",
+      "source_location": "L211",
       "weight": 1.0
     },
     {
@@ -211660,7 +211660,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "components/mileage/mileage-page.tsx",
-      "source_location": "L220",
+      "source_location": "L223",
       "weight": 1.0
     },
     {
@@ -353549,5 +353549,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "9510d47ab4ba48a0ec1ccfe9a1c119130941dc8a"
+  "built_at_commit": "9a8ae39eb04e9fe6910eabe1f5fdcedd1ff9eb85"
 }

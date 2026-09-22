@@ -6,10 +6,10 @@ import type { Translator } from '@/lib/i18n/translate';
 import { formatNumber, hasResult, type MileageDay, type TruckDay } from '@/lib/load-desk/mileage';
 import type { TruckProfile } from '@/lib/load-desk/profiles';
 
-// One truck on one day, as a card. Everything a dispatcher needs in order to
-// decide whether to open the day is on the front of it, in words: the truck,
-// the day, how many loads, how far it drove, and whether anything is waiting
-// on a person. The card never says anything with colour alone.
+// One truck on one day, as a row of the daily list. Everything a dispatcher
+// needs in order to decide whether to open the day is on the row, in words:
+// the truck, the day, how many loads, how far it drove, and whether anything
+// is waiting on a person. The row never says anything with colour alone.
 
 /** What the page says about a day, as `dayHeadline` decides it. */
 export type DayHeadline =
@@ -98,27 +98,36 @@ export default function DayCard({
   const miles = row?.total_miles ?? null;
   const gallons = row?.est_gallons ?? null;
   return (
-    <article className="mileage-day-card" data-selected={selected || undefined}>
-      <h3>{t('Truck {number}', { number: truck.truck_number })}</h3>
-      <p className="mileage-day-when">{when}</p>
-      <p className="mileage-day-loads">{tr.plural(day.records.length, 'load')}</p>
-      <p className="mileage-day-miles">
-        {miles === null ? '—' : formatNumber(miles)} <small>{t('miles')}</small>
-      </p>
-      <p className="mileage-day-fuel">
-        {t('Estimated fuel: {gal} gal', { gal: gallons === null ? '—' : formatNumber(gallons) })}
-      </p>
-      <DayStatus headline={headline} row={row} tr={tr} />
-      <Button
-        className="mileage-day-open"
-        aria-label={t('View route for truck {number} on {date}', {
-          number: truck.truck_number,
-          date: when,
-        })}
-        onClick={onOpen}
-      >
-        {t('View route')}
-      </Button>
-    </article>
+    <li className="pf-card mileage-day-card" data-selected={selected || undefined}>
+      <div className="pf-card-head">
+        <div>
+          <strong>{t('Truck {number}', { number: truck.truck_number })}</strong>
+          <small>
+            {when} · {tr.plural(day.records.length, 'load')}
+          </small>
+        </div>
+        <Button
+          variant={selected ? 'default' : 'secondary'}
+          className="mileage-day-open"
+          aria-label={t('View route for truck {number} on {date}', {
+            number: truck.truck_number,
+            date: when,
+          })}
+          aria-current={selected || undefined}
+          onClick={onOpen}
+        >
+          {t('View route')}
+        </Button>
+      </div>
+      <div className="mileage-day-facts">
+        <p className="mileage-day-miles">
+          {miles === null ? '—' : formatNumber(miles)} <small>{t('miles')}</small>
+        </p>
+        <p className="mileage-day-fuel">
+          {t('Estimated fuel: {gal} gal', { gal: gallons === null ? '—' : formatNumber(gallons) })}
+        </p>
+        <DayStatus headline={headline} row={row} tr={tr} />
+      </div>
+    </li>
   );
 }

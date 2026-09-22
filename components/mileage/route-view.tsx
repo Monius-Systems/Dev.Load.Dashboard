@@ -149,16 +149,20 @@ export default function RouteView({
       id="mileage-route"
       aria-labelledby="mileage-route-title"
     >
-      {phone ? (
-        <Button variant="secondary" className="mileage-back" onClick={onBack}>
-          <ArrowLeft />
-          {t('Back to all trucks')}
-        </Button>
-      ) : null}
-
-      <h2 id="mileage-route-title">
-        {t('Truck {number} · {date}', { number: truck.truck_number, date: when })}
-      </h2>
+      <div className="ld-panel-head">
+        <div>
+          <p className="ld-step">{t('Route')}</p>
+          <h2 id="mileage-route-title">
+            {t('Truck {number} · {date}', { number: truck.truck_number, date: when })}
+          </h2>
+        </div>
+        {phone ? (
+          <Button variant="secondary" className="mileage-back" onClick={onBack}>
+            <ArrowLeft />
+            {t('Back to all trucks')}
+          </Button>
+        ) : null}
+      </div>
 
       <dl className="mileage-facts">
         <div>
