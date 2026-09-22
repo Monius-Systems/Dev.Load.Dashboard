@@ -258,7 +258,7 @@ export type ToolDefinition<Input = Record<string, unknown>> = {
  */
 export type ToolDeps = {
   client: unknown;
-  routing: unknown | null;
+  routing: unknown;
 };
 
 // ------------------------------------------------------------------ policy
