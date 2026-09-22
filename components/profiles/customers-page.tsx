@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState, type SyntheticEvent } from 'react';
-import { MapPin, Pencil, Plus, ScanLine, StickyNote, Trash2, UserPlus, UserRound, X } from 'lucide-react';
+import { Mail, MapPin, Pencil, Plus, ScanLine, StickyNote, Trash2, UserPlus, UserRound, X } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,6 +57,26 @@ import {
   type CustomerProfile,
   type LocationRate,
 } from '@/lib/load-desk/profiles';
+import { BASE_RATE_TYPES, MAX_CONTACTS, type JobAlias } from '@/lib/load-desk/rates';
+import {
+  aliasLabel,
+  BASE_BEHAVIOR_LABELS,
+  BASE_RATE_TYPE_LABELS,
+  BILLING_CYCLE_LABELS,
+  blankRateContact,
+  FUEL_BEHAVIOR_LABELS,
+  mainRateContact,
+  MAX_FOLLOW_UP_DAYS,
+  MIN_FOLLOW_UP_DAYS,
+  rateBlockFromDraft,
+  rateDraftFrom,
+  REQUEST_BASE_LABELS,
+  REQUEST_FUEL_LABELS,
+  SEND_MODE_LABELS,
+  WEEKDAY_LABELS,
+  type RateContactDraft,
+  type RateDraft,
+} from '@/lib/load-desk/rates-profile-form';
 import {
   FUEL_TYPES,
   isFuelType,
@@ -126,6 +146,8 @@ type Draft = {
   addresses: string[];
   /** What each site is charged, by address; a site not here is rated per ticket. */
   siteRates: Record<string, SiteRateDraft>;
+  /** How the rate agent asks this customer, and who it asks. */
+  rates: RateDraft;
   notes: string;
 };
 
@@ -136,6 +158,7 @@ const blankDraft = (): Draft => ({
   names: [],
   addresses: [],
   siteRates: {},
+  rates: rateDraftFrom(),
   notes: '',
 });
 
@@ -156,8 +179,56 @@ const draftFrom = (customer: CustomerProfile): Draft => ({
       },
     ]),
   ),
+  rates: rateDraftFrom(customer),
   notes: customer.notes,
 });
+
+const WEEKDAY_OPTIONS: [string, string][] = WEEKDAY_LABELS.map((label, day) => [
+  String(day),
+  label,
+]);
+
+const BASE_RATE_OPTIONS: [string, string][] = BASE_RATE_TYPES.map((type) => [
+  type,
+  BASE_RATE_TYPE_LABELS[type],
+]);
+
+/**
+ * The rate agent's habits for one customer, each a choice from a short list:
+ * the field of the draft, what it is called, and what may be chosen. They read
+ * as a run of two-column selects, the way the fleet dialog's routing fields do.
+ */
+const RATE_CHOICES: [
+  (
+    | 'billingCycle'
+    | 'periodStartDay'
+    | 'requestDay'
+    | 'typicalRateType'
+    | 'baseBehavior'
+    | 'fuelBehavior'
+    | 'requestBase'
+    | 'requestFuel'
+  ),
+  string,
+  [string, string][],
+][] = [
+  ['billingCycle', 'Billing cycle', BILLING_CYCLE_LABELS],
+  ['periodStartDay', 'Period starts', WEEKDAY_OPTIONS],
+  ['requestDay', 'Request day', WEEKDAY_OPTIONS],
+  ['typicalRateType', 'Typical pricing', BASE_RATE_OPTIONS],
+  ['baseBehavior', 'Base rate behaviour', BASE_BEHAVIOR_LABELS],
+  ['fuelBehavior', 'Fuel behaviour', FUEL_BEHAVIOR_LABELS],
+  ['requestBase', 'Request base rate', REQUEST_BASE_LABELS],
+  ['requestFuel', 'Request fuel', REQUEST_FUEL_LABELS],
+];
+
+/** The fields of one rate contact, in the order they are read out loud. */
+const CONTACT_FIELDS: ['name' | 'email' | 'title' | 'cc', string, string][] = [
+  ['name', 'Name', 'Who answers about rates'],
+  ['email', 'Email', 'name@company.com'],
+  ['title', 'Title', 'Project manager'],
+  ['cc', 'CC', 'Separated by commas'],
+];
 
 function matchDescription({ t, plural }: Translator, customer: CustomerProfile) {
   const parts = [];
@@ -279,6 +350,13 @@ export default function CustomersPage() {
         fuel_type: site.fuelType,
       });
     }
+    // The rate agent's settings, read by the same parsers the server runs, so
+    // a customer is never saved with habits the agent would refuse later.
+    const rates = rateBlockFromDraft(draft.rates);
+    if ('error' in rates) {
+      setFormError(rates.error);
+      return;
+    }
     const ids = listFrom(draft.ids);
     const clash = customers.find(
       (customer) =>
@@ -312,6 +390,7 @@ export default function CustomersPage() {
         rate_type: 'flat',
         fuel_charge: null,
         fuel_type: 'flat',
+        ...rates.value,
         notes: draft.notes.trim(),
         created_at: existing?.created_at ?? new Date().toISOString(),
       },
@@ -374,6 +453,30 @@ export default function CustomersPage() {
       siteRates,
     });
   };
+
+  /** Changes one of the rate agent's settings for this customer. */
+  const setRates = (patch: Partial<RateDraft>) =>
+    setDraftField({ rates: { ...(draft?.rates ?? rateDraftFrom()), ...patch } });
+
+  const contacts = draft?.rates.contacts ?? [];
+  const setContact = (index: number, patch: Partial<RateContactDraft>) =>
+    setRates({
+      contacts: contacts.map((contact, at) => (at === index ? { ...contact, ...patch } : contact)),
+    });
+  /** The first contact named is the one written to, until another is chosen. */
+  const addContact = () =>
+    setRates({ contacts: [...contacts, blankRateContact(contacts.length === 0)] });
+  const removeContact = (index: number) =>
+    setRates({ contacts: contacts.filter((_contact, at) => at !== index) });
+  /** One contact is written to and the rest are copied in, so this is a radio. */
+  const setPrimaryContact = (index: number) =>
+    setRates({ contacts: contacts.map((contact, at) => ({ ...contact, primary: at === index })) });
+  const removeJobAlias = (alias: JobAlias) =>
+    setRates({
+      aliases: draft?.rates.aliases.filter(
+        (known) => known.alias !== alias.alias || known.job_key !== alias.job_key,
+      ) ?? [],
+    });
 
   /** Opens the figures for a site, or changes one of them. */
   const setSiteRate = (address: string, patch: Partial<SiteRateDraft>) =>
@@ -494,7 +597,17 @@ export default function CustomersPage() {
                   {rows.map(({ customer, summary }) => (
                     <tr key={customer.id}>
                       <th scope="row" className="pf-name">
-                        <strong>{customer.name}</strong>
+                        <strong>
+                          {customer.name}
+                          {mainRateContact(customer.rate_contacts) ? null : (
+                            <span
+                              className="ld-chip pf-chip"
+                              title={t('Add a contact so the agent can ask this customer for rates.')}
+                            >
+                              {t('No rate contact')}
+                            </span>
+                          )}
+                        </strong>
                         <small>{matchDescription(tr, customer)}</small>
                       </th>
                       <td className="pf-rate">
@@ -526,7 +639,12 @@ export default function CustomersPage() {
                 <li key={customer.id} className="pf-card">
                   <div className="pf-card-head">
                     <div>
-                      <strong>{customer.name}</strong>
+                      <strong>
+                        {customer.name}
+                        {mainRateContact(customer.rate_contacts) ? null : (
+                          <span className="ld-chip pf-chip">{t('No rate contact')}</span>
+                        )}
+                      </strong>
                       <small className="ui-literal">
                         {(() => {
                           const { main, detail } = rateSummary(tr, customer);
@@ -854,6 +972,168 @@ export default function CustomersPage() {
                     </div>
                   ) : null}
                 </div>
+                <p className="pf-group-title">
+                  <Mail aria-hidden="true" />
+                  {t('Rates & requests')}
+                </p>
+                {/* Who is written to, and how this customer is asked. A
+                    customer left exactly as it opens keeps no settings at all:
+                    absent means asked the default way, which is what a customer
+                    nobody has considered should mean. */}
+                <div className="ld-field" data-span={2}>
+                  <span>{t('Who to ask for rates')}</span>
+                  {contacts.length ? (
+                    <ul className="pf-rates-contacts">
+                      {contacts.map((contact, index) => (
+                        <li key={`contact-${index}`} className="pf-rates-contact">
+                          <div className="pf-rates-contact-head">
+                            <label
+                              className="pf-rates-primary"
+                              htmlFor={`${fieldId}-contact-${index}-primary`}
+                            >
+                              <input
+                                id={`${fieldId}-contact-${index}-primary`}
+                                type="radio"
+                                name={`${fieldId}-primary-contact`}
+                                checked={contact.primary}
+                                onChange={() => setPrimaryContact(index)}
+                              />
+                              <span>{t('Primary')}</span>
+                            </label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              aria-label={t('Remove contact {number}', { number: index + 1 })}
+                              onClick={() => removeContact(index)}
+                            >
+                              <X />
+                            </Button>
+                          </div>
+                          <div className="pf-rates-contact-fields">
+                            {CONTACT_FIELDS.map(([field, label, hint]) => (
+                              <label
+                                className="ld-field"
+                                key={field}
+                                htmlFor={`${fieldId}-contact-${index}-${field}`}
+                              >
+                                <span>{t(label)}</span>
+                                <Input
+                                  id={`${fieldId}-contact-${index}-${field}`}
+                                  type={field === 'email' ? 'email' : 'text'}
+                                  placeholder={t(hint)}
+                                  value={contact[field]}
+                                  onChange={(event) =>
+                                    setContact(index, { [field]: event.target.value })
+                                  }
+                                />
+                              </label>
+                            ))}
+                          </div>
+                          <label
+                            className="ld-field"
+                            htmlFor={`${fieldId}-contact-${index}-notes`}
+                          >
+                            <span>{t('Notes')}</span>
+                            <Input
+                              id={`${fieldId}-contact-${index}-notes`}
+                              placeholder={t('Anything to remember when writing to them')}
+                              value={contact.notes}
+                              onChange={(event) =>
+                                setContact(index, { notes: event.target.value })
+                              }
+                            />
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="pf-alias-empty">{t('No rate contact yet.')}</p>
+                  )}
+                  {contacts.length < MAX_CONTACTS ? (
+                    <div className="pf-alias-add">
+                      <Button type="button" variant="secondary" size="sm" onClick={addContact}>
+                        <Plus data-icon="inline-start" />
+                        {t('Add contact')}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+                {RATE_CHOICES.map(([field, label, options]) => (
+                  <div className="ld-field" key={field}>
+                    <label htmlFor={`${fieldId}-${field}`}>{t(label)}</label>
+                    <SelectField
+                      id={`${fieldId}-${field}`}
+                      value={draft.rates[field]}
+                      onValueChange={(value) => setRates({ [field]: value })}
+                      options={options.map(([value, text]) => ({ value, label: t(text) }))}
+                    />
+                  </div>
+                ))}
+                <label className="ld-field" htmlFor={`${fieldId}-follow-up`}>
+                  <span>{t('Follow up after (days)')}</span>
+                  <Input
+                    id={`${fieldId}-follow-up`}
+                    type="number"
+                    inputMode="numeric"
+                    step={1}
+                    min={MIN_FOLLOW_UP_DAYS}
+                    max={MAX_FOLLOW_UP_DAYS}
+                    value={draft.rates.followUpDays}
+                    onChange={(event) => setRates({ followUpDays: event.target.value })}
+                  />
+                </label>
+                <div className="ld-field">
+                  <label htmlFor={`${fieldId}-send-mode`}>{t('Send mode')}</label>
+                  <SelectField
+                    id={`${fieldId}-send-mode`}
+                    value={draft.rates.sendMode}
+                    onValueChange={(value) => setRates({ sendMode: value })}
+                    options={SEND_MODE_LABELS.map(([value, label]) => ({
+                      value,
+                      label: t(label),
+                    }))}
+                  />
+                  {/* Whatever is chosen, nothing leaves this deployment: the
+                      setting is kept for the one that can send. */}
+                  <small className="ld-field-hint">{t('Drafts only on this deployment')}</small>
+                </div>
+                <label className="pf-check" htmlFor={`${fieldId}-auto-create`}>
+                  <input
+                    id={`${fieldId}-auto-create`}
+                    type="checkbox"
+                    checked={draft.rates.autoCreate}
+                    onChange={(event) => setRates({ autoCreate: event.target.checked })}
+                  />
+                  <span>
+                    {t('Auto-create weekly request')}
+                    <small>{t('Drafted when a job of theirs is short a rate')}</small>
+                  </span>
+                </label>
+                {/* Names this customer has been seen to use for its jobs. The
+                    agent learned them from a reply it was sure of, so they are
+                    shown rather than typed — and removable, if one is wrong. */}
+                {draft.rates.aliases.length ? (
+                  <div className="ld-field" data-span={2}>
+                    <span>{t('Names this customer uses for its jobs')}</span>
+                    <ul className="pf-aliases">
+                      {draft.rates.aliases.map((alias) => (
+                        <li key={`${alias.alias}|${alias.job_key}`} className="pf-alias">
+                          <span className="ui-literal">
+                            {aliasLabel(alias, draft.addresses)}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={t('Remove {name}', { name: alias.alias })}
+                            onClick={() => removeJobAlias(alias)}
+                          >
+                            <X aria-hidden="true" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
                 <p className="pf-group-title">
                   <StickyNote aria-hidden="true" />
                   {t('Notes')}

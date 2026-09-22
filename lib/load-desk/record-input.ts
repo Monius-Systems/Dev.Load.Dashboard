@@ -25,6 +25,7 @@ import type {
   TicketRecovery,
 } from './recovery/contract.ts';
 import { customerLocationRates, type LocationRate } from './customer-rates.ts';
+import { parseRateContacts, parseRateProfile, type RecordPricing } from './rates.ts';
 import { datedFromTicket } from './invoice-dates.ts';
 import { ticketDay } from './ticket-date.ts';
 
@@ -265,6 +266,34 @@ function recoveryOf(value: unknown): Parsed<TicketRecovery | undefined> {
   return recovery ? { value: recovery } : { error: 'The ticket recovery details are not valid.' };
 }
 
+/**
+ * Where a ticket's figures came from, on a change that carries it: the rate
+ * periods the agent priced it from, and the part of the job it could not
+ * price. Absent says nothing about pricing; null says the ticket is priced by
+ * hand and no period stands behind its figures.
+ */
+function pricingOf(value: unknown): Parsed<RecordPricing | null | undefined> {
+  if (value === undefined) return { value: undefined };
+  if (value === null) return { value: null };
+  if (
+    !isObject(value) ||
+    !optionalId(value.base_period_id) ||
+    !optionalId(value.fuel_period_id) ||
+    !(text(value.applied_at, 40) && !Number.isNaN(Date.parse(value.applied_at as string))) ||
+    !nullableText(value.unsupported, 200)
+  ) {
+    return { error: 'The ticket pricing details are not valid.' };
+  }
+  return {
+    value: {
+      base_period_id: (value.base_period_id as number | null | undefined) ?? null,
+      fuel_period_id: (value.fuel_period_id as number | null | undefined) ?? null,
+      applied_at: value.applied_at as string,
+      unsupported: (value.unsupported as string | null | undefined) ?? null,
+    },
+  };
+}
+
 /** A ticket to save: its fields, invoice, source file and profile links. */
 export function parseNewRecord(value: unknown): Parsed<NewRecord> {
   if (!isObject(value)) return { error: 'Expected a ticket.' };
@@ -353,6 +382,13 @@ export type RecordEdit = {
    * on every other edit.
    */
   auto_approved_at?: string;
+  /**
+   * Which rate periods the figures came from, when the agent priced the
+   * ticket. Null is the opposite statement — these figures are somebody's own
+   * and no period stands behind them — and absent says nothing either way,
+   * leaving whatever the record holds.
+   */
+  pricing?: RecordPricing | null;
 };
 
 export const MAX_EDITS = 200;
@@ -397,6 +433,8 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
     }
     const recovery = recoveryOf(item.recovery);
     if ('error' in recovery) return recovery;
+    const pricing = pricingOf(item.pricing);
+    if ('error' in pricing) return pricing;
     // An invoice is dated by its ticket here too: a change that came in over
     // the API cannot leave one carrying a day of its own.
     edits.push(
@@ -411,6 +449,7 @@ export function parseRecordEdits(value: unknown): Parsed<RecordEdit[]> {
         ...(batch !== undefined ? { invoice_batch_id: batch as string } : {}),
         ...(item.bookkeeping === true ? { bookkeeping: true as const } : {}),
         ...(typeof item.auto_approved_at === 'string' ? { auto_approved_at: item.auto_approved_at } : {}),
+        ...(pricing.value !== undefined ? { pricing: pricing.value } : {}),
       }),
     );
   }
@@ -445,6 +484,9 @@ export function applyRecordEdit<T extends Omit<SavedRecord, 'id'>>(
       ? {}
       : { edited_at: editedAt, reviewed_at: editedAt }),
     ...(edit.auto_approved_at ? { auto_approved_at: edit.auto_approved_at } : {}),
+    // Same rule as recovery: only an edit that carries pricing changes it, and
+    // null is the ticket being priced by hand from here on.
+    ...(edit.pricing === undefined ? {} : { pricing: edit.pricing ?? undefined }),
   };
 }
 
@@ -511,6 +553,12 @@ export function parseCustomer(value: unknown): Parsed<NewCustomer> {
   ) {
     return { error: 'The customer details are not valid.' };
   }
+  // How the rate agent treats this customer, and who it writes to: both
+  // optional, both whole or not there at all (as ifta is on a truck).
+  const rateProfile = parseRateProfile(value.rate_profile);
+  if ('error' in rateProfile) return rateProfile;
+  const rateContacts = parseRateContacts(value.rate_contacts);
+  if ('error' in rateContacts) return rateContacts;
   return {
     value: {
       name: (value.name as string).trim(),
@@ -525,6 +573,8 @@ export function parseCustomer(value: unknown): Parsed<NewCustomer> {
       rate_type: isRateType(value.rate_type) ? value.rate_type : 'flat',
       fuel_type: isFuelType(value.fuel_type) ? value.fuel_type : 'flat',
       fuel_charge: value.fuel_charge as number | null,
+      ...(rateProfile.value ? { rate_profile: rateProfile.value } : {}),
+      ...(rateContacts.value ? { rate_contacts: rateContacts.value } : {}),
       notes: value.notes as string,
       created_at: value.created_at as string,
     },

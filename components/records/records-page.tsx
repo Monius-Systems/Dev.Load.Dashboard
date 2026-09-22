@@ -1,12 +1,22 @@
 'use client';
 
-import { useId, useState, type MouseEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type MouseEvent,
+  type SyntheticEvent,
+} from 'react';
 import Link from 'next/link';
 import { setDeskField } from '@/lib/load-desk/desk-session';
 import {
   ChevronDown,
   Download,
   FileSearch,
+  Lock,
+  LockOpen,
   Pencil,
   ReceiptText,
   Search,
@@ -24,6 +34,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { SelectField } from '@/components/ui/select-field';
 import { toast } from '@/components/ui/toast';
@@ -60,10 +78,49 @@ import {
   type InvoiceGroup,
 } from '@/lib/load-desk/records';
 import {
+  billingPeriodFor,
+  invoiceReadiness,
+  type InvoiceLock,
+  type InvoiceReadiness,
+  type ReadinessStep,
+} from '@/lib/load-desk/rates';
+import {
+  busyKey,
+  finalizeInvoice,
+  getRatesSnapshot,
+  getServerRatesSnapshot,
+  loadRates,
+  subscribeRates,
+  unlockInvoice,
+} from '@/lib/load-desk/rates-store';
+import {
   deleteSavedRecord,
   openStoredOriginal,
 } from '@/lib/load-desk/storage';
 import type { SavedRecord } from '@/lib/load-desk/types';
+
+// The rate agent's rows, as this page reads them: the periods an invoice is
+// priced from and the invoices already closed against them.
+const useRates = () =>
+  useSyncExternalStore(subscribeRates, getRatesSnapshot, getServerRatesSnapshot);
+
+const DAY_MS = 86_400_000;
+/** As far back as the Rates page offers, so the invoices on screen are covered. */
+const RATE_PERIODS_BACK = 8;
+
+const pad2 = (value: number) => String(value).padStart(2, '0');
+const isoDay = (date: Date) =>
+  `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+
+/**
+ * The stretch of days this page needs rates for: from the start of the billing
+ * period eight back — the oldest the Rates page offers, and further back than
+ * an invoice is usually still open — up to today.
+ */
+const ratesRange = (now: Date) => ({
+  from: billingPeriodFor(undefined, new Date(now.getTime() - RATE_PERIODS_BACK * 7 * DAY_MS)).from,
+  to: isoDay(now),
+});
 
 type Tab = 'invoices' | 'tickets';
 
@@ -72,6 +129,8 @@ const STATUS_OPTIONS: Record<Tab, [string, string][]> = {
     ['all', 'All invoices'],
     ['draft', 'Draft (rate missing)'],
     ['rated', 'Rated'],
+    ['waiting', 'Waiting on rates'],
+    ['finalized', 'Finalized'],
   ],
   tickets: [
     ['all', 'All tickets'],
@@ -171,9 +230,22 @@ function invoiceHeading(tr: Translator, group: Pick<InvoiceGroup, 'records' | 'i
   return number ? tr.t('Invoice {number}', { number }) : invoiceStanding(tr.t, group);
 }
 
+/** A step of the readiness line: done, still waited on, or not on this invoice. */
+const STEP_MARK: Record<ReadinessStep, string> = {
+  ok: '✓',
+  waiting: '⏳',
+  'n/a': '—',
+};
+
 export default function RecordsPage() {
-  const { records, ready, error: storeError } = useRecords();
+  const { records, ready, error: storeError, mode } = useRecords();
   const { customers, trucks } = useProfiles();
+  const rates = useRates();
+  const [now] = useState(() => new Date());
+  // One read, and only ever one: the range is asked for while it is still null
+  // and the answer sets it, but a second render before the answer arrives must
+  // not ask again.
+  const askedForRates = useRef(false);
   const tr = useT();
   const { t, plural, date } = tr;
   const fieldId = useId();
@@ -190,6 +262,10 @@ export default function RecordsPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [invoiceView, setInvoiceView] = useState<InvoiceView | null>(null);
   const [toDelete, setToDelete] = useState<SavedRecord | null>(null);
+  const [toFinalize, setToFinalize] = useState<InvoiceGroup | null>(null);
+  const [toUnlock, setToUnlock] = useState<InvoiceGroup | null>(null);
+  // Reopening a finalized invoice says why, and the reason is kept on the lock.
+  const [unlockReason, setUnlockReason] = useState('');
   /**
    * On the Tickets tab the tickets sit under their invoice, and an invoice
    * opens to show them. Closed until pressed — except while a search or filter
@@ -198,6 +274,21 @@ export default function RecordsPage() {
    * this is the set of invoices flipped from whichever way is the default.
    */
   const [flippedInvoices, setFlippedInvoices] = useState<Set<string>>(() => new Set());
+
+  /**
+   * What an invoice is waiting for is part of this page, not something the
+   * Rates page has to be visited first to see. So the agent's periods and
+   * locks for the weeks these invoices fall in are read once, when the records
+   * are in and there is a workspace to read them from. One bounded request of
+   * small tables, nothing worked out on the server, and nothing here polls;
+   * the unprotected local preview has no agent to ask.
+   */
+  useEffect(() => {
+    if (!ready || mode !== 'remote') return;
+    if (rates.ready || rates.range !== null || askedForRates.current) return;
+    askedForRates.current = true;
+    void loadRates(ratesRange(now));
+  }, [ready, mode, rates.ready, rates.range, now]);
 
   const ticketNumber = (record: SavedRecord) =>
     record.ticket.ticket_number ?? t('unnumbered');
@@ -232,13 +323,47 @@ export default function RecordsPage() {
   };
 
   const groups = invoiceGroups(records);
+  /** The lock on an invoice, if one has been written and not lifted since. */
+  const lockFor = (group: InvoiceGroup): InvoiceLock | null =>
+    rates.locks.find((lock) => lock.invoice_key === group.key) ?? null;
+  const isLocked = (group: InvoiceGroup) => {
+    const lock = lockFor(group);
+    return lock !== null && lock.unlocked_at === null;
+  };
+  /**
+   * What each invoice is still waiting for, worked out once for the page. Only
+   * once the agent's rows are in and came back whole: without them there are no
+   * periods to resolve against, and reading every invoice as short of a rate
+   * would be a worse answer than the one this page already gives.
+   */
+  const readinessByKey = new Map<string, InvoiceReadiness>();
+  if (rates.ready && rates.error === null) {
+    for (const group of groups) {
+      readinessByKey.set(
+        group.key,
+        invoiceReadiness(group, customers, rates.periods, isLocked(group)),
+      );
+    }
+  }
+  const readinessOf = (group: InvoiceGroup): InvoiceReadiness | null =>
+    readinessByKey.get(group.key) ?? null;
+
   // An invoice shows when any of its tickets match; its totals stay whole.
   const shownInvoices = groups
     .filter((group) => group.records.some(passes))
-    .filter(
-      (group) =>
-        status === 'all' || (status === 'draft' ? group.needsRate : !group.needsRate),
-    );
+    .filter((group) => {
+      if (status === 'all') return true;
+      const readiness = readinessOf(group);
+      // Waiting and finalized are the agent's questions; without it, waiting
+      // falls back to the draft an invoice short of a rate has always been.
+      if (status === 'waiting') {
+        return readiness
+          ? readiness.status === 'WAITING_FOR_RATE' || readiness.status === 'WAITING_FOR_FUEL'
+          : group.needsRate;
+      }
+      if (status === 'finalized') return readiness?.status === 'FINALIZED';
+      return status === 'draft' ? group.needsRate : !group.needsRate;
+    });
   const shownTickets = records
     .filter(passes)
     .filter((record) => status === 'all' || ticketStatus(record) === status)
@@ -329,6 +454,43 @@ export default function RecordsPage() {
     });
   }
 
+  /** Closes an invoice against the figures it carries today. */
+  async function confirmFinalize() {
+    const group = toFinalize;
+    if (!group) return;
+    const error = await finalizeInvoice(group.key);
+    if (error) {
+      toast.add({ title: t('Could not finalize'), description: t(error), type: 'error' });
+      return;
+    }
+    setToFinalize(null);
+    toast.add({
+      title: t('Finalized {name}', { name: invoiceName(tr, group) }),
+      description: t('Its pricing is kept as it is now. Later rate changes do not alter it.'),
+      type: 'success',
+    });
+  }
+
+  /** Opens a finalized invoice again. The reason is kept with the lock. */
+  async function confirmUnlock(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const group = toUnlock;
+    const reason = unlockReason.trim();
+    if (!group || !reason) return;
+    const error = await unlockInvoice(group.key, reason);
+    if (error) {
+      toast.add({ title: t('Could not unlock'), description: t(error), type: 'error' });
+      return;
+    }
+    setToUnlock(null);
+    setUnlockReason('');
+    toast.add({
+      title: t('Unlocked {name}', { name: invoiceName(tr, group) }),
+      description: t('It is priced from the rates on file again.'),
+      type: 'success',
+    });
+  }
+
   function exportCsv() {
     if (tab === 'invoices') {
       downloadCsv('invoices.csv', invoicesCsv(shownInvoices));
@@ -341,27 +503,53 @@ export default function RecordsPage() {
   const totalCount = tab === 'invoices' ? groups.length : records.length;
   const noun = tab === 'invoices' ? 'invoice' : 'ticket';
 
-  const invoiceActions = (group: InvoiceGroup) => (
-    <div className="pf-actions">
-      <Link
-        href="/load-desk"
-        onClick={() => setDeskField('editRequest', group.records[0].id)}
-        className={buttonVariants({ variant: 'ghost', size: 'sm' })}
-        aria-label={t('Edit invoice {number}', { number: group.invoice.invoice_number })}
-      >
-        <Pencil data-icon="inline-start" />
-        {t('Edit')}
-      </Link>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() => openInvoice(group.invoice.invoice_number, group.invoice)}
-      >
-        <ReceiptText />
-        {t('View')}
-      </Button>
-    </div>
-  );
+  const invoiceActions = (group: InvoiceGroup) => {
+    const readiness = readinessOf(group);
+    const busy = rates.busy.has(busyKey.invoice(group.key));
+    return (
+      <div className="pf-actions">
+        <Link
+          href="/load-desk"
+          onClick={() => setDeskField('editRequest', group.records[0].id)}
+          className={buttonVariants({ variant: 'ghost', size: 'sm' })}
+          aria-label={t('Edit invoice {number}', { number: group.invoice.invoice_number })}
+        >
+          <Pencil data-icon="inline-start" />
+          {t('Edit')}
+        </Link>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => openInvoice(group.invoice.invoice_number, group.invoice)}
+        >
+          <ReceiptText />
+          {t('View')}
+        </Button>
+        {/* Closing an invoice against the rates of the day, and opening it
+            again, are the agent's own actions: offered only where the agent
+            is there to carry them out. */}
+        {readiness === null ? null : readiness.status === 'FINALIZED' ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={() => {
+              setUnlockReason('');
+              setToUnlock(group);
+            }}
+          >
+            <LockOpen data-icon="inline-start" />
+            {t('Unlock')}
+          </Button>
+        ) : (
+          <Button variant="ghost" size="sm" disabled={busy} onClick={() => setToFinalize(group)}>
+            <Lock data-icon="inline-start" />
+            {t('Finalize')}
+          </Button>
+        )}
+      </div>
+    );
+  };
 
   const ticketActions = (record: SavedRecord) => (
     <div className="pf-actions">
@@ -416,22 +604,87 @@ export default function RecordsPage() {
       <strong>{money(group.total)}</strong>
     );
 
-  // Rated and to-confirm are two different questions about one invoice — has
-  // it a price, and has a person checked what it says against the paper — so
-  // a priced invoice with an unconfirmed weight shows both chips rather than
-  // reading "Rated" and nothing else.
-  const invoiceStatus = (group: InvoiceGroup) => (
-    <>
-      <span className="ld-chip" data-tone={group.needsRate ? 'warning' : 'good'}>
-        {group.needsRate ? t('Draft') : t('Rated')}
-      </span>
-      {group.needsConfirmation ? (
+  /**
+   * Where an invoice stands, in one chip.
+   *
+   * With the rate agent's week loaded that is what it is still waiting for —
+   * the rate, the fuel surcharge, a person's eye, or nothing at all. Without
+   * it, the older pair of chips: rated and to-confirm are two different
+   * questions about one invoice — has it a price, and has a person checked
+   * what it says against the paper — so a priced invoice with an unconfirmed
+   * weight shows both rather than reading "Rated" and nothing else.
+   */
+  const invoiceStatus = (group: InvoiceGroup) => {
+    const readiness = readinessOf(group);
+    if (!readiness) {
+      return (
+        <>
+          <span className="ld-chip" data-tone={group.needsRate ? 'warning' : 'good'}>
+            {group.needsRate ? t('Draft') : t('Rated')}
+          </span>
+          {group.needsConfirmation ? (
+            <span className="ld-chip" data-tone="warning">
+              {t('To confirm')}
+            </span>
+          ) : null}
+        </>
+      );
+    }
+    if (readiness.status === 'FINALIZED') {
+      const lock = lockFor(group);
+      return (
+        <span className="ld-chip pf-chip">
+          {t('Finalized {date}', {
+            date: date(lock ? lock.finalized_at.slice(0, 10) : null),
+          })}
+        </span>
+      );
+    }
+    if (readiness.status === 'READY') {
+      return (
+        <span className="ld-chip" data-tone="good">
+          {t('Ready')}
+        </span>
+      );
+    }
+    if (readiness.status === 'NEEDS_REVIEW') {
+      return (
         <span className="ld-chip" data-tone="warning">
           {t('To confirm')}
         </span>
-      ) : null}
-    </>
-  );
+      );
+    }
+    return (
+      <span
+        className="ld-chip"
+        data-tone="warning"
+        // Which jobs are short, for the invoice that is short of several.
+        title={readiness.waiting_jobs.map((job) => job.job_label).join(', ') || undefined}
+      >
+        {readiness.status === 'WAITING_FOR_RATE' ? t('Waiting for rate') : t('Waiting for fuel')}
+      </span>
+    );
+  };
+
+  /**
+   * The four steps an invoice goes through, as one line. Mileage is not billed
+   * from a rate period yet, so it stands as a step with nothing to say rather
+   * than being left off the row people will come to read it in.
+   */
+  const readinessSteps = (group: InvoiceGroup) => {
+    const readiness = readinessOf(group);
+    if (!readiness) return null;
+    return (
+      <span className="rec-ready-steps">
+        {[
+          `${t('Tickets')} ${STEP_MARK[readiness.tickets]}`,
+          `${t('Base rate')} ${STEP_MARK[readiness.base]}`,
+          `${t('Fuel')} ${STEP_MARK[readiness.fuel]}`,
+          `${t('Mileage')} ${STEP_MARK['n/a']}`,
+        ].join(' · ')}
+      </span>
+    );
+  };
 
   const recordStatus = (record: SavedRecord) => {
     const valid = ticketStatus(record) === 'valid';
@@ -700,7 +953,10 @@ export default function RecordsPage() {
                         <td className="pf-num">{group.records.length}</td>
                         <td className="pf-num">{group.tons.toFixed(2)}</td>
                         <td className="pf-num">{invoiceTotal(group)}</td>
-                        <td>{invoiceStatus(group)}</td>
+                        <td>
+                          {invoiceStatus(group)}
+                          {readinessSteps(group)}
+                        </td>
                         <td>
                           {invoiceActions(group)}
                         </td>
@@ -739,6 +995,7 @@ export default function RecordsPage() {
                         <dd>{invoiceTotal(group)}</dd>
                       </div>
                     </dl>
+                    {readinessSteps(group)}
                     <p className="pf-card-foot">
                       <CompanyPills names={group.records.map(customerName)} />
                       {group.invoice.truck_number
@@ -938,6 +1195,78 @@ export default function RecordsPage() {
 
 
       <InvoiceDialog view={invoiceView} onClose={() => setInvoiceView(null)} />
+
+      <AlertDialog
+        open={toFinalize !== null}
+        onOpenChange={(open) => {
+          if (!open) setToFinalize(null);
+        }}
+      >
+        <AlertDialogContent>
+          {toFinalize ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  {t('Finalize {name}?', { name: invoiceName(tr, toFinalize) })}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t('Lock this invoice’s pricing? Later rate changes will not alter it.')}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
+                <AlertDialogAction onClick={() => void confirmFinalize()}>
+                  {t('Finalize')}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          ) : null}
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Dialog
+        open={toUnlock !== null}
+        onOpenChange={(open) => {
+          if (!open) setToUnlock(null);
+        }}
+      >
+        <DialogContent>
+          {toUnlock ? (
+            <form className="pf-form" onSubmit={(event) => void confirmUnlock(event)}>
+              <DialogHeader>
+                <DialogTitle>
+                  {t('Unlock {name}?', { name: invoiceName(tr, toUnlock) })}
+                </DialogTitle>
+                <DialogDescription>
+                  {t(
+                    'The invoice is priced from the rates on file again. Say why it was reopened; the reason is kept with the invoice.',
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+              <label className="ld-field" htmlFor={`${fieldId}-unlock-reason`}>
+                <span>{t('Reason')}</span>
+                <Input
+                  id={`${fieldId}-unlock-reason`}
+                  required
+                  maxLength={500}
+                  placeholder={t('The customer corrected the fuel surcharge')}
+                  value={unlockReason}
+                  onChange={(event) => setUnlockReason(event.target.value)}
+                />
+              </label>
+              <DialogFooter showCloseButton>
+                <Button
+                  type="submit"
+                  variant="destructive"
+                  disabled={!unlockReason.trim() || rates.busy.has(busyKey.invoice(toUnlock.key))}
+                >
+                  {t('Unlock')}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={toDelete !== null}

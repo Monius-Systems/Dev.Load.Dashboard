@@ -159,6 +159,9 @@ async function reload() {
   }
 }
 
+/** Other stores call this after the server has re-priced tickets. */
+export const reloadRecords = () => reload();
+
 export function subscribeRecords(listener: () => void) {
   listeners.add(listener);
   if (!loading) {

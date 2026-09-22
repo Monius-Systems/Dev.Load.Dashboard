@@ -1366,7 +1366,7 @@ svg.lucide {
 }
 
 /* ======================================================= phone bottom bar */
-/* The five places this app goes, along the bottom where a thumb already is.
+/* The places this app goes, along the bottom where a thumb already is.
    Only on phones: anything with room shows the sidebar instead. */
 .tabbar {
   display: none;
@@ -1422,15 +1422,33 @@ svg.lucide {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  /* Six tabs on a phone: a shade smaller so "Customers" still reads whole. */
+  /* Six tabs or more on a phone: a shade smaller so "Customers" still reads
+     whole. Seven is narrower again, and the icon comes down with the text so
+     the tab keeps its shape rather than turning into a picture with a label
+     squeezed under it. */
   .tabbar:has(> :nth-child(6)) .tabbar-item {
     padding-inline: 0;
     font-size: 10px;
+  }
+  .tabbar:has(> :nth-child(7)) .tabbar-item {
+    gap: 3px;
+    font-size: 9.5px;
+    letter-spacing: -0.01em;
+  }
+  .tabbar:has(> :nth-child(7)) .tabbar-item svg {
+    width: 23px;
+    height: 23px;
   }
   @media (max-width: 340px) {
     .tabbar:has(> :nth-child(6)) .tabbar-item {
       font-size: 9.5px;
       letter-spacing: -0.02em;
+    }
+    /* At 320px the seven cells are 44.6px wide and "Customers" measured 46px:
+       one pixel of it was cut off. A hair more tracking, and nothing else. */
+    .tabbar:has(> :nth-child(7)) .tabbar-item {
+      font-size: 9px;
+      letter-spacing: -0.04em;
     }
   }
   /* The bar floats over the page, so the page ends above it. */

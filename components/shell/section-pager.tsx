@@ -29,6 +29,7 @@ const SECTION_LOADERS = {
   '/customers': () => import('@/components/profiles/customers-page'),
   '/fleet': () => import('@/components/profiles/fleet-page'),
   '/mileage': () => import('@/components/mileage/mileage-page'),
+  '/rates': () => import('@/components/rates/rates-page'),
   '/ifta': () => import('@/components/ifta/ifta-page'),
 } as const;
 
@@ -38,6 +39,7 @@ const RecordsPage = dynamic(SECTION_LOADERS['/records']);
 const CustomersPage = dynamic(SECTION_LOADERS['/customers']);
 const FleetPage = dynamic(SECTION_LOADERS['/fleet']);
 const MileagePage = dynamic(SECTION_LOADERS['/mileage']);
+const RatesPage = dynamic(SECTION_LOADERS['/rates']);
 const IftaPage = dynamic(SECTION_LOADERS['/ifta']);
 
 /**
@@ -94,6 +96,7 @@ const SECTIONS: Record<string, () => ReactNode> = {
   '/customers': () => <CustomersPage />,
   '/fleet': () => <FleetPage />,
   '/mileage': () => <MileagePage />,
+  '/rates': () => <RatesPage />,
   '/ifta': () => <IftaPage />,
 };
 

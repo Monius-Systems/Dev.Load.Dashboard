@@ -26,3 +26,20 @@ OPENAI_API_KEY=sk-...
 # One Monius key for every client workspace, like the OpenAI key. Without it
 # the IFTA page says routing is not configured and everything else still works.
 TOMTOM_API_KEY=...
+
+# Rate & Fuel Agent. How far the agent may go on its own when it has written a
+# request for a customer's rates: DRAFT_ONLY writes the email and stops,
+# APPROVAL_REQUIRED lets a person send it, AUTO_SEND lets the agent. Anything
+# else — unset, misspelt — reads as DRAFT_ONLY, and a customer's own send mode
+# is capped by this, so a profile cannot outrun the deployment.
+#
+# V1 has no mail adapter at all (lib/server/rate-mail.ts), so nothing is
+# emailed whatever this says; the two settings above become real the day a
+# mailbox is connected there.
+RATE_MAIL_MODE=DRAFT_ONLY
+
+# The stand-ins for that missing mailbox: marking a request sent, and typing a
+# reply as if the customer had sent it, so the agent can be walked end to end
+# before there is one. 'true' turns them on; they are also on in the local
+# preview. Never set on a client deployment.
+RATE_DEV_TOOLS=false

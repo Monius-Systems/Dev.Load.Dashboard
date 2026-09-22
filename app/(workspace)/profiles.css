@@ -600,3 +600,53 @@
     width: 8.5rem;
   }
 }
+
+/* ====================================== the rate agent, inside the customer */
+/* Who a customer is asked about rates, and how. Each contact is a small card
+   rather than another row of fields: a name, an address and who is copied in
+   belong together, and on a phone they stack into one column without the eye
+   losing which address belongs to which person. */
+.pf-rates-contacts {
+  display: grid;
+  gap: 8px;
+  margin: 6px 0 2px;
+}
+.pf-rates-contact {
+  display: grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-lg);
+  background: var(--ui-surface-2);
+}
+.pf-rates-contact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ui-space-2);
+}
+/* One contact is written to and the rest are copied in, so the choice is a
+   radio and reads as one. */
+.pf-rates-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--type-xs);
+  font-weight: var(--type-medium);
+  color: var(--ui-text-2);
+}
+.pf-rates-primary input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--ui-accent);
+}
+.pf-rates-contact-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-2);
+}
+@media (max-width: 460px) {
+  .pf-rates-contact-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

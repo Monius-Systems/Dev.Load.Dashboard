@@ -923,4 +923,238 @@ export const PL_PAGES: Record<string, string> = {
   'Axles must be a whole number.': 'Liczba osi musi być całkowita.',
   'The mileage and routing settings are not valid.':
     'Ustawienia przebiegu i tras są nieprawidłowe.',
+
+  // Rates
+  // The Rate & Fuel Agent's own page: what each customer has to be asked, what
+  // they answered, and what every invoice is priced on.
+  RATES: 'STAWKI',
+  Rates: 'Stawki',
+  'Weekly hauling rates and fuel surcharges: what to ask each customer, what they answered, and what every invoice is priced on.':
+    'Tygodniowe stawki za transport i dopłaty paliwowe: o co zapytać każdego klienta, co odpowiedział i na czym wyceniona jest każda faktura.',
+  'Your session has ended. Sign in again to see rates.':
+    'Sesja wygasła. Zaloguj się ponownie, aby zobaczyć stawki.',
+  'The rate agent runs on the server and is not available in the local preview.':
+    'Agent stawek działa na serwerze i nie jest dostępny w podglądzie lokalnym.',
+  'No reading model is configured, so replies are matched by rules only. Anything the rules cannot place is left for you.':
+    'Nie ustawiono modelu do czytania, więc odpowiedzi są dopasowywane tylko regułami. Wszystko, czego reguły nie umieszczą, zostaje dla Ciebie.',
+  'Loading rates…': 'Wczytywanie stawek…',
+  // The four counters at the top of the page.
+  'Waiting for rates': 'Czekają na stawki',
+  '{customers} with a request open': '{customers} z otwartą prośbą',
+  'Responses received': 'Otrzymane odpowiedzi',
+  'Replies read this period': 'Odpowiedzi odczytane w tym okresie',
+  'Needs confirmation': 'Wymaga potwierdzenia',
+  'Waiting on you': 'Czeka na Ciebie',
+  'Nothing waiting on you': 'Nic na Ciebie nie czeka',
+  'Ready invoices': 'Gotowe faktury',
+  '{invoices} priced in full': '{invoices} wycenione w całości',
+  // This week's requests.
+  'What to ask': 'O co zapytać',
+  'This week’s requests': 'Prośby z tego tygodnia',
+  Period: 'Okres',
+  'Generate weekly requests': 'Utwórz tygodniowe prośby',
+  'Could not write the requests': 'Nie udało się zapisać próśb',
+  '{requests} written': 'Zapisano: {requests}',
+  '{n} customers skipped: nothing is missing, or there is already a request open.':
+    'Pominięto klientów: {n} — nic nie brakuje albo prośba już czeka.',
+  'Every customer short a rate this period has a draft.':
+    'Każdy klient, któremu w tym okresie brakuje stawki, ma szkic.',
+  'No requests for this period yet. Generate them to see what each customer has to be asked.':
+    'Brak próśb na ten okres. Utwórz je, aby zobaczyć, o co zapytać każdego klienta.',
+  'No requests in this view.': 'Brak próśb w tym widoku.',
+  'Pick a request to read it and send it.': 'Wybierz prośbę, aby ją przeczytać i wysłać.',
+  'Open the request to {customer}': 'Otwórz prośbę do {customer}',
+  'Unknown customer': 'Nieznany klient',
+  Jobs: 'Zlecenia',
+  'What is asked': 'O co pytamy',
+  'Nothing left to ask': 'Nie ma już o co pytać',
+  'rate + fuel': 'stawka + paliwo',
+  'rate only': 'tylko stawka',
+  'fuel surcharge only': 'tylko dopłata paliwowa',
+  // Where a request has got to.
+  'Waiting for reply': 'Czeka na odpowiedź',
+  'Waiting for reply · sent {date}': 'Czeka na odpowiedź · wysłano {date}',
+  'Reply received': 'Odpowiedź otrzymana',
+  'Reading the reply…': 'Odczytywanie odpowiedzi…',
+  '{values} to confirm': '{values} do potwierdzenia',
+  'Follow-up due': 'Czas na przypomnienie',
+  Resolved: 'Załatwione',
+  'Could not be sent': 'Nie udało się wysłać',
+  Closed: 'Zamknięta',
+  // The selected request: who it goes to and what can be done with it.
+  'Selected request': 'Wybrana prośba',
+  To: 'Do',
+  'No rate contact — add one in Customers': 'Brak kontaktu do stawek — dodaj go w Klientach',
+  Send: 'Wyślij',
+  'Mark as sent (simulated)': 'Oznacz jako wysłaną (symulacja)',
+  'Draft follow-up': 'Szkic przypomnienia',
+  'Replies to this request': 'Odpowiedzi na tę prośbę',
+  'Confirm below': 'Potwierdź poniżej',
+  Simulated: 'Symulowana',
+  'Customer email': 'E-mail od klienta',
+  'Read by rules': 'Odczytane regułami',
+  From: 'Od',
+  Subject: 'Temat',
+  'No subject': 'Bez tematu',
+  Message: 'Wiadomość',
+  // Confirming what a reply said.
+  'Replies to confirm': 'Odpowiedzi do potwierdzenia',
+  'A rate is agreed for a job and a period, so it is confirmed once for every ticket it covers.':
+    'Stawkę uzgadnia się dla zlecenia i okresu, więc potwierdza się ją raz dla wszystkich kwitów, które obejmuje.',
+  'Nothing is waiting to be confirmed.': 'Nic nie czeka na potwierdzenie.',
+  'Nothing could be read out of it.': 'Nic nie dało się z niej odczytać.',
+  'Job not named': 'Zlecenie bez nazwy',
+  'no figure': 'brak liczby',
+  'Not clear from the reply': 'Niejasne z odpowiedzi',
+  'Not given': 'Nie podano',
+  '{percent}% sure': 'pewność {percent}%',
+  'Rate anomaly: {detail}': 'Nietypowa stawka: {detail}',
+  Job: 'Zlecenie',
+  'Not a job': 'To nie zlecenie',
+  'Another job…': 'Inne zlecenie…',
+  Value: 'Wartość',
+  Unit: 'Jednostka',
+  'Confirm for all {tickets}': 'Potwierdź dla wszystkich: {tickets}',
+  Reject: 'Odrzuć',
+  'Remember these names for this customer': 'Zapamiętaj te nazwy dla tego klienta',
+  'The next reply that writes them is matched without asking.':
+    'Następna odpowiedź, która ich użyje, zostanie dopasowana bez pytania.',
+  'Check the figures': 'Sprawdź liczby',
+  '“{value}” is not a number.': '„{value}” nie jest liczbą.',
+  'Rates confirmed': 'Stawki potwierdzone',
+  '{tickets} repriced.': 'Przeliczono kwitów: {tickets}.',
+  'Reject this reply': 'Odrzuć tę odpowiedź',
+  'The message stays on file; nothing is priced from it. Say why, so the trail reads.':
+    'Wiadomość zostaje w aktach; nic nie jest z niej wyceniane. Napisz dlaczego, żeby ślad był czytelny.',
+  'Nothing was changed': 'Nic nie zostało zmienione',
+  // Simulating a reply, in development only.
+  'Development only': 'Tylko dla wersji roboczej',
+  'Simulate a reply': 'Symuluj odpowiedź',
+  DEV: 'DEV',
+  'Puts a message through the reader exactly as an arriving email would go through it. Nothing is emailed.':
+    'Przepuszcza wiadomość przez czytnik dokładnie tak jak przychodzący e-mail. Nic nie jest wysyłane.',
+  'Pick a customer': 'Wybierz klienta',
+  'In reply to': 'W odpowiedzi na',
+  'No request': 'Bez prośby',
+  'Markham Road is $8.75 a ton, fuel 12%.': 'Markham Road to $8.75 za tonę, paliwo 12%.',
+  'Process reply': 'Przetwórz odpowiedź',
+  'The reply was not read': 'Odpowiedź nie została odczytana',
+  'Reply processed': 'Odpowiedź przetworzona',
+  '{applied} applied, {pending} waiting to be confirmed.':
+    'Zastosowano: {applied}, czeka na potwierdzenie: {pending}.',
+  // The rates on file, and what the tickets were priced on.
+  'What invoices are priced on': 'Na czym wyceniane są faktury',
+  'Rate history': 'Historia stawek',
+  'Show history': 'Pokaż historię',
+  'Re-price tickets': 'Przelicz kwity',
+  'Nothing was repriced': 'Nic nie zostało przeliczone',
+  'Tickets repriced': 'Kwity przeliczone',
+  '{tickets} changed, {conflicts} could not be.':
+    'Zmieniono: {tickets}, nie udało się: {conflicts}.',
+  'No rates on file yet.': 'Brak zapisanych stawek.',
+  Kind: 'Rodzaj',
+  Base: 'Podstawa',
+  Effective: 'Obowiązuje',
+  Source: 'Źródło',
+  Confidence: 'Pewność',
+  'Applied by': 'Zastosował',
+  '{date} · for the project': '{date} · na cały projekt',
+  open: 'otwarte',
+  '{percent}%': '{percent}%',
+  'Applied automatically': 'Zastosowano automatycznie',
+  'Confirmed by {who}': 'Potwierdzone przez: {who}',
+  'a person': 'osobę',
+  // Adding a rate by hand.
+  'Add rate': 'Dodaj stawkę',
+  'The figure in force from a day. Whatever it replaces is kept, so older invoices still read.':
+    'Liczba obowiązująca od danego dnia. To, co zastępuje, zostaje zachowane, więc starsze faktury nadal się czytają.',
+  'Pick a job': 'Wybierz zlecenie',
+  'Job name': 'Nazwa zlecenia',
+  'In force from': 'Obowiązuje od',
+  Until: 'Do dnia',
+  'Applies for the rest of the project': 'Obowiązuje do końca projektu',
+  'The figure holds until a later one replaces it.':
+    'Liczba obowiązuje, dopóki nie zastąpi jej późniejsza.',
+  Why: 'Dlaczego',
+  'Agreed on the phone with the yard': 'Uzgodnione telefonicznie z bazą',
+  'Save rate': 'Zapisz stawkę',
+  'Rate saved': 'Stawka zapisana',
+  // The invoices this is all for.
+  'Before they can go out': 'Zanim będą mogły pójść',
+  'Invoices waiting on rates': 'Faktury czekające na stawki',
+  'Open Invoices & Tickets': 'Otwórz Faktury i kwity',
+  'No invoice is waiting on a rate.': 'Żadna faktura nie czeka na stawkę.',
+  'Draft invoice': 'Szkic faktury',
+  undated: 'bez daty',
+  'Waiting on {jobs}': 'Czeka na: {jobs}',
+  'Finalized {date} · {total}': 'Zatwierdzona {date} · {total}',
+  'Rate change after finalizing: {detail}': 'Zmiana stawki po zatwierdzeniu: {detail}',
+  // The trail.
+  'What the agent did': 'Co zrobił agent',
+  'Recent activity': 'Ostatnie działania',
+  'Nothing has happened yet.': 'Jeszcze nic się nie wydarzyło.',
+  Agent: 'Agent',
+  'A rate is never edited in place: a new figure supersedes the old one and the old one stays on file, so an invoice can always be explained by the rate that was in force when it was printed.':
+    'Stawki nigdy nie zmienia się w miejscu: nowa liczba zastępuje starą, a stara zostaje w aktach, więc każdą fakturę da się wyjaśnić stawką, która obowiązywała w chwili jej wydruku.',
+
+  // Customers: rates & requests
+  'Rates & requests': 'Stawki i prośby',
+  'Who to ask for rates': 'Kogo pytać o stawki',
+  'No rate contact': 'Brak kontaktu do stawek',
+  'No rate contact yet.': 'Brak kontaktu do stawek.',
+  'Add a contact so the agent can ask this customer for rates.':
+    'Dodaj kontakt, aby agent mógł zapytać tego klienta o stawki.',
+  'Add contact': 'Dodaj kontakt',
+  Primary: 'Główny',
+  'Remove contact {number}': 'Usuń kontakt {number}',
+  'Anything to remember when writing to them': 'Co pamiętać, pisząc do nich',
+  'Follow up after (days)': 'Przypomnij po (dni)',
+  'Send mode': 'Tryb wysyłki',
+  'Drafts only on this deployment': 'W tym wdrożeniu tylko szkice',
+  'Auto-create weekly request': 'Twórz tygodniową prośbę automatycznie',
+  'Drafted when a job of theirs is short a rate':
+    'Szkic powstaje, gdy ich zleceniu brakuje stawki',
+  'Names this customer uses for its jobs': 'Nazwy, których ten klient używa dla swoich zleceń',
+  'Add a delivery address': 'Dodaj adres dostawy',
+  'Street, city, state': 'Ulica, miasto, stan',
+  'No addresses yet.': 'Brak adresów.',
+  'Seen on this customer’s tickets': 'Widziane na kwitach tego klienta',
+
+  // Invoices: readiness
+  // The chips on an invoice that say what it is still waiting for, and the
+  // two buttons that settle its pricing.
+  Ready: 'Gotowa',
+  'Waiting for rate': 'Czeka na stawkę',
+  'Waiting for fuel': 'Czeka na paliwo',
+  'Base rate': 'Stawka podstawowa',
+  Finalized: 'Zatwierdzona',
+  'Finalized {date}': 'Zatwierdzona {date}',
+  Finalize: 'Zatwierdź',
+  'Finalize {name}?': 'Zatwierdzić {name}?',
+  'Lock this invoice’s pricing? Later rate changes will not alter it.':
+    'Zablokować wycenę tej faktury? Późniejsze zmiany stawek jej nie zmienią.',
+  'Could not finalize': 'Nie udało się zatwierdzić',
+  'Finalized {name}': 'Zatwierdzono {name}',
+  'Its pricing is kept as it is now. Later rate changes do not alter it.':
+    'Jej wycena zostaje taka, jaka jest teraz. Późniejsze zmiany stawek jej nie zmienią.',
+  Unlock: 'Odblokuj',
+  'Unlock {name}?': 'Odblokować {name}?',
+  'The invoice is priced from the rates on file again. Say why it was reopened; the reason is kept with the invoice.':
+    'Faktura znów jest wyceniana według stawek z akt. Napisz, dlaczego została otwarta; powód zostaje przy fakturze.',
+  Reason: 'Powód',
+  'The customer corrected the fuel surcharge': 'Klient poprawił dopłatę paliwową',
+  'Could not unlock': 'Nie udało się odblokować',
+  'Unlocked {name}': 'Odblokowano {name}',
+  'It is priced from the rates on file again.': 'Jest znów wyceniana według stawek z akt.',
+  Filters: 'Filtry',
+  'Hide filters': 'Ukryj filtry',
+  // What the server says back when a request or a reply cannot go through.
+  'Requests are drafts only on this deployment; nothing is emailed.':
+    'W tym wdrożeniu prośby są tylko szkicami; nic nie jest wysyłane e-mailem.',
+  'No email service is connected yet.': 'Nie podłączono jeszcze żadnej usługi e-mail.',
+  'This reply was already processed.': 'Ta odpowiedź została już przetworzona.',
+  'Rate requests are turned off for this customer.':
+    'Prośby o stawki są wyłączone dla tego klienta.',
+  'A request for this period already exists.': 'Prośba na ten okres już istnieje.',
+  'The ticket pricing details are not valid.': 'Szczegóły wyceny kwitu są nieprawidłowe.',
 };

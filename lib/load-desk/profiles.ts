@@ -14,6 +14,7 @@ import {
   type LocationRate,
   type RateSet,
 } from './customer-rates.ts';
+import type { CustomerRateProfile, RateContact } from './rates.ts';
 
 // The address and site-rate arithmetic lives in customer-rates.ts, which has no
 // store in it, so the server's request parser can use it without bringing this
@@ -66,6 +67,15 @@ export type CustomerProfile = {
   fuel_charge: number | null;
   /** flat: fuel_charge dollars; percent: fuel_charge percent of the rate amount. */
   fuel_type?: FuelType;
+  /**
+   * How the rate agent treats this customer: whether it asks them for rates at
+   * all, the period it asks about, and the job names their tickets are known
+   * by. Absent on customers the agent has never been set up for, who are
+   * priced from the figures above as they always were.
+   */
+  rate_profile?: CustomerRateProfile;
+  /** Who the agent writes to about rates. Absent means nobody has been named. */
+  rate_contacts?: RateContact[];
   notes: string;
   created_at: string;
 };

@@ -12,7 +12,10 @@ export type AiUsage = {
   /** The company the read was for, which is who the cost belongs to. */
   workspaceId: string | null;
   /** Which kind of request this was, so later kinds are told apart. */
-  requestType: 'load-ticket-extraction';
+  requestType:
+    | 'load-ticket-extraction'
+    | 'rate-reply-understanding'
+    | 'rate-request-wording';
   model: string;
   /** Null when the model answered without telling us what it counted. */
   inputTokens: number | null;

@@ -8,6 +8,7 @@ import './records/records.css';
 import './account/account.css';
 import './mileage/mileage.css';
 import './mileage/route-map.css';
+import './rates/rates.css';
 import './ifta/ifta.css';
 
 // One shell for every workspace page, so the sidebar, logo and account stay

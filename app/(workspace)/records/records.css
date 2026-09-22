@@ -348,3 +348,22 @@
 .rec-company[data-tone='5'] { --rec-company-hue: #0891b2; }
 .rec-company[data-tone='6'] { --rec-company-hue: #b91c1c; }
 .rec-company[data-tone='7'] { --rec-company-hue: #4d7c0f; }
+
+/* ======================================== how ready an invoice is */
+/* The four steps an invoice goes through — its tickets, the hauling rate, the
+   fuel surcharge, the mileage — under the chip that says which of them it is
+   waiting on. Shown only once the rate agent's week is loaded, so a page that
+   has not asked it reads exactly as it did before. */
+.rec-ready-steps {
+  display: block;
+  margin-top: 3px;
+  font-size: var(--type-2xs);
+  line-height: 1.6;
+  color: var(--ui-text-3);
+  white-space: nowrap;
+}
+/* On a phone card the line sits over the foot, where it has the width to wrap. */
+.pf-card > .rec-ready-steps {
+  margin-top: var(--ui-space-2);
+  white-space: normal;
+}

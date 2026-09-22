@@ -319,6 +319,10 @@ export const PL_NOUNS: Record<string, [string, string, string]> = {
   draft: ['szkic', 'szkice', 'szkiców'],
   day: ['dzień', 'dni', 'dni'],
   character: ['znak', 'znaki', 'znaków'],
+  // Rates: what is asked for, what came back, and where the work was.
+  request: ['prośba', 'prośby', 'próśb'],
+  value: ['wartość', 'wartości', 'wartości'],
+  job: ['zlecenie', 'zlecenia', 'zleceń'],
 };
 
 const MONTH_SHORT = 'Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec';

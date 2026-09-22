@@ -1,4 +1,5 @@
 import type { ObservedTicket, TicketRecovery } from './recovery/contract.ts';
+import type { RecordPricing } from './rates.ts';
 
 // Ticket fields mirror load_ticket_mvp/models.py so records stay compatible
 // with the Python Load Desk ledger.
@@ -200,4 +201,11 @@ export type SavedRecord = {
    * filed before automatic approval existed.
    */
   auto_approved_at?: string | null;
+  /**
+   * Which rate periods the figures on this ticket came from, and when they
+   * were applied. Absent on a ticket priced by hand — the rate typed in
+   * review, or one saved before the rate agent existed — which is why the
+   * figures stand on their own and this only says where they came from.
+   */
+  pricing?: RecordPricing;
 };

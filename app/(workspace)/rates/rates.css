@@ -1,0 +1,424 @@
+/* ==================================================================== Rates */
+/* The rate and fuel agent's page: what to ask each customer this week, what
+   they wrote back, what every invoice is priced on. Built from the shared
+   pieces — Home's stat tiles, the profiles table and cards, Load Desk's
+   panels, chips and notices. Only what is new to this page lives here.
+
+   A request a person picks opens below the list, the way a day does in
+   Mileage, with the message as it would go out and what can be done to it. */
+
+/* Four tiles in Home's shape. Not Home's .hm-stats, whose phone rules hide
+   the row and restyle the heading around it. */
+.rates-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ui-space-4);
+  margin-bottom: var(--ui-space-5);
+}
+.rates-tile .hm-stat-value small {
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-text-3);
+}
+.rates-tile-warning {
+  color: var(--ui-warning);
+}
+
+/* Status chips. The shared chip has warning (default) and good; this page also
+   has a failure tone and a quiet neutral for the states nobody has to act on. */
+.rates-page .ld-chip[data-tone='error'] {
+  background: var(--ui-danger-soft);
+  color: var(--ui-danger);
+}
+.rates-page .ld-chip[data-tone='neutral'] {
+  background: var(--ui-fill);
+  color: var(--ui-text-2);
+}
+.rates-chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* The week being asked about, and the one button that writes the requests. */
+.rates-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3) var(--ui-space-4);
+  margin-bottom: var(--ui-space-4);
+}
+.rates-period-field {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-space-2);
+  min-width: 0;
+}
+.rates-period-field > span {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+}
+.rates-period-field .ld-select {
+  width: auto;
+  min-width: 200px;
+}
+.rates-toolbar-spacer {
+  flex: 1 1 auto;
+}
+.rates-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
+  margin-bottom: var(--ui-space-3);
+}
+
+/* The requests. A row is a request to open, so the whole row answers a click
+   and the customer cell carries the button that keyboards and readers reach. */
+.rates-table {
+  min-width: 940px;
+  cursor: pointer;
+}
+.rates-table tbody tr[data-selected] {
+  background: color-mix(in srgb, var(--ui-accent-soft) 55%, transparent);
+}
+.rates-table tbody tr[data-selected] > *:first-child {
+  box-shadow: inset 2px 0 0 var(--ui-accent);
+}
+/* The one cell that wraps: .pf-table keeps every cell on one line, and what is
+   being asked for names every job on the week. */
+.rates-asks {
+  max-width: 380px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  color: var(--ui-text-2);
+}
+.rates-pick,
+.rates-card-pick {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rates-pick:focus-visible,
+.rates-card-pick:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: var(--ui-radius-sm);
+}
+.rates-card-pick {
+  display: grid;
+  gap: var(--ui-space-2);
+  width: 100%;
+}
+.rates-card[data-selected] {
+  margin: 0 calc(-1 * var(--ui-space-3));
+  padding-inline: var(--ui-space-3);
+  border-radius: var(--ui-radius-sm);
+  background: color-mix(in srgb, var(--ui-accent-soft) 55%, transparent);
+}
+.rates-card-asks {
+  font-size: var(--type-xs);
+  color: var(--ui-text-2);
+  overflow-wrap: anywhere;
+}
+
+/* The open request. */
+.rates-request {
+  display: grid;
+  gap: var(--ui-space-4);
+}
+
+/* The message as it stands: who it goes to, what it says, unchanged by this
+   page. The body is read the way it will be read in a mail client. */
+.rates-mail {
+  display: grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3);
+  border-radius: var(--ui-radius-md);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+.rates-mail dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px var(--ui-space-3);
+  font-size: var(--type-sm);
+}
+.rates-mail dt {
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  letter-spacing: var(--type-tracking-caps);
+  text-transform: uppercase;
+  color: var(--ui-text-3);
+  padding-top: 2px;
+}
+.rates-mail dd {
+  color: var(--ui-text);
+  overflow-wrap: anywhere;
+}
+.rates-mail dd[data-missing] {
+  color: var(--ui-warning);
+}
+.rates-body {
+  margin: 0;
+  padding: var(--ui-space-3);
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-surface);
+  font-family: var(--font-mono);
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.rates-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+}
+
+/* A reply, and the figures read out of it. The message itself is never
+   edited here, so it is set apart from the fields that are. */
+.rates-reply {
+  display: grid;
+  gap: var(--ui-space-3);
+  padding: var(--ui-space-4);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-surface);
+}
+.rates-reply + .rates-reply {
+  margin-top: var(--ui-space-4);
+}
+.rates-reply-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ui-space-2) var(--ui-space-3);
+}
+.rates-reply-head strong {
+  font-size: var(--type-md);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.rates-reply-head small {
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+}
+
+/* One figure read out of the reply, with everywhere a person can correct it. */
+.rates-match {
+  display: grid;
+  gap: var(--ui-space-2);
+  padding: var(--ui-space-3);
+  border-radius: var(--ui-radius-sm);
+  background: color-mix(in srgb, var(--ui-fill) 45%, transparent);
+}
+.rates-match-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-2);
+}
+.rates-match-head > strong {
+  font-size: var(--type-sm);
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.rates-match-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--ui-space-2) 14px;
+}
+.rates-match-fields .ld-field {
+  min-width: 0;
+}
+.rates-match-fields .ld-select {
+  width: 100%;
+}
+.rates-evidence {
+  font-family: var(--font-mono);
+  font-size: var(--type-xs);
+  color: var(--ui-text-3);
+  overflow-wrap: anywhere;
+}
+.rates-anomaly {
+  padding: 8px 12px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+  font-size: var(--type-xs);
+}
+.rates-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
+}
+.rates-confirm .pf-check {
+  grid-column: auto;
+  flex: 1 1 240px;
+}
+
+/* The simulator, which only a deployment with its dev tools on ever shows. */
+.rates-dev {
+  border: 1px dashed var(--ui-border-strong);
+}
+.rates-dev-tag {
+  align-self: center;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-fill-strong);
+  color: var(--ui-text-2);
+  font-size: var(--type-2xs);
+  font-weight: var(--type-semibold);
+  letter-spacing: var(--type-tracking-caps);
+}
+.rates-dev-form {
+  display: grid;
+  gap: var(--ui-space-3);
+}
+.rates-dev-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-3) 14px;
+}
+
+/* Rate history. A period that has been superseded is still here — it is what
+   an invoice printed last month was priced on — but it is quiet and struck. */
+.rates-history-table {
+  min-width: 1000px;
+}
+.rates-history-table tbody tr[data-superseded] {
+  color: var(--ui-text-3);
+}
+.rates-history-table tbody tr[data-superseded] .pf-name strong,
+.rates-history-table tbody tr[data-superseded] .rates-value {
+  text-decoration: line-through;
+}
+.rates-value {
+  font-variant-numeric: tabular-nums;
+}
+.rates-history-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ui-space-3);
+}
+
+/* What an invoice is still waiting on, as four steps in a row. */
+.rates-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.rates-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--ui-radius-pill);
+  background: var(--ui-fill);
+  color: var(--ui-text-2);
+  font-size: var(--type-2xs);
+  font-weight: var(--type-medium);
+  white-space: nowrap;
+}
+.rates-step[data-state='ready'] {
+  background: var(--ui-success-soft);
+  color: var(--ui-success);
+}
+.rates-step[data-state='waiting'] {
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
+.rates-waiting {
+  font-size: var(--type-xs);
+  color: var(--ui-text-2);
+  overflow-wrap: anywhere;
+}
+
+/* Everything the agent did, newest first, as a quiet list. */
+.rates-events {
+  display: grid;
+  gap: 6px;
+  font-size: var(--type-xs);
+}
+.rates-events li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--ui-space-2);
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--ui-separator);
+  color: var(--ui-text-2);
+  overflow-wrap: anywhere;
+}
+.rates-events li:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.rates-events time {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-3);
+}
+.rates-events strong {
+  font-weight: var(--type-medium);
+  color: var(--ui-text);
+}
+.rates-footer {
+  margin-top: var(--ui-space-2);
+  line-height: var(--type-leading-normal);
+}
+
+@media (max-width: 1000px) {
+  .rates-tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rates-match-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .rates-mail dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .rates-mail dt {
+    padding-top: 6px;
+  }
+  .rates-reply {
+    padding: var(--ui-space-3);
+  }
+  .rates-dev-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rates-actions [data-slot='button'],
+  .rates-confirm [data-slot='button'] {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+@media (max-width: 460px) {
+  .rates-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rates-match-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rates-period-field {
+    flex: 1 1 100%;
+  }
+  .rates-period-field .ld-select {
+    flex: 1;
+    min-width: 0;
+  }
+}

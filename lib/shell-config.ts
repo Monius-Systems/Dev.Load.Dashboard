@@ -1,4 +1,5 @@
 import {
+  BadgeDollarSign,
   Database,
   FileText,
   LayoutGrid,
@@ -45,6 +46,7 @@ export const shellConfig: {
     { href: '/customers', label: 'Customers & Clients', icon: Users, shortLabel: 'Customers' },
     { href: '/fleet', label: 'Truck Fleet', icon: Truck, shortLabel: 'Fleet' },
     { href: '/mileage', label: 'Mileage', icon: Route, shortLabel: 'Mileage' },
+    { href: '/rates', label: 'Rates', icon: BadgeDollarSign, shortLabel: 'Rates' },
     { href: '/ifta', label: 'IFTA', icon: FileText, phone: false },
   ],
 };

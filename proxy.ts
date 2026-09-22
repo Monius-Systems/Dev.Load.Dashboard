@@ -38,6 +38,7 @@ export const config = {
     '/customers/:path*',
     '/fleet/:path*',
     '/mileage/:path*',
+    '/rates/:path*',
     '/ifta/:path*',
     '/account/:path*',
     '/api/:path*',

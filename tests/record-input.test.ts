@@ -12,6 +12,7 @@ import {
   ticketDateColumn,
 } from '../lib/load-desk/record-input.ts';
 import { emptyTicket } from '../lib/load-desk/types.ts';
+import { DEFAULT_RATE_PROFILE } from '../lib/load-desk/rates.ts';
 
 const validRecord = () => ({
   saved_at: '2026-09-15T12:00:00.000Z',
@@ -275,4 +276,99 @@ void test('an edit may carry a recovery record, and is refused a bad one', () =>
   const broken = parseRecordEdits([{ ...change, recovery: { version: 1, vendor: null, paper: 3, fields: {} } }]);
   assert.ok('error' in broken);
   assert.equal(broken.error, 'The ticket recovery details are not valid.');
+});
+
+void test('an edit says which rate periods priced the ticket, or says nothing', () => {
+  const change = {
+    id: 1,
+    ticket: emptyTicket(),
+    invoice: validRecord().invoice,
+    ocr_text: '',
+    customer_profile_id: null,
+    truck_id: null,
+  };
+  const pricing = {
+    base_period_id: 4,
+    fuel_period_id: null,
+    applied_at: '2026-09-21',
+    unsupported: null,
+  };
+
+  const plain = parseRecordEdits([change]);
+  assert.ok('value' in plain);
+  assert.equal('pricing' in plain.value[0], false, 'an edit that says nothing leaves it alone');
+
+  const priced = parseRecordEdits([{ ...change, pricing }]);
+  assert.ok('value' in priced);
+  assert.equal(priced.value[0].pricing?.base_period_id, 4);
+  assert.equal(priced.value[0].pricing?.fuel_period_id, null);
+
+  // Null is the ticket being priced by hand from here on.
+  const byHand = parseRecordEdits([{ ...change, pricing: null }]);
+  assert.ok('value' in byHand);
+  assert.equal(byHand.value[0].pricing, null);
+
+  const bad: [string, Record<string, unknown>][] = [
+    ['period id that is not an id', { ...pricing, base_period_id: 0 }],
+    ['a date that is not one', { ...pricing, applied_at: 'last Tuesday' }],
+    ['an essay in unsupported', { ...pricing, unsupported: 'x'.repeat(201) }],
+  ];
+  for (const [label, value] of bad) {
+    const refused = parseRecordEdits([{ ...change, pricing: value }]);
+    assert.ok('error' in refused, label);
+    assert.equal(refused.error, 'The ticket pricing details are not valid.');
+  }
+});
+
+void test('a customer carries the rate agent settings and its contacts, or neither', () => {
+  const customer = {
+    name: 'Witech Company',
+    ticket_customer_ids: ['60311596'],
+    ticket_names: [],
+    flat_rate: 150,
+    fuel_charge: null,
+    notes: '',
+    created_at: '2026-09-15T12:00:00.000Z',
+  };
+  const contact = {
+    name: ' Dana Ruiz ',
+    email: ' dana@witech.example ',
+    title: 'Accounts payable',
+    primary: true,
+    cc: ['office@witech.example'],
+    notes: '',
+  };
+
+  // A customer saved before the agent existed says nothing about either.
+  const plain = parseCustomer(customer);
+  assert.ok('value' in plain);
+  assert.equal('rate_profile' in plain.value, false);
+  assert.equal('rate_contacts' in plain.value, false);
+
+  const set = parseCustomer({
+    ...customer,
+    rate_profile: { ...DEFAULT_RATE_PROFILE, follow_up_days: 3 },
+    rate_contacts: [contact],
+  });
+  assert.ok('value' in set);
+  assert.equal(set.value.rate_profile?.follow_up_days, 3);
+  assert.equal(set.value.rate_contacts?.[0].name, 'Dana Ruiz');
+  assert.equal(set.value.rate_contacts?.[0].email, 'dana@witech.example');
+
+  // Half a rate profile would decide when a customer is emailed on a guess.
+  assert.ok(
+    'error' in
+      parseCustomer({
+        ...customer,
+        rate_profile: { ...DEFAULT_RATE_PROFILE, billing_cycle: 'fortnightly' },
+      }),
+  );
+  assert.ok(
+    'error' in parseCustomer({ ...customer, rate_contacts: [{ ...contact, email: 'dana' }] }),
+  );
+  assert.ok(
+    'error' in
+      parseCustomer({ ...customer, rate_contacts: [contact, { ...contact, name: 'Sam' }] }),
+    'two main contacts is nobody in particular',
+  );
 });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 // Every company's tickets, customers and invoices sit in the same tables,
 // separated only by workspace_id. A query that loses its scope returns another
@@ -12,7 +12,11 @@ import { readFileSync } from 'node:fs';
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 void test('the stores scope every query to the workspace they were given', () => {
-  for (const path of ['lib/server/load-desk-store.ts', 'lib/server/mileage-store.ts']) {
+  for (const path of [
+    'lib/server/load-desk-store.ts',
+    'lib/server/mileage-store.ts',
+    'lib/server/rates-store.ts',
+  ]) {
     const source = read(path);
     const scopes = [...source.matchAll(/\.eq\('workspace_id',\s*([^)]+)\)/g)].map((m) =>
       m[1].trim(),
@@ -33,9 +37,13 @@ void test('no workspace is baked into the server at build time', () => {
   for (const path of [
     'lib/server/load-desk-store.ts',
     'lib/server/mileage-store.ts',
+    'lib/server/rates-store.ts',
     'lib/server/mileage-calc.ts',
     'lib/server/auth.ts',
     'lib/server/avatar-store.ts',
+    'lib/server/rates-engine.ts',
+    'lib/server/rate-ai.ts',
+    'lib/server/rate-mail.ts',
   ]) {
     const source = read(path);
     assert.ok(
@@ -114,5 +122,79 @@ void test('IFTA reports the routes; it never changes them', () => {
       !source.includes(call),
       `the IFTA page writes routes with ${call}; corrections belong in Mileage`,
     );
+  }
+});
+
+// ------------------------------------------------- the Rate & Fuel Agent
+
+const readDir = (directory: string): string[] => {
+  const base = new URL(`../${directory}/`, import.meta.url);
+  const found: string[] = [];
+  for (const entry of readdirSync(base, { withFileTypes: true })) {
+    if (entry.isDirectory()) found.push(...readDir(`${directory}/${entry.name}`));
+    else if (/\.tsx?$/.test(entry.name)) found.push(`${directory}/${entry.name}`);
+  }
+  return found;
+};
+
+void test('the dashboard root never runs the rate agent', () => {
+  // The agent reads every saved ticket and may write to hundreds of them. That
+  // is work for a POST somebody asked for, not for the render of the page the
+  // desk opens all day: a worker has a CPU budget per request, and a shell
+  // that priced tickets on every load would be a shell that stopped loading.
+  // The Rates page itself is loaded only when somebody navigates to it, which
+  // is why the pager's dynamic import is allowed here.
+  for (const path of [
+    'app/(workspace)/layout.tsx',
+    'app/(workspace)/page.tsx',
+    'components/home/home-page.tsx',
+    'components/shell/app-shell.tsx',
+    'components/shell/section-pager.tsx',
+  ]) {
+    const source = read(path);
+    for (const half of ['rates-engine', 'rate-ai', 'rate-mail']) {
+      assert.ok(
+        !new RegExp(`from '[^']*${half}'`).test(source),
+        `${path} imports the agent's server half (${half})`,
+      );
+    }
+    assert.ok(
+      !source.includes('/api/rates'),
+      `${path} calls the rate agent while the shell is being drawn`,
+    );
+  }
+});
+
+void test('this deployment cannot email a customer', () => {
+  // V1 writes drafts. The boundary is one file with no adapter behind it, and
+  // the endpoints reach nothing outside the worker; the only outbound call in
+  // the whole agent is the reading model's, which is in lib/server and never
+  // in a route. Connecting a mailbox has to be a deliberate act.
+  const mail = read('lib/server/rate-mail.ts');
+  assert.ok(!/\bfetch\s*\(/.test(mail), 'lib/server/rate-mail.ts makes a network call');
+  assert.match(
+    mail,
+    /export function mailAdapter\(\): MailAdapter \| null \{\s*return null;\s*\}/,
+    'lib/server/rate-mail.ts returns a mail adapter',
+  );
+  for (const path of readDir('app/api/rates')) {
+    assert.ok(!/\bfetch\s*\(/.test(read(path)), `${path} makes a network call`);
+  }
+  // The one outbound call, where it is allowed to be.
+  assert.match(read('lib/server/rate-ai.ts'), /fetch\('https:\/\/api\.openai\.com/);
+});
+
+void test('the reading model never prices anything', () => {
+  // The model says what a sentence appears to state. What that is worth, and
+  // what it comes to on a ticket, is settled by the rules in rates.ts and the
+  // arithmetic in format.ts — neither of which this module can reach, so a
+  // reply cannot talk the app into a figure.
+  const source = read('lib/server/rate-ai.ts');
+  assert.ok(
+    !/from '[^']*(load-desk\/format|load-desk\/rates-engine)'/.test(source),
+    'the reader imports the invoice arithmetic',
+  );
+  for (const name of ['lineTotal', 'priceLine', 'fuelAmount', 'toTicketPricing']) {
+    assert.ok(!source.includes(name), `the reader uses ${name}: pricing is not the model's`);
   }
 });

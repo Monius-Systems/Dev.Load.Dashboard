@@ -95,6 +95,16 @@ any company's tickets, and every workspace on the deployment benefits from
 it. Apply it with `supabase db push` (or paste it into the SQL editor).
 Until it is applied the app learns nothing and says nothing about it.
 
+`supabase/migrations/202609220001_rates.sql` adds the five tables the **Rates**
+page works from — `load_desk_rate_periods`, `load_desk_rate_requests`,
+`load_desk_rate_responses`, `load_desk_rate_events` and
+`load_desk_invoice_locks` — all workspace-scoped with row-level security, like
+every other Load Desk table. **It is not applied yet.** The DEV dashboard and
+production share one Supabase project, so applying it touches both: it is the
+manager's call when to run it, not something to push from a working copy.
+Until it is applied the Rates page cannot load its rows and says the rates
+could not be loaded; nothing else on the dashboard is affected.
+
 ## 2. Give A & D Trucking accounts
 
 `matthewmoniuszko@icloud.com` already has access, for testing. A & D's own
@@ -171,6 +181,8 @@ project and never overwrites the website.
    | `WEBSITE_URL` | `https://moniussystems.com` |
    | `OPENAI_API_KEY` | the Monius OpenAI key — set as a **secret**, value not recorded here |
    | `TOMTOM_API_KEY` | the Monius TomTom key for Mileage and IFTA — set as a **secret**, value not recorded here |
+   | `RATE_MAIL_MODE` | leave unset. `DRAFT_ONLY` is what unset means, and it is the only mode this release can honour |
+   | `RATE_DEV_TOOLS` | leave unset in production. `true` turns on the Rates page's "Simulate a reply" box and "Mark as sent" |
 
    `WEBSITE_URL` is what lets the website's Client Login sign people in; see
    step 4 for why its exact spelling matters.
@@ -207,6 +219,73 @@ npm ci
 npm run verify   # typecheck, lint, build
 npm test
 ```
+
+## Rates: the rate & fuel agent
+
+**Rates** is the seventh page on the bottom bar. It exists because the week's
+invoices sit and wait for two figures the customer has not sent yet: the
+hauling rate for a job, and that period's fuel surcharge.
+
+What it does, in the order the desk does it:
+
+1. **It says what is missing.** Every job a customer's loads went to over the
+   period, and which of the two figures it is short. A rate already typed into
+   **Customers** as a site rate counts as an answer and is never asked for — a
+   hauling rate the office entered is what the tickets are billed at today.
+2. **It drafts one email per customer**, busiest job first, in fixed wording
+   worked out from the gap alone. No model writes to a customer. A person can
+   edit any of it before it goes.
+3. **It reads the reply.** A model may say what each sentence appears to state;
+   what that means is settled afterwards by rules that cannot be talked round.
+   Only a figure certain of all three things — which job, which unit, which
+   number — and that no rule finds strange becomes a rate on its own.
+   Everything else waits under **Replies to confirm**. A hauling rate three
+   times what was last agreed (a dropped decimal point) is always a question,
+   however plainly it is written.
+4. **It prices the tickets.** The agreed rate is written onto the tickets'
+   own fields, so the invoice, the print and the CSV export all read off one
+   set of figures. A rate somebody typed by hand is never overwritten, and an
+   invoice that has been finalized is never repriced — the disagreement is
+   reported instead, with both totals.
+5. **Invoices & tickets** shows what each invoice is still waiting for, and
+   **Finalize** locks its pricing once it has gone out. **Unlock** reopens it
+   and asks why; the reason is kept with the invoice.
+
+### Nothing is emailed
+
+This release writes drafts and stops. `mailAdapter()` in
+`lib/server/rate-mail.ts` returns null, there is no network call anywhere in
+that file or in any `app/api/rates/**` route, and **Send** refuses: 409
+"Requests are drafts only on this deployment; nothing is emailed." on a
+draft-only deployment, 503 "No email service is connected yet." on one that
+would send but has no mailbox. Either way the draft is untouched and the
+office copies it into its own mail. `RATE_MAIL_MODE` is the deployment's ceiling
+and a customer's own send mode can only ask for less than it, so a profile
+edited in Customers cannot turn a draft-only deployment into one that mails
+people. Connecting a real mailbox is a deliberate act: one adapter, written
+once and reviewed once, not a variable somebody sets.
+
+### Trying it on DEV
+
+With `RATE_DEV_TOOLS=true` (and automatically in the unprotected local
+preview) the Rates page shows a **Development only** box that stands in for a
+mailbox:
+
+1. **Generate weekly requests** drafts what is missing for the period.
+2. **Mark as sent (simulated)** moves a draft to "waiting for reply" without
+   sending anything.
+3. **Simulate a reply** takes a customer, an optional request and a message
+   typed as the customer would have written it — "Markham fuel is 11%" — and
+   puts it through the very same reader, matcher and pricing path an arriving
+   email would go through. Nothing leaves the worker.
+
+Leave `RATE_DEV_TOOLS` unset in production: with no mailbox connected, a
+request there is marked sent by hand once the office has actually sent it.
+
+`OPENAI_API_KEY` is what reads a reply in the customer's own words. Without
+it the page says so and falls back to plain rules — "Markham 8.75/ton" still
+reads — and anything the rules cannot place is left for a person. The key is
+never what decides a figure.
 
 ## 4. Connect it to the website's Client Login
 
@@ -301,6 +380,19 @@ membership. If more client dashboards follow, the website can link to a small
       straightened photo extracts correctly.
 - [ ] **Account → Language → Polski** translates the app for that person only,
       and a printed invoice is still English.
+- [ ] `supabase/migrations/202609220001_rates.sql` applied (the manager decides
+      when — DEV and production share the Supabase project), and **Rates** then
+      loads with the period's jobs on it instead of saying the tables are
+      missing.
+- [ ] On **Rates**: generating the week's requests drafts one email per
+      customer short a figure and none for a customer with nothing missing; a
+      job whose rate is typed in **Customers** is asked only for fuel.
+- [ ] `RATE_MAIL_MODE` and `RATE_DEV_TOOLS` are unset in production, the
+      **Development only** box is not on the page, and **Send** says requests
+      are drafts only on this deployment.
+- [ ] **Invoices & tickets** shows "Waiting for rate" on an invoice with no
+      rate, **Finalize** locks it, and a later rate change is reported against
+      it rather than changing it.
 
 ## Known limits to tell the client
 
@@ -394,3 +486,19 @@ membership. If more client dashboards follow, the website can link to a small
 - Miles are not yet split by state, so the IFTA page reports a quarter as one
   line rather than per jurisdiction, and there is no filing export. The route
   geometry is stored for every leg, which is what a later release will split.
+- **Rates** drafts the emails; it does not send them. No mailbox is connected
+  in this release, so a request is copied out of the page and sent from the
+  office's own mail, and a reply is pasted back in (or typed into the
+  simulator on DEV). Replies are therefore not picked up automatically.
+- The agent never invents a figure. A reply it is not certain of waits under
+  **Replies to confirm** for a person, and a rate somebody typed on a ticket
+  is never overwritten — the Rates page offers to apply the agreed one
+  instead. Applying a rate to a ticket does not mark the ticket reviewed.
+- A hauling rate agreed for a project is open-ended; a fuel surcharge holds
+  only for the period it was given for, so last week's 11% can never quietly
+  price next week's loads. A rate is never edited in place: a new figure
+  supersedes the old one and the old one stays on file, so an invoice can
+  always be explained by the rate in force when it was printed.
+- Rates a ticket cannot hold — per mile, per day, custom pricing — are kept on
+  file and the ticket says plainly that it cannot carry them, rather than
+  being rounded into something it can.
