@@ -1267,6 +1267,7 @@ export const PL_PAGES: Record<string, string> = {
   'Monius Operator isn’t set up on this deployment yet.':
     'Monius Operator nie jest jeszcze skonfigurowany w tym wdrożeniu.',
   // The checks a run made, folded under the answer it gave.
+  '1 check': '1 sprawdzenie',
   '{n} checks': 'Sprawdzenia: {n}',
   'Hide the checks': 'Ukryj sprawdzenia',
   // The card that asks before anything is changed.

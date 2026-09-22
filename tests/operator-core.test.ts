@@ -7,7 +7,9 @@ import { RUN_LIMITS } from '../lib/operator/limits.ts';
 import {
   DEFAULT_SETTINGS,
   type ActionResult,
+  type ActivityItem,
   type AuditEntry,
+  type EntityRef,
   type OperatorSettings,
   type PendingConfirmation,
   type ReadResult,
@@ -96,14 +98,25 @@ function fakeModel(script: Scripted[] | ((turn: number) => Scripted)) {
 }
 
 /** The run log, in a Map, with everything it was asked to write kept for reading. */
+type Row = {
+  status: string;
+  activity: ActivityItem[];
+  entities: EntityRef[];
+  summary: string;
+  writes: number;
+};
+
 function fakeStore(settings: OperatorSettings = DEFAULT_SETTINGS) {
   const pendings = new Map<string, PendingConfirmation>();
+  const rows = new Map<string, Row>();
   const state = {
     settings,
     created: [] as Record<string, unknown>[],
     finished: [] as Record<string, unknown>[],
     audit: [] as AuditEntry[],
     pendings,
+    /** The run rows themselves, as createRun, finishRun and appendToRun leave them. */
+    rows,
     /** Set to null to make takePending behave as if the action had expired. */
     takeReturns: undefined as PendingConfirmation | null | undefined,
     /** How many of the next recordAction calls should fail. */
@@ -115,9 +128,53 @@ function fakeStore(settings: OperatorSettings = DEFAULT_SETTINGS) {
     },
     async createRun(_c: unknown, _w: string, run: Record<string, unknown>) {
       state.created.push(run);
+      rows.set(String(run.id), {
+        status: 'running',
+        activity: [],
+        entities: [],
+        summary: '',
+        writes: 0,
+      });
     },
     async finishRun(_c: unknown, _w: string, runId: string, patch: Record<string, unknown>) {
       state.finished.push({ runId, ...patch });
+      rows.set(runId, {
+        status: String(patch.status),
+        activity: patch.activity as ActivityItem[],
+        entities: patch.entities as EntityRef[],
+        summary: String(patch.summary),
+        writes: Number(patch.writes),
+      });
+    },
+    async appendToRun(
+      _c: unknown,
+      _w: string,
+      runId: string,
+      patch: {
+        status: string;
+        activity: ActivityItem[];
+        entities: EntityRef[];
+        summary: string;
+        writes: number;
+      },
+    ) {
+      const row = rows.get(runId);
+      if (!row) throw new Error('no such run');
+      const seen = new Set<string>();
+      const entities: EntityRef[] = [];
+      for (const entity of [...row.entities, ...patch.entities]) {
+        const key = `${entity.type}:${entity.id}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        entities.push(entity);
+      }
+      rows.set(runId, {
+        status: patch.status,
+        activity: [...row.activity, ...patch.activity],
+        entities,
+        summary: patch.summary,
+        writes: row.writes + patch.writes,
+      });
     },
     async recordAction(_c: unknown, _w: string, entry: AuditEntry) {
       if (state.recordActionFails > 0) {
@@ -374,6 +431,74 @@ void test('confirming an action on the same state runs it and audits the confirm
   assert.equal(store.state.audit[0].confirmation, 'confirmed');
   assert.equal(store.state.audit[0].tool, 'reprocess_tickets');
   assert.equal(store.state.audit[0].outcome, 'done');
+});
+
+void test('a confirmation closes the run that stopped to ask for it', async () => {
+  const { readTool, writeTool, highTool } = fakeTools();
+  const store = fakeStore({ ...DEFAULT_SETTINGS, granted: ['tickets.reprocess'] });
+  const deps = {
+    client,
+    member,
+    registry: createRegistry([readTool, writeTool, highTool]),
+    model: fakeModel([
+      {
+        toolCalls: [
+          call('c1', 'look_at_tickets'),
+          call('c2', 'reprocess_tickets'),
+        ],
+      },
+    ]),
+    store,
+    routing: null,
+    snapshot: async () => null,
+    now: () => new Date('2026-09-22T12:00:00.000Z'),
+  };
+  const asked = await runOperator(deps, {
+    message: 'Look, then reprocess them',
+    context: null,
+    history: [],
+  });
+  assert.equal(asked.status, 'awaiting_confirmation');
+  const row = store.state.rows.get(asked.run_id);
+  assert.equal(row?.status, 'awaiting_confirmation');
+  assert.equal(row?.writes, 0);
+
+  await confirmAction(deps, asked.pending?.id as string);
+
+  const closed = store.state.rows.get(asked.run_id);
+  assert.equal(closed?.status, 'completed');
+  assert.equal(closed?.writes, 1);
+  // The reading that led to the question is still under the change that
+  // answered it, rather than replaced by it.
+  assert.deepEqual(
+    closed?.activity.map((item) => [item.kind, item.tool]),
+    [
+      ['read', 'look_at_tickets'],
+      ['confirm', 'reprocess_tickets'],
+      ['write', 'reprocess_tickets'],
+    ],
+  );
+  assert.deepEqual(closed?.entities.map((entity) => entity.id), ['t-1']);
+});
+
+void test('the confirmation sentence is built from the tool name, not its description', async () => {
+  const { readTool, writeTool, highTool } = fakeTools();
+  const store = fakeStore({ ...DEFAULT_SETTINGS, granted: ['tickets.reprocess'] });
+  const asked = await runOperator(
+    {
+      client,
+      member,
+      registry: createRegistry([readTool, writeTool, highTool]),
+      model: fakeModel([{ toolCalls: [call('c1', 'reprocess_tickets')] }]),
+      store,
+      routing: null,
+      snapshot: async () => null,
+      now: () => new Date('2026-09-22T12:00:00.000Z'),
+    },
+    { message: 'Reprocess them', context: null, history: [] },
+  );
+  assert.equal(asked.text, 'I need your go-ahead before I reprocess tickets.\n1 ticket');
+  assert.ok(!asked.text.includes(writeTool.description));
 });
 
 void test('a confirmation against changed state is refused and nothing runs', async () => {

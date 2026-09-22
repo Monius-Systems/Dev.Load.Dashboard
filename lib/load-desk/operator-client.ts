@@ -11,6 +11,7 @@ import type {
   OperatorTurn,
   PendingConfirmation,
   RunStatus,
+  RunSummary,
   WritePermission,
 } from '../operator/types.ts';
 
@@ -48,18 +49,6 @@ export type AnswerTurn = {
 };
 
 export type PanelTurn = UserTurn | AnswerTurn;
-
-/** One past run, as the settings view lists them. Read tolerantly. */
-export type RunSummary = {
-  id: string;
-  request: string;
-  status: string;
-  started_at: string | null;
-  finished_at: string | null;
-  summary: string | null;
-  tool_calls: number;
-  writes: number;
-};
 
 export type OperatorSnapshot = {
   turns: PanelTurn[];
@@ -412,19 +401,54 @@ export async function saveSettings(patch: {
   return true;
 }
 
-const asRun = (value: unknown): RunSummary | null => {
+/** The entities a run row carries, keeping only the ones that read as one. */
+const asEntities = (value: unknown): EntityRef[] =>
+  (Array.isArray(value) ? value : []).flatMap((entry) => {
+    if (!entry || typeof entry !== 'object') return [];
+    const ref = entry as Record<string, unknown>;
+    if (typeof ref.type !== 'string' || typeof ref.id !== 'string') return [];
+    return [
+      {
+        type: ref.type as EntityRef['type'],
+        id: ref.id,
+        label: typeof ref.label === 'string' ? ref.label : ref.id,
+        href: typeof ref.href === 'string' ? ref.href : null,
+      },
+    ];
+  });
+
+const RUN_STATUSES: readonly RunStatus[] = [
+  'running',
+  'completed',
+  'awaiting_confirmation',
+  'failed',
+  'limited',
+];
+
+/**
+ * One past run, read the way this file reads everything the server sends: a
+ * row that is missing a field, or holding a status this build has never heard
+ * of, becomes a run that reads sensibly rather than a list that fails to draw.
+ * The shape is the shared one in lib/operator/types.ts — there is one run shape
+ * in this app, and the tolerance lives in the reader instead of a second type.
+ */
+const readRunSummary = (value: unknown): RunSummary | null => {
   if (!value || typeof value !== 'object') return null;
   const row = value as Record<string, unknown>;
   if (typeof row.id !== 'string') return null;
   const text = (key: string) => (typeof row[key] === 'string' ? (row[key] as string) : null);
   const count = (key: string) => (typeof row[key] === 'number' ? (row[key] as number) : 0);
+  const status = text('status');
   return {
     id: row.id,
+    user_id: text('user_id') ?? '',
     request: text('request') ?? '',
-    status: text('status') ?? 'completed',
-    started_at: text('started_at'),
+    status: RUN_STATUSES.find((known) => known === status) ?? 'completed',
+    started_at: text('started_at') ?? '',
     finished_at: text('finished_at'),
-    summary: text('summary'),
+    summary: text('summary') ?? '',
+    entities: asEntities(row.entities),
+    error: text('error'),
     tool_calls: count('tool_calls'),
     writes: count('writes'),
   };
@@ -444,6 +468,6 @@ export async function loadRuns(): Promise<void> {
   publish({
     ...snapshot,
     runsBusy: false,
-    runs: rows.map(asRun).filter((run): run is RunSummary => run !== null),
+    runs: rows.map(readRunSummary).filter((run): run is RunSummary => run !== null),
   });
 }

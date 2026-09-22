@@ -55,6 +55,8 @@ const MAX_ACTIONS = 100;
 /** What one run may keep of itself: the tail of the activity and a short line. */
 const MAX_ACTIVITY_ITEMS = 50;
 const MAX_SUMMARY_CHARS = 500;
+/** The most entities one run names. A confirmation adds to the list it left. */
+const MAX_RUN_ENTITIES = 100;
 
 /**
  * How much of a before/after snapshot an audit row may hold. The audit answers
@@ -366,6 +368,62 @@ export async function finishRun(
   if (error) throw unavailable('finish the run');
 }
 
+/**
+ * Adds what a confirmation did to the run that asked for it.
+ *
+ * A run that stopped to ask a person something was already finished once, at
+ * `awaiting_confirmation`, and the work happened afterwards on a request of
+ * its own. Without this the run log would say for ever that the Operator
+ * asked and nothing came of it. The row is read first and appended to rather
+ * than replaced, so the reads that led up to the question are still there
+ * under the change that answered it.
+ */
+export async function appendToRun(
+  client: SupabaseClient,
+  workspace: string,
+  runId: string,
+  patch: {
+    status: RunStatus;
+    activity: ActivityItem[];
+    entities: EntityRef[];
+    summary: string;
+    writes: number;
+  },
+): Promise<void> {
+  const existing = await client
+    .from('load_desk_agent_runs')
+    .select('activity, entities, writes')
+    .eq('workspace_id', workspace)
+    .eq('id', runId)
+    .maybeSingle();
+  if (existing.error) throw unavailable('load the run');
+  const row = (existing.data ?? {}) as Record<string, unknown>;
+
+  const activity = [...readActivity(row.activity), ...patch.activity].slice(-MAX_ACTIVITY_ITEMS);
+  const entities: EntityRef[] = [];
+  const seen = new Set<string>();
+  for (const entity of [...readEntities(row.entities), ...patch.entities]) {
+    const key = `${entity.type}:${entity.id}`;
+    if (seen.has(key) || entities.length >= MAX_RUN_ENTITIES) continue;
+    seen.add(key);
+    entities.push(entity);
+  }
+
+  const { error } = await client
+    .from('load_desk_agent_runs')
+    .update({
+      status: patch.status,
+      finished_at: new Date().toISOString(),
+      activity,
+      entities,
+      summary: patch.summary.slice(0, MAX_SUMMARY_CHARS),
+      writes: num(row.writes) + patch.writes,
+    })
+    .eq('workspace_id', workspace)
+    .eq('id', runId);
+  if (error) throw unavailable('close the run');
+}
+
 /** The workspace's runs, newest first. */
 export async function listRuns(
   client: SupabaseClient,
@@ -566,6 +624,18 @@ export type RunStore = {
     workspace: string,
     pending: PendingConfirmation & { user_id: string },
   ): Promise<void>;
+  appendToRun(
+    client: SupabaseClient,
+    workspace: string,
+    runId: string,
+    patch: {
+      status: RunStatus;
+      activity: ActivityItem[];
+      entities: EntityRef[];
+      summary: string;
+      writes: number;
+    },
+  ): Promise<void>;
   takePending(
     client: SupabaseClient,
     workspace: string,
@@ -578,6 +648,7 @@ export const runStore: RunStore = {
   getSettings,
   createRun,
   finishRun,
+  appendToRun,
   recordAction,
   createPending,
   takePending,

@@ -89,6 +89,23 @@ export type RunStore = {
     workspace: string,
     pending: PendingConfirmation & { user_id: string },
   ): Promise<void>;
+  /**
+   * Adds what a confirmation did to the run that asked for it. A run that
+   * stopped to ask is left open at `awaiting_confirmation`; without this it
+   * would stay that way for ever, reading as though the work never happened.
+   */
+  appendToRun(
+    client: SupabaseClient,
+    workspace: string,
+    runId: string,
+    patch: {
+      status: RunStatus;
+      activity: ActivityItem[];
+      entities: EntityRef[];
+      summary: string;
+      writes: number;
+    },
+  ): Promise<void>;
   /** Returns the pending action and marks it consumed; null if missing, expired or taken. */
   takePending(
     client: SupabaseClient,
@@ -413,7 +430,18 @@ export async function runOperator(
             summary: decision.reason,
           });
           entities.push(...impact.affected);
-          if (!text) text = `I need your go-ahead to ${tool.description}`;
+          // Built from the tool's name rather than its description: a
+          // description is written for a model, in whatever voice suits it,
+          // and spliced into a sentence it reads as somebody talking over
+          // themselves. The name is short, and the impact says the rest.
+          if (!text) {
+            text = [
+              `I need your go-ahead before I ${tool.name.replaceAll('_', ' ')}.`,
+              impact.lines[0] ?? '',
+            ]
+              .join('\n')
+              .trim();
+          }
           status = 'awaiting_confirmation';
           stop = true;
           break;
@@ -655,6 +683,22 @@ export async function confirmAction(
         user_id: userId,
       })
       .catch(() => {});
+    await store
+      .appendToRun(client, workspace, pending.run_id, {
+        status: 'failed',
+        activity: [
+          {
+            at: ctx.now.toISOString(),
+            tool: tool.name,
+            kind: 'write',
+            summary: 'The change did not go through.',
+          },
+        ],
+        entities: impact.affected,
+        summary: 'The change did not go through.',
+        writes: 0,
+      })
+      .catch(() => {});
     throw new StoreError(plainReason(error, 'That change did not go through.'), 500);
   }
 
@@ -664,19 +708,40 @@ export async function confirmAction(
     user_id: userId,
   });
 
+  const activity: ActivityItem[] = [
+    {
+      at: ctx.now.toISOString(),
+      tool: tool.name,
+      kind: 'write',
+      summary: result.summary,
+    },
+  ];
+  const entities = dedupeEntities(result.entities ?? []);
+  const text = `${result.summary} ${verificationSentence(result.verification)}`;
+
+  // The run that stopped to ask is closed here, with what the answer turned
+  // out to be, so the run log reads as one piece of work rather than a
+  // question nobody came back to. The audit row above is the record that
+  // matters and it is already written, so a run row that will not close is
+  // logged rather than turned into a failure for a change that succeeded.
+  try {
+    await store.appendToRun(client, workspace, pending.run_id, {
+      status: 'completed',
+      activity,
+      entities,
+      summary: text,
+      writes: 1,
+    });
+  } catch {
+    console.error('Operator: the confirmed run could not be closed', pending.run_id);
+  }
+
   return {
     run_id: pending.run_id,
     status: 'completed',
-    text: `${result.summary} ${verificationSentence(result.verification)}`,
-    activity: [
-      {
-        at: ctx.now.toISOString(),
-        tool: tool.name,
-        kind: 'write',
-        summary: result.summary,
-      },
-    ],
-    entities: dedupeEntities(result.entities ?? []),
+    text,
+    activity,
+    entities,
     actions: [result],
     pending: null,
     limited: null,

@@ -37,7 +37,9 @@ export default function ActivityTrail({ activity }: { activity: ActivityItem[] }
         aria-expanded={open}
         onClick={() => setOpen(!open)}
       >
-        {open ? t('Hide the checks') : t('{n} checks', { n: activity.length })}
+        {open
+          ? t('Hide the checks')
+          : t(activity.length === 1 ? '1 check' : '{n} checks', { n: activity.length })}
       </button>
       {open ? (
         <ul className="op-trail-list">

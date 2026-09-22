@@ -589,3 +589,23 @@
     flex: 1;
   }
 }
+
+/* The row the Operator sent you to.
+   A deep link from the panel lands on a page of dozens of rows, and "it is on
+   this page somewhere" is not an answer. The page marks the row it was sent to
+   with data-linked and this tints it and rules its leading edge, so the eye
+   goes to it before the reading starts. It is deliberately quiet: the row is
+   still an ordinary row, and the mark is gone the moment the link is cleared.
+   The selectors carry no class of their own because the rows they mark belong
+   to Records and Customers, and neither of them is the Operator's to rename. */
+tr[data-linked] > td,
+li.pf-card[data-linked] {
+  background: var(--ui-accent-faint);
+}
+
+/* The rule belongs to the row, so it is drawn on the cell the row starts with:
+   an inset shadow on every cell would stripe the row with a bar per column. */
+tr[data-linked] > td:first-child,
+li.pf-card[data-linked] {
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
