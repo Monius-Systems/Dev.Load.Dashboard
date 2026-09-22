@@ -1173,6 +1173,8 @@ export function parseRouteChoiceBody(
 
 /** The most ways to drive one run a person is ever offered. */
 export const MAX_ROUTE_OPTIONS = 6;
+/** How many the router is asked for, of each kind of vehicle. */
+export const MAX_ROUTE_ALTERNATIVES = 3;
 
 export const PLACE_KEY = /^[A-Z0-9 ]{1,200}$/;
 

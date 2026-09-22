@@ -315,7 +315,7 @@ void test('a chosen route is the run’s own, and a browser only names one', () 
   // The ways offered are the server's, stored on the run itself; the choice
   // is a position in them. Nothing a page sends becomes a distance.
   const offer = source('app/api/mileage/routes/route.ts');
-  assert.match(offer, /provider\.truckRouteOptions\(/);
+  assert.match(offer, /provider\.routeOptions\(/);
   assert.match(offer, /putRouteOptions\(/);
   const choose = source('app/api/mileage/routes/choose/route.ts');
   assert.match(choose, /chooseRouteOption\(client, member\.workspaceId, key, option/);
@@ -337,6 +337,31 @@ void test('a chosen route is the run’s own, and a browser only names one', () 
   assert.match(store, /miles: option\.miles/);
   // And days worked out with the old figures are marked, never rewritten.
   assert.match(store, /update\(\{ input_hash: '' \}\)/);
+});
+
+void test('a car’s way is offered but never taken on anybody’s behalf', () => {
+  const tomtom = source('lib/server/tomtom-routing.ts');
+  // The calculation asks for one thing only: this truck, at its size and
+  // weight. A car's way exists solely as something to be shown and chosen.
+  assert.match(tomtom, /calculateTruckRoute\(origin, destination, profile\): Promise<RouteResult> \{\s*const \[first\] = await roads\(apiKey, origin, destination, profile, 0\);/);
+  assert.match(tomtom, /roads\(apiKey, origin, destination, profile, count, 'car'\)/);
+  // A car is asked about as a car: the truck's dimensions are not sent, or
+  // the answer would be the truck's way under another name.
+  assert.match(tomtom, /if \(mode === 'truck'\) \{[\s\S]*?vehicleCommercial[\s\S]*?vehicleNumberOfAxles/);
+  assert.match(tomtom, /params\.set\('travelMode', mode\)/);
+
+  // What each way was worked out for is stored with it and travels to the
+  // page, which is what lets a run say that its miles are a car's.
+  const store = source('lib/server/mileage-store.ts');
+  assert.match(store, /mode: row\.mode === 'car' \? 'car' : 'truck'/, 'an older way reads as the truck’s');
+  assert.match(store, /export async function getRouteModes\(/);
+  const day = source('app/api/mileage/day/route.ts');
+  assert.match(day, /getRouteModes\(client, member\.workspaceId, ids\)/);
+
+  // And the page says so where the run is listed, not only inside a dialog.
+  const choice = source('components/mileage/route-choice.tsx');
+  assert.match(choice, /modes\[String\(run\.route_id\)\] === 'car'/);
+  assert.match(choice, /not checked for bridges or truck bans/);
 });
 
 // ------------------------------------------------------------- the routes

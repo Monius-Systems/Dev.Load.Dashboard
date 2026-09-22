@@ -366,6 +366,9 @@
   color: var(--ui-text);
   overflow-wrap: anywhere;
 }
+.rc-run-chip {
+  margin-left: 6px;
+}
 .rc-run-where small {
   display: block;
   margin-top: 2px;
@@ -386,9 +389,11 @@
   padding: 0;
   list-style: none;
 }
+/* A column, so the button sits at the foot of every card however much the
+   card above it has to say. */
 .rc-way {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: var(--ui-space-2);
   padding: var(--ui-space-3);
   border: 1px solid var(--ui-border);
@@ -431,13 +436,32 @@
   font-variant-numeric: tabular-nums;
   color: var(--ui-text);
 }
+/* What the way was worked out for. The truck's own ways read as quietly as
+   the figures above them; a way for any vehicle carries the warning tone,
+   because a low bridge is not a matter of taste. */
+.rc-way-mode {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--type-xs);
+  line-height: var(--type-leading-normal);
+  color: var(--ui-text-3);
+}
+.rc-way-mode[data-mode='car'] {
+  padding: 4px 8px;
+  border-radius: var(--ui-radius-sm);
+  background: var(--ui-warning-soft);
+  color: var(--ui-warning);
+}
 .rc-way-now {
+  margin-top: auto;
+  padding-top: var(--ui-space-1);
   font-size: var(--type-sm);
   font-weight: var(--type-medium);
   color: var(--ui-accent);
 }
 .rc-way-pick {
-  justify-self: stretch;
+  margin-top: auto;
 }
 
 @media (max-width: 560px) {

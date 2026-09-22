@@ -3,6 +3,8 @@ import {
   ProviderError,
   type GeocodeResult,
   type LatLon,
+  type RouteMode,
+  type RouteOptionResult,
   type RouteResult,
   type RoutingProvider,
   type TruckRoutingProfile,
@@ -147,41 +149,48 @@ async function fetchJson(url: URL, what: string): Promise<unknown> {
 
 /**
  * One call to the router: its own answer, and — where `alternatives` asks for
- * them — other ways to drive the same run. Every answer is read field by
- * field; an alternative without a distance is dropped rather than guessed at,
- * and two that come back the same length are one way, not two.
+ * them — other ways to drive the same run. `mode` is what it is asked for, a
+ * truck of the given size or an ordinary vehicle. Every answer is read field
+ * by field; an alternative without a distance is dropped rather than guessed
+ * at, and two that come back the same length are one way, not two.
  */
-async function truckRoutes(
+async function roads(
   apiKey: string,
   origin: LatLon,
   destination: LatLon,
   profile: TruckRoutingProfile,
   alternatives: number,
+  mode: RouteMode = 'truck',
 ): Promise<RouteResult[]> {
   const url = new URL(
     `${ROUTING}/${origin.lat},${origin.lon}:${destination.lat},${destination.lon}/json`,
   );
   const params = url.searchParams;
   params.set('key', apiKey);
-  params.set('travelMode', 'truck');
+  params.set('travelMode', mode);
   params.set('routeType', 'fastest');
   params.set('traffic', 'false');
   params.set('routeRepresentation', 'encodedPolyline');
   params.set('computeTravelTimeFor', 'none');
-  params.set('vehicleCommercial', profile.commercial ? 'true' : 'false');
   if (alternatives > 0) {
     params.set('maxAlternatives', String(Math.min(alternatives, MAX_ALTERNATIVES)));
     params.set('alternativeType', 'anyRoute');
   }
-  const dimensions: [string, string | null][] = [
-    ['vehicleHeight', positive(profile.heightM, 2)],
-    ['vehicleWidth', positive(profile.widthM, 2)],
-    ['vehicleLength', positive(profile.lengthM, 2)],
-    ['vehicleWeight', positive(Math.round(profile.weightKg), 0)],
-    ['vehicleAxleWeight', positive(Math.round(profile.axleWeightKg), 0)],
-    ['vehicleNumberOfAxles', positive(Math.round(profile.axles), 0)],
-  ];
-  for (const [name, value] of dimensions) if (value !== null) params.set(name, value);
+  // A car is asked about as a car: none of the truck's size, weight or
+  // commercial standing, since the whole point of asking is the roads those
+  // rules keep a truck off.
+  if (mode === 'truck') {
+    params.set('vehicleCommercial', profile.commercial ? 'true' : 'false');
+    const dimensions: [string, string | null][] = [
+      ['vehicleHeight', positive(profile.heightM, 2)],
+      ['vehicleWidth', positive(profile.widthM, 2)],
+      ['vehicleLength', positive(profile.lengthM, 2)],
+      ['vehicleWeight', positive(Math.round(profile.weightKg), 0)],
+      ['vehicleAxleWeight', positive(Math.round(profile.axleWeightKg), 0)],
+      ['vehicleNumberOfAxles', positive(Math.round(profile.axles), 0)],
+    ];
+    for (const [name, value] of dimensions) if (value !== null) params.set(name, value);
+  }
 
   const body = await fetchJson(url, 'routing');
   const formatVersion =
@@ -223,17 +232,40 @@ export function tomtomProvider(apiKey: string): RoutingProvider {
     version: VERSION,
 
     async calculateTruckRoute(origin, destination, profile): Promise<RouteResult> {
-      const [first] = await truckRoutes(apiKey, origin, destination, profile, 0);
+      const [first] = await roads(apiKey, origin, destination, profile, 0);
       return first;
     },
 
     /**
-     * Ways to drive the same run, the router's own answer first. Only ever
-     * for a person to look at and pick from: the calculation itself takes the
-     * first one, exactly as it always has.
+     * Ways to drive the same run, for a person to look at and pick from: the
+     * ways a truck of this size may go, and then the ways any vehicle may.
+     *
+     * The second kind is asked for because a driver who knows the run often
+     * takes a road the truck rules keep the router off — and because seeing
+     * both is the only way to tell that is what is happening. The calculation
+     * itself never uses them: it takes the truck's own answer, as it always
+     * has, until somebody chooses otherwise.
      */
-    async truckRouteOptions(origin, destination, profile, count): Promise<RouteResult[]> {
-      return truckRoutes(apiKey, origin, destination, profile, count);
+    async routeOptions(origin, destination, profile, count): Promise<RouteOptionResult[]> {
+      const asTruck = (await roads(apiKey, origin, destination, profile, count)).map(
+        (route) => ({ ...route, mode: 'truck' as const }),
+      );
+      // A router that will not answer for a car is no reason to offer nothing:
+      // the truck's own ways are the ones that matter.
+      const asCar = await roads(apiKey, origin, destination, profile, count, 'car')
+        .then((routes) => routes.map((route) => ({ ...route, mode: 'car' as const })))
+        .catch(() => [] as RouteOptionResult[]);
+      const seen = new Set<string>();
+      const ways: RouteOptionResult[] = [];
+      // The truck's ways first, and a car's way that is the same road as one
+      // of them is that one, not a second entry.
+      for (const way of [...asTruck, ...asCar]) {
+        const key = `${way.miles}|${way.seconds}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        ways.push(way);
+      }
+      return ways;
     },
 
     async geocode(query, bias, options = {}): Promise<GeocodeResult> {

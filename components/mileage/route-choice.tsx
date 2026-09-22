@@ -72,6 +72,7 @@ export default function RouteChoice({
   busy,
   phone,
   mapCredit,
+  modes,
   tr,
   onChosen,
 }: {
@@ -81,6 +82,8 @@ export default function RouteChoice({
   busy: boolean;
   phone: boolean;
   mapCredit: string;
+  /** For runs somebody settled, what that way was worked out for. */
+  modes: Record<string, 'truck' | 'car'>;
   tr: Translator;
   onChosen: () => void;
 }) {
@@ -97,6 +100,14 @@ export default function RouteChoice({
           <li key={run.route_id} className="rc-run">
             <span className="rc-run-where">
               {nameOf(run.from)} <span aria-hidden="true">→</span> {nameOf(run.to)}
+              {/* A run driven a way that was not checked against this truck
+                  says so here as well as in the dialog, so it is not a thing
+                  a person has to open something to find out. */}
+              {modes[String(run.route_id)] === 'car' ? (
+                <span className="ld-chip rc-run-chip" data-tone="warning">
+                  {t('Any vehicle')}
+                </span>
+              ) : null}
               <small>
                 {t('{miles} miles', { miles: formatNumber(run.miles) })}
                 {run.uses > 1 ? ` · ${t('{n} times today', { n: run.uses })}` : ''}
@@ -266,6 +277,14 @@ function ChooseWay({
                     {way.seconds === quickest && way.miles !== shortest ? (
                       <span className="ld-chip">{t('Quickest')}</span>
                     ) : null}
+                  </p>
+                  {/* A truck's way is the default and says nothing; a way
+                      worked out for any vehicle has to say so, because the
+                      roads it uses were not checked against this truck. */}
+                  <p className="rc-way-mode" data-mode={way.mode}>
+                    {way.mode === 'car'
+                      ? t('Any vehicle · not checked for bridges or truck bans')
+                      : t('Legal for this truck’s size and weight')}
                   </p>
                   {inUse ? (
                     <p className="rc-way-now">{t('In use now')}</p>

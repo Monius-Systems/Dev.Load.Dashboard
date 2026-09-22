@@ -1,11 +1,12 @@
 import { badRequest, memberRoute } from '@/lib/server/member-route';
-import { getDay, getRouteGeometries } from '@/lib/server/mileage-store';
+import { getDay, getRouteGeometries, getRouteModes } from '@/lib/server/mileage-store';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * One stored truck-day (?truck_id&date) with the lines of the routes it was
- * worked out from, so the page can draw the day on a map. The geometry is
+ * worked out from, so the page can draw the day on a map, and — for the runs
+ * somebody has settled — what each of those ways was worked out for. Both are
  * keyed by route id, as the day's legs carry them.
  */
 export function GET(request: Request) {
@@ -26,6 +27,7 @@ export function GET(request: Request) {
       ),
     ];
     const geometry = await getRouteGeometries(client, member.workspaceId, ids);
-    return Response.json({ day, geometry });
+    const modes = await getRouteModes(client, member.workspaceId, ids);
+    return Response.json({ day, geometry, modes });
   });
 }

@@ -9,6 +9,12 @@ import { tomtomProvider } from '@/lib/server/tomtom-routing';
 
 export type { LatLon, TruckRoutingProfile };
 
+/**
+ * What a route was worked out for: a truck of the given size and weight, or
+ * an ordinary vehicle, which may use roads a loaded truck is kept off.
+ */
+export type RouteMode = 'truck' | 'car';
+
 export type RouteResult = {
   miles: number;
   seconds: number;
@@ -18,6 +24,8 @@ export type RouteResult = {
   /** A few provider figures worth keeping for an audit; never the whole answer. */
   providerMeta: Record<string, unknown>;
 };
+
+export type RouteOptionResult = RouteResult & { mode: RouteMode };
 
 export type GeocodeResult =
   | {
@@ -58,16 +66,16 @@ export interface RoutingProvider {
     profile: TruckRoutingProfile,
   ): Promise<RouteResult>;
   /**
-   * Several ways to drive the same run, the provider's own answer first, for
-   * a person to choose between. Never used by the calculation, which takes
-   * the provider's answer as it always has.
+   * Several ways to drive the same run for a person to choose between: the
+   * ways this truck may go, and the ways any vehicle may. Never used by the
+   * calculation, which takes the truck's own answer as it always has.
    */
-  truckRouteOptions(
+  routeOptions(
     origin: LatLon,
     destination: LatLon,
     profile: TruckRoutingProfile,
     count: number,
-  ): Promise<RouteResult[]>;
+  ): Promise<RouteOptionResult[]>;
 }
 
 /**

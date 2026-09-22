@@ -386,6 +386,7 @@ export default function MileagePage() {
               busy={busy}
               phone={phone}
               mapCredit={days.mapCredit}
+              routeModes={days.routeModes}
               canUpdate={
                 open.headline === 'settings_changed' ||
                 open.headline === 'could_not_update' ||

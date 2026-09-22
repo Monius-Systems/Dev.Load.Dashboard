@@ -21,6 +21,8 @@ export type DaysSnapshot = {
   days: Record<string, MileageDay>;
   /** Route lines by route id, for the days loaded one at a time. */
   geometry: Record<string, RouteGeometry>;
+  /** For runs somebody settled, what that way was worked out for. */
+  routeModes: Record<string, 'truck' | 'car'>;
   /** The range loaded from the server, or null before the first load. */
   range: { from: string; to: string } | null;
   /** Whether the deployment has a routing key. */
@@ -37,6 +39,7 @@ export type DaysSnapshot = {
 const SERVER_SNAPSHOT: DaysSnapshot = {
   days: {},
   geometry: {},
+  routeModes: {},
   range: null,
   configured: true,
   mapCredit: '',
@@ -254,14 +257,21 @@ export function resetAttempts(keys: string[]) {
 export async function loadDayDetail(truckId: number, date: string): Promise<string | null> {
   const mode = snapshot.mode ?? (await dataMode());
   if (mode !== 'remote') return null;
-  const result = await apiJson<{ day: MileageDay | null; geometry: Record<string, RouteGeometry> }>(
-    `/api/mileage/day?truck_id=${truckId}&date=${date}`,
-  );
+  const result = await apiJson<{
+    day: MileageDay | null;
+    geometry: Record<string, RouteGeometry>;
+    modes?: Record<string, 'truck' | 'car'>;
+  }>(`/api/mileage/day?truck_id=${truckId}&date=${date}`);
   if (!result.ok) return result.error;
   const days = { ...snapshot.days };
   if (result.data.day) days[keyOf(result.data.day)] = result.data.day;
   else delete days[dayKey(truckId, date)];
-  publish({ ...snapshot, days, geometry: { ...snapshot.geometry, ...result.data.geometry } });
+  publish({
+    ...snapshot,
+    days,
+    geometry: { ...snapshot.geometry, ...result.data.geometry },
+    routeModes: { ...snapshot.routeModes, ...result.data.modes },
+  });
   return null;
 }
 
@@ -298,6 +308,8 @@ export type RouteWay = {
   index: number;
   miles: number;
   seconds: number;
+  /** Worked out for this truck, or for any vehicle. */
+  mode: 'truck' | 'car';
   geometry: RouteGeometry | null;
 };
 

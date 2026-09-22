@@ -4,13 +4,13 @@ import {
   routingProfileHash,
   toRoutingProfile,
   truckIfta,
+  MAX_ROUTE_ALTERNATIVES,
   MAX_ROUTE_OPTIONS,
 } from '@/lib/load-desk/mileage';
 import { boundedJson } from '@/lib/server/json';
 import { badRequest, memberRoute } from '@/lib/server/member-route';
 import {
   getDay,
-  getRouteOptions,
   listTrucks,
   putRouteOptions,
   type RouteOption,
@@ -25,9 +25,15 @@ import { routingProvider } from '@/lib/server/routing-provider';
  * from the day and the truck as they are stored — a page cannot ask about a
  * route of its own invention, and cannot say what one is worth.
  *
+ * Two kinds of way come back: the ways this truck may go, and the ways any
+ * vehicle may. The second kind is offered because a driver often takes a road
+ * the truck rules keep the router off — never chosen for anybody, only shown,
+ * and labelled for what it is.
+ *
  * The ways offered are kept on the run itself, so a choice can name one by
  * position. Asking again offers them again, which is how a run whose roads
- * have changed since is brought up to date.
+ * have changed since is brought up to date; a way already in use keeps its
+ * place in the list.
  */
 export function POST(request: Request) {
   return memberRoute(
@@ -60,20 +66,16 @@ export function POST(request: Request) {
 
       const profile = toRoutingProfile(truckIfta(truck));
       const key = routeKey(run.from, run.to, routingProfileHash(profile));
-      const answers = await provider.truckRouteOptions(
-        run.from,
-        run.to,
-        profile,
-        MAX_ROUTE_OPTIONS - 1,
-      );
+      const answers = await provider.routeOptions(run.from, run.to, profile, MAX_ROUTE_ALTERNATIVES);
       const options: RouteOption[] = answers.slice(0, MAX_ROUTE_OPTIONS).map((answer) => ({
         miles: answer.miles,
         seconds: answer.seconds,
         geometry: answer.geometry,
         precision: answer.geometryPrecision,
+        mode: answer.mode,
       }));
-      await putRouteOptions(client, member.workspaceId, key, options);
-      const settled = await getRouteOptions(client, member.workspaceId, key);
+      // A way somebody had already settled on keeps its place in the list.
+      const inUse = await putRouteOptions(client, member.workspaceId, key, options);
 
       return Response.json({
         from: run.from,
@@ -81,11 +83,12 @@ export function POST(request: Request) {
         // How much of the day rides on this one choice: every leg, anywhere in
         // the day, that is this same run.
         uses: worked.legs.filter((leg) => leg.route_id === run.route_id).length,
-        in_use: settled?.chosen ?? null,
+        in_use: inUse,
         options: options.map((option, at) => ({
           index: at,
           miles: option.miles,
           seconds: option.seconds,
+          mode: option.mode,
           geometry:
             option.geometry && option.precision
               ? { polyline: option.geometry, precision: option.precision }

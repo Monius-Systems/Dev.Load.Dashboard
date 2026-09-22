@@ -840,6 +840,11 @@ export const PL_PAGES: Record<string, string> = {
   'Route {n}': 'Trasa {n}',
   'Fewest miles': 'Najmniej mil',
   Quickest: 'Najszybsza',
+  'Any vehicle': 'Dowolny pojazd',
+  'Any vehicle · not checked for bridges or truck bans':
+    'Dowolny pojazd · bez sprawdzenia mostów i zakazów dla ciężarówek',
+  'Legal for this truck’s size and weight':
+    'Dozwolona dla rozmiaru i masy tej ciężarówki',
   'In use now': 'Używana teraz',
   'Use this route': 'Użyj tej trasy',
   'Route saved': 'Trasa zapisana',

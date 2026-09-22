@@ -16,6 +16,7 @@ import type { TruckIfta, TruckProfile } from '@/lib/load-desk/profiles';
 import type { NewTruck } from '@/lib/load-desk/record-input';
 import type { SavedRecord } from '@/lib/load-desk/types';
 import { StoreError } from '@/lib/server/load-desk-store';
+import type { RouteMode } from '@/lib/server/routing-provider';
 
 // Supabase storage for IFTA & Mileage: the per-day rows and the two caches.
 // Every function is given the workspace of the person making the request —
@@ -512,7 +513,13 @@ export type RouteOption = {
   seconds: number;
   geometry: string | null;
   precision: 5 | 7 | null;
+  /** What it was worked out for: this truck, or any vehicle. */
+  mode: RouteMode;
 };
+
+/** Two ways are the same way when they are the same length and time. */
+const sameWay = (a: RouteOption, b: RouteOption) =>
+  a.miles === b.miles && a.seconds === b.seconds && a.mode === b.mode;
 
 const readOption = (value: unknown): RouteOption | null => {
   if (!value || typeof value !== 'object') return null;
@@ -526,6 +533,8 @@ const readOption = (value: unknown): RouteOption | null => {
     seconds,
     geometry: typeof row.geometry === 'string' && row.geometry ? row.geometry : null,
     precision: precision === 5 || precision === 7 ? precision : null,
+    // Ways stored before a car's were offered are the truck's own.
+    mode: row.mode === 'car' ? 'car' : 'truck',
   };
 };
 
@@ -657,19 +666,65 @@ export async function getRouteOptions(
   return { id: Number(data.id), options, chosen };
 }
 
-/** Stores the ways the router has just offered for a run. */
+/**
+ * Stores the ways the router has just offered for a run.
+ *
+ * A choice is a position in this list, so the list being replaced would move
+ * it: the way in use is looked for among the new ones and its position
+ * follows it. Where the router no longer offers it — the roads changed, or it
+ * answered differently today — the run keeps the figures it was given, and
+ * says that no way on offer is the one in use.
+ */
+/**
+ * Which of these runs are driven a way somebody chose, and what that way was
+ * worked out for. Only the runs that have been settled are in the answer: a
+ * run nobody has touched is the truck's own way, which is the default
+ * everywhere and needs no saying.
+ */
+export async function getRouteModes(
+  client: SupabaseClient,
+  workspace: string,
+  ids: number[],
+): Promise<Record<string, RouteMode>> {
+  if (!ids.length) return {};
+  const { data, error } = await client
+    .from('load_desk_routes')
+    .select('id, options, chosen_index')
+    .eq('workspace_id', workspace)
+    .in('id', ids)
+    .not('chosen_index', 'is', null);
+  if (error) throw unavailable('load the ways these runs are driven');
+  const modes: Record<string, RouteMode> = {};
+  for (const row of data) {
+    const options = (Array.isArray(row.options) ? row.options : []).map(readOption);
+    const chosen = options[Number(row.chosen_index)];
+    if (chosen) modes[String(row.id)] = chosen.mode;
+  }
+  return modes;
+}
+
 export async function putRouteOptions(
   client: SupabaseClient,
   workspace: string,
   key: string,
   options: RouteOption[],
-): Promise<void> {
+): Promise<number | null> {
+  const before = await getRouteOptions(client, workspace, key);
+  const inUse = before?.chosen === null || before?.chosen === undefined
+    ? null
+    : (before.options[before.chosen] ?? null);
+  const chosen = inUse ? options.findIndex((option) => sameWay(option, inUse)) : -1;
   const { error } = await client
     .from('load_desk_routes')
-    .update({ options, options_at: new Date().toISOString() })
+    .update({
+      options,
+      options_at: new Date().toISOString(),
+      chosen_index: chosen >= 0 ? chosen : null,
+    })
     .eq('workspace_id', workspace)
     .eq('route_key', key);
   if (error) throw unavailable('save the ways to drive this run');
+  return chosen >= 0 ? chosen : null;
 }
 
 /**

@@ -47,6 +47,7 @@ export default function RouteView({
   phone,
   canUpdate,
   mapCredit,
+  routeModes,
   tr,
   onBack,
   onTryAgain,
@@ -67,6 +68,8 @@ export default function RouteView({
   canUpdate: boolean;
   /** The words the map source is credited with; '' where there is no map. */
   mapCredit: string;
+  /** For runs somebody settled, what that way was worked out for. */
+  routeModes: Record<string, 'truck' | 'car'>;
   tr: Translator;
   onBack: () => void;
   onTryAgain: () => void;
@@ -253,6 +256,7 @@ export default function RouteView({
           busy={busy}
           phone={phone}
           mapCredit={mapCredit}
+          modes={routeModes}
           tr={tr}
           onChosen={onRouteChosen}
         />
