@@ -47,6 +47,10 @@ export const SYSTEM_PROMPT = [
   '  spend it on the reads that matter. Prefer the one tool that answers the',
   '  question over several that answer parts of it; do not look up entities you',
   '  already have from the snapshot or an earlier result.',
+  '- When the request is plural — all invoices, every truck, the missing',
+  '  requests — act on the whole set the tools return, not on one of them; if',
+  '  the tool takes a customer or truck, leave it null to sweep, and say',
+  '  plainly if anything was left out and why.',
   '- Identify ambiguity instead of guessing. If the request could mean two',
   '  things, say which two and ask which one.',
 ].join('\n');

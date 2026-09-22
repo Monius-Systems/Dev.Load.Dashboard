@@ -248,7 +248,7 @@ function fakeTools() {
     },
   };
   const writeTool: ToolDefinition = {
-    name: 'reprocess_tickets',
+    name: 'reprocess_ticket',
     description: 'reprocess those tickets',
     input: { type: 'object', properties: {}, required: [], additionalProperties: false },
     output: { type: 'object' },
@@ -357,7 +357,7 @@ void test('in assist mode a write becomes a confirmation and no handler runs', a
       client,
       member,
       registry: createRegistry([readTool, writeTool, highTool]),
-      model: fakeModel([{ toolCalls: [call('c1', 'reprocess_tickets')] }]),
+      model: fakeModel([{ toolCalls: [call('c1', 'reprocess_ticket')] }]),
       store,
       routing: null,
       snapshot: async () => null,
@@ -369,7 +369,7 @@ void test('in assist mode a write becomes a confirmation and no handler runs', a
   assert.equal(seen.writes.length, 0, 'the handler must not have run');
   assert.equal(seen.dryRuns, 1);
   assert.ok(response.pending);
-  assert.equal(response.pending?.tool, 'reprocess_tickets');
+  assert.equal(response.pending?.tool, 'reprocess_ticket');
   assert.equal(store.state.pendings.size, 1);
   assert.deepEqual(
     response.activity.map((item) => item.kind),
@@ -409,7 +409,7 @@ void test('confirming an action on the same state runs it and audits the confirm
     client,
     member,
     registry: createRegistry([readTool, writeTool, highTool]),
-    model: fakeModel([{ toolCalls: [call('c1', 'reprocess_tickets')] }]),
+    model: fakeModel([{ toolCalls: [call('c1', 'reprocess_ticket')] }]),
     store,
     routing: null,
     snapshot: async () => null,
@@ -426,10 +426,10 @@ void test('confirming an action on the same state runs it and audits the confirm
   assert.equal(done.status, 'completed');
   assert.equal(seen.writes.length, 1);
   assert.equal(done.actions[0]?.outcome, 'done');
-  assert.match(done.text, /Reprocessed 1 ticket\. Verified all 1 checks\./);
+  assert.match(done.text, /Reprocessed 1 ticket\. Verified 1 of 1\./);
   assert.equal(store.state.audit.length, 1);
   assert.equal(store.state.audit[0].confirmation, 'confirmed');
-  assert.equal(store.state.audit[0].tool, 'reprocess_tickets');
+  assert.equal(store.state.audit[0].tool, 'reprocess_ticket');
   assert.equal(store.state.audit[0].outcome, 'done');
 });
 
@@ -444,7 +444,7 @@ void test('a confirmation closes the run that stopped to ask for it', async () =
       {
         toolCalls: [
           call('c1', 'look_at_tickets'),
-          call('c2', 'reprocess_tickets'),
+          call('c2', 'reprocess_ticket'),
         ],
       },
     ]),
@@ -474,14 +474,14 @@ void test('a confirmation closes the run that stopped to ask for it', async () =
     closed?.activity.map((item) => [item.kind, item.tool]),
     [
       ['read', 'look_at_tickets'],
-      ['confirm', 'reprocess_tickets'],
-      ['write', 'reprocess_tickets'],
+      ['confirm', 'reprocess_ticket'],
+      ['write', 'reprocess_ticket'],
     ],
   );
   assert.deepEqual(closed?.entities.map((entity) => entity.id), ['t-1']);
 });
 
-void test('the confirmation sentence is built from the tool name, not its description', async () => {
+void test('the confirmation sentence is the tool\'s plain label, not its description', async () => {
   const { readTool, writeTool, highTool } = fakeTools();
   const store = fakeStore({ ...DEFAULT_SETTINGS, granted: ['tickets.reprocess'] });
   const asked = await runOperator(
@@ -489,7 +489,7 @@ void test('the confirmation sentence is built from the tool name, not its descri
       client,
       member,
       registry: createRegistry([readTool, writeTool, highTool]),
-      model: fakeModel([{ toolCalls: [call('c1', 'reprocess_tickets')] }]),
+      model: fakeModel([{ toolCalls: [call('c1', 'reprocess_ticket')] }]),
       store,
       routing: null,
       snapshot: async () => null,
@@ -497,7 +497,8 @@ void test('the confirmation sentence is built from the tool name, not its descri
     },
     { message: 'Reprocess them', context: null, history: [] },
   );
-  assert.equal(asked.text, 'I need your go-ahead before I reprocess tickets.\n1 ticket');
+  // 'reprocess_ticket' is labelled 'Reprocess ticket' in lib/operator/tool-labels.ts.
+  assert.equal(asked.text, 'I need your go-ahead: reprocess ticket.');
   assert.ok(!asked.text.includes(writeTool.description));
 });
 
@@ -508,7 +509,7 @@ void test('a confirmation against changed state is refused and nothing runs', as
     client,
     member,
     registry: createRegistry([readTool, writeTool, highTool]),
-    model: fakeModel([{ toolCalls: [call('c1', 'reprocess_tickets')] }]),
+    model: fakeModel([{ toolCalls: [call('c1', 'reprocess_ticket')] }]),
     store,
     routing: null,
     snapshot: async () => null,
@@ -575,7 +576,7 @@ void test('a write that falls over still leaves an audit row, and the run goes o
       member,
       registry: createRegistry([readTool, writeTool, highTool]),
       model: fakeModel([
-        { toolCalls: [call('c1', 'reprocess_tickets')] },
+        { toolCalls: [call('c1', 'reprocess_ticket')] },
         { text: 'That did not work, and I have left it alone.' },
       ]),
       store,
@@ -589,7 +590,7 @@ void test('a write that falls over still leaves an audit row, and the run goes o
   assert.equal(store.state.audit.length, 1, 'an attempt that failed is still an attempt');
   assert.equal(store.state.audit[0].outcome, 'failed');
   assert.equal(store.state.audit[0].confirmation, 'auto');
-  assert.equal(store.state.audit[0].tool, 'reprocess_tickets');
+  assert.equal(store.state.audit[0].tool, 'reprocess_ticket');
   assert.equal(store.state.audit[0].entity_id, 't-1');
   // The change failed; the run did not.
   assert.equal(response.status, 'completed');
@@ -615,8 +616,8 @@ void test('a change that cannot be written down ends the run before anything els
       model: fakeModel([
         {
           toolCalls: [
-            call('c1', 'reprocess_tickets'),
-            call('c2', 'reprocess_tickets'),
+            call('c1', 'reprocess_ticket'),
+            call('c2', 'reprocess_ticket'),
           ],
         },
         { text: 'Never reached.' },

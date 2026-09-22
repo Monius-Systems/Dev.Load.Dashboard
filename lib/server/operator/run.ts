@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { dedupeEntities, isEntityType } from '@/lib/operator/entities';
 import { RUN_LIMITS } from '@/lib/operator/limits';
 import { decide } from '@/lib/operator/policy';
+import { toolLabel } from '@/lib/operator/tool-labels';
 import type { Registry } from '@/lib/operator/registry';
 import type {
   ActionResult,
@@ -158,9 +159,9 @@ function resultText(data: unknown): string {
 export function verificationSentence(verification: Verification): string {
   if (verification.checked === 0) return 'There was nothing left to check.';
   if (verification.failures.length) {
-    return `Verified ${verification.passed} of ${verification.checked} checks; ${verification.failures[0]}`;
+    return `Verified ${verification.passed} of ${verification.checked} — ${verification.failures[0]}`;
   }
-  return `Verified all ${verification.checked} checks.`;
+  return `Verified ${verification.checked} of ${verification.checked}.`;
 }
 
 /** A user-facing reason, when the failure carried one, and nothing else ever. */
@@ -430,18 +431,12 @@ export async function runOperator(
             summary: decision.reason,
           });
           entities.push(...impact.affected);
-          // Built from the tool's name rather than its description: a
-          // description is written for a model, in whatever voice suits it,
-          // and spliced into a sentence it reads as somebody talking over
-          // themselves. The name is short, and the impact says the rest.
-          if (!text) {
-            text = [
-              `I need your go-ahead before I ${tool.name.replaceAll('_', ' ')}.`,
-              impact.lines[0] ?? '',
-            ]
-              .join('\n')
-              .trim();
-          }
+          // The tool's plain label rather than its description or its name: a
+          // description is written for a model and reads as somebody talking
+          // over themselves when spliced into a sentence, and the name is the
+          // engine's. What the action would touch is not repeated here either,
+          // because the card beneath this line already lists it.
+          if (!text) text = `I need your go-ahead: ${toolLabel(tool.name).toLowerCase()}.`;
           status = 'awaiting_confirmation';
           stop = true;
           break;
