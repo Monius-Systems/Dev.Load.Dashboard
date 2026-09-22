@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Translator } from '@/lib/i18n/translate';
@@ -62,6 +62,8 @@ const COMPACT_WIDTH = 420;
 /** Clear space for the markers and their labels, so nothing is cut off. */
 const PADDING = 44;
 const COMPACT_PADDING = 36;
+/** A preview card's canvas, where 36px of clear space is most of it. */
+const TINY_PADDING = 26;
 /** This app's own tiles, which fetch the map on the browser's behalf. */
 const TILES = '/api/mileage/tiles';
 /**
@@ -100,6 +102,19 @@ const driveTime = (seconds: number, tr: { t: Translator['t'] }) => {
   return hours
     ? tr.t('{hours} hr {minutes} min', { hours, minutes: String(total % 60).padStart(2, '0') })
     : tr.t('{minutes} min', { minutes: total });
+};
+
+/**
+ * The screen's own fineness, and a subscription to it: dragging a window from
+ * a laptop's display to a plain monitor changes it, and the map is then
+ * fetched again to suit.
+ */
+const readDensity = () => window.devicePixelRatio || 1;
+const serverDensity = () => 1;
+const watchDensity = (listener: () => void) => {
+  const query = window.matchMedia(`(resolution: ${readDensity()}dppx)`);
+  query.addEventListener('change', listener);
+  return () => query.removeEventListener('change', listener);
 };
 
 /** Loaded legs carry a ticket; everything else is the truck running empty. */
@@ -142,6 +157,11 @@ export default function RouteMap({
   // to throw the map away; nothing arriving at all is.
   const [drawn, setDrawn] = useState(0);
   const [refused, setRefused] = useState(0);
+  // How many screen dots this display puts in a page pixel, so the map is
+  // fetched at the fineness the screen can actually show. Read as the outside
+  // fact it is: a server renders for no screen in particular, and a window
+  // dragged to another monitor is a new answer.
+  const density = useSyncExternalStore(watchDensity, readDensity, serverDensity);
   // Leg by leg is the long way to read a day, and a shuttle day has thirty of
   // them. The map, the caption and the stops answer the question; the legs are
   // there for whoever is checking the arithmetic, so they start folded away.
@@ -166,9 +186,13 @@ export default function RouteMap({
       ? Math.min(Math.max(width * COMPACT_ASPECT, MIN_HEIGHT), COMPACT_MAX_HEIGHT)
       : Math.min(Math.max(width * ASPECT, MIN_HEIGHT), MAX_HEIGHT),
   );
-  const padding = compact ? COMPACT_PADDING : PADDING;
-  const radius = compact ? 16 : 13;
-  const glyph = compact ? 7.8 : 7.2;
+  // A preview beside three others is a small canvas, and a phone's map is a
+  // wide one; the markers are sized to the canvas rather than to the word
+  // "compact", so a preview is a route and not four pills.
+  const tiny = width > 0 && width < 260;
+  const padding = tiny ? TINY_PADDING : compact ? COMPACT_PADDING : PADDING;
+  const radius = tiny ? 11 : compact ? 16 : 13;
+  const glyph = tiny ? 6.4 : compact ? 7.8 : 7.2;
 
   // Roads first: every leg that has geometry decoded once, so the bounds hold
   // the whole route rather than only the stops it passes through.
@@ -182,7 +206,7 @@ export default function RouteMap({
   ];
   // The map is dropped for this render only when nothing has ever loaded.
   const mapped = Boolean(credit) && !(refused > 0 && drawn === 0);
-  const view = mapped && width ? fitTiles(points, width, height, padding, MAX_ZOOM) : null;
+  const view = mapped && width ? fitTiles(points, width, height, padding, MAX_ZOOM, density) : null;
   const fit = view ?? (width ? fitBounds(points, width, height, padding) : null);
 
   const directions = googleMapsDirectionsUrl(stops);

@@ -77,11 +77,11 @@
   max-width: none;
   user-select: none;
 }
-/* The map is a photograph of the world and the page is not: this holds it to
-   the page's own weight, and steps back further where the ink has to read
-   over it. */
+/* The map is a photograph of the world and the page is not, so it is held a
+   touch back from full strength — enough that the route reads over it, not so
+   much that the lettering goes grey. */
 .rm-canvas[data-mapped] .rm-tiles {
-  opacity: 0.88;
+  opacity: 0.96;
 }
 .rm-svg {
   position: relative;

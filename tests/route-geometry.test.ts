@@ -260,19 +260,20 @@ void test('fitTiles fills the canvas with the day, north up', () => {
   assert.ok(view);
   assert.ok(Number.isInteger(view.zoom), 'pictures come at whole-number zooms');
   assert.ok(view.zoom > 0 && view.zoom <= 17);
+  // Inside the padding, give or take the pixel the picture sizes are snapped
+  // to — which is what keeps every picture on a pixel boundary.
   for (const point of [YARD, PICKUP, DELIVERY]) {
     const { x, y } = view.project(point);
-    assert.ok(x >= 32 - 1e-6 && x <= 640 - 32 + 1e-6, `x ${x} inside`);
-    assert.ok(y >= 32 - 1e-6 && y <= 400 - 32 + 1e-6, `y ${y} inside`);
+    assert.ok(x >= 31 && x <= 640 - 31, `x ${x} inside`);
+    assert.ok(y >= 31 && y <= 400 - 31, `y ${y} inside`);
   }
-  // Fitted, not merely contained: the day touches the padding on one axis,
-  // which is what the stretched pictures are for.
+  // Fitted, not merely contained: the day fills the canvas on one axis.
   const wide = Math.max(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).x)) -
     Math.min(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).x));
   const tall = Math.max(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).y)) -
     Math.min(...[YARD, PICKUP, DELIVERY].map((p) => view.project(p).y));
   assert.ok(
-    Math.abs(wide - (640 - 64)) < 0.5 || Math.abs(tall - (400 - 64)) < 0.5,
+    Math.abs(wide - (640 - 64)) < 2 || Math.abs(tall - (400 - 64)) < 2,
     `day ${wide.toFixed(1)}x${tall.toFixed(1)} in 576x336`,
   );
   assert.ok(view.project({ lat: 42.1, lon: -87.2 }).y < view.project({ lat: 41.5, lon: -87.2 }).y);
@@ -287,7 +288,15 @@ void test('fitTiles covers the canvas with tiles of that zoom', () => {
   assert.equal(new Set(view.tiles.map((tile) => tile.key)).size, view.tiles.length);
   // Every tile is one the source can serve, and together they leave no gap.
   const size = view.tiles[0].size;
-  assert.ok(size >= 256 && size < 256 * 2 + 2, `tiles drawn at ${size}px`);
+  // Near their own size, never stretched to twice it: the nearest zoom is
+  // taken, so a picture is shrunk at worst by a little and blown up at worst
+  // by a little, which is what keeps the lettering readable.
+  assert.ok(size > 256 / Math.SQRT2 && size < 256 * Math.SQRT2 + 2, `tiles drawn at ${size}px`);
+  // Whole pixels, and on whole-pixel boundaries, so nothing is resampled.
+  assert.ok(Number.isInteger(size), `tiles drawn at ${size}px`);
+  for (const tile of view.tiles) {
+    assert.ok(Number.isInteger(tile.left) && Number.isInteger(tile.top), 'a tile sits off-pixel');
+  }
   const left = Math.min(...view.tiles.map((tile) => tile.left));
   const top = Math.min(...view.tiles.map((tile) => tile.top));
   const right = Math.max(...view.tiles.map((tile) => tile.left)) + size;
@@ -300,12 +309,34 @@ void test('fitTiles covers the canvas with tiles of that zoom', () => {
   }
 });
 
+void test('fitTiles fetches a zoom deeper for a screen with two dots to the pixel', () => {
+  const plain = fitTiles([YARD, PICKUP, DELIVERY], 640, 400, 32);
+  const sharp = fitTiles([YARD, PICKUP, DELIVERY], 640, 400, 32, 17, 2);
+  assert.ok(plain && sharp);
+  assert.equal(sharp.zoom, plain.zoom + 1, 'one zoom deeper');
+  // Drawn at half the size, so each page pixel carries two dots of map.
+  assert.ok(Math.abs(sharp.tiles[0].size - plain.tiles[0].size / 2) <= 2);
+  // The day itself is framed as before, give or take the pixel the picture
+  // sizes are snapped to: finer pictures, the same map.
+  for (const point of [YARD, PICKUP, DELIVERY]) {
+    const here = plain.project(point);
+    const there = sharp.project(point);
+    assert.ok(Math.abs(here.x - there.x) < 4 && Math.abs(here.y - there.y) < 4, 'the framing moved');
+  }
+  // A display that says something unhelpful is treated as an ordinary one,
+  // and no screen is worth fetching more than twice the fineness for.
+  const day = [YARD, PICKUP, DELIVERY];
+  assert.equal(fitTiles(day, 640, 400, 32, 17, 0)?.zoom, plain.zoom);
+  assert.equal(fitTiles(day, 640, 400, 32, 17, 9)?.zoom, sharp.zoom);
+});
+
 void test('fitTiles centres a single point and refuses an empty day', () => {
   const view = fitTiles([{ lat: 41.6, lon: -87.6 }], 600, 300, 20);
   assert.ok(view);
   assert.equal(view.zoom, 17);
+  assert.equal(fitTiles([{ lat: 41.6, lon: -87.6 }], 600, 300, 20, 17, 2)?.zoom, 18);
   const { x, y } = view.project({ lat: 41.6, lon: -87.6 });
-  assert.ok(Math.abs(x - 300) < 1e-6 && Math.abs(y - 150) < 1e-6);
+  assert.ok(Math.abs(x - 300) <= 1 && Math.abs(y - 150) <= 1, `${x},${y} is not the middle`);
   assert.equal(fitTiles([], 600, 300, 20), null);
   assert.equal(fitTiles([{ lat: Number.NaN, lon: 0 }], 600, 300, 20), null);
   assert.equal(fitTiles([YARD], 0, 300, 20), null);

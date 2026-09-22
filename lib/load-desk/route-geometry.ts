@@ -362,15 +362,21 @@ export type TileView = {
  * The same fit as `fitBounds`, on a map made of tiles.
  *
  * Pictures exist only at whole-number zooms, but a route rarely fits one
- * exactly: taking the smaller zoom can leave the day drawn at half the size
- * of the canvas it is in. So the pictures of the zoom below are drawn a
- * little larger — never more than twice — and the route is projected at that
- * same scale, which is how the day comes out filling its canvas. Both this
- * and `fitBounds` are Web Mercator, the projection the pictures are drawn in,
- * so the roads land on their own streets.
+ * exactly, so the day is framed at the scale it wants and the pictures of the
+ * nearest zoom are drawn at whatever size that comes to. Nearest, rather than
+ * the zoom below: stretching a picture is what makes a map look soft, and the
+ * zoom above is shrunk instead, which does not.
  *
- * Null when there is nothing to fit. A single point is centred at a zoom
- * close enough to read the street it is on.
+ * `density` is how many screen dots the display puts in a page pixel. At two,
+ * the pictures come from a zoom deeper and are drawn at half the size, so
+ * every dot of the screen is a dot of the map and the lettering is as sharp
+ * as the page around it. It costs more pictures, which is what the week-long
+ * caching either side of this is for.
+ *
+ * Both this and `fitBounds` are Web Mercator, the projection the pictures are
+ * drawn in, so the roads land on their own streets. Null when there is
+ * nothing to fit; a single point is centred at a zoom close enough to read
+ * the street it is on.
  */
 export function fitTiles(
   points: LatLon[],
@@ -378,6 +384,7 @@ export function fitTiles(
   height: number,
   padding: number,
   maxZoom = 17,
+  density = 1,
 ): TileView | null {
   const usable = points.filter((point) => placed(point));
   if (!usable.length || width <= 0 || height <= 0) return null;
@@ -398,15 +405,23 @@ export function fitTiles(
     spanX > 0 ? innerWidth / spanX : Infinity,
     spanY > 0 ? innerHeight / spanY : Infinity,
   );
-  // The scale the day wants, and the zoom whose pictures are stretched to it.
-  const wanted = Math.min(room === Infinity ? 2 ** maxZoom : room, 2 ** maxZoom);
-  const zoom = Math.max(0, Math.min(maxZoom, Math.floor(Math.log2(wanted))));
-  const scale = Math.max(wanted, 2 ** zoom);
-  const size = TILE_SIZE * (scale / 2 ** zoom);
+  // The scale the day is drawn at, and the zoom whose pictures suit it best —
+  // one deeper for a display with two dots to the pixel. The zoom may go a
+  // step past the cap for that reason: the cap is on how close the day is
+  // framed, not on how fine the pictures behind it are.
+  const room2 = Math.min(room === Infinity ? 2 ** maxZoom : room, 2 ** maxZoom);
+  const sharpness = Math.min(Math.max(density, 1), 2);
+  const zoom = Math.max(0, Math.min(maxZoom + 1, Math.round(Math.log2(room2 * sharpness))));
+  // Pictures are drawn at a whole number of pixels, and the day is then drawn
+  // at whatever scale that comes to — a change of well under one part in a
+  // hundred. It is what lets every picture sit on a pixel boundary: no
+  // resampling along the way, and no hairline where two of them meet.
+  const size = Math.max(1, Math.round(TILE_SIZE * (room2 / 2 ** zoom)));
+  const scale = (size / TILE_SIZE) * 2 ** zoom;
   const centreX = ((Math.min(...xs) + Math.max(...xs)) / 2) * scale;
   const centreY = ((Math.min(...ys) + Math.max(...ys)) / 2) * scale;
-  const originX = centreX - width / 2;
-  const originY = centreY - height / 2;
+  const originX = Math.round(centreX - width / 2);
+  const originY = Math.round(centreY - height / 2);
 
   const across = 2 ** zoom;
   const tiles: MapTile[] = [];
@@ -426,11 +441,9 @@ export function fitTiles(
         z: zoom,
         x: wrapped,
         y: row,
-        left: Math.round(column * size - originX),
-        top: Math.round(row * size - originY),
-        // A whole pixel over, so two neighbours never leave a hairline gap
-        // between them when the scale is not a round number.
-        size: Math.ceil(size) + 1,
+        left: column * size - originX,
+        top: row * size - originY,
+        size,
       });
     }
   }

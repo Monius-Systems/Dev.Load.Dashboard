@@ -414,6 +414,9 @@
 .rc-way .rm-canvas {
   border-radius: var(--ui-radius-sm);
 }
+.rc-way .rm-disc-text {
+  font-size: var(--type-xs);
+}
 .rc-way-figures {
   display: flex;
   flex-wrap: wrap;
