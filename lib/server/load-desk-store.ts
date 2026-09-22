@@ -68,6 +68,54 @@ export async function listRecords(client: SupabaseClient, workspace: string): Pr
 }
 
 /**
+ * One saved ticket, or null. For a page or a tool that wants one record and
+ * not the whole workspace: `listRecords` reads every ticket the company has,
+ * which is the dominant cost of every request that calls it.
+ */
+export async function getRecord(
+  client: SupabaseClient,
+  workspace: string,
+  id: number,
+): Promise<SavedRecord | null> {
+  const { data, error } = await client
+    .from('load_desk_records')
+    .select('id, record')
+    .eq('workspace_id', workspace)
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw unavailable('load the ticket');
+  if (!data) return null;
+  return { ...(data.record as Omit<SavedRecord, 'id'>), id: Number(data.id) };
+}
+
+/**
+ * The tickets dated in a range (inclusive ISO dates), newest first, at most
+ * `limit` of them. Pushes the dates down to the `ticket_date` column, which
+ * is indexed, instead of reading the workspace and filtering. A ticket whose
+ * date could not be read has a null `ticket_date` and is not in this answer;
+ * `listRecords` is where those are found.
+ */
+export async function listRecordsBetween(
+  client: SupabaseClient,
+  workspace: string,
+  from: string,
+  to: string,
+  limit = 500,
+): Promise<SavedRecord[]> {
+  const { data, error } = await client
+    .from('load_desk_records')
+    .select('id, record')
+    .eq('workspace_id', workspace)
+    .gte('ticket_date', from)
+    .lte('ticket_date', to)
+    .order('ticket_date', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(Math.max(1, Math.min(limit, PAGE_SIZE)));
+  if (error) throw unavailable('load tickets for those days');
+  return data.map((row) => ({ ...(row.record as Omit<SavedRecord, 'id'>), id: Number(row.id) }));
+}
+
+/**
  * Saves a ticket. Its invoice number is claimed for its upload (batch); a
  * number another upload already uses is refused, and the same file page
  * cannot be saved twice.
