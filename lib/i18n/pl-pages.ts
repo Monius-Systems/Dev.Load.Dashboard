@@ -826,6 +826,8 @@ export const PL_PAGES: Record<string, string> = {
 
   // Which way the truck goes between two places, settled once for every load
   // that drives it.
+  'Show all {n} legs': 'Pokaż wszystkie odcinki ({n})',
+  'Hide the legs': 'Ukryj odcinki',
   'Routes this day uses': 'Trasy tego dnia',
   'Change route': 'Zmień trasę',
   'Change the route from {from} to {to}': 'Zmień trasę z {from} do {to}',
@@ -860,8 +862,6 @@ export const PL_PAGES: Record<string, string> = {
   'Home yard': 'Baza',
   Start: 'Start',
   Finish: 'Koniec',
-  'Show details': 'Pokaż szczegóły',
-  'Hide details': 'Ukryj szczegóły',
   '{miles} miles': '{miles} mil',
   '{hours} hr {minutes} min': '{hours} godz {minutes} min',
   '{minutes} min': '{minutes} min',

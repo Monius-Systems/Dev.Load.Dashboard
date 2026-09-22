@@ -312,6 +312,28 @@
   border-top-color: var(--ui-warning);
 }
 
+/* The time beside the miles, under it where a row has to wrap. */
+.rm-leg-time {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  color: var(--ui-text-3);
+}
+
+/* The legs are folded away until somebody asks for them: a day of shuttle
+   work is thirty near-identical rows, and the map above has already said what
+   the day was. The chevron turns when they are open, so the button says which
+   way it goes as well as what it does. */
+.rm-legs-toggle {
+  justify-self: start;
+  margin-top: var(--ui-space-2);
+}
+.rm-legs-toggle svg {
+  transition: transform var(--ui-duration) var(--ui-ease);
+}
+.rm-legs-toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+
 /* The legs themselves, one row each, selected in step with the drawing. */
 .rm-legs {
   display: grid;

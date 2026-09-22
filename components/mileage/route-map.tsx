@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import type { Translator } from '@/lib/i18n/translate';
 import { useT } from '@/lib/i18n/use-t';
 import { formatNumber, type LegKind } from '@/lib/load-desk/mileage';
 import {
@@ -40,6 +43,8 @@ export type RouteMapLeg = {
   seq: number;
   kind: LegKind;
   miles: number;
+  /** How long the provider said it takes, where the caller knows. */
+  seconds?: number;
   from: RouteStop;
   to: RouteStop;
   geometry: RouteGeometry | null;
@@ -88,6 +93,15 @@ function midpoint(points: Point[]): { x: number; y: number; angle: number } | nu
   };
 }
 
+/** "24 min", or "1 hr 05 min" once a leg is longer than an hour. */
+const driveTime = (seconds: number, tr: { t: Translator['t'] }) => {
+  const total = Math.round(seconds / 60);
+  const hours = Math.floor(total / 60);
+  return hours
+    ? tr.t('{hours} hr {minutes} min', { hours, minutes: String(total % 60).padStart(2, '0') })
+    : tr.t('{minutes} min', { minutes: total });
+};
+
 /** Loaded legs carry a ticket; everything else is the truck running empty. */
 const toneOf = (kind: LegKind) => (kind === 'pickup_to_delivery' ? 'loaded' : 'empty');
 
@@ -128,6 +142,10 @@ export default function RouteMap({
   // to throw the map away; nothing arriving at all is.
   const [drawn, setDrawn] = useState(0);
   const [refused, setRefused] = useState(0);
+  // Leg by leg is the long way to read a day, and a shuttle day has thirty of
+  // them. The map, the caption and the stops answer the question; the legs are
+  // there for whoever is checking the arithmetic, so they start folded away.
+  const [listed, setListed] = useState(false);
   const { t } = useT();
   // Two maps can share a page, so the pattern and the title are named apart.
   const domId = useId();
@@ -440,6 +458,17 @@ export default function RouteMap({
 
       {/* On a phone the rows are only worth their height when they do something. */}
       {compact && !interactive ? null : (
+        <Button
+          variant="ghost"
+          className="rm-legs-toggle"
+          aria-expanded={listed}
+          onClick={() => setListed(!listed)}
+        >
+          <ChevronDown aria-hidden="true" />
+          {listed ? t('Hide the legs') : t('Show all {n} legs', { n: legs.length })}
+        </Button>
+      )}
+      {(compact && !interactive) || !listed ? null : (
         <ul className="rm-legs">
           {legs.map((leg, at) => {
             // A row names the two visits this leg runs between and no others:
@@ -458,6 +487,9 @@ export default function RouteMap({
                 </span>
                 <span className="rm-leg-miles">
                   {formatNumber(leg.miles)} <small>{t('mi')}</small>
+                  {typeof leg.seconds === 'number' ? (
+                    <small className="rm-leg-time">{driveTime(leg.seconds, { t })}</small>
+                  ) : null}
                 </span>
               </>
             );

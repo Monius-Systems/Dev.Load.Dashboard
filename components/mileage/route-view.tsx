@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DayStatus, longDate, type DayHeadline } from '@/components/mileage/day-card';
@@ -32,15 +31,6 @@ import type { SavedRecord } from '@/lib/load-desk/types';
 // answer "how far", whatever the day needs a person for, the drawing of the
 // roads, and then the stops by name. The per-leg figures are behind a toggle,
 // because a dispatcher reads the stops far more often than the legs.
-
-/** "24 min", or "1 hr 05 min" once a leg is longer than an hour. */
-const driveTime = (seconds: number, tr: Translator) => {
-  const total = Math.round(seconds / 60);
-  const hours = Math.floor(total / 60);
-  return hours
-    ? tr.t('{hours} hr {minutes} min', { hours, minutes: String(total % 60).padStart(2, '0') })
-    : tr.t('{minutes} min', { minutes: total });
-};
 
 /** "1234 Front St" out of "1234 Front St, Joliet, IL 60431". */
 const firstLine = (address: string) => address.split(',')[0].trim();
@@ -86,7 +76,6 @@ export default function RouteView({
   onRouteChosen: () => void;
 }) {
   const { t } = tr;
-  const [details, setDetails] = useState(false);
 
   const when = longDate(day.date);
   const legs = row?.legs ?? [];
@@ -103,6 +92,7 @@ export default function RouteView({
     miles: leg.miles,
     from,
     to,
+    seconds: leg.seconds,
     geometry: (leg.route_id === null ? null : geometry[String(leg.route_id)]) ?? null,
   }));
   const unresolved = problems
@@ -266,36 +256,6 @@ export default function RouteView({
           tr={tr}
           onChosen={onRouteChosen}
         />
-      ) : null}
-
-      {legs.length ? (
-        <>
-          <Button
-            variant="ghost"
-            className="mileage-details-toggle"
-            aria-expanded={details}
-            onClick={() => setDetails(!details)}
-          >
-            {details ? t('Hide details') : t('Show details')}
-          </Button>
-          {details ? (
-            <ul className="mileage-legs">
-              {legs.map((leg) => (
-                <li key={leg.seq}>
-                  {leg.from.label} → {leg.to.label}
-                  <small>
-                    {' · '}
-                    {t('{miles} miles', {
-                      miles: leg.kind === 'same_place' ? '0' : formatNumber(leg.miles),
-                    })}
-                    {' · '}
-                    {driveTime(leg.seconds, tr)}
-                  </small>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </>
       ) : null}
 
       {canUpdate ? (

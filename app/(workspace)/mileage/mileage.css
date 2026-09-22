@@ -269,27 +269,6 @@
   color: var(--ui-text-3);
 }
 
-/* Each leg's own figures, behind a toggle, because the stops are read far
-   more often than the legs between them. */
-.mileage-details-toggle {
-  justify-self: start;
-}
-.mileage-legs {
-  display: grid;
-  gap: 4px;
-  margin: calc(-1 * var(--ui-space-2)) 0 0;
-  padding: 0;
-  list-style: none;
-  font-size: var(--type-xs);
-  color: var(--ui-text-2);
-}
-.mileage-legs li {
-  overflow-wrap: anywhere;
-}
-.mileage-legs small {
-  color: var(--ui-text-3);
-}
-
 .mileage-actions {
   display: flex;
   flex-wrap: wrap;
@@ -426,6 +405,7 @@
     the heading, the legend and the hand-off to Google Maps. */
 .rc-way .rm[data-compact] .rm-head,
 .rc-way .rm .rm-legs,
+.rc-way .rm .rm-legs-toggle,
 .rc-way .rm .rm-legend,
 .rc-way .rm .rm-caption,
 .rc-way .rm .rm-unresolved {
